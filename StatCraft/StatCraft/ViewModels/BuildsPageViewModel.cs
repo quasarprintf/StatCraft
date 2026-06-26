@@ -76,13 +76,26 @@ namespace StatCraft.ViewModels
 
         public ObservableCollection<BuildNode> Builds => _buildsByMatchup[SelectedMatchup];
 
-        partial void OnSelectedMatchupChanged(Matchup value) => SelectedBuild = null;
+        partial void OnSelectedMatchupChanged(Matchup value) => SelectFirstBuild();
+
+        public void SelectFirstBuild() => SelectedBuild = Builds.Count > 0 ? Builds[0] : null;
 
         [RelayCommand]
-        public void AddBuild() => Builds.Add(new BuildNode { Name = "New Build" });
+        public void AddBuild()
+        {
+            var node = new BuildNode { Name = "New Build" };
+            Builds.Add(node);
+            SelectedBuild = node;
+        }
 
         [RelayCommand]
-        public void AddChildBuild() => SelectedBuild?.Children.Add(new BuildNode { Name = "New Build" });
+        public void AddChildBuild()
+        {
+            if (SelectedBuild is null) return;
+            var node = new BuildNode { Name = "New Build" };
+            SelectedBuild.Children.Add(node);
+            SelectedBuild = node;
+        }
 
         [RelayCommand]
         public void AddAttribute() => SelectedBuild?.Attributes.Add(new BuildAttribute());
