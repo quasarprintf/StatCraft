@@ -1,5 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             x:Class="StatCraft.Views.BuildsPage">
-    <TextBlock Text="Builds" HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="24"/>
+             xmlns:vm="using:StatCraft.ViewModels"
+             x:Class="StatCraft.Views.BuildsPage"
+             x:DataType="vm:BuildsPageViewModel">
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="4">
+            <Button Content="vs P" Command="{Binding SelectVsP}" Classes.active="{Binding IsVsP}"/>
+            <Button Content="vs T" Command="{Binding SelectVsT}" Classes.active="{Binding IsVsT}"/>
+            <Button Content="vs Z" Command="{Binding SelectVsZ}" Classes.active="{Binding IsVsZ}"/>
+        </StackPanel>
+        <ContentControl Content="{Binding CurrentView}"/>
+    </DockPanel>
 </UserControl>

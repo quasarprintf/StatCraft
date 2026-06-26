@@ -1,4 +1,5 @@
 using Avalonia.Controls;
+using StatCraft.ViewModels;
 
 namespace StatCraft.Views
 {
@@ -7,6 +8,7 @@ namespace StatCraft.Views
         public BuildsPage()
         {
             InitializeComponent();
+            DataContext = new BuildsPageViewModel();
         }
     }
 }
