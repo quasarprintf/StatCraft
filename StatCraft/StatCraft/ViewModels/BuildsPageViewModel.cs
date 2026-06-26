@@ -49,6 +49,7 @@ namespace StatCraft.ViewModels
     {
         [ObservableProperty] private string _name = string.Empty;
         [ObservableProperty] private string _description = string.Empty;
+        [ObservableProperty] private bool _isExpanded;
         public ObservableCollection<BuildAttribute> Attributes { get; } = [];
         public ObservableCollection<BuildNode> Children { get; } = [];
     }
@@ -92,8 +93,10 @@ namespace StatCraft.ViewModels
         public void AddChildBuild()
         {
             if (SelectedBuild is null) return;
+            var parent = SelectedBuild;
             var node = new BuildNode { Name = "New Build" };
-            SelectedBuild.Children.Add(node);
+            parent.Children.Add(node);
+            parent.IsExpanded = true;
             SelectedBuild = node;
         }
 

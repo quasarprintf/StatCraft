@@ -21,6 +21,11 @@
                             IsEnabled="{Binding SelectedBuild, Converter={x:Static ObjectConverters.IsNotNull}}"/>
                 </StackPanel>
                 <TreeView ItemsSource="{Binding Builds}" SelectedItem="{Binding SelectedBuild}">
+                    <TreeView.Styles>
+                        <Style Selector="TreeViewItem" x:DataType="vm:BuildNode">
+                            <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
+                        </Style>
+                    </TreeView.Styles>
                     <TreeView.ItemTemplate>
                         <TreeDataTemplate ItemsSource="{Binding Children}">
                             <TextBlock Text="{Binding Name}"/>
