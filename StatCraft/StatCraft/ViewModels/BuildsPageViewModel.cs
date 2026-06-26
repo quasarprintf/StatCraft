@@ -77,6 +77,12 @@ namespace StatCraft.ViewModels
         ];
 
         [RelayCommand]
+        public void AddBuild() => Builds.Add(new BuildNode { Name = "New Build" });
+
+        [RelayCommand]
+        public void AddChildBuild() => SelectedBuild?.Children.Add(new BuildNode { Name = "New Build" });
+
+        [RelayCommand]
         public void AddAttribute() => SelectedBuild?.Attributes.Add(new BuildAttribute());
 
         [RelayCommand]
