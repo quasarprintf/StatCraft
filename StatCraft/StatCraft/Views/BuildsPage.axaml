@@ -43,7 +43,7 @@
                         <ItemsControl ItemsSource="{Binding SelectedBuild.Attributes}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:BuildAttribute">
-                                    <Grid ColumnDefinitions="*,120,*" Margin="0,0,0,4">
+                                    <Grid ColumnDefinitions="*,120,*,Auto" Margin="0,0,0,4">
                                         <TextBox Grid.Column="0" Text="{Binding Name}" PlaceholderText="Name" Margin="0,0,4,0"/>
                                         <ComboBox Grid.Column="1" SelectedItem="{Binding Type}"
                                                   ItemsSource="{x:Static vm:BuildAttribute.AllTypes}"
@@ -64,6 +64,10 @@
                                                       SelectedItem="{Binding SelectedValue}"
                                                       HorizontalAlignment="Stretch"/>
                                         </Panel>
+                                        <Button Grid.Column="3" Content="✕"
+                                                Command="{Binding $parent[UserControl].((vm:BuildsPageViewModel)DataContext).RemoveAttributeCommand}"
+                                                CommandParameter="{Binding}"
+                                                Padding="6,2" Margin="4,0,0,0"/>
                                     </Grid>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>

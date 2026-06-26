@@ -68,6 +68,9 @@ namespace StatCraft.ViewModels
         public void AddAttribute() => SelectedBuild?.Attributes.Add(new BuildAttribute());
 
         [RelayCommand]
+        public void RemoveAttribute(BuildAttribute attribute) => SelectedBuild?.Attributes.Remove(attribute);
+
+        [RelayCommand]
         public void SelectVsP() => SelectedMatchup = Matchup.VsP;
 
         [RelayCommand]
