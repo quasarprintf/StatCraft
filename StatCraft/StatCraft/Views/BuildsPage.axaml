@@ -4,11 +4,36 @@
              x:Class="StatCraft.Views.BuildsPage"
              x:DataType="vm:BuildsPageViewModel">
     <DockPanel>
+        <!-- Matchup buttons -->
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="4">
-            <Button Content="vs P" Command="{Binding SelectVsP}" Classes.active="{Binding IsVsP}"/>
-            <Button Content="vs T" Command="{Binding SelectVsT}" Classes.active="{Binding IsVsT}"/>
-            <Button Content="vs Z" Command="{Binding SelectVsZ}" Classes.active="{Binding IsVsZ}"/>
+            <Button Content="vs P" Command="{Binding SelectVsPCommand}" Classes.active="{Binding IsVsP}"/>
+            <Button Content="vs T" Command="{Binding SelectVsTCommand}" Classes.active="{Binding IsVsT}"/>
+            <Button Content="vs Z" Command="{Binding SelectVsZCommand}" Classes.active="{Binding IsVsZ}"/>
         </StackPanel>
-        <ContentControl Content="{Binding CurrentView}"/>
+
+        <!-- Left/right split -->
+        <Grid ColumnDefinitions="200,4,*">
+            <!-- Build tree -->
+            <TreeView Grid.Column="0" ItemsSource="{Binding Builds}">
+                <TreeView.ItemTemplate>
+                    <TreeDataTemplate ItemsSource="{Binding Children}">
+                        <TextBlock Text="{Binding Name}"/>
+                    </TreeDataTemplate>
+                </TreeView.ItemTemplate>
+            </TreeView>
+
+            <GridSplitter Grid.Column="1" ResizeDirection="Columns"/>
+
+            <!-- Build form -->
+            <ScrollViewer Grid.Column="2">
+                <StackPanel Margin="12" Spacing="10">
+                    <TextBlock Text="Build Name" FontWeight="SemiBold"/>
+                    <TextBox Text="{Binding SelectedBuild.Name}"/>
+
+                    <TextBlock Text="Notes" FontWeight="SemiBold"/>
+                    <TextBox Text="{Binding SelectedBuild.Notes}" AcceptsReturn="True" Height="80"/>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
     </DockPanel>
 </UserControl>
