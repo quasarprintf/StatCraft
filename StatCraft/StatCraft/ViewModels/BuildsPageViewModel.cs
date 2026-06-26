@@ -56,7 +56,7 @@ namespace StatCraft.ViewModels
     public partial class BuildsPageViewModel : ViewModelBase
     {
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(IsVsP), nameof(IsVsT), nameof(IsVsZ), nameof(CurrentView))]
+        [NotifyPropertyChangedFor(nameof(IsVsP), nameof(IsVsT), nameof(IsVsZ), nameof(CurrentView), nameof(Builds))]
         private Matchup _selectedMatchup = Matchup.VsP;
 
         [ObservableProperty] private BuildNode? _selectedBuild;
@@ -67,14 +67,16 @@ namespace StatCraft.ViewModels
 
         public Matchup CurrentView => SelectedMatchup;
 
-        public ObservableCollection<BuildNode> Builds { get; } =
-        [
-            new BuildNode { Name = "Early aggression", Children = {
-                new BuildNode { Name = "4-pool" },
-                new BuildNode { Name = "6-pool" },
-            }},
-            new BuildNode { Name = "Economy" },
-        ];
+        private readonly Dictionary<Matchup, ObservableCollection<BuildNode>> _buildsByMatchup = new()
+        {
+            [Matchup.VsP] = [],
+            [Matchup.VsT] = [],
+            [Matchup.VsZ] = [],
+        };
+
+        public ObservableCollection<BuildNode> Builds => _buildsByMatchup[SelectedMatchup];
+
+        partial void OnSelectedMatchupChanged(Matchup value) => SelectedBuild = null;
 
         [RelayCommand]
         public void AddBuild() => Builds.Add(new BuildNode { Name = "New Build" });
