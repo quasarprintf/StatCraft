@@ -43,32 +43,56 @@
                         <ItemsControl ItemsSource="{Binding SelectedBuild.Attributes}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:BuildAttribute">
-                                    <Grid ColumnDefinitions="*,120,*,Auto" Margin="0,0,0,4">
-                                        <TextBox Grid.Column="0" Text="{Binding Name}" PlaceholderText="Name" Margin="0,0,4,0"/>
-                                        <ComboBox Grid.Column="1" SelectedItem="{Binding Type}"
-                                                  ItemsSource="{x:Static vm:BuildAttribute.AllTypes}"
-                                                  HorizontalAlignment="Stretch" Margin="0,0,4,0"/>
-                                        <Panel Grid.Column="2">
-                                            <NumericUpDown IsVisible="{Binding IsNumeric}"
-                                                           Value="{Binding NumericValue}"
-                                                           FormatString="0" Increment="1"/>
-                                            <CheckBox IsVisible="{Binding IsBool}"
-                                                      IsChecked="{Binding BoolValue}"
-                                                      VerticalAlignment="Center"/>
-                                            <NumericUpDown IsVisible="{Binding IsPercent}"
-                                                           Value="{Binding PercentValue}"
-                                                           Minimum="0" Maximum="1" Increment="0.01"
-                                                           FormatString="0.00"/>
-                                            <ComboBox IsVisible="{Binding IsValues}"
-                                                      ItemsSource="{Binding ValueOptions}"
-                                                      SelectedItem="{Binding SelectedValue}"
-                                                      HorizontalAlignment="Stretch"/>
-                                        </Panel>
-                                        <Button Grid.Column="3" Content="✕"
-                                                Command="{Binding $parent[UserControl].((vm:BuildsPageViewModel)DataContext).RemoveAttributeCommand}"
-                                                CommandParameter="{Binding}"
-                                                Padding="6,2" Margin="4,0,0,0"/>
-                                    </Grid>
+                                    <StackPanel Margin="0,0,0,4">
+                                        <!-- Main attribute row -->
+                                        <Grid ColumnDefinitions="*,120,*,Auto">
+                                            <TextBox Grid.Column="0" Text="{Binding Name}" PlaceholderText="Name" Margin="0,0,4,0"/>
+                                            <ComboBox Grid.Column="1" SelectedItem="{Binding Type}"
+                                                      ItemsSource="{x:Static vm:BuildAttribute.AllTypes}"
+                                                      HorizontalAlignment="Stretch" Margin="0,0,4,0"/>
+                                            <Panel Grid.Column="2">
+                                                <NumericUpDown IsVisible="{Binding IsNumeric}"
+                                                               Value="{Binding NumericValue}"
+                                                               FormatString="0" Increment="1"/>
+                                                <CheckBox IsVisible="{Binding IsBool}"
+                                                          IsChecked="{Binding BoolValue}"
+                                                          VerticalAlignment="Center"/>
+                                                <NumericUpDown IsVisible="{Binding IsPercent}"
+                                                               Value="{Binding PercentValue}"
+                                                               Minimum="0" Maximum="1" Increment="0.01"
+                                                               FormatString="0.00"/>
+                                                <ComboBox IsVisible="{Binding IsValues}"
+                                                          ItemsSource="{Binding ValueOptions}"
+                                                          SelectedItem="{Binding SelectedValue}"
+                                                          HorizontalAlignment="Stretch"/>
+                                            </Panel>
+                                            <Button Grid.Column="3" Content="✕"
+                                                    Command="{Binding $parent[UserControl].((vm:BuildsPageViewModel)DataContext).RemoveAttributeCommand}"
+                                                    CommandParameter="{Binding}"
+                                                    Padding="6,2" Margin="4,0,0,0"/>
+                                        </Grid>
+                                        <!-- Options editor (Values type only) -->
+                                        <StackPanel IsVisible="{Binding IsValues}" Margin="16,4,0,0" Spacing="2">
+                                            <ItemsControl ItemsSource="{Binding ValueOptions}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,2">
+                                                            <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center"/>
+                                                            <Button Grid.Column="1" Content="✕" Padding="4,1"
+                                                                    Command="{Binding $parent[ItemsControl].DataContext.RemoveOptionCommand}"
+                                                                    CommandParameter="{Binding}"/>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                                <TextBox Grid.Column="0" Text="{Binding NewOptionText}"
+                                                         PlaceholderText="Add option..." Margin="0,0,4,0"/>
+                                                <Button Grid.Column="1" Content="+" Padding="6,2"
+                                                        Command="{Binding AddOptionCommand}"/>
+                                            </Grid>
+                                        </StackPanel>
+                                    </StackPanel>
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>

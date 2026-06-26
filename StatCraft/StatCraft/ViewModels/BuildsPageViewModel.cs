@@ -26,11 +26,23 @@ namespace StatCraft.ViewModels
 
         public ObservableCollection<string> ValueOptions { get; } = [];
         [ObservableProperty] private string? _selectedValue;
+        [ObservableProperty] private string _newOptionText = string.Empty;
 
         public bool IsNumeric => Type == AttributeType.Numeric;
         public bool IsBool    => Type == AttributeType.Bool;
         public bool IsPercent => Type == AttributeType.Percent;
         public bool IsValues  => Type == AttributeType.Values;
+
+        [RelayCommand]
+        private void AddOption()
+        {
+            if (string.IsNullOrWhiteSpace(NewOptionText)) return;
+            ValueOptions.Add(NewOptionText.Trim());
+            NewOptionText = string.Empty;
+        }
+
+        [RelayCommand]
+        private void RemoveOption(string option) => ValueOptions.Remove(option);
     }
 
     public partial class BuildNode : ObservableObject
