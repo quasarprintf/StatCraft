@@ -1,5 +1,8 @@
+using System;
+using System.IO;
 using Avalonia;
 using Avalonia.Controls;
+using StatCraft.Services;
 using StatCraft.ViewModels;
 
 namespace StatCraft.Views
@@ -9,7 +12,12 @@ namespace StatCraft.Views
         public BuildsPage()
         {
             InitializeComponent();
-            DataContext = new BuildsPageViewModel();
+            var dbPath = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                "StatCraft", "statcraft.db");
+            var repository = new BuildRepository(dbPath);
+            repository.Initialize();
+            DataContext = new BuildsPageViewModel(repository);
         }
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)

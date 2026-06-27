@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using StatCraft.Services;
 
 namespace StatCraft.ViewModels
 {
@@ -13,6 +15,8 @@ namespace StatCraft.ViewModels
     {
         public static IReadOnlyList<AttributeType> AllTypes { get; } =
             [AttributeType.Numeric, AttributeType.Bool, AttributeType.Percent, AttributeType.Values];
+
+        public int Id { get; set; }
 
         [ObservableProperty] private string _name = string.Empty;
 
@@ -47,6 +51,8 @@ namespace StatCraft.ViewModels
 
     public partial class BuildNode : ObservableObject
     {
+        public int Id { get; set; }
+
         [ObservableProperty] private string _name = string.Empty;
         [ObservableProperty] private string _description = string.Empty;
         [ObservableProperty] private bool _isExpanded;
@@ -56,6 +62,15 @@ namespace StatCraft.ViewModels
 
     public partial class BuildsPageViewModel : ViewModelBase
     {
+        private readonly BuildRepository _repository;
+        private readonly HashSet<Matchup> _loadedMatchups = [];
+
+        public BuildsPageViewModel(BuildRepository repository)
+        {
+            _repository = repository;
+            LoadMatchupIfNeeded(Matchup.VsP);
+        }
+
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsVsP), nameof(IsVsT), nameof(IsVsZ), nameof(CurrentView), nameof(Builds))]
         private Matchup _selectedMatchup = Matchup.VsP;
@@ -77,7 +92,54 @@ namespace StatCraft.ViewModels
 
         public ObservableCollection<BuildNode> Builds => _buildsByMatchup[SelectedMatchup];
 
-        partial void OnSelectedMatchupChanged(Matchup value) => SelectFirstBuild();
+        partial void OnSelectedMatchupChanged(Matchup value)
+        {
+            LoadMatchupIfNeeded(value);
+            SelectFirstBuild();
+        }
+
+        private void LoadMatchupIfNeeded(Matchup matchup)
+        {
+            if (!_loadedMatchups.Add(matchup)) return;
+            foreach (var node in _repository.GetBuildsForMatchup(matchup))
+            {
+                WireNode(node);
+                _buildsByMatchup[matchup].Add(node);
+            }
+        }
+
+        private void WireNode(BuildNode node)
+        {
+            node.PropertyChanged += (s, e) =>
+            {
+                if (s is BuildNode n && e.PropertyName is nameof(BuildNode.Name) or nameof(BuildNode.Description))
+                    _repository.UpdateBuild(n);
+            };
+            foreach (var attr in node.Attributes)
+                WireAttribute(attr);
+            foreach (var child in node.Children)
+                WireNode(child);
+        }
+
+        private void WireAttribute(BuildAttribute attr)
+        {
+            attr.PropertyChanged += (s, e) =>
+            {
+                if (s is BuildAttribute a && e.PropertyName is nameof(BuildAttribute.Name) or nameof(BuildAttribute.Type))
+                    _repository.UpdateAttribute(a);
+            };
+            attr.ValueOptions.CollectionChanged += (s, e) =>
+            {
+                if (e.NewItems != null)
+                    foreach (string? value in e.NewItems)
+                        if (value != null)
+                            _repository.InsertValueOption(attr.Id, value, attr.ValueOptions.IndexOf(value));
+                if (e.OldItems != null)
+                    foreach (string? value in e.OldItems)
+                        if (value != null)
+                            _repository.DeleteValueOption(attr.Id, value);
+            };
+        }
 
         public void SelectFirstBuild() => SelectedBuild = Builds.Count > 0 ? Builds[0] : null;
 
@@ -85,6 +147,8 @@ namespace StatCraft.ViewModels
         public void AddBuild()
         {
             var node = new BuildNode { Name = "New Build" };
+            _repository.InsertBuild(node, SelectedMatchup, null, Builds.Count);
+            WireNode(node);
             Builds.Add(node);
             SelectedBuild = node;
         }
@@ -95,16 +159,30 @@ namespace StatCraft.ViewModels
             if (SelectedBuild is null) return;
             var parent = SelectedBuild;
             var node = new BuildNode { Name = "New Build" };
+            _repository.InsertBuild(node, SelectedMatchup, parent.Id, parent.Children.Count);
+            WireNode(node);
             parent.Children.Add(node);
             parent.IsExpanded = true;
             SelectedBuild = node;
         }
 
         [RelayCommand]
-        public void AddAttribute() => SelectedBuild?.Attributes.Add(new BuildAttribute());
+        public void AddAttribute()
+        {
+            if (SelectedBuild is null) return;
+            var attr = new BuildAttribute();
+            _repository.InsertAttribute(attr, SelectedBuild.Id, SelectedBuild.Attributes.Count);
+            WireAttribute(attr);
+            SelectedBuild.Attributes.Add(attr);
+        }
 
         [RelayCommand]
-        public void RemoveAttribute(BuildAttribute attribute) => SelectedBuild?.Attributes.Remove(attribute);
+        public void RemoveAttribute(BuildAttribute attribute)
+        {
+            if (SelectedBuild is null) return;
+            _repository.DeleteAttribute(attribute.Id);
+            SelectedBuild.Attributes.Remove(attribute);
+        }
 
         [RelayCommand]
         public void SelectVsP() => SelectedMatchup = Matchup.VsP;
