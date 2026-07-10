@@ -170,10 +170,35 @@ namespace StatCraft.ViewModels
         public void DeleteBuild(BuildNode node)
         {
             var needsReselect = SelectedBuild == node || (SelectedBuild != null && ContainsDescendant(node, SelectedBuild));
+            var replacement = needsReselect ? FindReplacementSelection(node) : null;
+
             _repository.DeleteBuild(node.Id);
             RemoveNode(Builds, node);
+
             if (needsReselect)
-                SelectFirstBuild();
+                SelectedBuild = replacement;
+        }
+
+        private BuildNode? FindReplacementSelection(BuildNode node)
+        {
+            var parent = FindParent(Builds, node);
+            if (parent != null) return parent;
+
+            var index = Builds.IndexOf(node);
+            if (index > 0) return Builds[index - 1];
+
+            return Builds.Count > 1 ? Builds[1] : null;
+        }
+
+        private static BuildNode? FindParent(ObservableCollection<BuildNode> nodes, BuildNode target)
+        {
+            foreach (var n in nodes)
+            {
+                if (n.Children.Contains(target)) return n;
+                var found = FindParent(n.Children, target);
+                if (found != null) return found;
+            }
+            return null;
         }
 
         private static bool RemoveNode(ObservableCollection<BuildNode> nodes, BuildNode target)
