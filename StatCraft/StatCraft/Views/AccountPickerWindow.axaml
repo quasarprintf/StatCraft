@@ -24,7 +24,7 @@
         <ListBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="models:BattleNetAccount">
-                    <TextBlock Text="{Binding BattleTag}"/>
+                    <TextBlock Text="{Binding DisplayName}"/>
                 </DataTemplate>
             </ListBox.ItemTemplate>
         </ListBox>

@@ -1,10 +1,11 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:StatCraft.ViewModels"
+        xmlns:models="using:StatCraft.Models"
         x:Class="StatCraft.Views.LinkAccountWindow"
         x:DataType="vm:LinkAccountViewModel"
         Title="Link Battle.net Account"
-        Width="400" Height="300"
+        Width="400" Height="380"
         WindowStartupLocation="CenterOwner"
         CanResize="False">
     <Grid Margin="16">
@@ -32,6 +33,20 @@
             <ProgressBar IsIndeterminate="True"/>
             <Button Content="Cancel" Command="{Binding CancelLinkingCommand}" HorizontalAlignment="Center"/>
         </StackPanel>
+
+        <!-- Select StarCraft II profile -->
+        <DockPanel IsVisible="{Binding IsSelectingProfile}">
+            <TextBlock DockPanel.Dock="Top" Text="Select a StarCraft II Profile" FontWeight="SemiBold" Margin="0,0,0,8"/>
+            <Button DockPanel.Dock="Bottom" Content="Confirm" Command="{Binding ConfirmProfileCommand}"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,8,0,0"/>
+            <ListBox ItemsSource="{Binding Sc2Profiles}" SelectedItem="{Binding SelectedSc2Profile}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="models:Sc2Profile">
+                        <TextBlock Text="{Binding DisplayName}"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
 
         <!-- Failed -->
         <StackPanel IsVisible="{Binding IsFailed}" Spacing="12" VerticalAlignment="Center">

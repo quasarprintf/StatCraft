@@ -14,6 +14,7 @@ namespace StatCraft.Views
         private readonly AccountRepository _accountRepository;
         private readonly TokenProtector _tokenProtector;
         private readonly BattleNetAuthService _authService;
+        private readonly StarCraft2ProfileService _sc2ProfileService;
 
         private DataPageViewModel ViewModel => (DataPageViewModel)DataContext!;
 
@@ -33,6 +34,7 @@ namespace StatCraft.Views
             _tokenProtector.Initialize();
 
             _authService = new BattleNetAuthService(new HttpClient());
+            _sc2ProfileService = new StarCraft2ProfileService(new HttpClient());
 
             var vm = new DataPageViewModel();
             vm.SessionRequested += async () => await OnSessionRequestedAsync();
@@ -52,7 +54,7 @@ namespace StatCraft.Views
             }
             else if (pickerResult is { Outcome: AccountPickerOutcome.LinkNew })
             {
-                var linkVm = new LinkAccountViewModel(_accountRepository, _tokenProtector, _authService);
+                var linkVm = new LinkAccountViewModel(_accountRepository, _tokenProtector, _authService, _sc2ProfileService);
                 var linkedAccount = await new LinkAccountWindow(linkVm).ShowDialog<BattleNetAccount?>(owner);
                 if (linkedAccount is not null)
                     ViewModel.SetActiveAccount(linkedAccount);

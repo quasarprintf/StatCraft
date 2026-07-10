@@ -1,4 +1,5 @@
 using System;
+using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -8,7 +9,7 @@ using StatCraft.Services;
 
 namespace StatCraft.ViewModels
 {
-    public enum LinkAccountStage { EnterCredentials, Connecting, Failed }
+    public enum LinkAccountStage { EnterCredentials, Connecting, SelectingProfile, Failed }
 
     public partial class LinkAccountViewModel : ViewModelBase
     {
@@ -18,21 +19,29 @@ namespace StatCraft.ViewModels
         private readonly AccountRepository _accountRepository;
         private readonly TokenProtector _tokenProtector;
         private readonly BattleNetAuthService _authService;
+        private readonly StarCraft2ProfileService _sc2ProfileService;
         private CancellationTokenSource? _linkCts;
+        private BattleNetTokenResult? _pendingTokenResult;
 
-        public LinkAccountViewModel(AccountRepository accountRepository, TokenProtector tokenProtector, BattleNetAuthService authService)
+        public LinkAccountViewModel(
+            AccountRepository accountRepository,
+            TokenProtector tokenProtector,
+            BattleNetAuthService authService,
+            StarCraft2ProfileService sc2ProfileService)
         {
             _accountRepository = accountRepository;
             _tokenProtector = tokenProtector;
             _authService = authService;
+            _sc2ProfileService = sc2ProfileService;
         }
 
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(IsEnterCredentials), nameof(IsConnecting), nameof(IsFailed))]
+        [NotifyPropertyChangedFor(nameof(IsEnterCredentials), nameof(IsConnecting), nameof(IsSelectingProfile), nameof(IsFailed))]
         private LinkAccountStage _stage;
 
         public bool IsEnterCredentials => Stage == LinkAccountStage.EnterCredentials;
         public bool IsConnecting => Stage == LinkAccountStage.Connecting;
+        public bool IsSelectingProfile => Stage == LinkAccountStage.SelectingProfile;
         public bool IsFailed => Stage == LinkAccountStage.Failed;
 
         [ObservableProperty]
@@ -44,6 +53,12 @@ namespace StatCraft.ViewModels
         private string _clientSecret = "";
 
         [ObservableProperty] private string _statusMessage = "";
+
+        public ObservableCollection<Sc2Profile> Sc2Profiles { get; } = [];
+
+        [ObservableProperty]
+        [NotifyCanExecuteChangedFor(nameof(ConfirmProfileCommand))]
+        private Sc2Profile? _selectedSc2Profile;
 
         public BattleNetAccount? LinkedAccount { get; private set; }
 
@@ -83,36 +98,21 @@ namespace StatCraft.ViewModels
             try
             {
                 var result = await _authService.LinkAccountAsync(ClientId, ClientSecret, _linkCts.Token);
+                var profiles = await _sc2ProfileService.GetProfilesAsync(result.AccountSub, result.AccessToken, _linkCts.Token);
 
-                var encryptedAccessToken = _tokenProtector.Encrypt(result.AccessToken);
-                var encryptedRefreshToken = result.RefreshToken is null ? null : _tokenProtector.Encrypt(result.RefreshToken);
-
-                var existing = _accountRepository.FindByAccountSub(result.AccountSub);
-                if (existing is not null)
+                if (profiles.Count == 0)
                 {
-                    _accountRepository.UpdateAccountTokens(existing.Id, encryptedAccessToken, encryptedRefreshToken, result.ExpiresAtUtc, result.BattleTag);
-                    existing.BattleTag = result.BattleTag;
-                    existing.EncryptedAccessToken = encryptedAccessToken;
-                    existing.EncryptedRefreshToken = encryptedRefreshToken;
-                    existing.TokenExpiresAtUtc = result.ExpiresAtUtc;
-                    LinkedAccount = existing;
-                }
-                else
-                {
-                    var account = new BattleNetAccount
-                    {
-                        BattleTag = result.BattleTag,
-                        AccountSub = result.AccountSub,
-                        EncryptedAccessToken = encryptedAccessToken,
-                        EncryptedRefreshToken = encryptedRefreshToken,
-                        TokenExpiresAtUtc = result.ExpiresAtUtc,
-                        CreatedAtUtc = DateTimeOffset.UtcNow,
-                    };
-                    _accountRepository.InsertAccount(account);
-                    LinkedAccount = account;
+                    StatusMessage = "No StarCraft II profiles were found on this Battle.net account.";
+                    Stage = LinkAccountStage.Failed;
+                    return;
                 }
 
-                Closed?.Invoke(true);
+                _pendingTokenResult = result;
+                Sc2Profiles.Clear();
+                foreach (var profile in profiles)
+                    Sc2Profiles.Add(profile);
+                SelectedSc2Profile = Sc2Profiles[0];
+                Stage = LinkAccountStage.SelectingProfile;
             }
             catch (BattleNetAuthException ex) when (ex.Reason == AuthFailureReason.UserCancelled)
             {
@@ -128,6 +128,57 @@ namespace StatCraft.ViewModels
                 StatusMessage = "An unexpected error occurred while linking the account.";
                 Stage = LinkAccountStage.Failed;
             }
+        }
+
+        private bool CanConfirmProfile() => SelectedSc2Profile is not null;
+
+        [RelayCommand(CanExecute = nameof(CanConfirmProfile))]
+        private void ConfirmProfile()
+        {
+            if (_pendingTokenResult is null || SelectedSc2Profile is null) return;
+
+            var result = _pendingTokenResult;
+            var profile = SelectedSc2Profile;
+
+            var encryptedAccessToken = _tokenProtector.Encrypt(result.AccessToken);
+            var encryptedRefreshToken = result.RefreshToken is null ? null : _tokenProtector.Encrypt(result.RefreshToken);
+
+            var existing = _accountRepository.FindByAccountSub(result.AccountSub);
+            if (existing is not null)
+            {
+                _accountRepository.UpdateAccountTokens(
+                    existing.Id, encryptedAccessToken, encryptedRefreshToken, result.ExpiresAtUtc, result.BattleTag,
+                    profile.RegionId, profile.RealmId, profile.ProfileId, profile.Name);
+                existing.BattleTag = result.BattleTag;
+                existing.EncryptedAccessToken = encryptedAccessToken;
+                existing.EncryptedRefreshToken = encryptedRefreshToken;
+                existing.TokenExpiresAtUtc = result.ExpiresAtUtc;
+                existing.Sc2RegionId = profile.RegionId;
+                existing.Sc2RealmId = profile.RealmId;
+                existing.Sc2ProfileId = profile.ProfileId;
+                existing.Sc2ProfileName = profile.Name;
+                LinkedAccount = existing;
+            }
+            else
+            {
+                var account = new BattleNetAccount
+                {
+                    BattleTag = result.BattleTag,
+                    AccountSub = result.AccountSub,
+                    EncryptedAccessToken = encryptedAccessToken,
+                    EncryptedRefreshToken = encryptedRefreshToken,
+                    TokenExpiresAtUtc = result.ExpiresAtUtc,
+                    CreatedAtUtc = DateTimeOffset.UtcNow,
+                    Sc2RegionId = profile.RegionId,
+                    Sc2RealmId = profile.RealmId,
+                    Sc2ProfileId = profile.ProfileId,
+                    Sc2ProfileName = profile.Name,
+                };
+                _accountRepository.InsertAccount(account);
+                LinkedAccount = account;
+            }
+
+            Closed?.Invoke(true);
         }
 
         [RelayCommand]

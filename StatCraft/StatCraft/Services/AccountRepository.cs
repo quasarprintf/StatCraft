@@ -34,20 +34,40 @@ namespace StatCraft.Services
                     EncryptedAccessToken  BLOB    NOT NULL,
                     EncryptedRefreshToken BLOB,
                     TokenExpiresAtUtc     TEXT    NOT NULL DEFAULT '',
-                    CreatedAtUtc          TEXT    NOT NULL DEFAULT ''
+                    CreatedAtUtc          TEXT    NOT NULL DEFAULT '',
+                    Sc2RegionId           TEXT    NOT NULL DEFAULT '',
+                    Sc2RealmId            TEXT    NOT NULL DEFAULT '',
+                    Sc2ProfileId          TEXT    NOT NULL DEFAULT '',
+                    Sc2ProfileName        TEXT    NOT NULL DEFAULT ''
                 );
                 CREATE TABLE IF NOT EXISTS AppSettings (
                     Key   TEXT PRIMARY KEY,
                     Value TEXT NOT NULL DEFAULT ''
                 );";
             cmd.ExecuteNonQuery();
+
+            foreach (var column in new[] { "Sc2RegionId", "Sc2RealmId", "Sc2ProfileId", "Sc2ProfileName" })
+            {
+                try
+                {
+                    using var migrateCmd = conn.CreateCommand();
+                    migrateCmd.CommandText = $"ALTER TABLE BattleNetAccounts ADD COLUMN {column} TEXT NOT NULL DEFAULT ''";
+                    migrateCmd.ExecuteNonQuery();
+                }
+                catch (SqliteException)
+                {
+                    // Column already exists.
+                }
+            }
         }
+
+        private const string AccountColumns = "Id, BattleTag, AccountSub, EncryptedAccessToken, EncryptedRefreshToken, TokenExpiresAtUtc, CreatedAtUtc, Sc2RegionId, Sc2RealmId, Sc2ProfileId, Sc2ProfileName";
 
         public List<BattleNetAccount> GetAllAccounts()
         {
             using var conn = OpenConnection();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT Id, BattleTag, AccountSub, EncryptedAccessToken, EncryptedRefreshToken, TokenExpiresAtUtc, CreatedAtUtc FROM BattleNetAccounts ORDER BY CreatedAtUtc";
+            cmd.CommandText = $"SELECT {AccountColumns} FROM BattleNetAccounts ORDER BY CreatedAtUtc";
             using var reader = cmd.ExecuteReader();
 
             var accounts = new List<BattleNetAccount>();
@@ -60,7 +80,7 @@ namespace StatCraft.Services
         {
             using var conn = OpenConnection();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "SELECT Id, BattleTag, AccountSub, EncryptedAccessToken, EncryptedRefreshToken, TokenExpiresAtUtc, CreatedAtUtc FROM BattleNetAccounts WHERE AccountSub = @accountSub";
+            cmd.CommandText = $"SELECT {AccountColumns} FROM BattleNetAccounts WHERE AccountSub = @accountSub";
             cmd.Parameters.AddWithValue("@accountSub", accountSub);
             using var reader = cmd.ExecuteReader();
             return reader.Read() ? ReadAccount(reader) : null;
@@ -71,8 +91,8 @@ namespace StatCraft.Services
             using var conn = OpenConnection();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                INSERT INTO BattleNetAccounts (BattleTag, AccountSub, EncryptedAccessToken, EncryptedRefreshToken, TokenExpiresAtUtc, CreatedAtUtc)
-                VALUES (@battleTag, @accountSub, @accessToken, @refreshToken, @expiresAt, @createdAt);
+                INSERT INTO BattleNetAccounts (BattleTag, AccountSub, EncryptedAccessToken, EncryptedRefreshToken, TokenExpiresAtUtc, CreatedAtUtc, Sc2RegionId, Sc2RealmId, Sc2ProfileId, Sc2ProfileName)
+                VALUES (@battleTag, @accountSub, @accessToken, @refreshToken, @expiresAt, @createdAt, @sc2RegionId, @sc2RealmId, @sc2ProfileId, @sc2ProfileName);
                 SELECT last_insert_rowid();";
             cmd.Parameters.AddWithValue("@battleTag", account.BattleTag);
             cmd.Parameters.AddWithValue("@accountSub", account.AccountSub);
@@ -80,21 +100,30 @@ namespace StatCraft.Services
             cmd.Parameters.AddWithValue("@refreshToken", (object?)account.EncryptedRefreshToken ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@expiresAt", account.TokenExpiresAtUtc.ToString("o", CultureInfo.InvariantCulture));
             cmd.Parameters.AddWithValue("@createdAt", account.CreatedAtUtc.ToString("o", CultureInfo.InvariantCulture));
+            cmd.Parameters.AddWithValue("@sc2RegionId", account.Sc2RegionId);
+            cmd.Parameters.AddWithValue("@sc2RealmId", account.Sc2RealmId);
+            cmd.Parameters.AddWithValue("@sc2ProfileId", account.Sc2ProfileId);
+            cmd.Parameters.AddWithValue("@sc2ProfileName", account.Sc2ProfileName);
             account.Id = (int)(long)cmd.ExecuteScalar()!;
         }
 
-        public void UpdateAccountTokens(int id, byte[] encryptedAccessToken, byte[]? encryptedRefreshToken, DateTimeOffset expiresAtUtc, string battleTag)
+        public void UpdateAccountTokens(int id, byte[] encryptedAccessToken, byte[]? encryptedRefreshToken, DateTimeOffset expiresAtUtc, string battleTag, string sc2RegionId, string sc2RealmId, string sc2ProfileId, string sc2ProfileName)
         {
             using var conn = OpenConnection();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 UPDATE BattleNetAccounts
-                SET BattleTag = @battleTag, EncryptedAccessToken = @accessToken, EncryptedRefreshToken = @refreshToken, TokenExpiresAtUtc = @expiresAt
+                SET BattleTag = @battleTag, EncryptedAccessToken = @accessToken, EncryptedRefreshToken = @refreshToken, TokenExpiresAtUtc = @expiresAt,
+                    Sc2RegionId = @sc2RegionId, Sc2RealmId = @sc2RealmId, Sc2ProfileId = @sc2ProfileId, Sc2ProfileName = @sc2ProfileName
                 WHERE Id = @id";
             cmd.Parameters.AddWithValue("@battleTag", battleTag);
             cmd.Parameters.AddWithValue("@accessToken", encryptedAccessToken);
             cmd.Parameters.AddWithValue("@refreshToken", (object?)encryptedRefreshToken ?? DBNull.Value);
             cmd.Parameters.AddWithValue("@expiresAt", expiresAtUtc.ToString("o", CultureInfo.InvariantCulture));
+            cmd.Parameters.AddWithValue("@sc2RegionId", sc2RegionId);
+            cmd.Parameters.AddWithValue("@sc2RealmId", sc2RealmId);
+            cmd.Parameters.AddWithValue("@sc2ProfileId", sc2ProfileId);
+            cmd.Parameters.AddWithValue("@sc2ProfileName", sc2ProfileName);
             cmd.Parameters.AddWithValue("@id", id);
             cmd.ExecuteNonQuery();
         }
@@ -136,6 +165,10 @@ namespace StatCraft.Services
             EncryptedRefreshToken = reader.IsDBNull(4) ? null : (byte[])reader[4],
             TokenExpiresAtUtc = DateTimeOffset.Parse(reader.GetString(5), CultureInfo.InvariantCulture),
             CreatedAtUtc = DateTimeOffset.Parse(reader.GetString(6), CultureInfo.InvariantCulture),
+            Sc2RegionId = reader.GetString(7),
+            Sc2RealmId = reader.GetString(8),
+            Sc2ProfileId = reader.GetString(9),
+            Sc2ProfileName = reader.GetString(10),
         };
 
         private SqliteConnection OpenConnection()
