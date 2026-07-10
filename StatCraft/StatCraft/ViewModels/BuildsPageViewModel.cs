@@ -156,10 +156,8 @@ namespace StatCraft.ViewModels
         }
 
         [RelayCommand]
-        public void AddChildBuild()
+        public void AddChildBuild(BuildNode parent)
         {
-            if (SelectedBuild is null) return;
-            var parent = SelectedBuild;
             var node = new BuildNode { Name = "New Build" };
             _repository.InsertBuild(node, SelectedMatchup, parent.Id, parent.Children.Count);
             WireNode(node);

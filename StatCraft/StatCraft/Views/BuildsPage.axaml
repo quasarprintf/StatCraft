@@ -15,15 +15,24 @@
         <Grid ColumnDefinitions="200,4,*">
             <!-- Build tree -->
             <DockPanel Grid.Column="0">
-                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="4,4,4,2">
-                    <Button Content="+ Build" Command="{Binding AddBuildCommand}" Padding="6,2"/>
-                    <Button Content="+ Child" Command="{Binding AddChildBuildCommand}" Padding="6,2"
-                            IsEnabled="{Binding SelectedBuild, Converter={x:Static ObjectConverters.IsNotNull}}"/>
-                </StackPanel>
-                <TreeView ItemsSource="{Binding Builds}" SelectedItem="{Binding SelectedBuild}">
+                <TreeView x:Name="BuildTreeView" ItemsSource="{Binding Builds}" SelectedItem="{Binding SelectedBuild}">
+                    <TreeView.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Add Build" Command="{Binding AddBuildCommand}"/>
+                        </ContextMenu>
+                    </TreeView.ContextMenu>
                     <TreeView.Styles>
                         <Style Selector="TreeViewItem" x:DataType="vm:BuildNode">
                             <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
+                            <Setter Property="ContextMenu">
+                                <Template>
+                                    <ContextMenu>
+                                        <MenuItem Header="Add Child"
+                                                  Command="{Binding #BuildTreeView.DataContext.AddChildBuildCommand}"
+                                                  CommandParameter="{Binding}"/>
+                                    </ContextMenu>
+                                </Template>
+                            </Setter>
                         </Style>
                     </TreeView.Styles>
                     <TreeView.ItemTemplate>
