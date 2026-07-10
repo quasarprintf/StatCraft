@@ -30,6 +30,10 @@
                                         <MenuItem Header="Add Child"
                                                   Command="{Binding #BuildTreeView.DataContext.AddChildBuildCommand}"
                                                   CommandParameter="{Binding}"/>
+                                        <Separator/>
+                                        <MenuItem Header="Delete Build"
+                                                  Command="{Binding #BuildTreeView.DataContext.DeleteBuildCommand}"
+                                                  CommandParameter="{Binding}"/>
                                     </ContextMenu>
                                 </Template>
                             </Setter>

@@ -167,6 +167,31 @@ namespace StatCraft.ViewModels
         }
 
         [RelayCommand]
+        public void DeleteBuild(BuildNode node)
+        {
+            var needsReselect = SelectedBuild == node || (SelectedBuild != null && ContainsDescendant(node, SelectedBuild));
+            _repository.DeleteBuild(node.Id);
+            RemoveNode(Builds, node);
+            if (needsReselect)
+                SelectFirstBuild();
+        }
+
+        private static bool RemoveNode(ObservableCollection<BuildNode> nodes, BuildNode target)
+        {
+            if (nodes.Remove(target)) return true;
+            foreach (var node in nodes)
+                if (RemoveNode(node.Children, target)) return true;
+            return false;
+        }
+
+        private static bool ContainsDescendant(BuildNode root, BuildNode target)
+        {
+            foreach (var child in root.Children)
+                if (child == target || ContainsDescendant(child, target)) return true;
+            return false;
+        }
+
+        [RelayCommand]
         public void AddAttribute()
         {
             if (SelectedBuild is null) return;
