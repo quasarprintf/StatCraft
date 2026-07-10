@@ -1,0 +1,46 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:StatCraft.ViewModels"
+        x:Class="StatCraft.Views.LinkAccountWindow"
+        x:DataType="vm:LinkAccountViewModel"
+        Title="Link Battle.net Account"
+        Width="400" Height="300"
+        WindowStartupLocation="CenterOwner"
+        CanResize="False">
+    <Grid Margin="16">
+
+        <!-- Enter credentials -->
+        <StackPanel IsVisible="{Binding IsEnterCredentials}" Spacing="8">
+            <TextBlock Text="Battle.net App Credentials" FontWeight="SemiBold"/>
+            <TextBlock TextWrapping="Wrap" Foreground="Gray"
+                       Text="Register an app at develop.battle.net/access/clients and set its redirect URI to exactly:"/>
+            <TextBlock Text="http://localhost:51820/callback" FontFamily="Consolas" TextWrapping="Wrap"/>
+
+            <TextBlock Text="Client ID" Margin="0,8,0,0"/>
+            <TextBox Text="{Binding ClientId}"/>
+
+            <TextBlock Text="Client Secret"/>
+            <TextBox Text="{Binding ClientSecret}" PasswordChar="•"/>
+
+            <Button Content="Connect" Command="{Binding SubmitCredentialsCommand}"
+                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,8,0,0"/>
+        </StackPanel>
+
+        <!-- Connecting -->
+        <StackPanel IsVisible="{Binding IsConnecting}" Spacing="12" VerticalAlignment="Center">
+            <TextBlock Text="Waiting for Battle.net login in your browser..." TextWrapping="Wrap" HorizontalAlignment="Center"/>
+            <ProgressBar IsIndeterminate="True"/>
+            <Button Content="Cancel" Command="{Binding CancelLinkingCommand}" HorizontalAlignment="Center"/>
+        </StackPanel>
+
+        <!-- Failed -->
+        <StackPanel IsVisible="{Binding IsFailed}" Spacing="12" VerticalAlignment="Center">
+            <TextBlock Text="{Binding StatusMessage}" TextWrapping="Wrap" HorizontalAlignment="Center"/>
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+                <Button Content="Retry" Command="{Binding RetryCommand}"/>
+                <Button Content="Close" Command="{Binding CloseCommand}"/>
+            </StackPanel>
+        </StackPanel>
+
+    </Grid>
+</Window>
