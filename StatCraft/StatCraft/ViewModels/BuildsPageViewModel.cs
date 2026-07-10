@@ -125,7 +125,9 @@ namespace StatCraft.ViewModels
         {
             attr.PropertyChanged += (s, e) =>
             {
-                if (s is BuildAttribute a && e.PropertyName is nameof(BuildAttribute.Name) or nameof(BuildAttribute.Type))
+                if (s is BuildAttribute a && e.PropertyName is nameof(BuildAttribute.Name) or nameof(BuildAttribute.Type)
+                    or nameof(BuildAttribute.NumericValue) or nameof(BuildAttribute.BoolValue)
+                    or nameof(BuildAttribute.PercentValue) or nameof(BuildAttribute.SelectedValue))
                     _repository.UpdateAttribute(a);
             };
             attr.ValueOptions.CollectionChanged += (s, e) =>

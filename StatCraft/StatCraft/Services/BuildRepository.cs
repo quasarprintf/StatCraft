@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using Microsoft.Data.Sqlite;
 using StatCraft.ViewModels;
@@ -34,11 +35,12 @@ namespace StatCraft.Services
                     SortOrder   INTEGER NOT NULL DEFAULT 0
                 );
                 CREATE TABLE IF NOT EXISTS BuildAttributes (
-                    Id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                    BuildNodeId INTEGER NOT NULL REFERENCES BuildNodes(Id) ON DELETE CASCADE,
-                    Name        TEXT    NOT NULL DEFAULT '',
-                    Type        INTEGER NOT NULL DEFAULT 0,
-                    SortOrder   INTEGER NOT NULL DEFAULT 0
+                    Id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                    BuildNodeId  INTEGER NOT NULL REFERENCES BuildNodes(Id) ON DELETE CASCADE,
+                    Name         TEXT    NOT NULL DEFAULT '',
+                    Type         INTEGER NOT NULL DEFAULT 0,
+                    DefaultValue TEXT    NOT NULL DEFAULT '',
+                    SortOrder    INTEGER NOT NULL DEFAULT 0
                 );
                 CREATE TABLE IF NOT EXISTS AttributeValueOptions (
                     Id               INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,6 +49,17 @@ namespace StatCraft.Services
                     SortOrder        INTEGER NOT NULL DEFAULT 0
                 );";
             cmd.ExecuteNonQuery();
+
+            try
+            {
+                using var migrateCmd = conn.CreateCommand();
+                migrateCmd.CommandText = "ALTER TABLE BuildAttributes ADD COLUMN DefaultValue TEXT NOT NULL DEFAULT ''";
+                migrateCmd.ExecuteNonQuery();
+            }
+            catch (SqliteException)
+            {
+                // Column already exists.
+            }
         }
 
         public List<BuildNode> GetBuildsForMatchup(Matchup matchup)
@@ -82,7 +95,7 @@ namespace StatCraft.Services
 
                 using (var cmd = conn.CreateCommand())
                 {
-                    cmd.CommandText = $"SELECT Id, BuildNodeId, Name, Type FROM BuildAttributes WHERE BuildNodeId IN ({nodeIds}) ORDER BY SortOrder";
+                    cmd.CommandText = $"SELECT Id, BuildNodeId, Name, Type, DefaultValue FROM BuildAttributes WHERE BuildNodeId IN ({nodeIds}) ORDER BY SortOrder";
                     using var reader = cmd.ExecuteReader();
                     while (reader.Read())
                     {
@@ -94,6 +107,7 @@ namespace StatCraft.Services
                             Name = reader.GetString(2),
                             Type = (AttributeType)reader.GetInt32(3),
                         };
+                        ApplyDefaultValue(attr, reader.GetString(4));
                         attrDict[id] = attr;
                         nodeDict[buildNodeId].Attributes.Add(attr);
                     }
@@ -164,12 +178,13 @@ namespace StatCraft.Services
             using var conn = OpenConnection();
             using var cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                INSERT INTO BuildAttributes (BuildNodeId, Name, Type, SortOrder)
-                VALUES (@buildNodeId, @name, @type, @sortOrder);
+                INSERT INTO BuildAttributes (BuildNodeId, Name, Type, DefaultValue, SortOrder)
+                VALUES (@buildNodeId, @name, @type, @defaultValue, @sortOrder);
                 SELECT last_insert_rowid();";
             cmd.Parameters.AddWithValue("@buildNodeId", buildNodeId);
             cmd.Parameters.AddWithValue("@name", attr.Name);
             cmd.Parameters.AddWithValue("@type", (int)attr.Type);
+            cmd.Parameters.AddWithValue("@defaultValue", SerializeDefaultValue(attr));
             cmd.Parameters.AddWithValue("@sortOrder", sortOrder);
             attr.Id = (int)(long)cmd.ExecuteScalar()!;
         }
@@ -178,11 +193,43 @@ namespace StatCraft.Services
         {
             using var conn = OpenConnection();
             using var cmd = conn.CreateCommand();
-            cmd.CommandText = "UPDATE BuildAttributes SET Name = @name, Type = @type WHERE Id = @id";
+            cmd.CommandText = "UPDATE BuildAttributes SET Name = @name, Type = @type, DefaultValue = @defaultValue WHERE Id = @id";
             cmd.Parameters.AddWithValue("@name", attr.Name);
             cmd.Parameters.AddWithValue("@type", (int)attr.Type);
+            cmd.Parameters.AddWithValue("@defaultValue", SerializeDefaultValue(attr));
             cmd.Parameters.AddWithValue("@id", attr.Id);
             cmd.ExecuteNonQuery();
+        }
+
+        private static string SerializeDefaultValue(BuildAttribute attr) => attr.Type switch
+        {
+            AttributeType.Numeric => attr.NumericValue.ToString(CultureInfo.InvariantCulture),
+            AttributeType.Bool => attr.BoolValue.ToString(CultureInfo.InvariantCulture),
+            AttributeType.Percent => attr.PercentValue.ToString(CultureInfo.InvariantCulture),
+            AttributeType.Values => attr.SelectedValue ?? string.Empty,
+            _ => string.Empty,
+        };
+
+        private static void ApplyDefaultValue(BuildAttribute attr, string defaultValue)
+        {
+            switch (attr.Type)
+            {
+                case AttributeType.Numeric:
+                    if (decimal.TryParse(defaultValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var numeric))
+                        attr.NumericValue = numeric;
+                    break;
+                case AttributeType.Bool:
+                    if (bool.TryParse(defaultValue, out var boolValue))
+                        attr.BoolValue = boolValue;
+                    break;
+                case AttributeType.Percent:
+                    if (decimal.TryParse(defaultValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var percent))
+                        attr.PercentValue = percent;
+                    break;
+                case AttributeType.Values:
+                    attr.SelectedValue = string.IsNullOrEmpty(defaultValue) ? null : defaultValue;
+                    break;
+            }
         }
 
         public void DeleteAttribute(int id)

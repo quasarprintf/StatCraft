@@ -67,6 +67,19 @@
                                                     CommandParameter="{Binding}"
                                                     Padding="6,2"/>
                                         </Grid>
+                                        <!-- Default value editor -->
+                                        <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0" IsVisible="{Binding !IsValues}">
+                                            <TextBlock Grid.Column="0" Text="Default:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                            <NumericUpDown Grid.Column="1" Value="{Binding NumericValue}"
+                                                           IsVisible="{Binding IsNumeric}"
+                                                           FormatString="0.##" HorizontalAlignment="Stretch"/>
+                                            <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}"
+                                                      IsVisible="{Binding IsBool}"/>
+                                            <NumericUpDown Grid.Column="1" Value="{Binding PercentValue}"
+                                                           IsVisible="{Binding IsPercent}"
+                                                           Minimum="0" Maximum="100" FormatString="0.##'%'"
+                                                           HorizontalAlignment="Stretch"/>
+                                        </Grid>
                                         <!-- Options editor (Values type only) -->
                                         <StackPanel IsVisible="{Binding IsValues}" Margin="16,4,0,0" Spacing="2">
                                             <ItemsControl ItemsSource="{Binding ValueOptions}">
@@ -86,6 +99,12 @@
                                                          PlaceholderText="Add option..." Margin="0,0,4,0"/>
                                                 <Button Grid.Column="1" Content="+" Padding="6,2"
                                                         Command="{Binding AddOptionCommand}"/>
+                                            </Grid>
+                                            <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0">
+                                                <TextBlock Grid.Column="0" Text="Default:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                <ComboBox Grid.Column="1" ItemsSource="{Binding ValueOptions}"
+                                                          SelectedItem="{Binding SelectedValue}"
+                                                          HorizontalAlignment="Stretch"/>
                                             </Grid>
                                         </StackPanel>
                                     </StackPanel>
