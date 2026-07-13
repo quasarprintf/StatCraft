@@ -4,7 +4,7 @@
         x:Class="StatCraft.Views.SettingsPromptWindow"
         x:DataType="vm:SettingsPromptViewModel"
         Title="StatCraft Setup"
-        Width="480" Height="220"
+        Width="480" Height="260"
         WindowStartupLocation="CenterScreen"
         CanResize="False">
     <StackPanel Margin="16" Spacing="8">
@@ -20,6 +20,9 @@
             <TextBox Grid.Column="0" Text="{Binding BaseReplayFolderPath}" Margin="0,0,4,0"/>
             <Button Grid.Column="1" Content="Browse..." Click="OnBrowseClick"/>
         </Grid>
+
+        <TextBlock Text="{Binding ErrorMessage}" Foreground="Red" TextWrapping="Wrap"
+                   IsVisible="{Binding HasError}"/>
 
         <Button Content="Continue" Command="{Binding ContinueCommand}"
                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,8,0,0"/>
