@@ -17,6 +17,6 @@ namespace StatCraft.Models
 
         public string RegionLabel => Sc2Regions.GetLabel(RegionId);
         public string DisplayName => $"{RegionLabel} - {Name}";
-        public string ReplayFolderPathSuffix => String.Format($"Accounts{{0}}{Account?.AccountSub}{{0}}{RealmId}-S2-{RegionId}-{ProfileId}{{0}}Replays{{0}}Multiplayer", Path.DirectorySeparatorChar);
+        public string ReplayFolderPathSuffix => String.Format($"Accounts{{0}}{Account?.AccountSub}{{0}}{RegionId}-S2-{RealmId}-{ProfileId}{{0}}Replays{{0}}Multiplayer", Path.DirectorySeparatorChar);
     }
 }
