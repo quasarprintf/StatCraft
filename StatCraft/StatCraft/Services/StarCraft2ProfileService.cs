@@ -24,14 +24,6 @@ namespace StatCraft.Services
             "https://tw.api.blizzard.com",
         };
 
-        private static readonly IReadOnlyDictionary<string, string> RegionLabels = new Dictionary<string, string>
-        {
-            ["1"] = "US",
-            ["2"] = "EU",
-            ["3"] = "KR",
-            ["5"] = "CN",
-        };
-
         private readonly HttpClient _httpClient;
 
         public StarCraft2ProfileService(HttpClient httpClient)
@@ -74,7 +66,7 @@ namespace StatCraft.Services
 
                 return entries.ConvertAll(entry => new Sc2Profile
                 {
-                    RegionLabel = RegionLabels.GetValueOrDefault(entry.RegionId, entry.RegionId),
+                    RegionLabel = Sc2Regions.GetLabel(entry.RegionId),
                     RegionId = entry.RegionId,
                     RealmId = entry.RealmId,
                     ProfileId = entry.ProfileId,

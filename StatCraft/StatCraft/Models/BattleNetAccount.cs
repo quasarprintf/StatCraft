@@ -17,6 +17,8 @@ namespace StatCraft.Models
         public string Sc2ProfileId { get; set; } = "";
         public string Sc2ProfileName { get; set; } = "";
 
-        public string DisplayName => string.IsNullOrEmpty(Sc2ProfileName) ? BattleTag : $"{Sc2ProfileName} ({BattleTag})";
+        public string DisplayName => string.IsNullOrEmpty(Sc2ProfileName)
+            ? BattleTag
+            : $"{Sc2Regions.GetLabel(Sc2RegionId)} - {Sc2ProfileName}";
     }
 }
