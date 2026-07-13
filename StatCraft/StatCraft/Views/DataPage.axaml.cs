@@ -28,14 +28,14 @@ namespace StatCraft.Views
 
             if (pickerResult?.Outcome == AccountPickerOutcome.AccountSelected)
             {
-                ViewModel.SetActiveProfile(pickerResult.Profile);
+                await ViewModel.SetActiveProfile(pickerResult.Profile);
             }
             else if (pickerResult?.Outcome == AccountPickerOutcome.LinkNew)
             {
                 LinkAccountViewModel linkVm = App.Services.GetRequiredService<LinkAccountViewModel>();
                 Sc2Profile? linkedProfile = await new LinkAccountWindow(linkVm).ShowDialog<Sc2Profile?>(owner);
                 if (linkedProfile != null)
-                    ViewModel.SetActiveProfile(linkedProfile);
+                    await ViewModel.SetActiveProfile(linkedProfile);
             }
         }
     }

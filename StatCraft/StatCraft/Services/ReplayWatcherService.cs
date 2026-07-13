@@ -6,16 +6,17 @@ using System.Threading.Tasks;
 
 namespace StatCraft.Services
 {
-    public class ReplayWatcherService : IDisposable
+    public class ReplayWatcherService : IAsyncDisposable
     {
         private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(5));
         private readonly HashSet<string> _knownFiles = new();
         private string? _folderPath;
         private CancellationTokenSource? _cts;
+        private Task? LoopTask = null;
 
-        public void Start(string folderPath)
+        public async Task Start(string folderPath)
         {
-            Stop();
+            await Stop();
 
             _folderPath = folderPath;
             if (Directory.Exists(folderPath))
@@ -25,16 +26,18 @@ namespace StatCraft.Services
             }
 
             _cts = new CancellationTokenSource();
-            _ = RunLoopAsync(_cts.Token);
+            LoopTask = RunLoopAsync(_cts.Token);
         }
 
-        public void Stop()
+        public async Task Stop()
         {
             _cts?.Cancel();
             _cts?.Dispose();
             _cts = null;
             _knownFiles.Clear();
             _folderPath = null;
+            if (LoopTask != null)
+                await LoopTask;
         }
 
         private async Task RunLoopAsync(CancellationToken cancellationToken)
@@ -67,9 +70,9 @@ namespace StatCraft.Services
             // TODO: parse and record the new replay.
         }
 
-        public void Dispose()
+        public async ValueTask DisposeAsync()
         {
-            Stop();
+            await Stop();
             _timer.Dispose();
         }
     }

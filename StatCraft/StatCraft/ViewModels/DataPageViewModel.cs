@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models;
@@ -29,19 +30,19 @@ namespace StatCraft.ViewModels
         [RelayCommand]
         private void BeginSession() => SessionRequested?.Invoke();
 
-        public void SetActiveProfile(Sc2Profile? profile)
+        public async Task SetActiveProfile(Sc2Profile? profile)
         {
             ActiveProfile = profile;
 
             if (profile == null)
             {
-                _replayWatcherService.Stop();
+                await _replayWatcherService.Stop();
                 return;
             }
 
             string baseReplayFolderPath = _settingsRepository.Load().BaseReplayFolderPath ?? "";
             string replayFolderPath = Path.Combine(baseReplayFolderPath, profile.ReplayFolderPathSuffix);
-            _replayWatcherService.Start(replayFolderPath);
+            await _replayWatcherService.Start(replayFolderPath);
         }
     }
 }
