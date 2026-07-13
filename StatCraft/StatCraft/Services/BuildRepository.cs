@@ -201,14 +201,22 @@ namespace StatCraft.Services
             cmd.ExecuteNonQuery();
         }
 
-        private static string SerializeDefaultValue(BuildAttribute attr) => attr.Type switch
+        private static string SerializeDefaultValue(BuildAttribute attr)
         {
-            AttributeType.Numeric => attr.NumericValue.ToString(CultureInfo.InvariantCulture),
-            AttributeType.Bool => attr.BoolValue.ToString(CultureInfo.InvariantCulture),
-            AttributeType.Percent => attr.PercentValue.ToString(CultureInfo.InvariantCulture),
-            AttributeType.Values => attr.SelectedValue ?? string.Empty,
-            _ => string.Empty,
-        };
+            switch (attr.Type)
+            {
+                case AttributeType.Numeric:
+                    return attr.NumericValue.ToString(CultureInfo.InvariantCulture);
+                case AttributeType.Bool:
+                    return attr.BoolValue.ToString(CultureInfo.InvariantCulture);
+                case AttributeType.Percent:
+                    return attr.PercentValue.ToString(CultureInfo.InvariantCulture);
+                case AttributeType.Values:
+                    return attr.SelectedValue ?? string.Empty;
+                default:
+                    return string.Empty;
+            }
+        }
 
         private static void ApplyDefaultValue(BuildAttribute attr, string defaultValue)
         {

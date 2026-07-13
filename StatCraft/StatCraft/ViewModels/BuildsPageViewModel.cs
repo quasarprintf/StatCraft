@@ -112,7 +112,7 @@ namespace StatCraft.ViewModels
         {
             node.PropertyChanged += (s, e) =>
             {
-                if (s is BuildNode n && e.PropertyName is nameof(BuildNode.Name) or nameof(BuildNode.Description))
+                if (s is BuildNode n && (e.PropertyName == nameof(BuildNode.Name) || e.PropertyName == nameof(BuildNode.Description)))
                     _repository.UpdateBuild(n);
             };
             foreach (BuildAttribute attr in node.Attributes)
@@ -125,9 +125,9 @@ namespace StatCraft.ViewModels
         {
             attr.PropertyChanged += (s, e) =>
             {
-                if (s is BuildAttribute a && e.PropertyName is nameof(BuildAttribute.Name) or nameof(BuildAttribute.Type)
-                    or nameof(BuildAttribute.NumericValue) or nameof(BuildAttribute.BoolValue)
-                    or nameof(BuildAttribute.PercentValue) or nameof(BuildAttribute.SelectedValue))
+                if (s is BuildAttribute a &&  (e.PropertyName == nameof(BuildAttribute.Name) || e.PropertyName == nameof(BuildAttribute.Type)
+                    || e.PropertyName == nameof(BuildAttribute.NumericValue) || e.PropertyName == nameof(BuildAttribute.BoolValue)
+                    || e.PropertyName == nameof(BuildAttribute.PercentValue) || e.PropertyName == nameof(BuildAttribute.SelectedValue)))
                     _repository.UpdateAttribute(a);
             };
             attr.ValueOptions.CollectionChanged += (s, e) =>
@@ -219,7 +219,7 @@ namespace StatCraft.ViewModels
         [RelayCommand]
         public void AddAttribute()
         {
-            if (SelectedBuild is null) return;
+            if (SelectedBuild == null) return;
             BuildAttribute attr = new BuildAttribute();
             _repository.InsertAttribute(attr, SelectedBuild.Id, SelectedBuild.Attributes.Count);
             WireAttribute(attr);
@@ -229,7 +229,7 @@ namespace StatCraft.ViewModels
         [RelayCommand]
         public void RemoveAttribute(BuildAttribute attribute)
         {
-            if (SelectedBuild is null) return;
+            if (SelectedBuild == null) return;
             _repository.DeleteAttribute(attribute.Id);
             SelectedBuild.Attributes.Remove(attribute);
         }

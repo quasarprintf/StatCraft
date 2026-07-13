@@ -131,7 +131,7 @@ namespace StatCraft.ViewModels
             }
         }
 
-        private bool CanConfirmProfile() => SelectedSc2Profile is not null;
+        private bool CanConfirmProfile() => SelectedSc2Profile != null;
 
         [RelayCommand(CanExecute = nameof(CanConfirmProfile))]
         private void ConfirmProfile()
@@ -140,15 +140,15 @@ namespace StatCraft.ViewModels
         }
         public void ConfirmProfile(Sc2Profile? profile)
         {
-            if (_pendingTokenResult is null || profile is null) return;
+            if (_pendingTokenResult == null || profile == null) return;
 
             BattleNetTokenResult result = _pendingTokenResult;
 
             byte[] encryptedAccessToken = _tokenProtector.Encrypt(result.AccessToken);
-            byte[]? encryptedRefreshToken = result.RefreshToken is null ? null : _tokenProtector.Encrypt(result.RefreshToken);
+            byte[]? encryptedRefreshToken = result.RefreshToken == null ? null : _tokenProtector.Encrypt(result.RefreshToken);
 
             BattleNetAccount? existing = _accountRepository.FindByAccountSub(result.AccountSub);
-            if (existing is not null)
+            if (existing != null)
             {
                 _accountRepository.UpdateAccountTokens(
                     existing.Id, encryptedAccessToken, encryptedRefreshToken, result.ExpiresAtUtc, result.BattleTag,

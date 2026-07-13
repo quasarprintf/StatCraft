@@ -61,7 +61,7 @@ namespace StatCraft.Services
                     continue;
                 }
 
-                if (entries is null)
+                if (entries == null)
                     continue;
 
                 return entries.ConvertAll(entry => new Sc2Profile

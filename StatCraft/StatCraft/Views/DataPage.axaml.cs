@@ -43,20 +43,20 @@ namespace StatCraft.Views
 
         private async Task OnSessionRequestedAsync()
         {
-            if (TopLevel.GetTopLevel(this) is not Window owner) return;
+            if (!(TopLevel.GetTopLevel(this) is Window owner)) return;
 
             AccountPickerViewModel pickerVm = new AccountPickerViewModel(_accountRepository);
             AccountPickerResult? pickerResult = await new AccountPickerWindow(pickerVm).ShowDialog<AccountPickerResult?>(owner);
 
-            if (pickerResult is { Outcome: AccountPickerOutcome.AccountSelected })
+            if (pickerResult?.Outcome == AccountPickerOutcome.AccountSelected)
             {
                 ViewModel.SetActiveAccount(pickerResult.Account);
             }
-            else if (pickerResult is { Outcome: AccountPickerOutcome.LinkNew })
+            else if (pickerResult?.Outcome == AccountPickerOutcome.LinkNew)
             {
                 LinkAccountViewModel linkVm = new LinkAccountViewModel(_accountRepository, _tokenProtector, _authService, _sc2ProfileService);
                 BattleNetAccount? linkedAccount = await new LinkAccountWindow(linkVm).ShowDialog<BattleNetAccount?>(owner);
-                if (linkedAccount is not null)
+                if (linkedAccount != null)
                     ViewModel.SetActiveAccount(linkedAccount);
             }
         }

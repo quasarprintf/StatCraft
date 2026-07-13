@@ -11,7 +11,7 @@ namespace StatCraft.ViewModels
         [NotifyPropertyChangedFor(nameof(ActiveAccountLabel))]
         private BattleNetAccount? _activeAccount;
 
-        public string ActiveAccountLabel => ActiveAccount is null ? "No active session" : ActiveAccount.DisplayName;
+        public string ActiveAccountLabel => ActiveAccount == null ? "No active session" : ActiveAccount.DisplayName;
 
         public event Action? SessionRequested;
 

@@ -175,7 +175,7 @@ namespace StatCraft.Services
                 throw new BattleNetAuthException(AuthFailureReason.TokenExchangeFailed, "Battle.net returned an unexpected response.", ex);
             }
 
-            if (token is null || string.IsNullOrEmpty(token.AccessToken))
+            if (token == null || string.IsNullOrEmpty(token.AccessToken))
                 throw new BattleNetAuthException(AuthFailureReason.TokenExchangeFailed, "Battle.net returned an unexpected response.");
 
             return (token.AccessToken, token.RefreshToken, DateTimeOffset.UtcNow.AddSeconds(token.ExpiresIn));
@@ -209,7 +209,7 @@ namespace StatCraft.Services
                 throw new BattleNetAuthException(AuthFailureReason.UserInfoFailed, "Battle.net returned an unexpected response.", ex);
             }
 
-            if (userInfo is null || string.IsNullOrEmpty(userInfo.BattleTag))
+            if (userInfo == null || string.IsNullOrEmpty(userInfo.BattleTag))
                 throw new BattleNetAuthException(AuthFailureReason.UserInfoFailed, "Battle.net returned an unexpected response.");
 
             return (userInfo.BattleTag, userInfo.Sub);
