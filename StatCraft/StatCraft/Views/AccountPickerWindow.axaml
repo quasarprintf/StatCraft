@@ -21,7 +21,8 @@
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
         </StackPanel>
 
-        <ListBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}">
+        <ListBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}"
+                 DoubleTapped="OnAccountDoubleTapped">
             <ListBox.ItemTemplate>
                 <DataTemplate x:DataType="models:BattleNetAccount">
                     <TextBlock Text="{Binding DisplayName}"/>

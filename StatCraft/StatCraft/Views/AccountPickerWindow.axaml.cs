@@ -1,15 +1,26 @@
 using Avalonia.Controls;
+using Avalonia.Input;
+using StatCraft.Models;
 using StatCraft.ViewModels;
 
 namespace StatCraft.Views
 {
     public partial class AccountPickerWindow : Window
     {
+        private readonly AccountPickerViewModel _vm;
+
         public AccountPickerWindow(AccountPickerViewModel vm)
         {
             InitializeComponent();
+            _vm = vm;
             DataContext = vm;
             vm.Closed += result => Close(result);
+        }
+
+        private void OnAccountDoubleTapped(object? sender, TappedEventArgs e)
+        {
+            if (e.Source is Control { DataContext: BattleNetAccount } && _vm.SelectAccountCommand.CanExecute(null))
+                _vm.SelectAccountCommand.Execute(null);
         }
     }
 }

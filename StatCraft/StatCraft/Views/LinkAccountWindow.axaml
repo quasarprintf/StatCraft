@@ -39,7 +39,8 @@
             <TextBlock DockPanel.Dock="Top" Text="Select a StarCraft II Profile" FontWeight="SemiBold" Margin="0,0,0,8"/>
             <Button DockPanel.Dock="Bottom" Content="Confirm" Command="{Binding ConfirmProfileCommand}"
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,8,0,0"/>
-            <ListBox ItemsSource="{Binding Sc2Profiles}" SelectedItem="{Binding SelectedSc2Profile}">
+            <ListBox ItemsSource="{Binding Sc2Profiles}" SelectedItem="{Binding SelectedSc2Profile}"
+                     DoubleTapped="OnProfileDoubleTapped">
                 <ListBox.ItemTemplate>
                     <DataTemplate x:DataType="models:Sc2Profile">
                         <TextBlock Text="{Binding DisplayName}"/>
