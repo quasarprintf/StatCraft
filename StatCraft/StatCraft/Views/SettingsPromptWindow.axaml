@@ -9,8 +9,12 @@
         CanResize="False">
     <StackPanel Margin="16" Spacing="8">
         <TextBlock Text="Set Replay Folder" FontWeight="SemiBold"/>
-        <TextBlock TextWrapping="Wrap" Foreground="Gray"
-                   Text="StatCraft needs to know where your StarCraft II replays are stored before continuing."/>
+        <TextBlock TextWrapping="Wrap" Foreground="Gray">
+            StatCraft needs to know where your StarCraft II replays are stored before continuing. 
+            On Windows, this is typically 
+            <LineBreak />
+            C:\Users\{user}\Documents\StarCraft II
+        </TextBlock>
 
         <Grid ColumnDefinitions="*,Auto" Margin="0,8,0,0">
             <TextBox Grid.Column="0" Text="{Binding BaseReplayFolderPath}" Margin="0,0,4,0"/>
