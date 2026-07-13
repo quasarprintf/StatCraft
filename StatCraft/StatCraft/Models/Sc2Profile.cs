@@ -13,6 +13,6 @@ namespace StatCraft.Models
         public BattleNetAccount? Account { get; set; }
 
         public string RegionLabel => Sc2Regions.GetLabel(RegionId);
-        public string DisplayName => $"{Name} ({RegionLabel})";
+        public string DisplayName => $"{RegionLabel} - {Name}";
     }
 }
