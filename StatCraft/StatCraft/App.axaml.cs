@@ -101,6 +101,7 @@ namespace StatCraft
             });
 
             services.AddSingleton(_ => new SettingsRepository(settingsPath));
+            services.AddSingleton<ReplayWatcherService>();
 
             services.AddSingleton(new HttpClient());
             services.AddSingleton<BattleNetAuthService>();
