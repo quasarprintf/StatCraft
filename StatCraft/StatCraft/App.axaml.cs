@@ -7,6 +7,7 @@ using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
+using StatCraft.Models;
 using StatCraft.Services;
 using StatCraft.ViewModels;
 using StatCraft.Views;
@@ -29,13 +30,42 @@ namespace StatCraft
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
-                desktop.MainWindow = new MainWindow
+                SettingsRepository settingsRepository = Services.GetRequiredService<SettingsRepository>();
+                AppSettingsData settings = settingsRepository.Load();
+
+                if (string.IsNullOrEmpty(settings.BaseReplayFolderPath))
                 {
-                    DataContext = new MainWindowViewModel(),
-                };
+                    SettingsPromptViewModel promptVm = Services.GetRequiredService<SettingsPromptViewModel>();
+                    SettingsPromptWindow promptWindow = new SettingsPromptWindow(promptVm);
+                    promptWindow.Closed += (_, _) => OnSettingsPromptClosed(desktop, settingsRepository);
+                    desktop.MainWindow = promptWindow;
+                }
+                else
+                {
+                    ShowMainWindow(desktop);
+                }
             }
 
             base.OnFrameworkInitializationCompleted();
+        }
+
+        private static void OnSettingsPromptClosed(IClassicDesktopStyleApplicationLifetime desktop, SettingsRepository settingsRepository)
+        {
+            AppSettingsData settings = settingsRepository.Load();
+            if (!string.IsNullOrEmpty(settings.BaseReplayFolderPath))
+                ShowMainWindow(desktop);
+            else
+                desktop.Shutdown();
+        }
+
+        private static void ShowMainWindow(IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            MainWindow mainWindow = new MainWindow
+            {
+                DataContext = new MainWindowViewModel(),
+            };
+            desktop.MainWindow = mainWindow;
+            mainWindow.Show();
         }
 
         private static IServiceProvider BuildServiceProvider()
@@ -45,6 +75,7 @@ namespace StatCraft
                 "StatCraft");
             string dbPath = Path.Combine(appDataDir, "statcraft.db");
             string keyPath = Path.Combine(appDataDir, "statcraft.key");
+            string settingsPath = Path.Combine(appDataDir, "Settings.json");
 
             ServiceCollection services = new ServiceCollection();
 
@@ -69,6 +100,8 @@ namespace StatCraft
                 return protector;
             });
 
+            services.AddSingleton(_ => new SettingsRepository(settingsPath));
+
             services.AddSingleton(new HttpClient());
             services.AddSingleton<BattleNetAuthService>();
             services.AddSingleton<StarCraft2ProfileService>();
@@ -77,6 +110,7 @@ namespace StatCraft
             services.AddTransient<DataPageViewModel>();
             services.AddTransient<AccountPickerViewModel>();
             services.AddTransient<LinkAccountViewModel>();
+            services.AddTransient<SettingsPromptViewModel>();
 
             return services.BuildServiceProvider();
         }
