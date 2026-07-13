@@ -1,22 +1,17 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Timers;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace StatCraft.Services
 {
     public class ReplayWatcherService : IDisposable
     {
-        private readonly Timer _timer;
+        private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(5));
         private readonly HashSet<string> _knownFiles = new();
         private string? _folderPath;
-
-        public ReplayWatcherService()
-        {
-            _timer = new Timer(TimeSpan.FromSeconds(5));
-            _timer.Elapsed += (_, _) => CheckNow();
-            _timer.AutoReset = true;
-        }
+        private CancellationTokenSource? _cts;
 
         public void Start(string folderPath)
         {
@@ -29,14 +24,30 @@ namespace StatCraft.Services
                     _knownFiles.Add(file);
             }
 
-            _timer.Start();
+            _cts = new CancellationTokenSource();
+            _ = RunLoopAsync(_cts.Token);
         }
 
         public void Stop()
         {
-            _timer.Stop();
+            _cts?.Cancel();
+            _cts?.Dispose();
+            _cts = null;
             _knownFiles.Clear();
             _folderPath = null;
+        }
+
+        private async Task RunLoopAsync(CancellationToken cancellationToken)
+        {
+            try
+            {
+                while (await _timer.WaitForNextTickAsync(cancellationToken))
+                    CheckNow();
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when Stop() cancels the loop.
+            }
         }
 
         public void CheckNow()
@@ -56,6 +67,10 @@ namespace StatCraft.Services
             // TODO: parse and record the new replay.
         }
 
-        public void Dispose() => _timer.Dispose();
+        public void Dispose()
+        {
+            Stop();
+            _timer.Dispose();
+        }
     }
 }
