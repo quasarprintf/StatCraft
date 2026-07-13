@@ -20,8 +20,7 @@ namespace StatCraft.Views
 
         private void OnProfileDoubleTapped(object? sender, TappedEventArgs e)
         {
-            if (e.Source is Control { DataContext: Sc2Profile } && _vm.ConfirmProfileCommand.CanExecute(null))
-                _vm.ConfirmProfileCommand.Execute(null);
+            _vm.ConfirmProfile((Sc2Profile?)((Control?)e.Source)?.DataContext);
         }
     }
 }

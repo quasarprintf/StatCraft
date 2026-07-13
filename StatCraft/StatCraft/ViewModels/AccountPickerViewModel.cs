@@ -25,7 +25,8 @@ namespace StatCraft.ViewModels
         public event Action<AccountPickerResult>? Closed;
 
         [RelayCommand]
-        private void SelectAccount() => Closed?.Invoke(new AccountPickerResult(AccountPickerOutcome.AccountSelected, SelectedAccount));
+        private void SelectAccount() => SelectAccount(SelectedAccount);
+        public void SelectAccount(BattleNetAccount? account) => Closed?.Invoke(new AccountPickerResult(AccountPickerOutcome.AccountSelected, account));
 
         [RelayCommand]
         private void LinkNewAccount() => Closed?.Invoke(new AccountPickerResult(AccountPickerOutcome.LinkNew, null));

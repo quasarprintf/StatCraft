@@ -14,13 +14,12 @@ namespace StatCraft.Views
             InitializeComponent();
             _vm = vm;
             DataContext = vm;
-            vm.Closed += result => Close(result);
+            vm.Closed += Close;
         }
 
         private void OnAccountDoubleTapped(object? sender, TappedEventArgs e)
         {
-            if (e.Source is Control { DataContext: BattleNetAccount } && _vm.SelectAccountCommand.CanExecute(null))
-                _vm.SelectAccountCommand.Execute(null);
+            _vm.SelectAccount((BattleNetAccount?)((Control?)e.Source)?.DataContext);
         }
     }
 }

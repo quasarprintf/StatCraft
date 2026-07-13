@@ -135,10 +135,13 @@ namespace StatCraft.ViewModels
         [RelayCommand(CanExecute = nameof(CanConfirmProfile))]
         private void ConfirmProfile()
         {
-            if (_pendingTokenResult is null || SelectedSc2Profile is null) return;
+            ConfirmProfile(SelectedSc2Profile);
+        }
+        public void ConfirmProfile(Sc2Profile? profile)
+        {
+            if (_pendingTokenResult is null || profile is null) return;
 
             var result = _pendingTokenResult;
-            var profile = SelectedSc2Profile;
 
             var encryptedAccessToken = _tokenProtector.Encrypt(result.AccessToken);
             var encryptedRefreshToken = result.RefreshToken is null ? null : _tokenProtector.Encrypt(result.RefreshToken);
