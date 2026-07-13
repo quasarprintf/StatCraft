@@ -33,9 +33,9 @@ namespace StatCraft.Services
 
         public async Task<List<Sc2Profile>> GetProfilesAsync(string accountId, string accessToken, CancellationToken cancellationToken)
         {
-            foreach (var host in Hosts)
+            foreach (string host in Hosts)
             {
-                using var request = new HttpRequestMessage(HttpMethod.Get, $"{host}/sc2/player/{accountId}");
+                using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, $"{host}/sc2/player/{accountId}");
                 request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
                 HttpResponseMessage response;

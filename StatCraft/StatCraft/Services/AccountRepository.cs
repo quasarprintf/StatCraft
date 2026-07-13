@@ -20,12 +20,12 @@ namespace StatCraft.Services
 
         public void Initialize()
         {
-            var dir = Path.GetDirectoryName(_dbPath);
+            string? dir = Path.GetDirectoryName(_dbPath);
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
 
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS BattleNetAccounts (
                     Id                    INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -46,11 +46,11 @@ namespace StatCraft.Services
                 );";
             cmd.ExecuteNonQuery();
 
-            foreach (var column in new[] { "Sc2RegionId", "Sc2RealmId", "Sc2ProfileId", "Sc2ProfileName" })
+            foreach (string column in new[] { "Sc2RegionId", "Sc2RealmId", "Sc2ProfileId", "Sc2ProfileName" })
             {
                 try
                 {
-                    using var migrateCmd = conn.CreateCommand();
+                    using SqliteCommand migrateCmd = conn.CreateCommand();
                     migrateCmd.CommandText = $"ALTER TABLE BattleNetAccounts ADD COLUMN {column} TEXT NOT NULL DEFAULT ''";
                     migrateCmd.ExecuteNonQuery();
                 }
@@ -65,12 +65,12 @@ namespace StatCraft.Services
 
         public List<BattleNetAccount> GetAllAccounts()
         {
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = $"SELECT {AccountColumns} FROM BattleNetAccounts ORDER BY CreatedAtUtc";
-            using var reader = cmd.ExecuteReader();
+            using SqliteDataReader reader = cmd.ExecuteReader();
 
-            var accounts = new List<BattleNetAccount>();
+            List<BattleNetAccount> accounts = new List<BattleNetAccount>();
             while (reader.Read())
                 accounts.Add(ReadAccount(reader));
             return accounts;
@@ -78,18 +78,18 @@ namespace StatCraft.Services
 
         public BattleNetAccount? FindByAccountSub(string accountSub)
         {
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = $"SELECT {AccountColumns} FROM BattleNetAccounts WHERE AccountSub = @accountSub";
             cmd.Parameters.AddWithValue("@accountSub", accountSub);
-            using var reader = cmd.ExecuteReader();
+            using SqliteDataReader reader = cmd.ExecuteReader();
             return reader.Read() ? ReadAccount(reader) : null;
         }
 
         public void InsertAccount(BattleNetAccount account)
         {
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 INSERT INTO BattleNetAccounts (BattleTag, AccountSub, EncryptedAccessToken, EncryptedRefreshToken, TokenExpiresAtUtc, CreatedAtUtc, Sc2RegionId, Sc2RealmId, Sc2ProfileId, Sc2ProfileName)
                 VALUES (@battleTag, @accountSub, @accessToken, @refreshToken, @expiresAt, @createdAt, @sc2RegionId, @sc2RealmId, @sc2ProfileId, @sc2ProfileName);
@@ -109,8 +109,8 @@ namespace StatCraft.Services
 
         public void UpdateAccountTokens(int id, byte[] encryptedAccessToken, byte[]? encryptedRefreshToken, DateTimeOffset expiresAtUtc, string battleTag, string sc2RegionId, string sc2RealmId, string sc2ProfileId, string sc2ProfileName)
         {
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 UPDATE BattleNetAccounts
                 SET BattleTag = @battleTag, EncryptedAccessToken = @accessToken, EncryptedRefreshToken = @refreshToken, TokenExpiresAtUtc = @expiresAt,
@@ -130,8 +130,8 @@ namespace StatCraft.Services
 
         public void DeleteAccount(int id)
         {
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = "DELETE FROM BattleNetAccounts WHERE Id = @id";
             cmd.Parameters.AddWithValue("@id", id);
             cmd.ExecuteNonQuery();
@@ -139,8 +139,8 @@ namespace StatCraft.Services
 
         public string? GetSetting(string key)
         {
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = "SELECT Value FROM AppSettings WHERE Key = @key";
             cmd.Parameters.AddWithValue("@key", key);
             return cmd.ExecuteScalar() as string;
@@ -148,8 +148,8 @@ namespace StatCraft.Services
 
         public void SetSetting(string key, string value)
         {
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = "INSERT INTO AppSettings (Key, Value) VALUES (@key, @value) ON CONFLICT(Key) DO UPDATE SET Value = @value";
             cmd.Parameters.AddWithValue("@key", key);
             cmd.Parameters.AddWithValue("@value", value);
@@ -173,9 +173,9 @@ namespace StatCraft.Services
 
         private SqliteConnection OpenConnection()
         {
-            var conn = new SqliteConnection(_connectionString);
+            SqliteConnection conn = new SqliteConnection(_connectionString);
             conn.Open();
-            using var pragma = conn.CreateCommand();
+            using SqliteCommand pragma = conn.CreateCommand();
             pragma.CommandText = "PRAGMA foreign_keys = ON";
             pragma.ExecuteNonQuery();
             return conn;

@@ -101,7 +101,7 @@ namespace StatCraft.ViewModels
         private void LoadMatchupIfNeeded(Matchup matchup)
         {
             if (!_loadedMatchups.Add(matchup)) return;
-            foreach (var node in _repository.GetBuildsForMatchup(matchup))
+            foreach (BuildNode node in _repository.GetBuildsForMatchup(matchup))
             {
                 WireNode(node);
                 _buildsByMatchup[matchup].Add(node);
@@ -115,9 +115,9 @@ namespace StatCraft.ViewModels
                 if (s is BuildNode n && e.PropertyName is nameof(BuildNode.Name) or nameof(BuildNode.Description))
                     _repository.UpdateBuild(n);
             };
-            foreach (var attr in node.Attributes)
+            foreach (BuildAttribute attr in node.Attributes)
                 WireAttribute(attr);
-            foreach (var child in node.Children)
+            foreach (BuildNode child in node.Children)
                 WireNode(child);
         }
 
@@ -148,7 +148,7 @@ namespace StatCraft.ViewModels
         [RelayCommand]
         public void AddBuild()
         {
-            var node = new BuildNode { Name = "New Build" };
+            BuildNode node = new BuildNode { Name = "New Build" };
             _repository.InsertBuild(node, SelectedMatchup, null, Builds.Count);
             WireNode(node);
             Builds.Add(node);
@@ -158,7 +158,7 @@ namespace StatCraft.ViewModels
         [RelayCommand]
         public void AddChildBuild(BuildNode parent)
         {
-            var node = new BuildNode { Name = "New Build" };
+            BuildNode node = new BuildNode { Name = "New Build" };
             _repository.InsertBuild(node, SelectedMatchup, parent.Id, parent.Children.Count);
             WireNode(node);
             parent.Children.Add(node);
@@ -169,8 +169,8 @@ namespace StatCraft.ViewModels
         [RelayCommand]
         public void DeleteBuild(BuildNode node)
         {
-            var needsReselect = SelectedBuild == node || (SelectedBuild != null && ContainsDescendant(node, SelectedBuild));
-            var replacement = needsReselect ? FindReplacementSelection(node) : null;
+            bool needsReselect = SelectedBuild == node || (SelectedBuild != null && ContainsDescendant(node, SelectedBuild));
+            BuildNode? replacement = needsReselect ? FindReplacementSelection(node) : null;
 
             _repository.DeleteBuild(node.Id);
             RemoveNode(Builds, node);
@@ -181,10 +181,10 @@ namespace StatCraft.ViewModels
 
         private BuildNode? FindReplacementSelection(BuildNode node)
         {
-            var parent = FindParent(Builds, node);
+            BuildNode? parent = FindParent(Builds, node);
             if (parent != null) return parent;
 
-            var index = Builds.IndexOf(node);
+            int index = Builds.IndexOf(node);
             if (index > 0) return Builds[index - 1];
 
             return Builds.Count > 1 ? Builds[1] : null;
@@ -192,10 +192,10 @@ namespace StatCraft.ViewModels
 
         private static BuildNode? FindParent(ObservableCollection<BuildNode> nodes, BuildNode target)
         {
-            foreach (var n in nodes)
+            foreach (BuildNode n in nodes)
             {
                 if (n.Children.Contains(target)) return n;
-                var found = FindParent(n.Children, target);
+                BuildNode? found = FindParent(n.Children, target);
                 if (found != null) return found;
             }
             return null;
@@ -204,14 +204,14 @@ namespace StatCraft.ViewModels
         private static bool RemoveNode(ObservableCollection<BuildNode> nodes, BuildNode target)
         {
             if (nodes.Remove(target)) return true;
-            foreach (var node in nodes)
+            foreach (BuildNode node in nodes)
                 if (RemoveNode(node.Children, target)) return true;
             return false;
         }
 
         private static bool ContainsDescendant(BuildNode root, BuildNode target)
         {
-            foreach (var child in root.Children)
+            foreach (BuildNode child in root.Children)
                 if (child == target || ContainsDescendant(child, target)) return true;
             return false;
         }
@@ -220,7 +220,7 @@ namespace StatCraft.ViewModels
         public void AddAttribute()
         {
             if (SelectedBuild is null) return;
-            var attr = new BuildAttribute();
+            BuildAttribute attr = new BuildAttribute();
             _repository.InsertAttribute(attr, SelectedBuild.Id, SelectedBuild.Attributes.Count);
             WireAttribute(attr);
             SelectedBuild.Attributes.Add(attr);

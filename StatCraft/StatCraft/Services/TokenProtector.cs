@@ -16,7 +16,7 @@ namespace StatCraft.Services
 
         public void Initialize()
         {
-            var dir = Path.GetDirectoryName(_keyFilePath);
+            string? dir = Path.GetDirectoryName(_keyFilePath);
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
 
@@ -32,15 +32,15 @@ namespace StatCraft.Services
 
         public byte[] Encrypt(string plaintext)
         {
-            using var aes = Aes.Create();
+            using Aes aes = Aes.Create();
             aes.Key = _key!;
             aes.GenerateIV();
 
-            using var encryptor = aes.CreateEncryptor();
-            var plaintextBytes = Encoding.UTF8.GetBytes(plaintext);
-            var ciphertext = encryptor.TransformFinalBlock(plaintextBytes, 0, plaintextBytes.Length);
+            using ICryptoTransform encryptor = aes.CreateEncryptor();
+            byte[] plaintextBytes = Encoding.UTF8.GetBytes(plaintext);
+            byte[] ciphertext = encryptor.TransformFinalBlock(plaintextBytes, 0, plaintextBytes.Length);
 
-            var result = new byte[aes.IV.Length + ciphertext.Length];
+            byte[] result = new byte[aes.IV.Length + ciphertext.Length];
             aes.IV.CopyTo(result, 0);
             ciphertext.CopyTo(result, aes.IV.Length);
             return result;
@@ -48,17 +48,17 @@ namespace StatCraft.Services
 
         public string Decrypt(byte[] ciphertext)
         {
-            using var aes = Aes.Create();
+            using Aes aes = Aes.Create();
             aes.Key = _key!;
 
-            var iv = new byte[aes.IV.Length];
-            var encrypted = new byte[ciphertext.Length - iv.Length];
+            byte[] iv = new byte[aes.IV.Length];
+            byte[] encrypted = new byte[ciphertext.Length - iv.Length];
             System.Array.Copy(ciphertext, 0, iv, 0, iv.Length);
             System.Array.Copy(ciphertext, iv.Length, encrypted, 0, encrypted.Length);
             aes.IV = iv;
 
-            using var decryptor = aes.CreateDecryptor();
-            var plaintextBytes = decryptor.TransformFinalBlock(encrypted, 0, encrypted.Length);
+            using ICryptoTransform decryptor = aes.CreateDecryptor();
+            byte[] plaintextBytes = decryptor.TransformFinalBlock(encrypted, 0, encrypted.Length);
             return Encoding.UTF8.GetString(plaintextBytes);
         }
     }

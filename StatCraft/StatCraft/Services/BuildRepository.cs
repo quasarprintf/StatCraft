@@ -19,12 +19,12 @@ namespace StatCraft.Services
 
         public void Initialize()
         {
-            var dir = Path.GetDirectoryName(_dbPath);
+            string? dir = Path.GetDirectoryName(_dbPath);
             if (!string.IsNullOrEmpty(dir))
                 Directory.CreateDirectory(dir);
 
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS BuildNodes (
                     Id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -52,7 +52,7 @@ namespace StatCraft.Services
 
             try
             {
-                using var migrateCmd = conn.CreateCommand();
+                using SqliteCommand migrateCmd = conn.CreateCommand();
                 migrateCmd.CommandText = "ALTER TABLE BuildAttributes ADD COLUMN DefaultValue TEXT NOT NULL DEFAULT ''";
                 migrateCmd.ExecuteNonQuery();
             }
@@ -64,20 +64,20 @@ namespace StatCraft.Services
 
         public List<BuildNode> GetBuildsForMatchup(Matchup matchup)
         {
-            using var conn = OpenConnection();
+            using SqliteConnection conn = OpenConnection();
 
-            var nodeDict = new Dictionary<long, BuildNode>();
-            var parentMap = new Dictionary<long, long?>();
+            Dictionary<long, BuildNode> nodeDict = new Dictionary<long, BuildNode>();
+            Dictionary<long, long?> parentMap = new Dictionary<long, long?>();
 
-            using (var cmd = conn.CreateCommand())
+            using (SqliteCommand cmd = conn.CreateCommand())
             {
                 cmd.CommandText = "SELECT Id, ParentId, Name, Description FROM BuildNodes WHERE Matchup = @matchup ORDER BY SortOrder";
                 cmd.Parameters.AddWithValue("@matchup", (int)matchup);
-                using var reader = cmd.ExecuteReader();
+                using SqliteDataReader reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
-                    var id = reader.GetInt64(0);
-                    var parentId = reader.IsDBNull(1) ? (long?)null : reader.GetInt64(1);
+                    long id = reader.GetInt64(0);
+                    long? parentId = reader.IsDBNull(1) ? (long?)null : reader.GetInt64(1);
                     nodeDict[id] = new BuildNode
                     {
                         Id = (int)id,
@@ -90,18 +90,18 @@ namespace StatCraft.Services
 
             if (nodeDict.Count > 0)
             {
-                var attrDict = new Dictionary<long, BuildAttribute>();
-                var nodeIds = string.Join(",", nodeDict.Keys);
+                Dictionary<long, BuildAttribute> attrDict = new Dictionary<long, BuildAttribute>();
+                string nodeIds = string.Join(",", nodeDict.Keys);
 
-                using (var cmd = conn.CreateCommand())
+                using (SqliteCommand cmd = conn.CreateCommand())
                 {
                     cmd.CommandText = $"SELECT Id, BuildNodeId, Name, Type, DefaultValue FROM BuildAttributes WHERE BuildNodeId IN ({nodeIds}) ORDER BY SortOrder";
-                    using var reader = cmd.ExecuteReader();
+                    using SqliteDataReader reader = cmd.ExecuteReader();
                     while (reader.Read())
                     {
-                        var id = reader.GetInt64(0);
-                        var buildNodeId = reader.GetInt64(1);
-                        var attr = new BuildAttribute
+                        long id = reader.GetInt64(0);
+                        long buildNodeId = reader.GetInt64(1);
+                        BuildAttribute attr = new BuildAttribute
                         {
                             Id = (int)id,
                             Name = reader.GetString(2),
@@ -115,20 +115,20 @@ namespace StatCraft.Services
 
                 if (attrDict.Count > 0)
                 {
-                    var attrIds = string.Join(",", attrDict.Keys);
-                    using var cmd = conn.CreateCommand();
+                    string attrIds = string.Join(",", attrDict.Keys);
+                    using SqliteCommand cmd = conn.CreateCommand();
                     cmd.CommandText = $"SELECT BuildAttributeId, Value FROM AttributeValueOptions WHERE BuildAttributeId IN ({attrIds}) ORDER BY SortOrder";
-                    using var reader = cmd.ExecuteReader();
+                    using SqliteDataReader reader = cmd.ExecuteReader();
                     while (reader.Read())
                         attrDict[reader.GetInt64(0)].ValueOptions.Add(reader.GetString(1));
                 }
             }
 
-            var roots = new List<BuildNode>();
-            foreach (var (id, node) in nodeDict)
+            List<BuildNode> roots = new List<BuildNode>();
+            foreach ((long id, BuildNode node) in nodeDict)
             {
-                var parentId = parentMap[id];
-                if (parentId.HasValue && nodeDict.TryGetValue(parentId.Value, out var parent))
+                long? parentId = parentMap[id];
+                if (parentId.HasValue && nodeDict.TryGetValue(parentId.Value, out BuildNode? parent))
                     parent.Children.Add(node);
                 else
                     roots.Add(node);
@@ -139,8 +139,8 @@ namespace StatCraft.Services
 
         public void InsertBuild(BuildNode node, Matchup matchup, int? parentId, int sortOrder)
         {
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 INSERT INTO BuildNodes (Matchup, ParentId, Name, Description, SortOrder)
                 VALUES (@matchup, @parentId, @name, @description, @sortOrder);
@@ -155,8 +155,8 @@ namespace StatCraft.Services
 
         public void UpdateBuild(BuildNode node)
         {
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = "UPDATE BuildNodes SET Name = @name, Description = @description WHERE Id = @id";
             cmd.Parameters.AddWithValue("@name", node.Name);
             cmd.Parameters.AddWithValue("@description", node.Description);
@@ -166,8 +166,8 @@ namespace StatCraft.Services
 
         public void DeleteBuild(int id)
         {
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = "DELETE FROM BuildNodes WHERE Id = @id";
             cmd.Parameters.AddWithValue("@id", id);
             cmd.ExecuteNonQuery();
@@ -175,8 +175,8 @@ namespace StatCraft.Services
 
         public void InsertAttribute(BuildAttribute attr, int buildNodeId, int sortOrder)
         {
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = @"
                 INSERT INTO BuildAttributes (BuildNodeId, Name, Type, DefaultValue, SortOrder)
                 VALUES (@buildNodeId, @name, @type, @defaultValue, @sortOrder);
@@ -191,8 +191,8 @@ namespace StatCraft.Services
 
         public void UpdateAttribute(BuildAttribute attr)
         {
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = "UPDATE BuildAttributes SET Name = @name, Type = @type, DefaultValue = @defaultValue WHERE Id = @id";
             cmd.Parameters.AddWithValue("@name", attr.Name);
             cmd.Parameters.AddWithValue("@type", (int)attr.Type);
@@ -215,15 +215,15 @@ namespace StatCraft.Services
             switch (attr.Type)
             {
                 case AttributeType.Numeric:
-                    if (decimal.TryParse(defaultValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var numeric))
+                    if (decimal.TryParse(defaultValue, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal numeric))
                         attr.NumericValue = numeric;
                     break;
                 case AttributeType.Bool:
-                    if (bool.TryParse(defaultValue, out var boolValue))
+                    if (bool.TryParse(defaultValue, out bool boolValue))
                         attr.BoolValue = boolValue;
                     break;
                 case AttributeType.Percent:
-                    if (decimal.TryParse(defaultValue, NumberStyles.Number, CultureInfo.InvariantCulture, out var percent))
+                    if (decimal.TryParse(defaultValue, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal percent))
                         attr.PercentValue = percent;
                     break;
                 case AttributeType.Values:
@@ -234,8 +234,8 @@ namespace StatCraft.Services
 
         public void DeleteAttribute(int id)
         {
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = "DELETE FROM BuildAttributes WHERE Id = @id";
             cmd.Parameters.AddWithValue("@id", id);
             cmd.ExecuteNonQuery();
@@ -243,8 +243,8 @@ namespace StatCraft.Services
 
         public void InsertValueOption(int attributeId, string value, int sortOrder)
         {
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = "INSERT INTO AttributeValueOptions (BuildAttributeId, Value, SortOrder) VALUES (@attrId, @value, @sortOrder)";
             cmd.Parameters.AddWithValue("@attrId", attributeId);
             cmd.Parameters.AddWithValue("@value", value);
@@ -254,8 +254,8 @@ namespace StatCraft.Services
 
         public void DeleteValueOption(int attributeId, string value)
         {
-            using var conn = OpenConnection();
-            using var cmd = conn.CreateCommand();
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = "DELETE FROM AttributeValueOptions WHERE BuildAttributeId = @attrId AND Value = @value";
             cmd.Parameters.AddWithValue("@attrId", attributeId);
             cmd.Parameters.AddWithValue("@value", value);
@@ -264,9 +264,9 @@ namespace StatCraft.Services
 
         private SqliteConnection OpenConnection()
         {
-            var conn = new SqliteConnection(_connectionString);
+            SqliteConnection conn = new SqliteConnection(_connectionString);
             conn.Open();
-            using var pragma = conn.CreateCommand();
+            using SqliteCommand pragma = conn.CreateCommand();
             pragma.CommandText = "PRAGMA foreign_keys = ON";
             pragma.ExecuteNonQuery();
             return conn;

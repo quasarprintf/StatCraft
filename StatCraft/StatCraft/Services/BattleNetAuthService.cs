@@ -58,10 +58,10 @@ namespace StatCraft.Services
 
         public async Task<BattleNetTokenResult> LinkAccountAsync(string clientId, string clientSecret, CancellationToken cancellationToken)
         {
-            var state = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))
+            string state = Convert.ToBase64String(RandomNumberGenerator.GetBytes(24))
                 .Replace('+', '-').Replace('/', '_').TrimEnd('=');
 
-            using var listener = new HttpListener();
+            using HttpListener listener = new HttpListener();
             listener.Prefixes.Add(ListenerPrefix);
             try
             {
@@ -74,7 +74,7 @@ namespace StatCraft.Services
 
             try
             {
-                var authorizeUrl = $"{AuthorizeEndpoint}?response_type=code" +
+                string authorizeUrl = $"{AuthorizeEndpoint}?response_type=code" +
                     $"&client_id={Uri.EscapeDataString(clientId)}" +
                     $"&scope={Uri.EscapeDataString(Scope)}" +
                     $"&state={Uri.EscapeDataString(state)}" +
@@ -89,20 +89,20 @@ namespace StatCraft.Services
                     throw new BattleNetAuthException(AuthFailureReason.BrowserLaunchFailed, "Could not open the system browser.", ex);
                 }
 
-                var context = await WaitForCallbackAsync(listener, cancellationToken);
+                HttpListenerContext context = await WaitForCallbackAsync(listener, cancellationToken);
 
-                var query = context.Request.QueryString;
-                var receivedState = query["state"];
-                var code = query["code"];
+                System.Collections.Specialized.NameValueCollection query = context.Request.QueryString;
+                string? receivedState = query["state"];
+                string? code = query["code"];
 
-                var isValid = receivedState == state && !string.IsNullOrEmpty(code);
+                bool isValid = receivedState == state && !string.IsNullOrEmpty(code);
                 await RespondToBrowserAsync(context, isValid);
 
                 if (!isValid)
                     throw new BattleNetAuthException(AuthFailureReason.StateMismatch, "The login response could not be verified.");
 
-                var (accessToken, refreshToken, expiresAtUtc) = await ExchangeCodeForTokensAsync(code!, clientId, clientSecret);
-                var (battleTag, sub) = await FetchUserInfoAsync(accessToken);
+                (string accessToken, string? refreshToken, DateTimeOffset expiresAtUtc) = await ExchangeCodeForTokensAsync(code!, clientId, clientSecret);
+                (string battleTag, string sub) = await FetchUserInfoAsync(accessToken);
 
                 return new BattleNetTokenResult(accessToken, refreshToken, expiresAtUtc, battleTag, sub);
             }
@@ -115,10 +115,10 @@ namespace StatCraft.Services
 
         private static async Task<HttpListenerContext> WaitForCallbackAsync(HttpListener listener, CancellationToken cancellationToken)
         {
-            var contextTask = listener.GetContextAsync();
-            var timeoutTask = Task.Delay(TimeSpan.FromMinutes(3), cancellationToken);
+            Task<HttpListenerContext> contextTask = listener.GetContextAsync();
+            Task timeoutTask = Task.Delay(TimeSpan.FromMinutes(3), cancellationToken);
 
-            var completed = await Task.WhenAny(contextTask, timeoutTask);
+            Task completed = await Task.WhenAny(contextTask, timeoutTask);
             if (completed == contextTask)
                 return await contextTask;
 
@@ -130,10 +130,10 @@ namespace StatCraft.Services
 
         private static async Task RespondToBrowserAsync(HttpListenerContext context, bool success)
         {
-            var message = success
+            string message = success
                 ? "<html><body>You can close this tab and return to StatCraft.</body></html>"
                 : "<html><body>Something went wrong. You can close this tab and return to StatCraft.</body></html>";
-            var buffer = Encoding.UTF8.GetBytes(message);
+            byte[] buffer = Encoding.UTF8.GetBytes(message);
             context.Response.ContentType = "text/html";
             context.Response.ContentLength64 = buffer.Length;
             await context.Response.OutputStream.WriteAsync(buffer);
@@ -142,7 +142,7 @@ namespace StatCraft.Services
 
         private async Task<(string AccessToken, string? RefreshToken, DateTimeOffset ExpiresAtUtc)> ExchangeCodeForTokensAsync(string code, string clientId, string clientSecret)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
+            using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Post, TokenEndpoint);
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue(
                 "Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes($"{clientId}:{clientSecret}")));
             request.Content = new FormUrlEncodedContent(new[]
@@ -183,7 +183,7 @@ namespace StatCraft.Services
 
         private async Task<(string BattleTag, string Sub)> FetchUserInfoAsync(string accessToken)
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, UserInfoEndpoint);
+            using HttpRequestMessage request = new HttpRequestMessage(HttpMethod.Get, UserInfoEndpoint);
             request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
 
             HttpResponseMessage response;

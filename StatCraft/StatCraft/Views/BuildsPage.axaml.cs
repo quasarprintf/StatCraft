@@ -12,10 +12,10 @@ namespace StatCraft.Views
         public BuildsPage()
         {
             InitializeComponent();
-            var dbPath = Path.Combine(
+            string dbPath = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "StatCraft", "statcraft.db");
-            var repository = new BuildRepository(dbPath);
+            BuildRepository repository = new BuildRepository(dbPath);
             repository.Initialize();
             DataContext = new BuildsPageViewModel(repository);
         }

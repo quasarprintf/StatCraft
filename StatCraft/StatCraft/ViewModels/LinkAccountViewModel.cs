@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
@@ -66,8 +67,8 @@ namespace StatCraft.ViewModels
 
         public async Task InitializeAsync()
         {
-            var clientId = _accountRepository.GetSetting(ClientIdSettingKey);
-            var encryptedSecretB64 = _accountRepository.GetSetting(ClientSecretSettingKey);
+            string? clientId = _accountRepository.GetSetting(ClientIdSettingKey);
+            string? encryptedSecretB64 = _accountRepository.GetSetting(ClientSecretSettingKey);
 
             if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(encryptedSecretB64))
             {
@@ -97,8 +98,8 @@ namespace StatCraft.ViewModels
 
             try
             {
-                var result = await _authService.LinkAccountAsync(ClientId, ClientSecret, _linkCts.Token);
-                var profiles = await _sc2ProfileService.GetProfilesAsync(result.AccountSub, result.AccessToken, _linkCts.Token);
+                BattleNetTokenResult result = await _authService.LinkAccountAsync(ClientId, ClientSecret, _linkCts.Token);
+                List<Sc2Profile> profiles = await _sc2ProfileService.GetProfilesAsync(result.AccountSub, result.AccessToken, _linkCts.Token);
 
                 if (profiles.Count == 0)
                 {
@@ -109,7 +110,7 @@ namespace StatCraft.ViewModels
 
                 _pendingTokenResult = result;
                 Sc2Profiles.Clear();
-                foreach (var profile in profiles)
+                foreach (Sc2Profile profile in profiles)
                     Sc2Profiles.Add(profile);
                 SelectedSc2Profile = Sc2Profiles[0];
                 Stage = LinkAccountStage.SelectingProfile;
@@ -141,12 +142,12 @@ namespace StatCraft.ViewModels
         {
             if (_pendingTokenResult is null || profile is null) return;
 
-            var result = _pendingTokenResult;
+            BattleNetTokenResult result = _pendingTokenResult;
 
-            var encryptedAccessToken = _tokenProtector.Encrypt(result.AccessToken);
-            var encryptedRefreshToken = result.RefreshToken is null ? null : _tokenProtector.Encrypt(result.RefreshToken);
+            byte[] encryptedAccessToken = _tokenProtector.Encrypt(result.AccessToken);
+            byte[]? encryptedRefreshToken = result.RefreshToken is null ? null : _tokenProtector.Encrypt(result.RefreshToken);
 
-            var existing = _accountRepository.FindByAccountSub(result.AccountSub);
+            BattleNetAccount? existing = _accountRepository.FindByAccountSub(result.AccountSub);
             if (existing is not null)
             {
                 _accountRepository.UpdateAccountTokens(
@@ -164,7 +165,7 @@ namespace StatCraft.ViewModels
             }
             else
             {
-                var account = new BattleNetAccount
+                BattleNetAccount account = new BattleNetAccount
                 {
                     BattleTag = result.BattleTag,
                     AccountSub = result.AccountSub,
