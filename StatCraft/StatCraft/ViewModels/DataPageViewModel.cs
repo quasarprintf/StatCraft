@@ -8,16 +8,16 @@ namespace StatCraft.ViewModels
     public partial class DataPageViewModel : ViewModelBase
     {
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(ActiveAccountLabel))]
-        private BattleNetAccount? _activeAccount;
+        [NotifyPropertyChangedFor(nameof(ActiveProfileLabel))]
+        private Sc2Profile? _activeProfile;
 
-        public string ActiveAccountLabel => ActiveAccount == null ? "No active session" : ActiveAccount.DisplayName;
+        public string ActiveProfileLabel => ActiveProfile == null ? "No active session" : ActiveProfile.DisplayName;
 
         public event Action? SessionRequested;
 
         [RelayCommand]
         private void BeginSession() => SessionRequested?.Invoke();
 
-        public void SetActiveAccount(BattleNetAccount? account) => ActiveAccount = account;
+        public void SetActiveProfile(Sc2Profile? profile) => ActiveProfile = profile;
     }
 }

@@ -2,12 +2,17 @@ namespace StatCraft.Models
 {
     public class Sc2Profile
     {
-        public string RegionLabel { get; set; } = "";
+        public int Id { get; set; }
+        public int BattleNetAccountId { get; set; }
         public string RegionId { get; set; } = "";
         public string RealmId { get; set; } = "";
         public string ProfileId { get; set; } = "";
         public string Name { get; set; } = "";
 
+        // Populated by AccountRepository.GetAllProfiles()'s join, or set directly during the linking flow.
+        public BattleNetAccount? Account { get; set; }
+
+        public string RegionLabel => Sc2Regions.GetLabel(RegionId);
         public string DisplayName => $"{Name} ({RegionLabel})";
     }
 }

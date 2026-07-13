@@ -66,7 +66,6 @@ namespace StatCraft.Services
 
                 return entries.ConvertAll(entry => new Sc2Profile
                 {
-                    RegionLabel = Sc2Regions.GetLabel(entry.RegionId),
                     RegionId = entry.RegionId,
                     RealmId = entry.RealmId,
                     ProfileId = entry.ProfileId,

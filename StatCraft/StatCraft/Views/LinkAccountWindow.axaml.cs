@@ -14,7 +14,7 @@ namespace StatCraft.Views
             InitializeComponent();
             _vm = vm;
             DataContext = vm;
-            vm.Closed += success => Close(success ? vm.LinkedAccount : null);
+            vm.Closed += success => Close(success ? vm.LinkedProfile : null);
             Opened += async (_, _) => await vm.InitializeAsync();
         }
 

@@ -19,7 +19,8 @@ namespace StatCraft.Views
 
         private void OnAccountDoubleTapped(object? sender, TappedEventArgs e)
         {
-            _vm.SelectAccount((BattleNetAccount?)((Control?)e.Source)?.DataContext);
+            Sc2Profile? profile = (Sc2Profile?)((Control?)e.Source)?.DataContext;
+            _vm.SelectAccount(profile);
         }
     }
 }

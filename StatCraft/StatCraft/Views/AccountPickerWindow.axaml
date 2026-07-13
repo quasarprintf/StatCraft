@@ -13,7 +13,7 @@
 
         <StackPanel DockPanel.Dock="Bottom" Spacing="6" Margin="0,8,0,0">
             <Button Content="Use Selected Account" Command="{Binding SelectAccountCommand}"
-                    IsEnabled="{Binding SelectedAccount, Converter={x:Static ObjectConverters.IsNotNull}}"
+                    IsEnabled="{Binding SelectedProfile, Converter={x:Static ObjectConverters.IsNotNull}}"
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
             <Button Content="Link New Account" Command="{Binding LinkNewAccountCommand}"
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
@@ -21,10 +21,10 @@
                     HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
         </StackPanel>
 
-        <ListBox ItemsSource="{Binding Accounts}" SelectedItem="{Binding SelectedAccount}"
+        <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile}"
                  DoubleTapped="OnAccountDoubleTapped">
             <ListBox.ItemTemplate>
-                <DataTemplate x:DataType="models:BattleNetAccount">
+                <DataTemplate x:DataType="models:Sc2Profile">
                     <TextBlock Text="{Binding DisplayName}"/>
                 </DataTemplate>
             </ListBox.ItemTemplate>

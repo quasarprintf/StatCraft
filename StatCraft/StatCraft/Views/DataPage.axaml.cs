@@ -50,14 +50,14 @@ namespace StatCraft.Views
 
             if (pickerResult?.Outcome == AccountPickerOutcome.AccountSelected)
             {
-                ViewModel.SetActiveAccount(pickerResult.Account);
+                ViewModel.SetActiveProfile(pickerResult.Profile);
             }
             else if (pickerResult?.Outcome == AccountPickerOutcome.LinkNew)
             {
                 LinkAccountViewModel linkVm = new LinkAccountViewModel(_accountRepository, _tokenProtector, _authService, _sc2ProfileService);
-                BattleNetAccount? linkedAccount = await new LinkAccountWindow(linkVm).ShowDialog<BattleNetAccount?>(owner);
-                if (linkedAccount != null)
-                    ViewModel.SetActiveAccount(linkedAccount);
+                Sc2Profile? linkedProfile = await new LinkAccountWindow(linkVm).ShowDialog<Sc2Profile?>(owner);
+                if (linkedProfile != null)
+                    ViewModel.SetActiveProfile(linkedProfile);
             }
         }
     }

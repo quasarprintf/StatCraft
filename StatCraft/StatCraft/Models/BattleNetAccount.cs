@@ -12,13 +12,6 @@ namespace StatCraft.Models
         public DateTimeOffset TokenExpiresAtUtc { get; set; }
         public DateTimeOffset CreatedAtUtc { get; set; }
 
-        public string Sc2RegionId { get; set; } = "";
-        public string Sc2RealmId { get; set; } = "";
-        public string Sc2ProfileId { get; set; } = "";
-        public string Sc2ProfileName { get; set; } = "";
-
-        public string DisplayName => string.IsNullOrEmpty(Sc2ProfileName)
-            ? BattleTag
-            : $"{Sc2Regions.GetLabel(Sc2RegionId)} - {Sc2ProfileName}";
+        public string DisplayName => BattleTag;
     }
 }
