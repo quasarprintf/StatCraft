@@ -48,21 +48,21 @@ namespace StatCraft
 
             ServiceCollection services = new ServiceCollection();
 
-            services.AddSingleton(_ =>
+            services.AddSingleton<BuildRepository>(_ =>
             {
                 BuildRepository repository = new BuildRepository(dbPath);
                 repository.Initialize();
                 return repository;
             });
 
-            services.AddSingleton(_ =>
+            services.AddSingleton<AccountRepository>(_ =>
             {
                 AccountRepository repository = new AccountRepository(dbPath);
                 repository.Initialize();
                 return repository;
             });
 
-            services.AddSingleton(_ =>
+            services.AddSingleton<TokenProtector>(_ =>
             {
                 TokenProtector protector = new TokenProtector(keyPath);
                 protector.Initialize();
