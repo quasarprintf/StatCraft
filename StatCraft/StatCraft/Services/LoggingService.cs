@@ -53,7 +53,7 @@ namespace StatCraft.Services
 
             List<string> lines = new();
             while (_queue.TryDequeue(out LogRecord? record))
-                lines.Add($"[{record.Timestamp:O}] [{record.Level}] {record.Message}");
+                lines.Add($"{record.Timestamp:O} - [{record.Level}] - {string.Join(" | ", record.Context)} || {record.Message}");
 
             Directory.CreateDirectory(_logDirectory);
             string filePath = Path.Combine(_logDirectory, $"log-{DateTimeOffset.Now:yyyyMMdd}.txt");
