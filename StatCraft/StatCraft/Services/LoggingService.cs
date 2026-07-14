@@ -24,14 +24,17 @@ namespace StatCraft.Services
             _loopTask = RunLoopAsync(_cts.Token);
         }
 
-        public void Log(LogLevel level, string message)
+        public void Log(LogLevel level, string message, params object[] context)
         {
-            _queue.Enqueue(new LogRecord { Timestamp = DateTimeOffset.Now, Level = level, Message = message });
+            LogRecord record = new LogRecord { Timestamp = DateTimeOffset.Now, Level = level, Message = message };
+            foreach (object item in context)
+                record.AddContext(item);
+            _queue.Enqueue(record);
         }
 
-        public void LogInfo(string message) => Log(LogLevel.Information, message);
-        public void LogWarning(string message) => Log(LogLevel.Warning, message);
-        public void LogError(string message) => Log(LogLevel.Error, message);
+        public void LogInfo(string message, params object[] context) => Log(LogLevel.Information, message, context);
+        public void LogWarning(string message, params object[] context) => Log(LogLevel.Warning, message, context);
+        public void LogError(string message, params object[] context) => Log(LogLevel.Error, message, context);
 
         private async Task RunLoopAsync(CancellationToken cancellationToken)
         {

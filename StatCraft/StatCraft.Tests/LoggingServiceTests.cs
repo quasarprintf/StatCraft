@@ -56,6 +56,45 @@ public class LoggingServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public void Log_WithContext_IncludesContextInFlushedLine()
+    {
+        _logger.Log(LogLevel.Information, "hello", "user-123");
+        _logger.Flush();
+
+        string content = File.ReadAllText(LogFilePath);
+        Assert.Contains("user-123", content);
+    }
+
+    [Fact]
+    public void Log_WithMultipleContextObjects_JoinsThemInOrder()
+    {
+        _logger.Log(LogLevel.Information, "hello", "user-123", 42);
+        _logger.Flush();
+
+        string line = Assert.Single(File.ReadAllLines(LogFilePath));
+        Assert.Contains("user-123 | 42", line);
+    }
+
+    [Fact]
+    public void LogInfo_WithContext_IncludesContextInFlushedLine()
+    {
+        _logger.LogInfo("info message", "ctx-a", "ctx-b");
+        _logger.Flush();
+
+        string line = Assert.Single(File.ReadAllLines(LogFilePath));
+        Assert.Contains("ctx-a | ctx-b", line);
+    }
+
+    [Fact]
+    public void Log_WithoutContext_StillWritesRecord()
+    {
+        _logger.Log(LogLevel.Information, "no context here");
+        _logger.Flush();
+
+        Assert.Contains("no context here", File.ReadAllText(LogFilePath));
+    }
+
+    [Fact]
     public void Log_AppendsAcrossMultipleFlushes()
     {
         _logger.LogInfo("first");
