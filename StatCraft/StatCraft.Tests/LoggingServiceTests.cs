@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using StatCraft.Models;
 using StatCraft.Services;
 
@@ -27,11 +28,11 @@ public class LoggingServiceTests : IAsyncDisposable
     [Fact]
     public void Log_ThenFlush_WritesRecordToFile()
     {
-        _logger.Log(LogLevel.Info, "hello world");
+        _logger.Log(LogLevel.Information, "hello world");
         _logger.Flush();
 
         string content = File.ReadAllText(LogFilePath);
-        Assert.Contains("[Info]", content);
+        Assert.Contains("[Information]", content);
         Assert.Contains("hello world", content);
     }
 
@@ -45,7 +46,7 @@ public class LoggingServiceTests : IAsyncDisposable
 
         string[] lines = File.ReadAllLines(LogFilePath);
         Assert.Equal(3, lines.Length);
-        Assert.Contains(lines, l => l.Contains("[Info]") && l.Contains("first"));
+        Assert.Contains(lines, l => l.Contains("[Information]") && l.Contains("first"));
         Assert.Contains(lines, l => l.Contains("[Warning]") && l.Contains("second"));
         Assert.Contains(lines, l => l.Contains("[Error]") && l.Contains("third"));
 

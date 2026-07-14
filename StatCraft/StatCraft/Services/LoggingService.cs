@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using StatCraft.Models;
 
 namespace StatCraft.Services
@@ -28,7 +29,7 @@ namespace StatCraft.Services
             _queue.Enqueue(new LogRecord { Timestamp = DateTimeOffset.Now, Level = level, Message = message });
         }
 
-        public void LogInfo(string message) => Log(LogLevel.Info, message);
+        public void LogInfo(string message) => Log(LogLevel.Information, message);
         public void LogWarning(string message) => Log(LogLevel.Warning, message);
         public void LogError(string message) => Log(LogLevel.Error, message);
 

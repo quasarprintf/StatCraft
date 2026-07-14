@@ -1,8 +1,8 @@
+using Microsoft.Extensions.Logging;
 using System;
 
 namespace StatCraft.Models
 {
-    public enum LogLevel { Debug, Info, Warning, Error }
 
     public class LogRecord
     {
