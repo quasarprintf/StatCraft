@@ -24,12 +24,13 @@ namespace StatCraft.Services
             _loopTask = RunLoopAsync(_cts.Token);
         }
 
+        public void Log(LogRecord record) => _queue.Enqueue(record);
         public void Log(LogLevel level, string message, params object[] context)
         {
             LogRecord record = new LogRecord { Timestamp = DateTimeOffset.Now, Level = level, Message = message };
             foreach (object item in context)
                 record.AddContext(item);
-            _queue.Enqueue(record);
+            Log(record);
         }
 
         public void LogInfo(string message, params object[] context) => Log(LogLevel.Information, message, context);
