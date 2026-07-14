@@ -1,4 +1,4 @@
-﻿namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels
 {
     public partial class MainWindowViewModel : ViewModelBase
     {
