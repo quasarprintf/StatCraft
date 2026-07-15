@@ -24,7 +24,7 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
         File.WriteAllText(Path.Combine(_folderPath, "old2.SC2Replay"), "");
 
         await _watcher.Start(_folderPath, new Sc2Profile());
-        _watcher.CheckNow();
+        await _watcher.CheckNow();
 
         Assert.Empty(_watcher.ProcessedFiles);
     }
@@ -37,7 +37,7 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
 
         string newFile = Path.Combine(_folderPath, "new.SC2Replay");
         File.WriteAllText(newFile, "");
-        _watcher.CheckNow();
+        await _watcher.CheckNow();
 
         Assert.Equal([newFile], _watcher.ProcessedFiles);
     }
@@ -49,8 +49,8 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
 
         string newFile = Path.Combine(_folderPath, "new.SC2Replay");
         File.WriteAllText(newFile, "");
-        _watcher.CheckNow();
-        _watcher.CheckNow();
+        await _watcher.CheckNow();
+        await _watcher.CheckNow();
 
         Assert.Equal([newFile], _watcher.ProcessedFiles);
     }
@@ -62,12 +62,12 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
         File.WriteAllText(file, "");
 
         await _watcher.Start(_folderPath, new Sc2Profile());
-        _watcher.CheckNow();
+        await _watcher.CheckNow();
         Assert.Empty(_watcher.ProcessedFiles);
 
         await _watcher.Stop();
         await _watcher.Start(_folderPath, new Sc2Profile());
-        _watcher.CheckNow();
+        await _watcher.CheckNow();
 
         Assert.Empty(_watcher.ProcessedFiles);
     }
@@ -76,7 +76,7 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
     public async Task CheckNow_FolderDoesNotExist_DoesNotThrow()
     {
         await _watcher.Start(Path.Combine(_folderPath, "does-not-exist"), new Sc2Profile());
-        _watcher.CheckNow();
+        await _watcher.CheckNow();
 
         Assert.Empty(_watcher.ProcessedFiles);
     }
