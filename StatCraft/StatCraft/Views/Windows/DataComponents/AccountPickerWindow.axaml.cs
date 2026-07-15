@@ -7,11 +7,16 @@ namespace StatCraft.Views
 {
     public partial class AccountPickerWindow : Window
     {
-        private readonly AccountPickerViewModel _vm;
+        private readonly AccountPickerViewModel? _vm;
 
-        public AccountPickerWindow(AccountPickerViewModel vm)
+        // Parameterless constructor required by the Avalonia XAML designer to create a design-time instance.
+        public AccountPickerWindow()
         {
             InitializeComponent();
+        }
+
+        public AccountPickerWindow(AccountPickerViewModel vm) : this()
+        {
             _vm = vm;
             DataContext = vm;
             vm.Closed += Close;
@@ -19,6 +24,8 @@ namespace StatCraft.Views
 
         private void OnAccountDoubleTapped(object? sender, TappedEventArgs e)
         {
+            if (_vm == null) return;
+
             Sc2Profile? profile = (Sc2Profile?)((Control?)e.Source)?.DataContext;
             _vm.SelectAccount(profile);
         }

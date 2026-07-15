@@ -7,11 +7,16 @@ namespace StatCraft.Views
 {
     public partial class LinkAccountWindow : Window
     {
-        private readonly LinkAccountViewModel _vm;
+        private readonly LinkAccountViewModel? _vm;
 
-        public LinkAccountWindow(LinkAccountViewModel vm)
+        // Parameterless constructor required by the Avalonia XAML designer to create a design-time instance.
+        public LinkAccountWindow()
         {
             InitializeComponent();
+        }
+
+        public LinkAccountWindow(LinkAccountViewModel vm) : this()
+        {
             _vm = vm;
             DataContext = vm;
             vm.Closed += success => Close(success ? vm.LinkedProfile : null);
@@ -20,6 +25,8 @@ namespace StatCraft.Views
 
         private void OnProfileDoubleTapped(object? sender, TappedEventArgs e)
         {
+            if (_vm == null) return;
+
             _vm.ConfirmProfile((Sc2Profile?)((Control?)e.Source)?.DataContext);
         }
     }

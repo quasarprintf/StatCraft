@@ -8,11 +8,16 @@ namespace StatCraft.Views
 {
     public partial class SettingsPromptWindow : Window
     {
-        private readonly SettingsPromptViewModel _vm;
+        private readonly SettingsPromptViewModel? _vm;
 
-        public SettingsPromptWindow(SettingsPromptViewModel vm)
+        // Parameterless constructor required by the Avalonia XAML designer to create a design-time instance.
+        public SettingsPromptWindow()
         {
             InitializeComponent();
+        }
+
+        public SettingsPromptWindow(SettingsPromptViewModel vm) : this()
+        {
             _vm = vm;
             DataContext = vm;
             vm.Completed += Close;
@@ -20,6 +25,8 @@ namespace StatCraft.Views
 
         private async void OnBrowseClick(object? sender, RoutedEventArgs e)
         {
+            if (_vm == null) return;
+
             IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
             {
                 Title = "Select Replay Folder",
