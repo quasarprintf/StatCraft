@@ -11,7 +11,7 @@ namespace StatCraft.Models
         public required ICollection<string?> PlayerClans { get; set; }
         public required ICollection<char> PlayerRaces { get; set; }
         public required ICollection<bool> PlayerRandomRace { get; set; }
-        public ICollection<int>? PlayerMmrs { get; set; } //TODO: not sure if this can be extracted from replay, or if we need to get this from battlenet api
+        public required ICollection<long?> PlayerMmrs { get; set; }
         public bool IsDraw { get; set; }
         public required ICollection<int> WinningPlayerIndices { get; set; }
         public int GameLengthSeconds { get; set; }

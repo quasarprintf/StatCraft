@@ -47,7 +47,7 @@ namespace StatCraft.Services
                 PlayerClans = clans,
                 PlayerRaces = races,
                 PlayerRandomRace = randomRace,
-                PlayerMmrs = null,
+                PlayerMmrs = replay.Initdata!.UserInitialData.Select(d => d.ScaledRating).ToArray(),
                 IsDraw = isDraw,
                 WinningPlayerIndices = winningIndices,
                 GameLengthSeconds = replay.Metadata?.Duration ?? 0, //TODO: this is using hots time. Need to get the exact conversion ratio to lotv time
