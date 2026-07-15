@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace StatCraft.Services
 {
-    public class ReplayWatcherService(ILogger logger) : IAsyncDisposable
+    public class ReplayWatcherService(ILogger logger, ReplayDataExtractor replayDataExtractor) : IAsyncDisposable
     {
         private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(5));
         private readonly HashSet<string> _knownFiles = new();
@@ -76,9 +76,17 @@ namespace StatCraft.Services
             if (_profile == null)
                 return;
             logger.LogInfo($"Replay file found: {filePath}", _profile);
-            // TODO: parse and record the new replay.
+
             using ReplayDecoder decoder = new();
             Sc2Replay? replay = await decoder.DecodeAsync(filePath);
+            if (replay == null)
+            {
+                logger.LogWarning($"Failed to decode replay: {filePath}", _profile);
+                return;
+            }
+
+            ReplayData replayData = replayDataExtractor.Extract(replay);
+            logger.LogInfo($"Replay parsed: {replayData.MapName}", _profile, replayData);
         }
 
         public async ValueTask DisposeAsync()

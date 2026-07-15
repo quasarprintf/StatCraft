@@ -12,7 +12,7 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
         _folderPath = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid().ToString());
         Directory.CreateDirectory(_folderPath);
 
-        _watcher = new RecordingReplayWatcherService(new Mocks.MockLogger());
+        _watcher = new RecordingReplayWatcherService(new Mocks.MockLogger(), new ReplayDataExtractor());
     }
 
     [Fact]
@@ -93,10 +93,14 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
         }
     }
 
-    private class RecordingReplayWatcherService(ILogger logger) : ReplayWatcherService(logger)
+    private class RecordingReplayWatcherService(ILogger logger, ReplayDataExtractor replayDataExtractor) : ReplayWatcherService(logger, replayDataExtractor)
     {
         public List<string> ProcessedFiles { get; } = [];
 
-        protected override void ProcessReplay(string filePath) => ProcessedFiles.Add(filePath);
+        protected override Task ProcessReplay(string filePath)
+        {
+            ProcessedFiles.Add(filePath);
+            return Task.CompletedTask;
+        }
     }
 }
