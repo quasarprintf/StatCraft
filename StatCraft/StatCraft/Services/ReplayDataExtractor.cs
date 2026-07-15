@@ -50,7 +50,7 @@ namespace StatCraft.Services
                 PlayerMmrs = null,
                 IsDraw = isDraw,
                 WinningPlayerIndices = winningIndices,
-                GameLengthSeconds = replay.Metadata?.Duration ?? 0,
+                GameLengthSeconds = replay.Metadata?.Duration ?? 0, //TODO: this is using hots time. Need to get the exact conversion ratio to lotv time
                 ReplayPath = replay.FileName,
             };
         }
