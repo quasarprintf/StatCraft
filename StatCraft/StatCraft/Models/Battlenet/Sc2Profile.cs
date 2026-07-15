@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace StatCraft.Models
+namespace StatCraft.Models.Battlenet
 {
     public class Sc2Profile
     {

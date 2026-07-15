@@ -2,8 +2,8 @@ using System;
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using StatCraft.Models;
-using StatCraft.Services;
+using StatCraft.Models.Battlenet;
+using StatCraft.Services.DatabaseRepository;
 
 namespace StatCraft.ViewModels
 {

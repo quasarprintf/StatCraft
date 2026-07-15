@@ -3,8 +3,9 @@ using System.IO;
 using System.Threading.Tasks;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using StatCraft.Models;
-using StatCraft.Services;
+using StatCraft.Models.Battlenet;
+using StatCraft.Services.BackgroundService;
+using StatCraft.Services.DatabaseRepository;
 
 namespace StatCraft.ViewModels
 {

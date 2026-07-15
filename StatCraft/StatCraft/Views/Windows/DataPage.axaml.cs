@@ -1,7 +1,7 @@
 using System.Threading.Tasks;
 using Avalonia.Controls;
 using Microsoft.Extensions.DependencyInjection;
-using StatCraft.Models;
+using StatCraft.Models.Battlenet;
 using StatCraft.ViewModels;
 
 namespace StatCraft.Views

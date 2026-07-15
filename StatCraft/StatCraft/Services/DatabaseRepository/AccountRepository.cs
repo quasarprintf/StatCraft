@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using Microsoft.Data.Sqlite;
-using StatCraft.Models;
+using StatCraft.Models.Battlenet;
 
-namespace StatCraft.Services
+namespace StatCraft.Services.DatabaseRepository
 {
     public class AccountRepository
     {

@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:StatCraft.ViewModels"
-        xmlns:models="using:StatCraft.Models"
+        xmlns:bnet="using:StatCraft.Models.Battlenet"
         x:Class="StatCraft.Views.LinkAccountWindow"
         x:DataType="vm:LinkAccountViewModel"
         Title="Link Battle.net Account"
@@ -42,7 +42,7 @@
             <ListBox ItemsSource="{Binding Sc2Profiles}" SelectedItem="{Binding SelectedSc2Profile}"
                      DoubleTapped="OnProfileDoubleTapped">
                 <ListBox.ItemTemplate>
-                    <DataTemplate x:DataType="models:Sc2Profile">
+                    <DataTemplate x:DataType="bnet:Sc2Profile">
                         <TextBlock Text="{Binding DisplayName}"/>
                     </DataTemplate>
                 </ListBox.ItemTemplate>

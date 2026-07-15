@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace StatCraft.Models
+namespace StatCraft.Models.GameData
 {
     internal class ReplayData
     {

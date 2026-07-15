@@ -8,9 +8,10 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using StatCraft.Models;
+using StatCraft.Models.Battlenet;
+using StatCraft.Services.DataParsing;
 
-namespace StatCraft.Services
+namespace StatCraft.Services.BattlenetApi
 {
     public class StarCraft2ProfileService
     {
@@ -81,17 +82,5 @@ namespace StatCraft.Services
             [property: JsonConverter(typeof(FlexibleStringConverter)), JsonPropertyName("profileId")] string ProfileId,
             [property: JsonConverter(typeof(FlexibleStringConverter)), JsonPropertyName("regionId")] string RegionId,
             [property: JsonConverter(typeof(FlexibleStringConverter)), JsonPropertyName("realmId")] string RealmId);
-
-        // Blizzard's SC2 API returns regionId/realmId/profileId as JSON numbers rather than strings.
-        private class FlexibleStringConverter : JsonConverter<string>
-        {
-            public override string Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options) =>
-                reader.TokenType == JsonTokenType.Number
-                    ? reader.GetInt64().ToString(CultureInfo.InvariantCulture)
-                    : reader.GetString() ?? "";
-
-            public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options) =>
-                writer.WriteStringValue(value);
-        }
     }
 }

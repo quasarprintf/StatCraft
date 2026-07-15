@@ -1,5 +1,7 @@
 using s2protocol.NET;
-using StatCraft.Models;
+using StatCraft.Models.Battlenet;
+using StatCraft.Models.GameData;
+using StatCraft.Services.DataParsing;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -7,7 +9,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace StatCraft.Services
+namespace StatCraft.Services.BackgroundService
 {
     public class ReplayWatcherService(ILogger logger, ReplayDataExtractor replayDataExtractor) : IAsyncDisposable
     {

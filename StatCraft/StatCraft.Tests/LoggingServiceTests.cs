@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 using StatCraft.Models;
-using StatCraft.Services;
+using StatCraft.Services.BackgroundService;
 
 namespace StatCraft.Tests;
 

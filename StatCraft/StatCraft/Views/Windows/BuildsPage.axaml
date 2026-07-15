@@ -1,6 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:StatCraft.ViewModels"
+             xmlns:builds="using:StatCraft.Models.GameData.Builds"
              x:Class="StatCraft.Views.BuildsPage"
              x:DataType="vm:BuildsPageViewModel">
     <DockPanel>
@@ -22,7 +23,7 @@
                         </ContextMenu>
                     </TreeView.ContextMenu>
                     <TreeView.Styles>
-                        <Style Selector="TreeViewItem" x:DataType="vm:BuildNode">
+                        <Style Selector="TreeViewItem" x:DataType="builds:BuildNode">
                             <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
                             <Setter Property="ContextMenu">
                                 <Template>
@@ -67,13 +68,13 @@
                     <ScrollViewer>
                         <ItemsControl ItemsSource="{Binding SelectedBuild.Attributes}">
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:BuildAttribute">
+                                <DataTemplate x:DataType="builds:BuildAttribute">
                                     <StackPanel Margin="0,0,0,4">
                                         <!-- Main attribute row -->
                                         <Grid ColumnDefinitions="*,120,Auto">
                                             <TextBox Grid.Column="0" Text="{Binding Name}" PlaceholderText="Name" Margin="0,0,4,0"/>
                                             <ComboBox Grid.Column="1" SelectedItem="{Binding Type}"
-                                                      ItemsSource="{x:Static vm:BuildAttribute.AllTypes}"
+                                                      ItemsSource="{x:Static builds:BuildAttribute.AllTypes}"
                                                       HorizontalAlignment="Stretch" Margin="0,0,4,0"/>
                                             <Button Grid.Column="2" Content="✕"
                                                     Command="{Binding $parent[UserControl].((vm:BuildsPageViewModel)DataContext).RemoveAttributeCommand}"

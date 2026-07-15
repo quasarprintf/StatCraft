@@ -2,9 +2,10 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using Microsoft.Data.Sqlite;
+using StatCraft.Models.GameData.Builds;
 using StatCraft.ViewModels;
 
-namespace StatCraft.Services
+namespace StatCraft.Services.DatabaseRepository
 {
     public class BuildRepository
     {

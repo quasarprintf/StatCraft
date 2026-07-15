@@ -1,4 +1,4 @@
-using StatCraft.Services;
+using StatCraft.Services.BattlenetApi;
 
 namespace StatCraft.Tests;
 

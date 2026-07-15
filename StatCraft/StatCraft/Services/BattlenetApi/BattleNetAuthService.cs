@@ -1,3 +1,4 @@
+using StatCraft.Models.Battlenet;
 using System;
 using System.Diagnostics;
 using System.Net;
@@ -9,7 +10,7 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace StatCraft.Services
+namespace StatCraft.Services.BattlenetApi
 {
     public record BattleNetTokenResult(
         string AccessToken,
@@ -17,28 +18,6 @@ namespace StatCraft.Services
         DateTimeOffset ExpiresAtUtc,
         string BattleTag,
         string AccountSub);
-
-    public enum AuthFailureReason
-    {
-        UserCancelled,
-        Timeout,
-        PortInUse,
-        StateMismatch,
-        TokenExchangeFailed,
-        UserInfoFailed,
-        BrowserLaunchFailed,
-    }
-
-    public class BattleNetAuthException : Exception
-    {
-        public AuthFailureReason Reason { get; }
-
-        public BattleNetAuthException(AuthFailureReason reason, string message, Exception? inner = null)
-            : base(message, inner)
-        {
-            Reason = reason;
-        }
-    }
 
     public class BattleNetAuthService
     {

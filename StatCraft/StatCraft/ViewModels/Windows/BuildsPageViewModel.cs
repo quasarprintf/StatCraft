@@ -3,62 +3,14 @@ using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using StatCraft.Services;
+using StatCraft.Models.GameData.Builds;
+using StatCraft.Services.DatabaseRepository;
 
 namespace StatCraft.ViewModels
 {
     public enum Matchup { VsP, VsT, VsZ }
 
     public enum AttributeType { Numeric, Bool, Percent, Values }
-
-    public partial class BuildAttribute : ObservableObject
-    {
-        public static IReadOnlyList<AttributeType> AllTypes { get; } =
-            [AttributeType.Numeric, AttributeType.Bool, AttributeType.Percent, AttributeType.Values];
-
-        public int Id { get; set; }
-
-        [ObservableProperty] private string _name = string.Empty;
-
-        [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(IsNumeric), nameof(IsBool), nameof(IsPercent), nameof(IsValues))]
-        private AttributeType _type = AttributeType.Numeric;
-
-        [ObservableProperty] private decimal _numericValue;
-        [ObservableProperty] private bool _boolValue;
-        [ObservableProperty] private decimal _percentValue;
-
-        public ObservableCollection<string> ValueOptions { get; } = [];
-        [ObservableProperty] private string? _selectedValue;
-        [ObservableProperty] private string _newOptionText = string.Empty;
-
-        public bool IsNumeric => Type == AttributeType.Numeric;
-        public bool IsBool    => Type == AttributeType.Bool;
-        public bool IsPercent => Type == AttributeType.Percent;
-        public bool IsValues  => Type == AttributeType.Values;
-
-        [RelayCommand]
-        private void AddOption()
-        {
-            if (string.IsNullOrWhiteSpace(NewOptionText)) return;
-            ValueOptions.Add(NewOptionText.Trim());
-            NewOptionText = string.Empty;
-        }
-
-        [RelayCommand]
-        private void RemoveOption(string option) => ValueOptions.Remove(option);
-    }
-
-    public partial class BuildNode : ObservableObject
-    {
-        public int Id { get; set; }
-
-        [ObservableProperty] private string _name = string.Empty;
-        [ObservableProperty] private string _description = string.Empty;
-        [ObservableProperty] private bool _isExpanded;
-        public ObservableCollection<BuildAttribute> Attributes { get; } = [];
-        public ObservableCollection<BuildNode> Children { get; } = [];
-    }
 
     public partial class BuildsPageViewModel : ViewModelBase
     {

@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using StatCraft.Models;
 
-namespace StatCraft.Services
+namespace StatCraft.Services.BackgroundService
 {
     public interface ILogger : IAsyncDisposable
     {

@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using Avalonia.Input;
-using StatCraft.Models;
+using StatCraft.Models.Battlenet;
 using StatCraft.ViewModels;
 
 namespace StatCraft.Views

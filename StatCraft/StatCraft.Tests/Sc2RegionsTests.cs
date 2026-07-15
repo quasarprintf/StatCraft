@@ -1,4 +1,4 @@
-using StatCraft.Models;
+using StatCraft.Models.Battlenet;
 
 namespace StatCraft.Tests;
 

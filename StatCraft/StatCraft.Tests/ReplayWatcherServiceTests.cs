@@ -1,4 +1,6 @@
-using StatCraft.Services;
+using StatCraft.Models.Battlenet;
+using StatCraft.Services.BackgroundService;
+using StatCraft.Services.DataParsing;
 
 namespace StatCraft.Tests;
 
@@ -21,7 +23,7 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
         File.WriteAllText(Path.Combine(_folderPath, "old1.SC2Replay"), "");
         File.WriteAllText(Path.Combine(_folderPath, "old2.SC2Replay"), "");
 
-        await _watcher.Start(_folderPath, new Models.Sc2Profile());
+        await _watcher.Start(_folderPath, new Sc2Profile());
         _watcher.CheckNow();
 
         Assert.Empty(_watcher.ProcessedFiles);
@@ -31,7 +33,7 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
     public async Task CheckNow_NewFileAppearsAfterStart_IsProcessed()
     {
         File.WriteAllText(Path.Combine(_folderPath, "old.SC2Replay"), "");
-        await _watcher.Start(_folderPath, new Models.Sc2Profile());
+        await _watcher.Start(_folderPath, new Sc2Profile());
 
         string newFile = Path.Combine(_folderPath, "new.SC2Replay");
         File.WriteAllText(newFile, "");
@@ -43,7 +45,7 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
     [Fact]
     public async Task CheckNow_SameFileSeenTwice_IsOnlyProcessedOnce()
     {
-        await _watcher.Start(_folderPath, new Models.Sc2Profile());
+        await _watcher.Start(_folderPath, new Sc2Profile());
 
         string newFile = Path.Combine(_folderPath, "new.SC2Replay");
         File.WriteAllText(newFile, "");
@@ -59,12 +61,12 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
         string file = Path.Combine(_folderPath, "existing.SC2Replay");
         File.WriteAllText(file, "");
 
-        await _watcher.Start(_folderPath, new Models.Sc2Profile());
+        await _watcher.Start(_folderPath, new Sc2Profile());
         _watcher.CheckNow();
         Assert.Empty(_watcher.ProcessedFiles);
 
         await _watcher.Stop();
-        await _watcher.Start(_folderPath, new Models.Sc2Profile());
+        await _watcher.Start(_folderPath, new Sc2Profile());
         _watcher.CheckNow();
 
         Assert.Empty(_watcher.ProcessedFiles);
@@ -73,7 +75,7 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
     [Fact]
     public async Task CheckNow_FolderDoesNotExist_DoesNotThrow()
     {
-        await _watcher.Start(Path.Combine(_folderPath, "does-not-exist"), new Models.Sc2Profile());
+        await _watcher.Start(Path.Combine(_folderPath, "does-not-exist"), new Sc2Profile());
         _watcher.CheckNow();
 
         Assert.Empty(_watcher.ProcessedFiles);

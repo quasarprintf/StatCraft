@@ -1,6 +1,6 @@
 using System;
 
-namespace StatCraft.Models
+namespace StatCraft.Models.Battlenet
 {
     public class BattleNetAccount
     {

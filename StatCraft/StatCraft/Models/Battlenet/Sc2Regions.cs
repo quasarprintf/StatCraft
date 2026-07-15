@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace StatCraft.Models
+namespace StatCraft.Models.Battlenet
 {
     public static class Sc2Regions
     {

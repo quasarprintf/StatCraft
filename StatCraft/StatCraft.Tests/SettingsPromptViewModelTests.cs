@@ -1,4 +1,4 @@
-using StatCraft.Services;
+using StatCraft.Services.DatabaseRepository;
 using StatCraft.ViewModels;
 
 namespace StatCraft.Tests;

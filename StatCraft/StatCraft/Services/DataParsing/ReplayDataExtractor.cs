@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using s2protocol.NET;
 using s2protocol.NET.Models;
-using StatCraft.Models;
+using StatCraft.Models.GameData;
 
-namespace StatCraft.Services
+namespace StatCraft.Services.DataParsing
 {
     public class ReplayDataExtractor
     {

@@ -2,7 +2,7 @@ using System.IO;
 using System.Text.Json;
 using StatCraft.Models;
 
-namespace StatCraft.Services
+namespace StatCraft.Services.DatabaseRepository
 {
     public class SettingsRepository
     {

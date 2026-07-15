@@ -1,5 +1,5 @@
-using StatCraft.Models;
-using StatCraft.Services;
+using StatCraft.Models.Battlenet;
+using StatCraft.Services.DatabaseRepository;
 
 namespace StatCraft.Tests;
 
