@@ -1,7 +1,9 @@
+using s2protocol.NET;
 using StatCraft.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -49,7 +51,7 @@ namespace StatCraft.Services
             try
             {
                 while (await _timer.WaitForNextTickAsync(cancellationToken))
-                    CheckNow();
+                    await CheckNow();
             }
             catch (OperationCanceledException)
             {
@@ -57,7 +59,7 @@ namespace StatCraft.Services
             }
         }
 
-        public void CheckNow()
+        public async Task CheckNow()
         {
             if (_folderPath == null || !Directory.Exists(_folderPath))
                 return;
@@ -65,16 +67,18 @@ namespace StatCraft.Services
             foreach (string file in Directory.EnumerateFiles(_folderPath))
             {
                 if (_knownFiles.Add(file))
-                    ProcessReplay(file);
+                    await ProcessReplay(file);
             }
         }
 
-        protected virtual void ProcessReplay(string filePath)
+        protected virtual async Task ProcessReplay(string filePath)
         {
             if (_profile == null)
                 return;
             logger.LogInfo($"Replay file found: {filePath}", _profile);
             // TODO: parse and record the new replay.
+            using ReplayDecoder decoder = new();
+            Sc2Replay? replay = await decoder.DecodeAsync(filePath);
         }
 
         public async ValueTask DisposeAsync()
