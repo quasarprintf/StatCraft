@@ -42,7 +42,7 @@ namespace StatCraft.ViewModels
 
             string baseReplayFolderPath = _settingsRepository.Load().BaseReplayFolderPath ?? "";
             string replayFolderPath = Path.Combine(baseReplayFolderPath, profile.ReplayFolderPathSuffix);
-            await _replayWatcherService.Start(replayFolderPath);
+            await _replayWatcherService.Start(replayFolderPath, profile);
         }
     }
 }

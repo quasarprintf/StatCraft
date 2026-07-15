@@ -9,7 +9,16 @@ using StatCraft.Models;
 
 namespace StatCraft.Services
 {
-    public class LoggingService : IAsyncDisposable
+    public interface ILogger : IAsyncDisposable
+    {
+        void Log(LogRecord record);
+        void Log(LogLevel level, string message, params object[] context);
+        void LogInfo(string message, params object[] context);
+        void LogWarning(string message, params object[] context);
+        void LogError(string message, params object[] context);
+        void Flush();
+    }
+    public class LoggingService : ILogger
     {
         private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(5));
         private readonly ConcurrentQueue<LogRecord> _queue = new();

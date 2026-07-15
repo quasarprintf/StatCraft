@@ -1,3 +1,4 @@
+using StatCraft.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -6,19 +7,21 @@ using System.Threading.Tasks;
 
 namespace StatCraft.Services
 {
-    public class ReplayWatcherService : IAsyncDisposable
+    public class ReplayWatcherService(ILogger logger) : IAsyncDisposable
     {
         private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(5));
         private readonly HashSet<string> _knownFiles = new();
         private string? _folderPath;
+        private Sc2Profile? _profile;
         private CancellationTokenSource? _cts;
         private Task? LoopTask = null;
 
-        public async Task Start(string folderPath)
+        public async Task Start(string folderPath, Sc2Profile profile)
         {
             await Stop();
 
             _folderPath = folderPath;
+            _profile = profile;
             if (Directory.Exists(folderPath))
             {
                 foreach (string file in Directory.EnumerateFiles(folderPath))
@@ -36,6 +39,7 @@ namespace StatCraft.Services
             _cts = null;
             _knownFiles.Clear();
             _folderPath = null;
+            _profile = null;
             if (LoopTask != null)
                 await LoopTask;
         }
@@ -67,6 +71,9 @@ namespace StatCraft.Services
 
         protected virtual void ProcessReplay(string filePath)
         {
+            if (_profile == null)
+                return;
+            logger.LogInfo($"Replay file found: {filePath}", _profile);
             // TODO: parse and record the new replay.
         }
 
