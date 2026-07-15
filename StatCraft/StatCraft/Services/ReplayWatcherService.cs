@@ -82,11 +82,14 @@ namespace StatCraft.Services
             if (replay == null)
             {
                 logger.LogWarning($"Failed to decode replay: {filePath}", _profile);
+                //TODO: notify user of error
                 return;
             }
 
             ReplayData replayData = replayDataExtractor.Extract(replay);
-            logger.LogInfo($"Replay parsed: {replayData.MapName}", _profile, replayData);
+            logger.LogInfo($"Replay parsed: {filePath}", _profile, replayData);
+
+            //TODO: update UI
         }
 
         public async ValueTask DisposeAsync()
