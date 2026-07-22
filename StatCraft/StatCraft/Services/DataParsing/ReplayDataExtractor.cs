@@ -61,9 +61,7 @@ namespace StatCraft.Services.DataParsing
         }
 
         // Reframes the raw, index-parallel replay data around a specific player: who they are, whether
-        // they won, and which other players were on their side vs. the other side. RawReplayData has no
-        // team-id per player, so "ally" is derived from which side of WinningPlayerIndices each player
-        // landed on rather than from an explicit team field.
+        // they won, and which other players were on their side vs. the other side.
         internal ParsedReplayData Parse(RawReplayData rawReplayData, Sc2Profile profile)
         {
             List<string> names = new(rawReplayData.PlayerNames);
@@ -71,6 +69,7 @@ namespace StatCraft.Services.DataParsing
             List<char> races = new(rawReplayData.PlayerRaces);
             List<bool> randomRace = new(rawReplayData.PlayerRandomRace);
             List<long?> mmrs = new(rawReplayData.PlayerMmrs);
+            List<int> teams = new(rawReplayData.PlayerTeams);
             HashSet<int> winners = new(rawReplayData.WinningPlayerIndices);
 
             int playerIndex = names.FindIndex(name => string.Equals(name, profile.Name, StringComparison.OrdinalIgnoreCase));
@@ -86,8 +85,7 @@ namespace StatCraft.Services.DataParsing
                 Random = randomRace[i],
             };
 
-            bool playerWon = winners.Contains(playerIndex);
-            decimal win = rawReplayData.IsDraw ? 0.5m : playerWon ? 1m : 0m;
+            decimal win = rawReplayData.IsDraw ? 0.5m : winners.Contains(playerIndex) ? 1m : 0m;
 
             List<GamePlayer> allies = new();
             List<GamePlayer> opponents = new();
@@ -96,7 +94,7 @@ namespace StatCraft.Services.DataParsing
                 if (i == playerIndex)
                     continue;
 
-                bool isAlly = !rawReplayData.IsDraw && winners.Contains(i) == playerWon;
+                bool isAlly = teams[i] == teams[playerIndex];
                 (isAlly ? allies : opponents).Add(BuildPlayer(i));
             }
 
