@@ -77,7 +77,7 @@ namespace StatCraft.Services.DataParsing
             {
                 Name = names[i],
                 Clan = clans[i] ?? "",
-                Mmr = mmrs[i].HasValue ? (int)mmrs[i]!.Value : 0,
+                Mmr = mmrs[i].HasValue ? mmrs[i]!.Value : 0,
                 Race = races[i],
                 Random = randomRace[i],
             };
