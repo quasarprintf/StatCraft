@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using s2protocol.NET;
 using s2protocol.NET.Models;
+using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
 
 namespace StatCraft.Services.DataParsing
@@ -52,6 +53,58 @@ namespace StatCraft.Services.DataParsing
                 WinningPlayerIndices = winningIndices,
                 GameLengthSeconds = replay.Metadata?.Duration ?? 0, //TODO: this is using hots time. Need to get the exact conversion ratio to lotv time
                 ReplayPath = replay.FileName,
+            };
+        }
+
+        // Reframes the raw, index-parallel replay data around a specific player: who they are, whether
+        // they won, and which other players were on their side vs. the other side. RawReplayData has no
+        // team-id per player, so "ally" is derived from which side of WinningPlayerIndices each player
+        // landed on rather than from an explicit team field.
+        internal ParsedReplayData Parse(RawReplayData rawReplayData, Sc2Profile profile)
+        {
+            List<string> names = new(rawReplayData.PlayerNames);
+            List<string?> clans = new(rawReplayData.PlayerClans);
+            List<char> races = new(rawReplayData.PlayerRaces);
+            List<bool> randomRace = new(rawReplayData.PlayerRandomRace);
+            List<long?> mmrs = new(rawReplayData.PlayerMmrs);
+            HashSet<int> winners = new(rawReplayData.WinningPlayerIndices);
+
+            int playerIndex = names.FindIndex(name => string.Equals(name, profile.Name, StringComparison.OrdinalIgnoreCase));
+            if (playerIndex < 0)
+                throw new InvalidOperationException($"Could not find a player named '{profile.Name}' in the replay.");
+
+            GamePlayer BuildPlayer(int i) => new()
+            {
+                Name = names[i],
+                Clan = clans[i] ?? "",
+                Mmr = mmrs[i].HasValue ? (int)mmrs[i]!.Value : 0,
+                Race = races[i],
+                Random = randomRace[i],
+            };
+
+            bool playerWon = winners.Contains(playerIndex);
+            decimal win = rawReplayData.IsDraw ? 0.5m : playerWon ? 1m : 0m;
+
+            List<GamePlayer> allies = new();
+            List<GamePlayer> opponents = new();
+            for (int i = 0; i < names.Count; i++)
+            {
+                if (i == playerIndex)
+                    continue;
+
+                bool isAlly = !rawReplayData.IsDraw && winners.Contains(i) == playerWon;
+                (isAlly ? allies : opponents).Add(BuildPlayer(i));
+            }
+
+            return new ParsedReplayData
+            {
+                MapName = rawReplayData.MapName,
+                GameLengthSeconds = rawReplayData.GameLengthSeconds,
+                ReplayPath = rawReplayData.ReplayPath,
+                Win = win,
+                Player = BuildPlayer(playerIndex),
+                Allies = allies.ToArray(),
+                Opponents = opponents.ToArray(),
             };
         }
     }
