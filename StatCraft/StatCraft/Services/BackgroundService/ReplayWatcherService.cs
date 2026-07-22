@@ -88,7 +88,7 @@ namespace StatCraft.Services.BackgroundService
                 return;
             }
 
-            ReplayData replayData = replayDataExtractor.Extract(replay);
+            RawReplayData replayData = replayDataExtractor.Extract(replay);
             logger.LogInfo($"Replay parsed: {filePath}", _profile, replayData);
 
             //TODO: update UI

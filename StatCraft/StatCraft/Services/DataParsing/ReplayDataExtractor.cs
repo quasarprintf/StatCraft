@@ -9,7 +9,7 @@ namespace StatCraft.Services.DataParsing
 {
     public class ReplayDataExtractor
     {
-        internal ReplayData Extract(Sc2Replay replay)
+        internal RawReplayData Extract(Sc2Replay replay)
         {
             List<DetailsPlayer> detailsPlayers = replay.Details?.Players?.ToList() ?? new List<DetailsPlayer>();
             List<MetadataPlayer> metadataPlayers = replay.Metadata?.Players?.ToList() ?? new List<MetadataPlayer>();
@@ -40,7 +40,7 @@ namespace StatCraft.Services.DataParsing
                     isDraw = true;
             }
 
-            return new ReplayData
+            return new RawReplayData
             {
                 MapName = replay.Details?.Title ?? "",
                 PlayerNames = names,

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace StatCraft.Models.GameData
 {
-    internal class ReplayData
+    internal class RawReplayData
     {
         public required string MapName { get; set; }
         public required ICollection<string> PlayerNames { get; set; }
