@@ -41,7 +41,7 @@ namespace StatCraft.Services.DatabaseRepository
                     BattleNetAccountId INTEGER NOT NULL REFERENCES BattleNetAccounts(Id) ON DELETE CASCADE,
                     RegionId           TEXT    NOT NULL,
                     RealmId            TEXT    NOT NULL,
-                    ProfileId          TEXT    NOT NULL,
+                    ProfileId          INTEGER NOT NULL,
                     Name               TEXT    NOT NULL,
                     UNIQUE(BattleNetAccountId, RegionId, RealmId, ProfileId)
                 );
@@ -127,7 +127,7 @@ namespace StatCraft.Services.DatabaseRepository
                     BattleNetAccountId = (int)reader.GetInt64(1),
                     RegionId = reader.GetString(2),
                     RealmId = reader.GetString(3),
-                    ProfileId = reader.GetString(4),
+                    ProfileId = reader.GetInt32(4),
                     Name = reader.GetString(5),
                     Account = account,
                 };

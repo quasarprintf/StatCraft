@@ -75,8 +75,7 @@ namespace StatCraft.Services.DataParsing
             List<int> teams = new(rawReplayData.PlayerTeams);
             HashSet<int> winners = new(rawReplayData.WinningPlayerIndices);
 
-            int profileInt = int.Parse(profile.ProfileId);
-            int playerIndex = rawReplayData.PlayerProfileIds.ToList().FindIndex(i => i == profileInt);
+            int playerIndex = rawReplayData.PlayerProfileIds.ToList().FindIndex(i => i == profile.ProfileId);
             if (playerIndex < 0)
                 throw new InvalidOperationException($"Could not find a player named '{profile.Name}' in the replay.");
 

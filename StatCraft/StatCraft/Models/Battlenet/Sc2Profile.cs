@@ -9,7 +9,7 @@ namespace StatCraft.Models.Battlenet
         public int BattleNetAccountId { get; set; }
         public string RegionId { get; set; } = "";
         public string RealmId { get; set; } = "";
-        public string ProfileId { get; set; } = "";
+        public int ProfileId { get; set; }
         public string Name { get; set; } = "";
 
         // Populated by AccountRepository.GetAllProfiles()'s join, or set directly during the linking flow.

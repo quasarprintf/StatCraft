@@ -85,7 +85,7 @@ public class AccountRepositoryTests : IDisposable
             BattleNetAccountId = account.Id,
             RegionId = "1",
             RealmId = "1",
-            ProfileId = "12345",
+            ProfileId = 12345,
             Name = "Maru",
         };
         _repository.UpsertProfile(profile);
@@ -117,7 +117,7 @@ public class AccountRepositoryTests : IDisposable
             BattleNetAccountId = account.Id,
             RegionId = "2",
             RealmId = "1",
-            ProfileId = "999",
+            ProfileId = 999,
             Name = "Serral",
         };
         _repository.UpsertProfile(profile);
@@ -140,8 +140,8 @@ public class AccountRepositoryTests : IDisposable
         };
         _repository.InsertAccount(account);
 
-        _repository.UpsertProfile(new Sc2Profile { BattleNetAccountId = account.Id, RegionId = "1", RealmId = "1", ProfileId = "1", Name = "MaruNA" });
-        _repository.UpsertProfile(new Sc2Profile { BattleNetAccountId = account.Id, RegionId = "2", RealmId = "1", ProfileId = "1", Name = "MaruEU" });
+        _repository.UpsertProfile(new Sc2Profile { BattleNetAccountId = account.Id, RegionId = "1", RealmId = "1", ProfileId = 1, Name = "MaruNA" });
+        _repository.UpsertProfile(new Sc2Profile { BattleNetAccountId = account.Id, RegionId = "2", RealmId = "1", ProfileId = 1, Name = "MaruEU" });
 
         Assert.Equal(2, _repository.GetAllProfiles().Count);
     }

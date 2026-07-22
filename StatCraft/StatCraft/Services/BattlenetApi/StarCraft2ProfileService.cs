@@ -69,7 +69,7 @@ namespace StatCraft.Services.BattlenetApi
                 {
                     RegionId = entry.RegionId,
                     RealmId = entry.RealmId,
-                    ProfileId = entry.ProfileId,
+                    ProfileId = int.Parse(entry.ProfileId),
                     Name = entry.Name,
                 });
             }
