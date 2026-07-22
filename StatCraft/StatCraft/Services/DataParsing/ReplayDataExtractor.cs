@@ -95,7 +95,10 @@ namespace StatCraft.Services.DataParsing
                     continue;
 
                 bool isAlly = teams[i] == teams[playerIndex];
-                (isAlly ? allies : opponents).Add(BuildPlayer(i));
+                if (isAlly)
+                    allies.Add(BuildPlayer(i));
+                else
+                    opponents.Add(BuildPlayer(i));
             }
 
             return new ParsedReplayData
