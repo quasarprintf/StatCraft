@@ -19,6 +19,7 @@ namespace StatCraft.Services.DataParsing
             List<string?> clans = new();
             List<char> races = new();
             List<bool> randomRace = new();
+            List<int> teamIds = new();
             List<int> winningIndices = new();
             bool isDraw = false;
 
@@ -35,6 +36,8 @@ namespace StatCraft.Services.DataParsing
 
                 randomRace.Add(string.Equals(metadataPlayer?.SelectedRace, "random", StringComparison.OrdinalIgnoreCase));
 
+                teamIds.Add(detailsPlayer.TeamId);
+
                 if (string.Equals(metadataPlayer?.Result, "Win", StringComparison.OrdinalIgnoreCase))
                     winningIndices.Add(i);
                 else if (string.Equals(metadataPlayer?.Result, "Tie", StringComparison.OrdinalIgnoreCase))
@@ -49,6 +52,7 @@ namespace StatCraft.Services.DataParsing
                 PlayerRaces = races,
                 PlayerRandomRace = randomRace,
                 PlayerMmrs = replay.Initdata!.UserInitialData.Select(d => d.ScaledRating).ToArray(),
+                PlayerTeams = teamIds,
                 IsDraw = isDraw,
                 WinningPlayerIndices = winningIndices,
                 GameLengthSeconds = replay.Metadata?.Duration ?? 0, //TODO: this is using hots time. Need to get the exact conversion ratio to lotv time

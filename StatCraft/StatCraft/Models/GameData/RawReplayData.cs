@@ -12,6 +12,7 @@ namespace StatCraft.Models.GameData
         public required ICollection<char> PlayerRaces { get; set; }
         public required ICollection<bool> PlayerRandomRace { get; set; }
         public required ICollection<long?> PlayerMmrs { get; set; }
+        public required ICollection<int> PlayerTeams { get; set; }
         public bool IsDraw { get; set; }
         public required ICollection<int> WinningPlayerIndices { get; set; }
         public int GameLengthSeconds { get; set; }
