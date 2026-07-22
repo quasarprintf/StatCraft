@@ -21,6 +21,7 @@ namespace StatCraft.Services.DataParsing
             List<bool> randomRace = new();
             List<int> teamIds = new();
             List<int> winningIndices = new();
+            List<int> profileIds = new();
             bool isDraw = false;
 
             for (int i = 0; i < detailsPlayers.Count; i++)
@@ -37,6 +38,7 @@ namespace StatCraft.Services.DataParsing
                 randomRace.Add(string.Equals(metadataPlayer?.SelectedRace, "random", StringComparison.OrdinalIgnoreCase));
 
                 teamIds.Add(detailsPlayer.TeamId);
+                profileIds.Add(detailsPlayer.Toon.Id);
 
                 if (string.Equals(metadataPlayer?.Result, "Win", StringComparison.OrdinalIgnoreCase))
                     winningIndices.Add(i);
@@ -52,6 +54,7 @@ namespace StatCraft.Services.DataParsing
                 PlayerRaces = races,
                 PlayerRandomRace = randomRace,
                 PlayerMmrs = replay.Initdata!.UserInitialData.Select(d => d.ScaledRating).ToArray(),
+                PlayerProfileIds = profileIds,
                 PlayerTeams = teamIds,
                 IsDraw = isDraw,
                 WinningPlayerIndices = winningIndices,
@@ -72,7 +75,8 @@ namespace StatCraft.Services.DataParsing
             List<int> teams = new(rawReplayData.PlayerTeams);
             HashSet<int> winners = new(rawReplayData.WinningPlayerIndices);
 
-            int playerIndex = names.FindIndex(name => string.Equals(name, profile.Name, StringComparison.OrdinalIgnoreCase));
+            int profileInt = int.Parse(profile.ProfileId);
+            int playerIndex = rawReplayData.PlayerProfileIds.ToList().FindIndex(i => i == profileInt);
             if (playerIndex < 0)
                 throw new InvalidOperationException($"Could not find a player named '{profile.Name}' in the replay.");
 
