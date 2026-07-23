@@ -1,6 +1,7 @@
 using s2protocol.NET;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
+using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
 using System;
 using System.Collections.Generic;
@@ -11,7 +12,7 @@ using System.Threading.Tasks;
 
 namespace StatCraft.Services.BackgroundService
 {
-    public class ReplayWatcherService(ILogger logger, ReplayDataExtractor replayDataExtractor) : IAsyncDisposable
+    public class ReplayWatcherService(ILogger logger, ReplayDataExtractor replayDataExtractor, GameDataRepository gameDataRepository) : IAsyncDisposable
     {
         private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(5));
         private readonly HashSet<string> _knownFiles = new();
@@ -19,6 +20,10 @@ namespace StatCraft.Services.BackgroundService
         private Sc2Profile? _profile;
         private CancellationTokenSource? _cts;
         private Task? LoopTask = null;
+
+        // Raised after a replay is parsed and persisted, so the UI can add a row for it.
+        // Internal because GameData is internal; the class itself stays public.
+        internal event Action<GameData>? GameParsed;
 
         public async Task Start(string folderPath, Sc2Profile profile)
         {
@@ -88,10 +93,23 @@ namespace StatCraft.Services.BackgroundService
                 return;
             }
 
-            RawReplayData replayData = replayDataExtractor.Extract(replay);
-            logger.LogInfo($"Replay parsed: {filePath}", _profile, replayData);
+            RawReplayData rawReplayData = replayDataExtractor.Extract(replay);
+            logger.LogInfo($"Replay parsed: {filePath}", _profile, rawReplayData);
 
-            //TODO: update UI
+            ParsedReplayData parsedReplayData;
+            try
+            {
+                parsedReplayData = replayDataExtractor.Parse(rawReplayData, _profile);
+            }
+            catch (InvalidOperationException ex)
+            {
+                logger.LogWarning($"Could not match active profile in replay, skipping: {filePath} ({ex.Message})", _profile);
+                return;
+            }
+
+            GameData game = new() { ReplayData = parsedReplayData };
+            gameDataRepository.InsertGame(game, _profile.Id);
+            GameParsed?.Invoke(game);
         }
 
         public async ValueTask DisposeAsync()

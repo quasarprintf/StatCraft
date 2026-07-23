@@ -1,0 +1,28 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StatCraft.ViewModels"
+             x:Class="StatCraft.Views.BuildPathPicker"
+             x:DataType="vm:GameDataRowViewModel">
+    <StackPanel>
+        <Button x:Name="PickerButton" Content="{Binding SelectedBuildLabel}"
+                IsEnabled="{Binding IsBuildPickerEnabled}"
+                Click="OnPickerButtonClick"
+                HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"/>
+        <Popup x:Name="TreePopup" PlacementTarget="{Binding #PickerButton}" Placement="Bottom"
+               IsLightDismissEnabled="True">
+            <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
+                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
+                    BorderThickness="1" MinWidth="250" MaxHeight="300">
+                <ScrollViewer>
+                    <TreeView ItemsSource="{Binding BuildTree}" SelectedItem="{Binding SelectedBuildNode}">
+                        <TreeView.ItemTemplate>
+                            <TreeDataTemplate ItemsSource="{Binding Children}">
+                                <TextBlock Text="{Binding Name}" Tapped="OnNodeTapped" Margin="4,2"/>
+                            </TreeDataTemplate>
+                        </TreeView.ItemTemplate>
+                    </TreeView>
+                </ScrollViewer>
+            </Border>
+        </Popup>
+    </StackPanel>
+</UserControl>

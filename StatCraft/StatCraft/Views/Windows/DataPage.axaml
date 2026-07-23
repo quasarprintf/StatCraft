@@ -1,10 +1,55 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:StatCraft.ViewModels"
+             xmlns:local="using:StatCraft.Views"
              x:Class="StatCraft.Views.DataPage"
              x:DataType="vm:DataPageViewModel">
-    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
-        <TextBlock Text="{Binding ActiveProfileLabel}" FontSize="20" HorizontalAlignment="Center"/>
-        <Button Content="Begin Session" Command="{Binding BeginSessionCommand}" HorizontalAlignment="Center"/>
-    </StackPanel>
+    <DockPanel>
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="8">
+            <TextBlock Text="{Binding ActiveProfileLabel}" FontSize="16" VerticalAlignment="Center"/>
+            <Button Content="Begin Session" Command="{Binding BeginSessionCommand}"/>
+        </StackPanel>
+
+        <DataGrid ItemsSource="{Binding Games}" AutoGenerateColumns="False"
+                  RowDetailsVisibilityMode="VisibleWhenSelected" GridLinesVisibility="Horizontal">
+            <DataGrid.Columns>
+                <DataGridTextColumn Header="Map" Binding="{Binding MapName}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Result" Binding="{Binding ResultLabel}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Length" Binding="{Binding GameLength}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Your Race" Binding="{Binding PlayerRace}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Opponent(s)" Binding="{Binding OpponentSummary}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Build" Binding="{Binding SelectedBuildLabel}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*"/>
+            </DataGrid.Columns>
+            <DataGrid.RowDetailsTemplate>
+                <DataTemplate x:DataType="vm:GameDataRowViewModel">
+                    <StackPanel Margin="24,8" Spacing="8">
+                        <local:BuildPathPicker Width="300" HorizontalAlignment="Left"/>
+                        <ItemsControl ItemsSource="{Binding AttributeEditors}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:GameAttributeEditorViewModel">
+                                    <Grid ColumnDefinitions="140,*" Margin="0,0,0,4">
+                                        <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center"/>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding NumericValue}"
+                                                       IsVisible="{Binding IsNumeric}"
+                                                       FormatString="0.##" HorizontalAlignment="Left"/>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}"
+                                                  IsVisible="{Binding IsBool}"/>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding PercentValue}"
+                                                       IsVisible="{Binding IsPercent}"
+                                                       Minimum="0" Maximum="100" FormatString="0.##'%'"
+                                                       HorizontalAlignment="Left"/>
+                                        <ComboBox Grid.Column="1" ItemsSource="{Binding ValueOptions}"
+                                                  SelectedItem="{Binding SelectedValue}"
+                                                  IsVisible="{Binding IsValues}"
+                                                  HorizontalAlignment="Left" MinWidth="150"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </DataTemplate>
+            </DataGrid.RowDetailsTemplate>
+        </DataGrid>
+    </DockPanel>
 </UserControl>

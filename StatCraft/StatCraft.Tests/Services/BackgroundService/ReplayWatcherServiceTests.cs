@@ -1,5 +1,6 @@
 using StatCraft.Models.Battlenet;
 using StatCraft.Services.BackgroundService;
+using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
 
 namespace StatCraft.Tests;
@@ -14,7 +15,7 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
         _folderPath = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid().ToString());
         Directory.CreateDirectory(_folderPath);
 
-        _watcher = new RecordingReplayWatcherService(new Mocks.MockLogger(), new ReplayDataExtractor());
+        _watcher = new RecordingReplayWatcherService(new Mocks.MockLogger(), new ReplayDataExtractor(), new GameDataRepository(":memory:"));
     }
 
     [Fact]
@@ -95,7 +96,8 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
         }
     }
 
-    private class RecordingReplayWatcherService(ILogger logger, ReplayDataExtractor replayDataExtractor) : ReplayWatcherService(logger, replayDataExtractor)
+    private class RecordingReplayWatcherService(ILogger logger, ReplayDataExtractor replayDataExtractor, GameDataRepository gameDataRepository)
+        : ReplayWatcherService(logger, replayDataExtractor, gameDataRepository)
     {
         public List<string> ProcessedFiles { get; } = [];
 

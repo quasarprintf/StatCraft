@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData.Builds;
@@ -202,41 +201,25 @@ namespace StatCraft.Services.DatabaseRepository
             cmd.ExecuteNonQuery();
         }
 
-        private static string SerializeDefaultValue(BuildAttribute attr)
-        {
-            switch (attr.Type)
-            {
-                case AttributeType.Numeric:
-                    return attr.NumericValue.ToString(CultureInfo.InvariantCulture);
-                case AttributeType.Bool:
-                    return attr.BoolValue.ToString(CultureInfo.InvariantCulture);
-                case AttributeType.Percent:
-                    return attr.PercentValue.ToString(CultureInfo.InvariantCulture);
-                case AttributeType.Values:
-                    return attr.SelectedValue ?? string.Empty;
-                default:
-                    return string.Empty;
-            }
-        }
+        private static string SerializeDefaultValue(BuildAttribute attr) =>
+            BuildAttributeValueSerializer.Serialize(attr.Type, attr.NumericValue, attr.BoolValue, attr.PercentValue, attr.SelectedValue);
 
         private static void ApplyDefaultValue(BuildAttribute attr, string defaultValue)
         {
+            BuildAttributeValueSerializer.ParsedValue parsed = BuildAttributeValueSerializer.Parse(attr.Type, defaultValue);
             switch (attr.Type)
             {
                 case AttributeType.Numeric:
-                    if (decimal.TryParse(defaultValue, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal numeric))
-                        attr.NumericValue = numeric;
+                    attr.NumericValue = parsed.NumericValue;
                     break;
                 case AttributeType.Bool:
-                    if (bool.TryParse(defaultValue, out bool boolValue))
-                        attr.BoolValue = boolValue;
+                    attr.BoolValue = parsed.BoolValue;
                     break;
                 case AttributeType.Percent:
-                    if (decimal.TryParse(defaultValue, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal percent))
-                        attr.PercentValue = percent;
+                    attr.PercentValue = parsed.PercentValue;
                     break;
                 case AttributeType.Values:
-                    attr.SelectedValue = string.IsNullOrEmpty(defaultValue) ? null : defaultValue;
+                    attr.SelectedValue = parsed.SelectedValue;
                     break;
             }
         }

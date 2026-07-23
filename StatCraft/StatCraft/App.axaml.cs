@@ -96,6 +96,13 @@ namespace StatCraft
                 return repository;
             });
 
+            services.AddSingleton<GameDataRepository>(_ =>
+            {
+                GameDataRepository repository = new GameDataRepository(dbPath);
+                repository.Initialize();
+                return repository;
+            });
+
             services.AddSingleton<TokenProtector>(_ =>
             {
                 TokenProtector protector = new TokenProtector(keyPath);
