@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -15,11 +16,13 @@ namespace StatCraft.ViewModels
     public partial class BuildsPageViewModel : ViewModelBase
     {
         private readonly BuildRepository _repository;
+        private readonly GameDataRepository _gameDataRepository;
         private readonly HashSet<Matchup> _loadedMatchups = [];
 
-        public BuildsPageViewModel(BuildRepository repository)
+        public BuildsPageViewModel(BuildRepository repository, GameDataRepository gameDataRepository)
         {
             _repository = repository;
+            _gameDataRepository = gameDataRepository;
             LoadMatchupIfNeeded(Matchup.VsP);
         }
 
@@ -118,8 +121,26 @@ namespace StatCraft.ViewModels
             SelectedBuild = node;
         }
 
+        // Raised instead of deleting immediately when the build (or a descendant, since deleting a
+        // parent cascades its whole subtree) has games recorded against it. The view shows a
+        // confirmation dialog and, if accepted, calls ConfirmDeleteBuild.
+        public event Action<BuildNode>? DeleteConfirmationRequested;
+
         [RelayCommand]
         public void DeleteBuild(BuildNode node)
+        {
+            if (_gameDataRepository.IsAnyBuildReferenced(CollectSubtreeIds(node)))
+            {
+                DeleteConfirmationRequested?.Invoke(node);
+                return;
+            }
+
+            PerformDelete(node);
+        }
+
+        public void ConfirmDeleteBuild(BuildNode node) => PerformDelete(node);
+
+        private void PerformDelete(BuildNode node)
         {
             bool needsReselect = SelectedBuild == node || (SelectedBuild != null && ContainsDescendant(node, SelectedBuild));
             BuildNode? replacement = needsReselect ? FindReplacementSelection(node) : null;
@@ -129,6 +150,14 @@ namespace StatCraft.ViewModels
 
             if (needsReselect)
                 SelectedBuild = replacement;
+        }
+
+        private static IEnumerable<int> CollectSubtreeIds(BuildNode node)
+        {
+            yield return node.Id;
+            foreach (BuildNode child in node.Children)
+                foreach (int id in CollectSubtreeIds(child))
+                    yield return id;
         }
 
         private BuildNode? FindReplacementSelection(BuildNode node)

@@ -170,6 +170,51 @@ public class GameDataRepositoryTests : IDisposable
         Assert.Equal("mine.SC2Replay", loaded.ReplayData.ReplayPath);
     }
 
+    [Fact]
+    public void IsAnyBuildReferenced_BuildUsedByAGame_ReturnsTrue()
+    {
+        BuildNode build = new() { Name = "4 Gate" };
+        _buildRepository.InsertBuild(build, Matchup.VsP, null, 0);
+
+        GameData game = CreateGame();
+        _repository.InsertGame(game, _sc2ProfileId);
+        _repository.UpdateGameBuild(game.GameId!.Value, build.Id);
+
+        Assert.True(_repository.IsAnyBuildReferenced([build.Id]));
+    }
+
+    [Fact]
+    public void IsAnyBuildReferenced_BuildNotUsedByAnyGame_ReturnsFalse()
+    {
+        BuildNode build = new() { Name = "4 Gate" };
+        _buildRepository.InsertBuild(build, Matchup.VsP, null, 0);
+
+        Assert.False(_repository.IsAnyBuildReferenced([build.Id]));
+    }
+
+    [Fact]
+    public void IsAnyBuildReferenced_NoIdsGiven_ReturnsFalse()
+    {
+        Assert.False(_repository.IsAnyBuildReferenced([]));
+    }
+
+    [Fact]
+    public void IsAnyBuildReferenced_MatchesAnyIdInSet_ReturnsTrue()
+    {
+        BuildNode parent = new() { Name = "Parent" };
+        _buildRepository.InsertBuild(parent, Matchup.VsP, null, 0);
+        BuildNode child = new() { Name = "Child" };
+        _buildRepository.InsertBuild(child, Matchup.VsP, parent.Id, 0);
+
+        GameData game = CreateGame();
+        _repository.InsertGame(game, _sc2ProfileId);
+        _repository.UpdateGameBuild(game.GameId!.Value, child.Id);
+
+        // Simulates deleting "parent", which would cascade-delete "child" too — the caller passes the
+        // whole subtree, and only "child" (not "parent") is actually referenced by a game.
+        Assert.True(_repository.IsAnyBuildReferenced([parent.Id, child.Id]));
+    }
+
     private Sc2Profile InsertProfile(string accountSub, int battleNetProfileId, string name)
     {
         BattleNetAccount account = new()

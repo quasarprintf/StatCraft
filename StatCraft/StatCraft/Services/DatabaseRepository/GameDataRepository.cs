@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData;
 
@@ -278,6 +279,25 @@ namespace StatCraft.Services.DatabaseRepository
             cmd.Parameters.AddWithValue("@gameId", gameId);
             cmd.Parameters.AddWithValue("@buildAttributeId", buildAttributeId);
             cmd.ExecuteNonQuery();
+        }
+
+        // True if any Games row still points at one of these build node ids. Deleting a BuildNode
+        // cascades to its whole subtree (BuildNodes.ParentId ON DELETE CASCADE), and each deleted node
+        // sets any referencing Games.BuildId to NULL (ON DELETE SET NULL) while cascading away that
+        // game's recorded attribute values for it (via BuildAttributes -> GameAttributeValues) — so
+        // callers should pass every id in the subtree being deleted, not just the root.
+        public bool IsAnyBuildReferenced(IEnumerable<int> buildNodeIds)
+        {
+            List<int> ids = buildNodeIds.ToList();
+            if (ids.Count == 0)
+                return false;
+
+            using SqliteConnection conn = OpenConnection();
+            using SqliteCommand cmd = conn.CreateCommand();
+            string idList = string.Join(",", ids);
+            cmd.CommandText = $"SELECT COUNT(*) FROM Games WHERE BuildId IN ({idList})";
+            long count = (long)cmd.ExecuteScalar()!;
+            return count > 0;
         }
 
         private record GameRow(
