@@ -20,11 +20,13 @@ namespace StatCraft.Views
             DataContext = vm;
         }
 
-        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+        // TabControl detaches an inactive tab's content from the visual tree rather than just hiding
+        // it, so IsVisible never actually toggles on an existing instance when switching tabs.
+        // OnAttachedToVisualTree is the correct lifecycle hook for "this page just became active again."
+        protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
         {
-            base.OnPropertyChanged(change);
-            if (change.Property == IsVisibleProperty && IsVisible)
-                ViewModel.NotifyActivated();
+            base.OnAttachedToVisualTree(e);
+            ViewModel.NotifyActivated();
         }
 
         private async Task OnSessionRequestedAsync()

@@ -1,8 +1,6 @@
-using Avalonia;
 using Avalonia.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.ViewModels;
-using StatCraft.Models.GameData.Builds;
 
 namespace StatCraft.Views
 {
@@ -12,13 +10,6 @@ namespace StatCraft.Views
         {
             InitializeComponent();
             DataContext = App.Services.GetRequiredService<BuildsPageViewModel>();
-        }
-
-        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
-        {
-            base.OnPropertyChanged(change);
-            if (change.Property == IsVisibleProperty && IsVisible && DataContext is BuildsPageViewModel vm)
-                vm.SelectFirstBuild();
         }
     }
 }
