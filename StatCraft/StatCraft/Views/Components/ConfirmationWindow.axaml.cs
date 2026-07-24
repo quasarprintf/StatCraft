@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 
-namespace StatCraft.Views
+namespace StatCraft.Views.Components
 {
     public partial class ConfirmationWindow : Window
     {

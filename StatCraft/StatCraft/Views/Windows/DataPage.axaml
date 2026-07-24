@@ -2,7 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:StatCraft.ViewModels"
              xmlns:local="using:StatCraft.Views"
-             x:Class="StatCraft.Views.DataPage"
+             xmlns:component="using:StatCraft.Views.Components"
+              x:Class="StatCraft.Views.DataPage"
              x:DataType="vm:DataPageViewModel">
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="8">
@@ -26,7 +27,7 @@
                 <DataGridTemplateColumn Header="Matchup">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vm:GameDataRowViewModel">
-                            <local:ColoredTextBlock Characters="{Binding MatchupCharacters}"
+                            <component:ColoredTextBlock Characters="{Binding MatchupCharacters}"
                                                      VerticalAlignment="Center" Margin="4,0"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>

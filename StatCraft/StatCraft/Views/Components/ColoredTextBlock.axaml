@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:StatCraft.ViewModels"
-             xmlns:local="using:StatCraft.Views"
-             x:Class="StatCraft.Views.ColoredTextBlock">
+             xmlns:local="using:StatCraft.Views.Components"
+             x:Class="StatCraft.Views.Components.ColoredTextBlock">
     <ItemsControl ItemsSource="{Binding $parent[local:ColoredTextBlock].Characters}">
         <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
