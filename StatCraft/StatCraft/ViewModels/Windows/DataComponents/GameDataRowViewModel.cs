@@ -22,8 +22,8 @@ namespace StatCraft.ViewModels
         public string MapName { get; }
         public string ResultLabel { get; }
         public string GameLength { get; }
-        public string PlayerRace { get; }
-        public string OpponentSummary { get; }
+        public string Matchup { get; }
+        public string OpponentName { get; }
         public bool IsBuildPickerEnabled { get; }
 
         [ObservableProperty] private string _notes;
@@ -44,8 +44,8 @@ namespace StatCraft.ViewModels
             MapName = replay.MapName;
             ResultLabel = replay.Win == 1m ? "Win" : replay.Win == 0m ? "Loss" : "Draw";
             GameLength = TimeSpan.FromSeconds(replay.GameLengthSeconds).ToString(@"mm\:ss");
-            PlayerRace = replay.Player.Race.ToString();
-            OpponentSummary = string.Join(", ", replay.Opponents.Select(o => $"{o.Name} ({o.Race})"));
+            Matchup = $"{replay.Player.Race}{string.Concat(replay.Allies.Select(a => a.Race))}v{string.Concat(replay.Opponents.Select(o => o.Race))}";
+            OpponentName = string.Join(", ", replay.Opponents.Select(o => $"{o.FormattedClan} {o.Name}"));
             _notes = game.Notes;
 
             // Setting SelectedBuildNode (when a build was previously saved) triggers OnSelectedBuildNodeChanged

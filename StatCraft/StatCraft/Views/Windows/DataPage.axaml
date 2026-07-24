@@ -16,8 +16,8 @@
                 <DataGridTextColumn Header="Map" Binding="{Binding MapName}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Result" Binding="{Binding ResultLabel}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Length" Binding="{Binding GameLength}" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Your Race" Binding="{Binding PlayerRace}" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Opponent(s)" Binding="{Binding OpponentSummary}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Matchup" Binding="{Binding Matchup}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Opponent" Binding="{Binding OpponentName}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Build" Binding="{Binding SelectedBuildLabel}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*"/>
             </DataGrid.Columns>
