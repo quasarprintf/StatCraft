@@ -28,7 +28,9 @@ namespace StatCraft.ViewModels
 
         [ObservableProperty] private string _notes;
         [ObservableProperty] private BuildNode? _selectedBuildNode;
-        [ObservableProperty] private string _selectedBuildLabel = "(no build selected)";
+        [ObservableProperty] private string _selectedBuildLabel = DEFAULT_BUILD_TEXT;
+
+        private readonly static string DEFAULT_BUILD_TEXT = "";
 
         public ObservableCollection<BuildNode> BuildTree { get; }
         public ObservableCollection<GameAttributeEditorViewModel> AttributeEditors { get; } = [];
@@ -64,7 +66,7 @@ namespace StatCraft.ViewModels
         {
             _game.BuildId = newValue?.Id;
             _repository.UpdateGameBuild(_game.GameId!.Value, newValue?.Id);
-            SelectedBuildLabel = newValue == null ? "(no build selected)" : BuildLabel(newValue);
+            SelectedBuildLabel = newValue == null ? DEFAULT_BUILD_TEXT : BuildLabel(newValue);
             RebuildAttributeEditors(oldValue, newValue);
         }
 
