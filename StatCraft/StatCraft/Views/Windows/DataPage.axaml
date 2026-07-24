@@ -23,7 +23,24 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Length" Binding="{Binding GameLength}" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Matchup" Binding="{Binding Matchup}" IsReadOnly="True"/>
+                <DataGridTemplateColumn Header="Matchup">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:GameDataRowViewModel">
+                            <ItemsControl ItemsSource="{Binding MatchupCharacters}" VerticalAlignment="Center" Margin="4,0">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Horizontal"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:MatchupCharacter">
+                                        <TextBlock Text="{Binding Text}" Foreground="{Binding Color}"/>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Opponent" Binding="{Binding OpponentName}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Build" Binding="{Binding SelectedBuildLabel}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*"/>

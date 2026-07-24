@@ -12,6 +12,10 @@ using StatCraft.Services.DataParsing;
 
 namespace StatCraft.ViewModels
 {
+    // One character of the Matchup column's display, colored individually (race letters get their
+    // race's color; separators like 'v' get a neutral one).
+    public record MatchupCharacter(string Text, IBrush Color);
+
     // Wraps one GameData for display/editing in the Data page's table. Every public member is a plain
     // scalar or a public-typed collection, so GameData/ParsedReplayData (both internal) never leak
     // through a public property.
@@ -25,6 +29,7 @@ namespace StatCraft.ViewModels
         public IBrush ResultColor { get; }
         public string GameLength { get; }
         public string Matchup { get; }
+        public IReadOnlyList<MatchupCharacter> MatchupCharacters { get; }
         public string OpponentName { get; }
         public bool IsBuildPickerEnabled { get; }
 
@@ -50,6 +55,7 @@ namespace StatCraft.ViewModels
             ResultColor = replay.Win == 1m ? Brushes.Green : replay.Win == 0m ? Brushes.Red : Brushes.Blue;
             GameLength = TimeSpan.FromSeconds(replay.GameLengthSeconds).ToString(@"mm\:ss");
             Matchup = $"{replay.Player.Race}{string.Concat(replay.Allies.Select(a => a.Race))}v{string.Concat(replay.Opponents.Select(o => o.Race))}";
+            MatchupCharacters = BuildMatchupCharacters(replay);
             OpponentName = string.Join(", ", replay.Opponents.Select(o => $"{o.FormattedClan} {o.Name}"));
             _notes = game.Notes;
 
@@ -72,6 +78,30 @@ namespace StatCraft.ViewModels
             SelectedBuildLabel = newValue == null ? DEFAULT_BUILD_TEXT : BuildLabel(newValue);
             RebuildAttributeEditors(oldValue, newValue);
         }
+
+        private static List<MatchupCharacter> BuildMatchupCharacters(ParsedReplayData replay)
+        {
+            List<MatchupCharacter> characters = new();
+
+            void AddRace(char race) => characters.Add(new MatchupCharacter(race.ToString(), RaceColor(race)));
+
+            AddRace(replay.Player.Race);
+            foreach (GamePlayer ally in replay.Allies)
+                AddRace(ally.Race);
+            characters.Add(new MatchupCharacter("v", Brushes.Gray));
+            foreach (GamePlayer opponent in replay.Opponents)
+                AddRace(opponent.Race);
+
+            return characters;
+        }
+
+        private static IBrush RaceColor(char race) => race switch
+        {
+            'P' => Brushes.Green,
+            'T' => Brushes.Blue,
+            'Z' => Brushes.Red,
+            _ => Brushes.Gray,
+        };
 
         private string BuildLabel(BuildNode node) =>
             string.Join(" > ", BuildPathHelper.FindPath(BuildTree, node.Id)!.Select(n => n.Name));
