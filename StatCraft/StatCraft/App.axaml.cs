@@ -3,6 +3,7 @@ using System.IO;
 using System.Net.Http;
 using Avalonia;
 using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Controls.Platform;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
@@ -29,6 +30,11 @@ namespace StatCraft
 
         public override void OnFrameworkInitializationCompleted()
         {
+            // Avalonia opens a MenuItem's submenu on hover only after this delay (400ms by default).
+            // BuildPathPicker's nested-submenu build picker feels laggy with any delay, so remove it
+            // app-wide — this is a global static, not something a per-control Style can override.
+            DefaultMenuInteractionHandler.MenuShowDelay = TimeSpan.Zero;
+
             Services = BuildServiceProvider();
 
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
