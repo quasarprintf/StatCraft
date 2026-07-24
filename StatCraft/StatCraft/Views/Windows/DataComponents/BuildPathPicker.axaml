@@ -1,28 +1,27 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:StatCraft.ViewModels"
+             xmlns:builds="using:StatCraft.Models.GameData.Builds"
              x:Class="StatCraft.Views.BuildPathPicker"
              x:DataType="vm:GameDataRowViewModel">
-    <StackPanel>
-        <Button x:Name="PickerButton" Content="{Binding SelectedBuildLabel}"
-                IsEnabled="{Binding IsBuildPickerEnabled}"
-                Click="OnPickerButtonClick"
-                HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"/>
-        <Popup x:Name="TreePopup" PlacementTarget="{Binding #PickerButton}" Placement="Bottom"
-               IsLightDismissEnabled="True">
-            <Border Background="{DynamicResource SystemControlBackgroundAltHighBrush}"
-                    BorderBrush="{DynamicResource SystemControlForegroundBaseLowBrush}"
-                    BorderThickness="1" MinWidth="250" MaxHeight="300">
-                <ScrollViewer>
-                    <TreeView ItemsSource="{Binding BuildTree}" SelectedItem="{Binding SelectedBuildNode}">
-                        <TreeView.ItemTemplate>
-                            <TreeDataTemplate ItemsSource="{Binding Children}">
-                                <TextBlock Text="{Binding Name}" Tapped="OnNodeTapped" Margin="4,2"/>
-                            </TreeDataTemplate>
-                        </TreeView.ItemTemplate>
-                    </TreeView>
-                </ScrollViewer>
-            </Border>
-        </Popup>
-    </StackPanel>
+    <UserControl.Styles>
+        <!-- Every MenuItem generated (recursively, for every depth of BuildNode.Children) gets its
+             Header/ItemsSource from the BuildNode it's bound to, and its Command from the owning
+             GameDataRowViewModel via #PickerButton — same "reach back to the root DataContext"
+             idiom BuildsPage.axaml already uses for its TreeViewItem context menu. -->
+        <Style Selector="MenuItem" x:DataType="builds:BuildNode">
+            <Setter Property="Header" Value="{Binding Name}"/>
+            <Setter Property="ItemsSource" Value="{Binding Children}"/>
+            <Setter Property="Command" Value="{Binding #PickerButton.DataContext.SelectBuildCommand}"/>
+            <Setter Property="CommandParameter" Value="{Binding}"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Button x:Name="PickerButton" Content="{Binding SelectedBuildLabel}"
+            IsEnabled="{Binding IsBuildPickerEnabled}"
+            HorizontalContentAlignment="Left" HorizontalAlignment="Stretch">
+        <Button.Flyout>
+            <MenuFlyout ItemsSource="{Binding BuildTree}" Placement="Bottom"/>
+        </Button.Flyout>
+    </Button>
 </UserControl>

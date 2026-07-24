@@ -1,6 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Input;
-using Avalonia.Interactivity;
 
 namespace StatCraft.Views
 {
@@ -9,16 +7,6 @@ namespace StatCraft.Views
         public BuildPathPicker()
         {
             InitializeComponent();
-        }
-
-        private void OnPickerButtonClick(object? sender, RoutedEventArgs e)
-        {
-            TreePopup.IsOpen = true;
-        }
-
-        private void OnNodeTapped(object? sender, TappedEventArgs e)
-        {
-            TreePopup.IsOpen = false;
         }
     }
 }

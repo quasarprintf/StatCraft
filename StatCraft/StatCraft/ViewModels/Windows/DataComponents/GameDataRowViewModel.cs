@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.DatabaseRepository;
@@ -55,6 +56,9 @@ namespace StatCraft.ViewModels
         }
 
         partial void OnNotesChanged(string value) => _repository.UpdateGameNotes(_game.GameId!.Value, value);
+
+        [RelayCommand]
+        private void SelectBuild(BuildNode node) => SelectedBuildNode = node;
 
         partial void OnSelectedBuildNodeChanged(BuildNode? oldValue, BuildNode? newValue)
         {
