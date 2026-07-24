@@ -15,6 +15,9 @@
             <Setter Property="Command" Value="{Binding #PickerButton.DataContext.SelectBuildCommand}"/>
             <Setter Property="CommandParameter" Value="{Binding}"/>
         </Style>
+        <Style Selector="MenuItem MenuItem">
+            <Setter Property="Margin" Value="0,-5, 0, 5" />
+        </Style>
     </UserControl.Styles>
 
     <Button x:Name="PickerButton" Content="{Binding SelectedBuildLabel}"
