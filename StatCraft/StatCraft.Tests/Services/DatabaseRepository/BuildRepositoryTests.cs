@@ -105,6 +105,48 @@ public class BuildRepositoryTests : IDisposable
         Assert.Equal(["Zealot"], loadedAttr.ValueOptions);
     }
 
+    [Fact]
+    public void InsertBuild_RaisesBuildsChanged()
+    {
+        int raisedCount = 0;
+        _repository.BuildsChanged += () => raisedCount++;
+
+        _repository.InsertBuild(new BuildNode { Name = "Build" }, Matchup.VsP, null, 0);
+
+        Assert.Equal(1, raisedCount);
+    }
+
+    [Fact]
+    public void DeleteBuild_RaisesBuildsChanged()
+    {
+        BuildNode node = new BuildNode { Name = "To Delete" };
+        _repository.InsertBuild(node, Matchup.VsP, null, 0);
+
+        int raisedCount = 0;
+        _repository.BuildsChanged += () => raisedCount++;
+
+        _repository.DeleteBuild(node.Id);
+
+        Assert.Equal(1, raisedCount);
+    }
+
+    [Fact]
+    public void UpdateAttribute_RaisesBuildsChanged()
+    {
+        BuildNode node = new BuildNode { Name = "Build" };
+        _repository.InsertBuild(node, Matchup.VsP, null, 0);
+        BuildAttribute attr = new BuildAttribute { Name = "Supply", Type = AttributeType.Numeric };
+        _repository.InsertAttribute(attr, node.Id, 0);
+
+        int raisedCount = 0;
+        _repository.BuildsChanged += () => raisedCount++;
+
+        attr.NumericValue = 20;
+        _repository.UpdateAttribute(attr);
+
+        Assert.Equal(1, raisedCount);
+    }
+
     public void Dispose()
     {
         try

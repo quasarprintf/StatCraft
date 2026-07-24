@@ -22,6 +22,7 @@ namespace StatCraft.ViewModels
         private readonly BuildRepository _buildRepository;
         private readonly GameDataRepository _gameDataRepository;
         private readonly Dictionary<Matchup, ObservableCollection<BuildNode>> _buildTreeCache = new();
+        private bool _buildTreeCacheDirty;
 
         public DataPageViewModel(SettingsRepository settingsRepository, ReplayWatcherService replayWatcherService,
             BuildRepository buildRepository, GameDataRepository gameDataRepository)
@@ -31,6 +32,7 @@ namespace StatCraft.ViewModels
             _buildRepository = buildRepository;
             _gameDataRepository = gameDataRepository;
             _replayWatcherService.GameParsed += OnGameParsed;
+            _buildRepository.BuildsChanged += OnBuildsChanged;
         }
 
         [ObservableProperty]
@@ -66,6 +68,34 @@ namespace StatCraft.ViewModels
         }
 
         private void OnGameParsed(GameData game) => Dispatcher.UIThread.Post(() => Games.Add(WrapGame(game)));
+
+        // Don't reload immediately — builds can change many times in a row while editing on the Builds
+        // tab. Just remember a reload is owed, and pay for it once when the user actually comes back
+        // to the Data tab (see NotifyActivated).
+        private void OnBuildsChanged() => _buildTreeCacheDirty = true;
+
+        // Called by DataPage's code-behind when the Data tab becomes visible.
+        public void NotifyActivated()
+        {
+            if (!_buildTreeCacheDirty)
+                return;
+
+            _buildTreeCacheDirty = false;
+            RefreshBuildTreeCache();
+        }
+
+        // Refresh every cached matchup tree in place, so any GameDataRowViewModel/BuildPathPicker
+        // holding a reference to one of these collections picks up the change automatically via its
+        // own CollectionChanged notifications, without needing to touch existing rows individually.
+        private void RefreshBuildTreeCache()
+        {
+            foreach ((Matchup matchup, ObservableCollection<BuildNode> tree) in _buildTreeCache)
+            {
+                tree.Clear();
+                foreach (BuildNode node in _buildRepository.GetBuildsForMatchup(matchup))
+                    tree.Add(node);
+            }
+        }
 
         private GameDataRowViewModel WrapGame(GameData game)
         {

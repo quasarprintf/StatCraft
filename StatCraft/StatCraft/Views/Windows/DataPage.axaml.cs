@@ -1,4 +1,5 @@
 using System.Threading.Tasks;
+using Avalonia;
 using Avalonia.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.Models.Battlenet;
@@ -17,6 +18,13 @@ namespace StatCraft.Views
             DataPageViewModel vm = App.Services.GetRequiredService<DataPageViewModel>();
             vm.SessionRequested += async () => await OnSessionRequestedAsync();
             DataContext = vm;
+        }
+
+        protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+        {
+            base.OnPropertyChanged(change);
+            if (change.Property == IsVisibleProperty && IsVisible)
+                ViewModel.NotifyActivated();
         }
 
         private async Task OnSessionRequestedAsync()

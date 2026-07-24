@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using Microsoft.Data.Sqlite;
@@ -10,6 +11,10 @@ namespace StatCraft.Services.DatabaseRepository
     {
         private readonly string _dbPath;
         private readonly string _connectionString;
+
+        // Raised after any build/attribute/value-option is inserted, updated, or deleted, so other
+        // parts of the app (e.g. BuildPathPicker's menu) can refresh their view of the build tree.
+        public event Action? BuildsChanged;
 
         public BuildRepository(string dbPath)
         {
@@ -151,6 +156,7 @@ namespace StatCraft.Services.DatabaseRepository
             cmd.Parameters.AddWithValue("@description", node.Description);
             cmd.Parameters.AddWithValue("@sortOrder", sortOrder);
             node.Id = (int)(long)cmd.ExecuteScalar()!;
+            BuildsChanged?.Invoke();
         }
 
         public void UpdateBuild(BuildNode node)
@@ -162,6 +168,7 @@ namespace StatCraft.Services.DatabaseRepository
             cmd.Parameters.AddWithValue("@description", node.Description);
             cmd.Parameters.AddWithValue("@id", node.Id);
             cmd.ExecuteNonQuery();
+            BuildsChanged?.Invoke();
         }
 
         public void DeleteBuild(int id)
@@ -171,6 +178,7 @@ namespace StatCraft.Services.DatabaseRepository
             cmd.CommandText = "DELETE FROM BuildNodes WHERE Id = @id";
             cmd.Parameters.AddWithValue("@id", id);
             cmd.ExecuteNonQuery();
+            BuildsChanged?.Invoke();
         }
 
         public void InsertAttribute(BuildAttribute attr, int buildNodeId, int sortOrder)
@@ -187,6 +195,7 @@ namespace StatCraft.Services.DatabaseRepository
             cmd.Parameters.AddWithValue("@defaultValue", SerializeDefaultValue(attr));
             cmd.Parameters.AddWithValue("@sortOrder", sortOrder);
             attr.Id = (int)(long)cmd.ExecuteScalar()!;
+            BuildsChanged?.Invoke();
         }
 
         public void UpdateAttribute(BuildAttribute attr)
@@ -199,6 +208,7 @@ namespace StatCraft.Services.DatabaseRepository
             cmd.Parameters.AddWithValue("@defaultValue", SerializeDefaultValue(attr));
             cmd.Parameters.AddWithValue("@id", attr.Id);
             cmd.ExecuteNonQuery();
+            BuildsChanged?.Invoke();
         }
 
         private static string SerializeDefaultValue(BuildAttribute attr) =>
@@ -231,6 +241,7 @@ namespace StatCraft.Services.DatabaseRepository
             cmd.CommandText = "DELETE FROM BuildAttributes WHERE Id = @id";
             cmd.Parameters.AddWithValue("@id", id);
             cmd.ExecuteNonQuery();
+            BuildsChanged?.Invoke();
         }
 
         public void InsertValueOption(int attributeId, string value, int sortOrder)
@@ -242,6 +253,7 @@ namespace StatCraft.Services.DatabaseRepository
             cmd.Parameters.AddWithValue("@value", value);
             cmd.Parameters.AddWithValue("@sortOrder", sortOrder);
             cmd.ExecuteNonQuery();
+            BuildsChanged?.Invoke();
         }
 
         public void DeleteValueOption(int attributeId, string value)
@@ -252,6 +264,7 @@ namespace StatCraft.Services.DatabaseRepository
             cmd.Parameters.AddWithValue("@attrId", attributeId);
             cmd.Parameters.AddWithValue("@value", value);
             cmd.ExecuteNonQuery();
+            BuildsChanged?.Invoke();
         }
 
         private SqliteConnection OpenConnection()
