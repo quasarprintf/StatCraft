@@ -12,10 +12,6 @@ using StatCraft.Services.DataParsing;
 
 namespace StatCraft.ViewModels
 {
-    // One character of the Matchup column's display, colored individually (race letters get their
-    // race's color; separators like 'v' get a neutral one).
-    public record MatchupCharacter(string Text, IBrush Color);
-
     // Wraps one GameData for display/editing in the Data page's table. Every public member is a plain
     // scalar or a public-typed collection, so GameData/ParsedReplayData (both internal) never leak
     // through a public property.
@@ -29,7 +25,7 @@ namespace StatCraft.ViewModels
         public IBrush ResultColor { get; }
         public string GameLength { get; }
         public string Matchup { get; }
-        public IReadOnlyList<MatchupCharacter> MatchupCharacters { get; }
+        public IReadOnlyList<ColoredCharacter> MatchupCharacters { get; }
         public string OpponentName { get; }
         public bool IsBuildPickerEnabled { get; }
 
@@ -79,16 +75,16 @@ namespace StatCraft.ViewModels
             RebuildAttributeEditors(oldValue, newValue);
         }
 
-        private static List<MatchupCharacter> BuildMatchupCharacters(ParsedReplayData replay)
+        private static List<ColoredCharacter> BuildMatchupCharacters(ParsedReplayData replay)
         {
-            List<MatchupCharacter> characters = new();
+            List<ColoredCharacter> characters = new();
 
-            void AddRace(char race) => characters.Add(new MatchupCharacter(race.ToString(), RaceColor(race)));
+            void AddRace(char race) => characters.Add(new ColoredCharacter(race.ToString(), RaceColor(race)));
 
             AddRace(replay.Player.Race);
             foreach (GamePlayer ally in replay.Allies)
                 AddRace(ally.Race);
-            characters.Add(new MatchupCharacter("v", Brushes.Gray));
+            characters.Add(new ColoredCharacter("v", Brushes.Gray));
             foreach (GamePlayer opponent in replay.Opponents)
                 AddRace(opponent.Race);
 

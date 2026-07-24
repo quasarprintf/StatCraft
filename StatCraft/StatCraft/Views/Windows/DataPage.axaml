@@ -26,18 +26,8 @@
                 <DataGridTemplateColumn Header="Matchup">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vm:GameDataRowViewModel">
-                            <ItemsControl ItemsSource="{Binding MatchupCharacters}" VerticalAlignment="Center" Margin="4,0">
-                                <ItemsControl.ItemsPanel>
-                                    <ItemsPanelTemplate>
-                                        <StackPanel Orientation="Horizontal"/>
-                                    </ItemsPanelTemplate>
-                                </ItemsControl.ItemsPanel>
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:MatchupCharacter">
-                                        <TextBlock Text="{Binding Text}" Foreground="{Binding Color}"/>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <local:ColoredTextBlock Characters="{Binding MatchupCharacters}"
+                                                     VerticalAlignment="Center" Margin="4,0"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
