@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData;
@@ -21,6 +22,7 @@ namespace StatCraft.ViewModels
 
         public string MapName { get; }
         public string ResultLabel { get; }
+        public IBrush ResultColor { get; }
         public string GameLength { get; }
         public string Matchup { get; }
         public string OpponentName { get; }
@@ -45,6 +47,7 @@ namespace StatCraft.ViewModels
             ParsedReplayData replay = game.ReplayData;
             MapName = replay.MapName;
             ResultLabel = replay.Win == 1m ? "Win" : replay.Win == 0m ? "Loss" : "Draw";
+            ResultColor = replay.Win == 1m ? Brushes.Green : replay.Win == 0m ? Brushes.Red : Brushes.Blue;
             GameLength = TimeSpan.FromSeconds(replay.GameLengthSeconds).ToString(@"mm\:ss");
             Matchup = $"{replay.Player.Race}{string.Concat(replay.Allies.Select(a => a.Race))}v{string.Concat(replay.Opponents.Select(o => o.Race))}";
             OpponentName = string.Join(", ", replay.Opponents.Select(o => $"{o.FormattedClan} {o.Name}"));

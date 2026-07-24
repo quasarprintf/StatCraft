@@ -14,7 +14,14 @@
                   RowDetailsVisibilityMode="VisibleWhenSelected" GridLinesVisibility="Horizontal">
             <DataGrid.Columns>
                 <DataGridTextColumn Header="Map" Binding="{Binding MapName}" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Result" Binding="{Binding ResultLabel}" IsReadOnly="True"/>
+                <DataGridTemplateColumn Header="Result">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:GameDataRowViewModel">
+                            <TextBlock Text="{Binding ResultLabel}" Foreground="{Binding ResultColor}"
+                                       VerticalAlignment="Center" Margin="4,0"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Length" Binding="{Binding GameLength}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Matchup" Binding="{Binding Matchup}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Opponent" Binding="{Binding OpponentName}" IsReadOnly="True"/>
