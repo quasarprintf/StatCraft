@@ -5,21 +5,13 @@
              x:Class="StatCraft.Views.BuildPathPicker"
              x:DataType="vm:GameDataRowViewModel">
     <UserControl.Styles>
-        <!-- Every MenuItem generated (recursively, for every depth of BuildNode.Children) gets its
-             Header/ItemsSource from the BuildNode it's bound to, and its Command from the owning
-             GameDataRowViewModel via #PickerButton — same "reach back to the root DataContext"
-             idiom BuildsPage.axaml already uses for its TreeViewItem context menu. -->
         <Style Selector="MenuItem" x:DataType="builds:BuildNode">
             <Setter Property="Header" Value="{Binding Name}"/>
             <Setter Property="ItemsSource" Value="{Binding Children}"/>
             <Setter Property="Command" Value="{Binding #PickerButton.DataContext.SelectBuildCommand}"/>
             <Setter Property="CommandParameter" Value="{Binding}"/>
         </Style>
-        <!-- Avalonia opens a MenuItem's submenu popup slightly below where it should align with the
-             parent item, and that offset compounds at each nested level. Shifting the popup itself
-             (not its content) fixes this with no leftover space, since the whole popup — background,
-             border, and items together — moves as one unit instead of the items sliding around inside
-             a container sized for their original position. -->
+        <!-- Submenus are misaligned by default for some reason. Shift up to fix -->
         <Style Selector="MenuItem /template/ Popup">
             <Setter Property="VerticalOffset" Value="-5"/>
         </Style>
