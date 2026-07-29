@@ -33,7 +33,8 @@ namespace StatCraft.Services.DatabaseRepository
             cmd.CommandText = @"
                 CREATE TABLE IF NOT EXISTS BuildNodes (
                     Id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Matchup     INTEGER NOT NULL,
+                    PlayerRace  INTEGER NOT NULL DEFAULT 0,
+                    Matchups    INTEGER NOT NULL DEFAULT 0,
                     ParentId    INTEGER REFERENCES BuildNodes(Id) ON DELETE CASCADE,
                     Name        TEXT    NOT NULL DEFAULT '',
                     Description TEXT    NOT NULL DEFAULT '',
@@ -65,9 +66,57 @@ namespace StatCraft.Services.DatabaseRepository
             {
                 // Column already exists.
             }
+
+            // Upgrades a pre-existing DB from the old single-value Matchup column (one of 9 values
+            // encoding PlayerRace*3 + OpponentRace) to PlayerRace + a Matchups bitmask. On a fresh DB
+            // (created by the CREATE TABLE above, which already has the new columns) the first ADD
+            // COLUMN fails immediately, so the whole batch aborts before ever reaching DROP COLUMN —
+            // that's also why this never re-runs the backfill against a DB where a user has since
+            // legitimately toggled every matchup flag off for some build.
+            try
+            {
+                using SqliteCommand migrateCmd = conn.CreateCommand();
+                migrateCmd.CommandText = @"
+                    ALTER TABLE BuildNodes ADD COLUMN PlayerRace INTEGER NOT NULL DEFAULT 0;
+                    ALTER TABLE BuildNodes ADD COLUMN Matchups INTEGER NOT NULL DEFAULT 0;
+                    UPDATE BuildNodes SET
+                        PlayerRace = Matchup / 3,
+                        Matchups = CASE Matchup % 3 WHEN 0 THEN 1 WHEN 1 THEN 2 WHEN 2 THEN 4 END;
+                    ALTER TABLE BuildNodes DROP COLUMN Matchup;";
+                migrateCmd.ExecuteNonQuery();
+            }
+            catch (SqliteException)
+            {
+                // Already migrated, or a fresh DB already created with the new schema.
+            }
         }
 
-        public List<BuildNode> GetBuildsForMatchup(Matchup matchup)
+        // All builds for a player race, regardless of which opponent races they support — used by the
+        // Builds tab, which needs to show/edit every build, not just ones matching the current filter.
+        public List<BuildNode> GetBuildsForPlayerRace(Race playerRace) =>
+            LoadTree("PlayerRace = @playerRace", cmd => cmd.Parameters.AddWithValue("@playerRace", (int)playerRace));
+
+        // Only builds that support the given opponent race — used by the Data tab's build picker, which
+        // only ever needs the exact-matchup subtree for a played game.
+        public List<BuildNode> GetBuildsForMatchup(Race playerRace, Race opponentRace)
+        {
+            Matchups flag = ToMatchupFlag(opponentRace);
+            return LoadTree("PlayerRace = @playerRace AND (Matchups & @flag) != 0", cmd =>
+            {
+                cmd.Parameters.AddWithValue("@playerRace", (int)playerRace);
+                cmd.Parameters.AddWithValue("@flag", (int)flag);
+            });
+        }
+
+        private static Matchups ToMatchupFlag(Race race) => race switch
+        {
+            Race.Z => Matchups.VsZ,
+            Race.T => Matchups.VsT,
+            Race.P => Matchups.VsP,
+            _ => Matchups.None,
+        };
+
+        private List<BuildNode> LoadTree(string whereClause, Action<SqliteCommand> bindParameters)
         {
             using SqliteConnection conn = OpenConnection();
 
@@ -76,8 +125,8 @@ namespace StatCraft.Services.DatabaseRepository
 
             using (SqliteCommand cmd = conn.CreateCommand())
             {
-                cmd.CommandText = "SELECT Id, ParentId, Name, Description FROM BuildNodes WHERE Matchup = @matchup ORDER BY SortOrder";
-                cmd.Parameters.AddWithValue("@matchup", (int)matchup);
+                cmd.CommandText = $"SELECT Id, ParentId, Name, Description, PlayerRace, Matchups FROM BuildNodes WHERE {whereClause} ORDER BY SortOrder";
+                bindParameters(cmd);
                 using SqliteDataReader reader = cmd.ExecuteReader();
                 while (reader.Read())
                 {
@@ -88,6 +137,8 @@ namespace StatCraft.Services.DatabaseRepository
                         Id = (int)id,
                         Name = reader.GetString(2),
                         Description = reader.GetString(3),
+                        PlayerRace = (Race)reader.GetInt32(4),
+                        Matchups = (Matchups)reader.GetInt32(5),
                     };
                     parentMap[id] = parentId;
                 }
@@ -142,15 +193,16 @@ namespace StatCraft.Services.DatabaseRepository
             return roots;
         }
 
-        public void InsertBuild(BuildNode node, Matchup matchup, int? parentId, int sortOrder)
+        public void InsertBuild(BuildNode node, int? parentId, int sortOrder)
         {
             using SqliteConnection conn = OpenConnection();
             using SqliteCommand cmd = conn.CreateCommand();
             cmd.CommandText = @"
-                INSERT INTO BuildNodes (Matchup, ParentId, Name, Description, SortOrder)
-                VALUES (@matchup, @parentId, @name, @description, @sortOrder);
+                INSERT INTO BuildNodes (PlayerRace, Matchups, ParentId, Name, Description, SortOrder)
+                VALUES (@playerRace, @matchups, @parentId, @name, @description, @sortOrder);
                 SELECT last_insert_rowid();";
-            cmd.Parameters.AddWithValue("@matchup", (int)matchup);
+            cmd.Parameters.AddWithValue("@playerRace", (int)node.PlayerRace);
+            cmd.Parameters.AddWithValue("@matchups", (int)node.Matchups);
             cmd.Parameters.AddWithValue("@parentId", (object?)parentId ?? System.DBNull.Value);
             cmd.Parameters.AddWithValue("@name", node.Name);
             cmd.Parameters.AddWithValue("@description", node.Description);
@@ -163,9 +215,10 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
             using SqliteCommand cmd = conn.CreateCommand();
-            cmd.CommandText = "UPDATE BuildNodes SET Name = @name, Description = @description WHERE Id = @id";
+            cmd.CommandText = "UPDATE BuildNodes SET Name = @name, Description = @description, Matchups = @matchups WHERE Id = @id";
             cmd.Parameters.AddWithValue("@name", node.Name);
             cmd.Parameters.AddWithValue("@description", node.Description);
+            cmd.Parameters.AddWithValue("@matchups", (int)node.Matchups);
             cmd.Parameters.AddWithValue("@id", node.Id);
             cmd.ExecuteNonQuery();
             BuildsChanged?.Invoke();

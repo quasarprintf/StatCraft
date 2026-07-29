@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.ViewModels;
@@ -23,38 +24,60 @@ public class BuildRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void InsertBuild_ThenGetBuildsForMatchup_ReturnsRootBuild()
+    public void InsertBuild_ThenGetBuildsForPlayerRace_ReturnsRootBuild()
     {
-        BuildNode node = new BuildNode { Name = "4 Gate" };
-        _repository.InsertBuild(node, Matchup.PvP, null, 0);
+        BuildNode node = new BuildNode { Name = "4 Gate", PlayerRace = Race.P, Matchups = Matchups.VsP };
+        _repository.InsertBuild(node, null, 0);
 
-        BuildNode build = Assert.Single(_repository.GetBuildsForMatchup(Matchup.PvP));
+        BuildNode build = Assert.Single(_repository.GetBuildsForPlayerRace(Race.P));
         Assert.Equal("4 Gate", build.Name);
     }
 
     [Fact]
     public void InsertBuild_ChildBuild_NestsUnderParent()
     {
-        BuildNode parent = new BuildNode { Name = "Parent" };
-        _repository.InsertBuild(parent, Matchup.TvT, null, 0);
+        BuildNode parent = new BuildNode { Name = "Parent", PlayerRace = Race.T, Matchups = Matchups.VsT };
+        _repository.InsertBuild(parent, null, 0);
 
-        BuildNode child = new BuildNode { Name = "Child" };
-        _repository.InsertBuild(child, Matchup.TvT, parent.Id, 0);
+        BuildNode child = new BuildNode { Name = "Child", PlayerRace = Race.T, Matchups = Matchups.VsT };
+        _repository.InsertBuild(child, parent.Id, 0);
 
-        BuildNode loadedParent = Assert.Single(_repository.GetBuildsForMatchup(Matchup.TvT));
+        BuildNode loadedParent = Assert.Single(_repository.GetBuildsForPlayerRace(Race.T));
         BuildNode loadedChild = Assert.Single(loadedParent.Children);
         Assert.Equal("Child", loadedChild.Name);
     }
 
     [Fact]
-    public void DeleteBuild_RemovesItFromMatchup()
+    public void DeleteBuild_RemovesItFromPlayerRace()
     {
-        BuildNode node = new BuildNode { Name = "To Delete" };
-        _repository.InsertBuild(node, Matchup.ZvZ, null, 0);
+        BuildNode node = new BuildNode { Name = "To Delete", PlayerRace = Race.Z, Matchups = Matchups.VsZ };
+        _repository.InsertBuild(node, null, 0);
 
         _repository.DeleteBuild(node.Id);
 
-        Assert.Empty(_repository.GetBuildsForMatchup(Matchup.ZvZ));
+        Assert.Empty(_repository.GetBuildsForPlayerRace(Race.Z));
+    }
+
+    [Fact]
+    public void GetBuildsForMatchup_FiltersByOpponentRaceFlag()
+    {
+        BuildNode node = new BuildNode { Name = "Only vs Z", PlayerRace = Race.T, Matchups = Matchups.VsZ };
+        _repository.InsertBuild(node, null, 0);
+
+        BuildNode matched = Assert.Single(_repository.GetBuildsForMatchup(Race.T, Race.Z));
+        Assert.Equal("Only vs Z", matched.Name);
+
+        Assert.Empty(_repository.GetBuildsForMatchup(Race.T, Race.T));
+    }
+
+    [Fact]
+    public void GetBuildsForPlayerRace_ReturnsBuildRegardlessOfMatchupFlags()
+    {
+        BuildNode node = new BuildNode { Name = "Only vs Z", PlayerRace = Race.T, Matchups = Matchups.VsZ };
+        _repository.InsertBuild(node, null, 0);
+
+        BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.T));
+        Assert.Equal(Matchups.VsZ, loaded.Matchups);
     }
 
     [Theory]
@@ -64,8 +87,8 @@ public class BuildRepositoryTests : IDisposable
     [InlineData(AttributeType.Values)]
     public void InsertAttribute_DefaultValueRoundTripsForEachType(AttributeType type)
     {
-        BuildNode node = new BuildNode { Name = "Build" };
-        _repository.InsertBuild(node, Matchup.PvP, null, 0);
+        BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.P, Matchups = Matchups.VsP };
+        _repository.InsertBuild(node, null, 0);
 
         BuildAttribute attr = new BuildAttribute { Name = "Supply", Type = type };
         switch (type)
@@ -78,7 +101,7 @@ public class BuildRepositoryTests : IDisposable
 
         _repository.InsertAttribute(attr, node.Id, 0);
 
-        BuildNode loadedNode = Assert.Single(_repository.GetBuildsForMatchup(Matchup.PvP));
+        BuildNode loadedNode = Assert.Single(_repository.GetBuildsForPlayerRace(Race.P));
         BuildAttribute loadedAttr = Assert.Single(loadedNode.Attributes);
 
         switch (type)
@@ -91,16 +114,16 @@ public class BuildRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void InsertValueOption_ThenGetBuildsForMatchup_IncludesOption()
+    public void InsertValueOption_ThenGetBuildsForPlayerRace_IncludesOption()
     {
-        BuildNode node = new BuildNode { Name = "Build" };
-        _repository.InsertBuild(node, Matchup.PvP, null, 0);
+        BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.P, Matchups = Matchups.VsP };
+        _repository.InsertBuild(node, null, 0);
 
         BuildAttribute attr = new BuildAttribute { Name = "Opening", Type = AttributeType.Values };
         _repository.InsertAttribute(attr, node.Id, 0);
         _repository.InsertValueOption(attr.Id, "Zealot", 0);
 
-        BuildNode loadedNode = Assert.Single(_repository.GetBuildsForMatchup(Matchup.PvP));
+        BuildNode loadedNode = Assert.Single(_repository.GetBuildsForPlayerRace(Race.P));
         BuildAttribute loadedAttr = Assert.Single(loadedNode.Attributes);
         Assert.Equal(["Zealot"], loadedAttr.ValueOptions);
     }
@@ -111,7 +134,7 @@ public class BuildRepositoryTests : IDisposable
         int raisedCount = 0;
         _repository.BuildsChanged += () => raisedCount++;
 
-        _repository.InsertBuild(new BuildNode { Name = "Build" }, Matchup.PvP, null, 0);
+        _repository.InsertBuild(new BuildNode { Name = "Build", PlayerRace = Race.P, Matchups = Matchups.VsP }, null, 0);
 
         Assert.Equal(1, raisedCount);
     }
@@ -119,8 +142,8 @@ public class BuildRepositoryTests : IDisposable
     [Fact]
     public void DeleteBuild_RaisesBuildsChanged()
     {
-        BuildNode node = new BuildNode { Name = "To Delete" };
-        _repository.InsertBuild(node, Matchup.PvP, null, 0);
+        BuildNode node = new BuildNode { Name = "To Delete", PlayerRace = Race.P, Matchups = Matchups.VsP };
+        _repository.InsertBuild(node, null, 0);
 
         int raisedCount = 0;
         _repository.BuildsChanged += () => raisedCount++;
@@ -133,8 +156,8 @@ public class BuildRepositoryTests : IDisposable
     [Fact]
     public void UpdateAttribute_RaisesBuildsChanged()
     {
-        BuildNode node = new BuildNode { Name = "Build" };
-        _repository.InsertBuild(node, Matchup.PvP, null, 0);
+        BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.P, Matchups = Matchups.VsP };
+        _repository.InsertBuild(node, null, 0);
         BuildAttribute attr = new BuildAttribute { Name = "Supply", Type = AttributeType.Numeric };
         _repository.InsertAttribute(attr, node.Id, 0);
 
@@ -145,6 +168,55 @@ public class BuildRepositoryTests : IDisposable
         _repository.UpdateAttribute(attr);
 
         Assert.Equal(1, raisedCount);
+    }
+
+    [Fact]
+    public void Initialize_ExistingOldSchemaWithMatchupColumn_BackfillsPlayerRaceAndMatchups()
+    {
+        string dbPath = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid() + ".db");
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+            using (SqliteConnection conn = new SqliteConnection($"Data Source={dbPath}"))
+            {
+                conn.Open();
+                using SqliteCommand createCmd = conn.CreateCommand();
+                createCmd.CommandText = @"
+                    CREATE TABLE BuildNodes (
+                        Id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Matchup     INTEGER NOT NULL,
+                        ParentId    INTEGER REFERENCES BuildNodes(Id) ON DELETE CASCADE,
+                        Name        TEXT    NOT NULL DEFAULT '',
+                        Description TEXT    NOT NULL DEFAULT '',
+                        SortOrder   INTEGER NOT NULL DEFAULT 0
+                    );";
+                createCmd.ExecuteNonQuery();
+
+                using SqliteCommand insertCmd = conn.CreateCommand();
+                // Old Matchup enum order was ZvZ=0,ZvT=1,ZvP=2,TvZ=3,... — 3 is TvZ (PlayerRace=T, vs Z).
+                insertCmd.CommandText = "INSERT INTO BuildNodes (Matchup, Name) VALUES (3, 'Legacy Build')";
+                insertCmd.ExecuteNonQuery();
+            }
+
+            BuildRepository repository = new BuildRepository(dbPath);
+            repository.Initialize();
+
+            BuildNode build = Assert.Single(repository.GetBuildsForPlayerRace(Race.T));
+            Assert.Equal("Legacy Build", build.Name);
+            Assert.Equal(Matchups.VsZ, build.Matchups);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(dbPath))
+                    File.Delete(dbPath);
+            }
+            catch (IOException)
+            {
+                // Best-effort cleanup.
+            }
+        }
     }
 
     public void Dispose()

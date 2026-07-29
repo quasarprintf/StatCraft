@@ -21,7 +21,7 @@ namespace StatCraft.ViewModels
         private readonly ReplayWatcherService _replayWatcherService;
         private readonly BuildRepository _buildRepository;
         private readonly GameDataRepository _gameDataRepository;
-        private readonly Dictionary<Matchup, ObservableCollection<BuildNode>> _buildTreeCache = new();
+        private readonly Dictionary<(Race Player, Race Opponent), ObservableCollection<BuildNode>> _buildTreeCache = new();
         private bool _buildTreeCacheDirty;
 
         public DataPageViewModel(SettingsRepository settingsRepository, ReplayWatcherService replayWatcherService,
@@ -89,28 +89,28 @@ namespace StatCraft.ViewModels
         // own CollectionChanged notifications, without needing to touch existing rows individually.
         private void RefreshBuildTreeCache()
         {
-            foreach ((Matchup matchup, ObservableCollection<BuildNode> tree) in _buildTreeCache)
+            foreach (((Race player, Race opponent), ObservableCollection<BuildNode> tree) in _buildTreeCache)
             {
                 tree.Clear();
-                foreach (BuildNode node in _buildRepository.GetBuildsForMatchup(matchup))
+                foreach (BuildNode node in _buildRepository.GetBuildsForMatchup(player, opponent))
                     tree.Add(node);
             }
         }
 
         private GameDataRowViewModel WrapGame(GameData game)
         {
-            Matchup? matchup = MatchupResolver.FromPlayerAndOpponents(game.ReplayData.Player.Race, game.ReplayData.Opponents);
+            (Race Player, Race Opponent)? matchup = MatchupResolver.FromPlayerAndOpponents(game.ReplayData.Player.Race, game.ReplayData.Opponents);
             return new GameDataRowViewModel(game, _gameDataRepository, GetBuildTree(matchup));
         }
 
-        private ObservableCollection<BuildNode>? GetBuildTree(Matchup? matchup)
+        private ObservableCollection<BuildNode>? GetBuildTree((Race Player, Race Opponent)? matchup)
         {
             if (matchup == null)
                 return null;
 
             if (!_buildTreeCache.TryGetValue(matchup.Value, out ObservableCollection<BuildNode>? tree))
             {
-                tree = new ObservableCollection<BuildNode>(_buildRepository.GetBuildsForMatchup(matchup.Value));
+                tree = new ObservableCollection<BuildNode>(_buildRepository.GetBuildsForMatchup(matchup.Value.Player, matchup.Value.Opponent));
                 _buildTreeCache[matchup.Value] = tree;
             }
 

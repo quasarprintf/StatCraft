@@ -58,6 +58,7 @@
                     <TreeView.Styles>
                         <Style Selector="TreeViewItem" x:DataType="builds:BuildNode">
                             <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
+                            <Setter Property="IsVisible" Value="{Binding MatchesOpponentFilter}"/>
                             <Setter Property="ContextMenu">
                                 <Template>
                                     <ContextMenu>
@@ -91,6 +92,15 @@
                     <StackPanel DockPanel.Dock="Top" Spacing="6">
                         <TextBlock Text="Name" FontWeight="SemiBold"/>
                         <TextBox Text="{Binding SelectedBuild.Name}"/>
+                        <TextBlock Text="Matchups" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                        <StackPanel Orientation="Horizontal" Spacing="4">
+                            <Button Content="vs Z" Command="{Binding ToggleMatchupCommand}"
+                                    CommandParameter="{x:Static vm:Race.Z}" Classes.active="{Binding SelectedBuild.VsZ}"/>
+                            <Button Content="vs T" Command="{Binding ToggleMatchupCommand}"
+                                    CommandParameter="{x:Static vm:Race.T}" Classes.active="{Binding SelectedBuild.VsT}"/>
+                            <Button Content="vs P" Command="{Binding ToggleMatchupCommand}"
+                                    CommandParameter="{x:Static vm:Race.P}" Classes.active="{Binding SelectedBuild.VsP}"/>
+                        </StackPanel>
                         <DockPanel Margin="0,8,0,0">
                             <TextBlock Text="Attributes" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <Button Content="+" DockPanel.Dock="Right"

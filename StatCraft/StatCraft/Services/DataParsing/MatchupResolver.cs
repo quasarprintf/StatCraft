@@ -5,24 +5,25 @@ namespace StatCraft.Services.DataParsing
 {
     internal static class MatchupResolver
     {
-        internal static Matchup? FromPlayerAndOpponents(char playerRace, GamePlayer[] opponents)
+        internal static (Race Player, Race Opponent)? FromPlayerAndOpponents(char playerRace, GamePlayer[] opponents)
         {
             if (opponents.Length == 0)
                 return null;
 
-            return (playerRace, opponents[0].Race) switch
-            {
-                ('Z', 'Z') => Matchup.ZvZ,
-                ('Z', 'T') => Matchup.ZvT,
-                ('Z', 'P') => Matchup.ZvP,
-                ('T', 'Z') => Matchup.TvZ,
-                ('T', 'T') => Matchup.TvT,
-                ('T', 'P') => Matchup.TvP,
-                ('P', 'Z') => Matchup.PvZ,
-                ('P', 'T') => Matchup.PvT,
-                ('P', 'P') => Matchup.PvP,
-                _ => null,
-            };
+            Race? player = ParseRace(playerRace);
+            Race? opponent = ParseRace(opponents[0].Race);
+            if (player == null || opponent == null)
+                return null;
+
+            return (player.Value, opponent.Value);
         }
+
+        private static Race? ParseRace(char race) => race switch
+        {
+            'Z' => Race.Z,
+            'T' => Race.T,
+            'P' => Race.P,
+            _ => null,
+        };
     }
 }

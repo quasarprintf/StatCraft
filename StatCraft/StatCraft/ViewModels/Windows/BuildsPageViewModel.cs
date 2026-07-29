@@ -10,11 +10,18 @@ using StatCraft.Services.DatabaseRepository;
 
 namespace StatCraft.ViewModels
 {
-    public enum Matchup { ZvZ, ZvT, ZvP, TvZ, TvT, TvP, PvZ, PvT, PvP }
-
     public enum AttributeType { Numeric, Bool, Percent, Values }
 
     public enum Race { Z, T, P }
+
+    [Flags]
+    public enum Matchups
+    {
+        None = 0,
+        VsZ = 1 << 0,
+        VsT = 1 << 1,
+        VsP = 1 << 2,
+    }
 
     public partial class RaceOption(Race value) : ObservableObject
     {
@@ -27,7 +34,7 @@ namespace StatCraft.ViewModels
     {
         private readonly BuildRepository _repository;
         private readonly GameDataRepository _gameDataRepository;
-        private readonly HashSet<Matchup> _loadedMatchups = [];
+        private readonly HashSet<Race> _loadedPlayerRaces = [];
 
         public BuildsPageViewModel(BuildRepository repository, GameDataRepository gameDataRepository)
         {
@@ -39,33 +46,25 @@ namespace StatCraft.ViewModels
             OpponentRaceOptions = Enum.GetValues<Race>()
                 .Select(r => new RaceOption(r) { IsSelected = r == OpponentRace })
                 .ToList();
-            LoadMatchupIfNeeded(SelectedMatchup);
+            LoadPlayerRaceIfNeeded(PlayerRace);
+            RefreshOpponentFilter();
         }
 
-        [ObservableProperty] private Race _playerRace = Race.Z;
-        [ObservableProperty] private Race _opponentRace = Race.Z;
-
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(CurrentView), nameof(Builds))]
-        private Matchup _selectedMatchup = Matchup.ZvZ;
+        [NotifyPropertyChangedFor(nameof(Builds))]
+        private Race _playerRace = Race.Z;
+
+        [ObservableProperty] private Race _opponentRace = Race.Z;
 
         [ObservableProperty] private BuildNode? _selectedBuild;
 
         public IReadOnlyList<RaceOption> PlayerRaceOptions { get; }
         public IReadOnlyList<RaceOption> OpponentRaceOptions { get; }
 
-        public Matchup CurrentView => SelectedMatchup;
+        private readonly Dictionary<Race, ObservableCollection<BuildNode>> _buildsByPlayerRace =
+            Enum.GetValues<Race>().ToDictionary(r => r, _ => new ObservableCollection<BuildNode>());
 
-        private readonly Dictionary<Matchup, ObservableCollection<BuildNode>> _buildsByMatchup =
-            Enum.GetValues<Matchup>().ToDictionary(m => m, _ => new ObservableCollection<BuildNode>());
-
-        public ObservableCollection<BuildNode> Builds => _buildsByMatchup[SelectedMatchup];
-
-        partial void OnSelectedMatchupChanged(Matchup value)
-        {
-            LoadMatchupIfNeeded(value);
-            SelectFirstBuild();
-        }
+        public ObservableCollection<BuildNode> Builds => _buildsByPlayerRace[PlayerRace];
 
         [RelayCommand]
         public void SelectPlayerRace(Race race)
@@ -73,7 +72,9 @@ namespace StatCraft.ViewModels
             PlayerRace = race;
             foreach (RaceOption option in PlayerRaceOptions)
                 option.IsSelected = option.Value == race;
-            SelectedMatchup = ComputeMatchup(PlayerRace, OpponentRace);
+            LoadPlayerRaceIfNeeded(race);
+            RefreshOpponentFilter();
+            SelectFirstBuild();
         }
 
         [RelayCommand]
@@ -82,30 +83,44 @@ namespace StatCraft.ViewModels
             OpponentRace = race;
             foreach (RaceOption option in OpponentRaceOptions)
                 option.IsSelected = option.Value == race;
-            SelectedMatchup = ComputeMatchup(PlayerRace, OpponentRace);
+            RefreshOpponentFilter();
+            if (SelectedBuild == null || !SelectedBuild.MatchesOpponentFilter)
+                SelectFirstBuild();
         }
 
-        private static Matchup ComputeMatchup(Race player, Race opponent) => (player, opponent) switch
+        // Recomputes BuildNode.MatchesOpponentFilter (which drives the TreeView's per-item visibility)
+        // for every currently-loaded build under the current PlayerRace, based on the current
+        // OpponentRace. The child-⊆-parent matchup invariant guarantees a non-matching node never has a
+        // matching descendant, so filtering never orphans a visible child under a hidden parent.
+        private void RefreshOpponentFilter()
         {
-            (Race.Z, Race.Z) => Matchup.ZvZ,
-            (Race.Z, Race.T) => Matchup.ZvT,
-            (Race.Z, Race.P) => Matchup.ZvP,
-            (Race.T, Race.Z) => Matchup.TvZ,
-            (Race.T, Race.T) => Matchup.TvT,
-            (Race.T, Race.P) => Matchup.TvP,
-            (Race.P, Race.Z) => Matchup.PvZ,
-            (Race.P, Race.T) => Matchup.PvT,
-            (Race.P, Race.P) => Matchup.PvP,
-            _ => Matchup.ZvZ,
+            Matchups flag = ToMatchupFlag(OpponentRace);
+            foreach (BuildNode root in Builds)
+                RefreshOpponentFilter(root, flag);
+        }
+
+        private static void RefreshOpponentFilter(BuildNode node, Matchups flag)
+        {
+            node.MatchesOpponentFilter = node.Matchups.HasFlag(flag);
+            foreach (BuildNode child in node.Children)
+                RefreshOpponentFilter(child, flag);
+        }
+
+        private static Matchups ToMatchupFlag(Race race) => race switch
+        {
+            Race.Z => Matchups.VsZ,
+            Race.T => Matchups.VsT,
+            Race.P => Matchups.VsP,
+            _ => Matchups.None,
         };
 
-        private void LoadMatchupIfNeeded(Matchup matchup)
+        private void LoadPlayerRaceIfNeeded(Race playerRace)
         {
-            if (!_loadedMatchups.Add(matchup)) return;
-            foreach (BuildNode node in _repository.GetBuildsForMatchup(matchup))
+            if (!_loadedPlayerRaces.Add(playerRace)) return;
+            foreach (BuildNode node in _repository.GetBuildsForPlayerRace(playerRace))
             {
                 WireNode(node);
-                _buildsByMatchup[matchup].Add(node);
+                _buildsByPlayerRace[playerRace].Add(node);
             }
         }
 
@@ -113,7 +128,8 @@ namespace StatCraft.ViewModels
         {
             node.PropertyChanged += (s, e) =>
             {
-                if (s is BuildNode n && (e.PropertyName == nameof(BuildNode.Name) || e.PropertyName == nameof(BuildNode.Description)))
+                if (s is BuildNode n && (e.PropertyName == nameof(BuildNode.Name) || e.PropertyName == nameof(BuildNode.Description)
+                    || e.PropertyName == nameof(BuildNode.Matchups)))
                     _repository.UpdateBuild(n);
             };
             foreach (BuildAttribute attr in node.Attributes)
@@ -144,27 +160,62 @@ namespace StatCraft.ViewModels
             };
         }
 
-        public void SelectFirstBuild() => SelectedBuild = Builds.Count > 0 ? Builds[0] : null;
+        public void SelectFirstBuild() => SelectedBuild = Builds.FirstOrDefault(n => n.MatchesOpponentFilter);
 
         [RelayCommand]
         public void AddBuild()
         {
-            BuildNode node = new BuildNode { Name = "New Build" };
-            _repository.InsertBuild(node, SelectedMatchup, null, Builds.Count);
+            BuildNode node = new BuildNode { Name = "New Build", PlayerRace = PlayerRace, Matchups = Matchups.VsZ | Matchups.VsT | Matchups.VsP };
+            _repository.InsertBuild(node, null, Builds.Count);
             WireNode(node);
             Builds.Add(node);
+            RefreshOpponentFilter();
             SelectedBuild = node;
         }
 
         [RelayCommand]
         public void AddChildBuild(BuildNode parent)
         {
-            BuildNode node = new BuildNode { Name = "New Build" };
-            _repository.InsertBuild(node, SelectedMatchup, parent.Id, parent.Children.Count);
+            BuildNode node = new BuildNode { Name = "New Build", PlayerRace = parent.PlayerRace, Matchups = parent.Matchups };
+            _repository.InsertBuild(node, parent.Id, parent.Children.Count);
             WireNode(node);
             parent.Children.Add(node);
             parent.IsExpanded = true;
+            RefreshOpponentFilter();
             SelectedBuild = node;
+        }
+
+        [RelayCommand]
+        public void ToggleMatchup(Race opponentRace)
+        {
+            if (SelectedBuild == null) return;
+
+            Matchups flag = ToMatchupFlag(opponentRace);
+            bool turningOn = !SelectedBuild.Matchups.HasFlag(flag);
+
+            if (turningOn)
+            {
+                BuildNode? parent = FindParent(Builds, SelectedBuild);
+                if (parent != null && !parent.Matchups.HasFlag(flag))
+                    return;
+                SelectedBuild.Matchups |= flag;
+            }
+            else
+            {
+                SelectedBuild.Matchups &= ~flag;
+            }
+
+            CascadeMatchupToDescendants(SelectedBuild, flag, turningOn);
+            RefreshOpponentFilter();
+        }
+
+        private static void CascadeMatchupToDescendants(BuildNode node, Matchups flag, bool turningOn)
+        {
+            foreach (BuildNode child in node.Children)
+            {
+                child.Matchups = turningOn ? child.Matchups | flag : child.Matchups & ~flag;
+                CascadeMatchupToDescendants(child, flag, turningOn);
+            }
         }
 
         // Raised instead of deleting immediately when the build (or a descendant, since deleting a
