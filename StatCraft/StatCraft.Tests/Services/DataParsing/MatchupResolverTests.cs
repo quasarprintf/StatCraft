@@ -7,44 +7,60 @@ namespace StatCraft.Tests;
 public class MatchupResolverTests
 {
     [Theory]
-    [InlineData('P', Matchup.VsP)]
-    [InlineData('T', Matchup.VsT)]
-    [InlineData('Z', Matchup.VsZ)]
-    public void FromOpponents_KnownRace_ReturnsMatchingMatchup(char race, Matchup expected)
+    [InlineData('Z', 'Z', Matchup.ZvZ)]
+    [InlineData('Z', 'T', Matchup.ZvT)]
+    [InlineData('Z', 'P', Matchup.ZvP)]
+    [InlineData('T', 'Z', Matchup.TvZ)]
+    [InlineData('T', 'T', Matchup.TvT)]
+    [InlineData('T', 'P', Matchup.TvP)]
+    [InlineData('P', 'Z', Matchup.PvZ)]
+    [InlineData('P', 'T', Matchup.PvT)]
+    [InlineData('P', 'P', Matchup.PvP)]
+    public void FromPlayerAndOpponents_KnownRaces_ReturnsMatchingMatchup(char playerRace, char opponentRace, Matchup expected)
     {
-        GamePlayer[] opponents = [CreateOpponent(race)];
+        GamePlayer[] opponents = [CreateOpponent(opponentRace)];
 
-        Matchup? result = MatchupResolver.FromOpponents(opponents);
+        Matchup? result = MatchupResolver.FromPlayerAndOpponents(playerRace, opponents);
 
         Assert.Equal(expected, result);
     }
 
     [Fact]
-    public void FromOpponents_UnresolvedRace_ReturnsNull()
+    public void FromPlayerAndOpponents_UnresolvedPlayerRace_ReturnsNull()
+    {
+        GamePlayer[] opponents = [CreateOpponent('Z')];
+
+        Matchup? result = MatchupResolver.FromPlayerAndOpponents('?', opponents);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
+    public void FromPlayerAndOpponents_UnresolvedOpponentRace_ReturnsNull()
     {
         GamePlayer[] opponents = [CreateOpponent('?')];
 
-        Matchup? result = MatchupResolver.FromOpponents(opponents);
+        Matchup? result = MatchupResolver.FromPlayerAndOpponents('Z', opponents);
 
         Assert.Null(result);
     }
 
     [Fact]
-    public void FromOpponents_NoOpponents_ReturnsNull()
+    public void FromPlayerAndOpponents_NoOpponents_ReturnsNull()
     {
-        Matchup? result = MatchupResolver.FromOpponents([]);
+        Matchup? result = MatchupResolver.FromPlayerAndOpponents('Z', []);
 
         Assert.Null(result);
     }
 
     [Fact]
-    public void FromOpponents_UsesFirstOpponentOnly()
+    public void FromPlayerAndOpponents_UsesFirstOpponentOnly()
     {
         GamePlayer[] opponents = [CreateOpponent('T'), CreateOpponent('Z')];
 
-        Matchup? result = MatchupResolver.FromOpponents(opponents);
+        Matchup? result = MatchupResolver.FromPlayerAndOpponents('Z', opponents);
 
-        Assert.Equal(Matchup.VsT, result);
+        Assert.Equal(Matchup.ZvT, result);
     }
 
     private static GamePlayer CreateOpponent(char race) => new()

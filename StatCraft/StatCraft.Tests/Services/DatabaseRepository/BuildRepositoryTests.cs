@@ -26,9 +26,9 @@ public class BuildRepositoryTests : IDisposable
     public void InsertBuild_ThenGetBuildsForMatchup_ReturnsRootBuild()
     {
         BuildNode node = new BuildNode { Name = "4 Gate" };
-        _repository.InsertBuild(node, Matchup.VsP, null, 0);
+        _repository.InsertBuild(node, Matchup.PvP, null, 0);
 
-        BuildNode build = Assert.Single(_repository.GetBuildsForMatchup(Matchup.VsP));
+        BuildNode build = Assert.Single(_repository.GetBuildsForMatchup(Matchup.PvP));
         Assert.Equal("4 Gate", build.Name);
     }
 
@@ -36,12 +36,12 @@ public class BuildRepositoryTests : IDisposable
     public void InsertBuild_ChildBuild_NestsUnderParent()
     {
         BuildNode parent = new BuildNode { Name = "Parent" };
-        _repository.InsertBuild(parent, Matchup.VsT, null, 0);
+        _repository.InsertBuild(parent, Matchup.TvT, null, 0);
 
         BuildNode child = new BuildNode { Name = "Child" };
-        _repository.InsertBuild(child, Matchup.VsT, parent.Id, 0);
+        _repository.InsertBuild(child, Matchup.TvT, parent.Id, 0);
 
-        BuildNode loadedParent = Assert.Single(_repository.GetBuildsForMatchup(Matchup.VsT));
+        BuildNode loadedParent = Assert.Single(_repository.GetBuildsForMatchup(Matchup.TvT));
         BuildNode loadedChild = Assert.Single(loadedParent.Children);
         Assert.Equal("Child", loadedChild.Name);
     }
@@ -50,11 +50,11 @@ public class BuildRepositoryTests : IDisposable
     public void DeleteBuild_RemovesItFromMatchup()
     {
         BuildNode node = new BuildNode { Name = "To Delete" };
-        _repository.InsertBuild(node, Matchup.VsZ, null, 0);
+        _repository.InsertBuild(node, Matchup.ZvZ, null, 0);
 
         _repository.DeleteBuild(node.Id);
 
-        Assert.Empty(_repository.GetBuildsForMatchup(Matchup.VsZ));
+        Assert.Empty(_repository.GetBuildsForMatchup(Matchup.ZvZ));
     }
 
     [Theory]
@@ -65,7 +65,7 @@ public class BuildRepositoryTests : IDisposable
     public void InsertAttribute_DefaultValueRoundTripsForEachType(AttributeType type)
     {
         BuildNode node = new BuildNode { Name = "Build" };
-        _repository.InsertBuild(node, Matchup.VsP, null, 0);
+        _repository.InsertBuild(node, Matchup.PvP, null, 0);
 
         BuildAttribute attr = new BuildAttribute { Name = "Supply", Type = type };
         switch (type)
@@ -78,7 +78,7 @@ public class BuildRepositoryTests : IDisposable
 
         _repository.InsertAttribute(attr, node.Id, 0);
 
-        BuildNode loadedNode = Assert.Single(_repository.GetBuildsForMatchup(Matchup.VsP));
+        BuildNode loadedNode = Assert.Single(_repository.GetBuildsForMatchup(Matchup.PvP));
         BuildAttribute loadedAttr = Assert.Single(loadedNode.Attributes);
 
         switch (type)
@@ -94,13 +94,13 @@ public class BuildRepositoryTests : IDisposable
     public void InsertValueOption_ThenGetBuildsForMatchup_IncludesOption()
     {
         BuildNode node = new BuildNode { Name = "Build" };
-        _repository.InsertBuild(node, Matchup.VsP, null, 0);
+        _repository.InsertBuild(node, Matchup.PvP, null, 0);
 
         BuildAttribute attr = new BuildAttribute { Name = "Opening", Type = AttributeType.Values };
         _repository.InsertAttribute(attr, node.Id, 0);
         _repository.InsertValueOption(attr.Id, "Zealot", 0);
 
-        BuildNode loadedNode = Assert.Single(_repository.GetBuildsForMatchup(Matchup.VsP));
+        BuildNode loadedNode = Assert.Single(_repository.GetBuildsForMatchup(Matchup.PvP));
         BuildAttribute loadedAttr = Assert.Single(loadedNode.Attributes);
         Assert.Equal(["Zealot"], loadedAttr.ValueOptions);
     }
@@ -111,7 +111,7 @@ public class BuildRepositoryTests : IDisposable
         int raisedCount = 0;
         _repository.BuildsChanged += () => raisedCount++;
 
-        _repository.InsertBuild(new BuildNode { Name = "Build" }, Matchup.VsP, null, 0);
+        _repository.InsertBuild(new BuildNode { Name = "Build" }, Matchup.PvP, null, 0);
 
         Assert.Equal(1, raisedCount);
     }
@@ -120,7 +120,7 @@ public class BuildRepositoryTests : IDisposable
     public void DeleteBuild_RaisesBuildsChanged()
     {
         BuildNode node = new BuildNode { Name = "To Delete" };
-        _repository.InsertBuild(node, Matchup.VsP, null, 0);
+        _repository.InsertBuild(node, Matchup.PvP, null, 0);
 
         int raisedCount = 0;
         _repository.BuildsChanged += () => raisedCount++;
@@ -134,7 +134,7 @@ public class BuildRepositoryTests : IDisposable
     public void UpdateAttribute_RaisesBuildsChanged()
     {
         BuildNode node = new BuildNode { Name = "Build" };
-        _repository.InsertBuild(node, Matchup.VsP, null, 0);
+        _repository.InsertBuild(node, Matchup.PvP, null, 0);
         BuildAttribute attr = new BuildAttribute { Name = "Supply", Type = AttributeType.Numeric };
         _repository.InsertAttribute(attr, node.Id, 0);
 

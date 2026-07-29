@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData.Builds;
@@ -9,9 +10,16 @@ using StatCraft.Services.DatabaseRepository;
 
 namespace StatCraft.ViewModels
 {
-    public enum Matchup { VsP, VsT, VsZ }
+    public enum Matchup { ZvZ, ZvT, ZvP, TvZ, TvT, TvP, PvZ, PvT, PvP }
 
     public enum AttributeType { Numeric, Bool, Percent, Values }
+
+    public partial class MatchupOption(Matchup value) : ObservableObject
+    {
+        public Matchup Value { get; } = value;
+
+        [ObservableProperty] private bool _isSelected;
+    }
 
     public partial class BuildsPageViewModel : ViewModelBase
     {
@@ -23,35 +31,37 @@ namespace StatCraft.ViewModels
         {
             _repository = repository;
             _gameDataRepository = gameDataRepository;
-            LoadMatchupIfNeeded(Matchup.VsP);
+            MatchupOptions = Enum.GetValues<Matchup>()
+                .Select(m => new MatchupOption(m) { IsSelected = m == SelectedMatchup })
+                .ToList();
+            LoadMatchupIfNeeded(SelectedMatchup);
         }
 
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(IsVsP), nameof(IsVsT), nameof(IsVsZ), nameof(CurrentView), nameof(Builds))]
-        private Matchup _selectedMatchup = Matchup.VsP;
+        [NotifyPropertyChangedFor(nameof(CurrentView), nameof(Builds))]
+        private Matchup _selectedMatchup = Matchup.ZvZ;
 
         [ObservableProperty] private BuildNode? _selectedBuild;
 
-        public bool IsVsP => SelectedMatchup == Matchup.VsP;
-        public bool IsVsT => SelectedMatchup == Matchup.VsT;
-        public bool IsVsZ => SelectedMatchup == Matchup.VsZ;
+        public IReadOnlyList<MatchupOption> MatchupOptions { get; }
 
         public Matchup CurrentView => SelectedMatchup;
 
-        private readonly Dictionary<Matchup, ObservableCollection<BuildNode>> _buildsByMatchup = new()
-        {
-            [Matchup.VsP] = [],
-            [Matchup.VsT] = [],
-            [Matchup.VsZ] = [],
-        };
+        private readonly Dictionary<Matchup, ObservableCollection<BuildNode>> _buildsByMatchup =
+            Enum.GetValues<Matchup>().ToDictionary(m => m, _ => new ObservableCollection<BuildNode>());
 
         public ObservableCollection<BuildNode> Builds => _buildsByMatchup[SelectedMatchup];
 
         partial void OnSelectedMatchupChanged(Matchup value)
         {
+            foreach (MatchupOption option in MatchupOptions)
+                option.IsSelected = option.Value == value;
             LoadMatchupIfNeeded(value);
             SelectFirstBuild();
         }
+
+        [RelayCommand]
+        public void SelectMatchup(Matchup matchup) => SelectedMatchup = matchup;
 
         private void LoadMatchupIfNeeded(Matchup matchup)
         {
@@ -214,14 +224,5 @@ namespace StatCraft.ViewModels
             _repository.DeleteAttribute(attribute.Id);
             SelectedBuild.Attributes.Remove(attribute);
         }
-
-        [RelayCommand]
-        public void SelectVsP() => SelectedMatchup = Matchup.VsP;
-
-        [RelayCommand]
-        public void SelectVsT() => SelectedMatchup = Matchup.VsT;
-
-        [RelayCommand]
-        public void SelectVsZ() => SelectedMatchup = Matchup.VsZ;
     }
 }

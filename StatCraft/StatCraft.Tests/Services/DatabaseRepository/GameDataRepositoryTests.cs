@@ -83,7 +83,7 @@ public class GameDataRepositoryTests : IDisposable
     public void UpdateGameBuild_ThenReload_PersistsBuildId()
     {
         BuildNode build = new() { Name = "4 Gate" };
-        _buildRepository.InsertBuild(build, Matchup.VsP, null, 0);
+        _buildRepository.InsertBuild(build, Matchup.PvP, null, 0);
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
@@ -138,7 +138,7 @@ public class GameDataRepositoryTests : IDisposable
     public void DeleteAttributeValue_RemovesOnlyTargetedRow()
     {
         BuildNode build = new() { Name = "Build" };
-        _buildRepository.InsertBuild(build, Matchup.VsP, null, 0);
+        _buildRepository.InsertBuild(build, Matchup.PvP, null, 0);
         BuildAttribute attr1 = new() { Name = "A1", Type = AttributeType.Numeric };
         BuildAttribute attr2 = new() { Name = "A2", Type = AttributeType.Numeric };
         _buildRepository.InsertAttribute(attr1, build.Id, 0);
@@ -174,7 +174,7 @@ public class GameDataRepositoryTests : IDisposable
     public void IsAnyBuildReferenced_BuildUsedByAGame_ReturnsTrue()
     {
         BuildNode build = new() { Name = "4 Gate" };
-        _buildRepository.InsertBuild(build, Matchup.VsP, null, 0);
+        _buildRepository.InsertBuild(build, Matchup.PvP, null, 0);
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
@@ -187,7 +187,7 @@ public class GameDataRepositoryTests : IDisposable
     public void IsAnyBuildReferenced_BuildNotUsedByAnyGame_ReturnsFalse()
     {
         BuildNode build = new() { Name = "4 Gate" };
-        _buildRepository.InsertBuild(build, Matchup.VsP, null, 0);
+        _buildRepository.InsertBuild(build, Matchup.PvP, null, 0);
 
         Assert.False(_repository.IsAnyBuildReferenced([build.Id]));
     }
@@ -202,9 +202,9 @@ public class GameDataRepositoryTests : IDisposable
     public void IsAnyBuildReferenced_MatchesAnyIdInSet_ReturnsTrue()
     {
         BuildNode parent = new() { Name = "Parent" };
-        _buildRepository.InsertBuild(parent, Matchup.VsP, null, 0);
+        _buildRepository.InsertBuild(parent, Matchup.PvP, null, 0);
         BuildNode child = new() { Name = "Child" };
-        _buildRepository.InsertBuild(child, Matchup.VsP, parent.Id, 0);
+        _buildRepository.InsertBuild(child, Matchup.PvP, parent.Id, 0);
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
@@ -242,7 +242,7 @@ public class GameDataRepositoryTests : IDisposable
     private BuildAttribute InsertAttribute()
     {
         BuildNode build = new() { Name = "Build" };
-        _buildRepository.InsertBuild(build, Matchup.VsP, null, 0);
+        _buildRepository.InsertBuild(build, Matchup.PvP, null, 0);
         BuildAttribute attr = new() { Name = "Supply", Type = AttributeType.Numeric };
         _buildRepository.InsertAttribute(attr, build.Id, 0);
         return attr;

@@ -6,11 +6,21 @@
              x:DataType="vm:BuildsPageViewModel">
     <DockPanel>
         <!-- Matchup buttons -->
-        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="4" Margin="4">
-            <Button Content="vs P" Command="{Binding SelectVsPCommand}" Classes.active="{Binding IsVsP}"/>
-            <Button Content="vs T" Command="{Binding SelectVsTCommand}" Classes.active="{Binding IsVsT}"/>
-            <Button Content="vs Z" Command="{Binding SelectVsZCommand}" Classes.active="{Binding IsVsZ}"/>
-        </StackPanel>
+        <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding MatchupOptions}">
+            <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="4"/>
+                </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:MatchupOption">
+                    <Button Content="{Binding Value}"
+                            Command="{Binding $parent[ItemsControl].((vm:BuildsPageViewModel)DataContext).SelectMatchupCommand}"
+                            CommandParameter="{Binding Value}"
+                            Classes.active="{Binding IsSelected}"/>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
 
         <!-- Left/right split -->
         <Grid ColumnDefinitions="200,4,*">

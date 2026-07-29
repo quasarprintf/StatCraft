@@ -99,7 +99,7 @@ namespace StatCraft.ViewModels
 
         private GameDataRowViewModel WrapGame(GameData game)
         {
-            Matchup? matchup = MatchupResolver.FromOpponents(game.ReplayData.Opponents);
+            Matchup? matchup = MatchupResolver.FromPlayerAndOpponents(game.ReplayData.Player.Race, game.ReplayData.Opponents);
             return new GameDataRowViewModel(game, _gameDataRepository, GetBuildTree(matchup));
         }
 
