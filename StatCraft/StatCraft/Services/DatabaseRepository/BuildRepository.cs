@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData.Builds;
+using StatCraft.Models.GameData.Race;
 using StatCraft.ViewModels;
 
 namespace StatCraft.Services.DatabaseRepository

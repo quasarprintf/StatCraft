@@ -6,22 +6,12 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData.Builds;
+using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 
 namespace StatCraft.ViewModels
 {
     public enum AttributeType { Numeric, Bool, Percent, Values }
-
-    public enum Race { Z, T, P }
-
-    [Flags]
-    public enum Matchups
-    {
-        None = 0,
-        VsZ = 1 << 0,
-        VsT = 1 << 1,
-        VsP = 1 << 2,
-    }
 
     public partial class RaceOption(Race value) : ObservableObject
     {

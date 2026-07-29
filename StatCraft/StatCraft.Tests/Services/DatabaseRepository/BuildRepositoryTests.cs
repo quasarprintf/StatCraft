@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData.Builds;
+using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.ViewModels;
 

@@ -10,6 +10,7 @@ using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
+using StatCraft.Models.GameData.Race;
 using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;

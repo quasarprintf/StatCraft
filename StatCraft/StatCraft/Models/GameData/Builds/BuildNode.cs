@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using StatCraft.Models.GameData.Race;
 using System.Text;
 using StatCraft.ViewModels;
 
@@ -15,11 +16,11 @@ namespace StatCraft.Models.GameData.Builds
         [ObservableProperty] private string _description = string.Empty;
         [ObservableProperty] private bool _isExpanded;
 
-        [ObservableProperty] private Race _playerRace = Race.Z;
+        [ObservableProperty] private Race.Race _playerRace = Race.Race.Z;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(VsZ), nameof(VsT), nameof(VsP))]
-        private Matchups _matchups = Matchups.None;
+        private Matchups _matchups = Race.Matchups.None;
 
         public bool VsZ => Matchups.HasFlag(Matchups.VsZ);
         public bool VsT => Matchups.HasFlag(Matchups.VsT);
