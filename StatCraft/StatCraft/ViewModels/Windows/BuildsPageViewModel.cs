@@ -127,9 +127,8 @@ namespace StatCraft.ViewModels
             }
         }
 
-        private void WireNode(BuildNode node, int depth = 0)
+        private void WireNode(BuildNode node)
         {
-            node.Depth = depth;
             node.PropertyChanged += (s, e) =>
             {
                 if (s is BuildNode n && (e.PropertyName == nameof(BuildNode.Name) || e.PropertyName == nameof(BuildNode.Description)
@@ -139,7 +138,7 @@ namespace StatCraft.ViewModels
             foreach (BuildAttribute attr in node.Attributes)
                 WireAttribute(attr);
             foreach (BuildNode child in node.Children)
-                WireNode(child, depth + 1);
+                WireNode(child);
         }
 
         private void WireAttribute(BuildAttribute attr)
@@ -182,7 +181,7 @@ namespace StatCraft.ViewModels
         {
             BuildNode node = new BuildNode { Name = "New Build", PlayerRace = parent.PlayerRace, Matchups = parent.Matchups };
             _repository.InsertBuild(node, parent.Id, parent.Children.Count);
-            WireNode(node, parent.Depth + 1);
+            WireNode(node);
             parent.Children.Add(node);
             parent.IsExpanded = true;
             RefreshOpponentFilter();

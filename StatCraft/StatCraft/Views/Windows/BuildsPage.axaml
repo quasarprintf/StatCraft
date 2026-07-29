@@ -52,10 +52,6 @@
             <!-- Build tree -->
             <DockPanel Grid.Column="0">
                 <TreeView x:Name="BuildTreeView" ItemsSource="{Binding Builds}" SelectedItem="{Binding SelectedBuild}">
-                    <TreeView.Resources>
-                        <!-- Widen the built-in per-level indent (default 16) so depth is easier to read at a glance. -->
-                        <x:Double x:Key="TreeViewItemIndent">28</x:Double>
-                    </TreeView.Resources>
                     <TreeView.ContextMenu>
                         <ContextMenu>
                             <MenuItem Header="Add Build" Command="{Binding AddBuildCommand}"/>
@@ -90,22 +86,7 @@
                     <TreeView.ItemTemplate>
                         <TreeDataTemplate ItemsSource="{Binding Children}">
                             <StackPanel Orientation="Horizontal">
-                                <!-- One tick per level of nesting (0 for a root build), giving each row its own
-                                     depth-proportional guide line inside the already-indented header content
-                                     instead of relying on the theme's outer row frame (which spans the whole
-                                     row width regardless of depth). -->
-                                <ItemsControl ItemsSource="{Binding DepthTicks}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <StackPanel Orientation="Horizontal"/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Width="1" Background="Gray" Margin="0,0,8,0"/>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
+                                <Border Width="1" Background="Gray" Margin="-38,0,0,0" IsVisible="{Binding !HasChildren}" />
                                 <TextBlock Text="{Binding Name}"/>
                             </StackPanel>
                         </TreeDataTemplate>
