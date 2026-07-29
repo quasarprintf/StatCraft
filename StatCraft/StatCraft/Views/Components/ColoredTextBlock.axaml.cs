@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls;
-using StatCraft.ViewModels;
+using StatCraft.Styles;
 
 namespace StatCraft.Views.Components
 {

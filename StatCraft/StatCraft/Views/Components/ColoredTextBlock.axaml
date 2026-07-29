@@ -1,6 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:StatCraft.ViewModels"
+             xmlns:style="using:StatCraft.Styles"
              xmlns:local="using:StatCraft.Views.Components"
              x:Class="StatCraft.Views.Components.ColoredTextBlock">
     <ItemsControl ItemsSource="{Binding $parent[local:ColoredTextBlock].Characters}">
@@ -10,7 +10,7 @@
             </ItemsPanelTemplate>
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="vm:ColoredCharacter">
+            <DataTemplate x:DataType="style:ColoredCharacter">
                 <TextBlock Text="{Binding Text}" Foreground="{Binding Color}"/>
             </DataTemplate>
         </ItemsControl.ItemTemplate>

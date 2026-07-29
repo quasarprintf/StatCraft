@@ -9,6 +9,7 @@ using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
+using StatCraft.Styles;
 
 namespace StatCraft.ViewModels
 {
@@ -17,10 +18,6 @@ namespace StatCraft.ViewModels
     // through a public property.
     public partial class GameDataRowViewModel : ViewModelBase
     {
-        // A brighter, more saturated green than Brushes.Green — used for both a Win result and the
-        // Protoss race letter.
-        private static readonly IBrush VibrantGreen = new SolidColorBrush(Color.Parse("#00CC1B"));
-
         private readonly GameData _game;
         private readonly GameDataRepository _repository;
 
@@ -52,7 +49,7 @@ namespace StatCraft.ViewModels
             ParsedReplayData replay = game.ReplayData;
             MapName = replay.MapName;
             ResultLabel = replay.Win == 1m ? "Win" : replay.Win == 0m ? "Loss" : "Draw";
-            ResultColor = replay.Win == 1m ? VibrantGreen : replay.Win == 0m ? Brushes.Red : Brushes.Blue;
+            ResultColor = replay.Win == 1m ? Styles.Colors.VibrantGreen : replay.Win == 0m ? Brushes.Red : Brushes.Blue;
             GameLength = TimeSpan.FromSeconds(replay.GameLengthSeconds).ToString(@"mm\:ss");
             Matchup = $"{replay.Player.Race}{string.Concat(replay.Allies.Select(a => a.Race))}v{string.Concat(replay.Opponents.Select(o => o.Race))}";
             MatchupCharacters = BuildMatchupCharacters(replay);
@@ -97,7 +94,7 @@ namespace StatCraft.ViewModels
 
         private static IBrush RaceColor(char race) => race switch
         {
-            'P' => VibrantGreen,
+            'P' => Styles.Colors.VibrantGreen,
             'T' => Brushes.Blue,
             'Z' => Brushes.Red,
             _ => Brushes.Gray,
