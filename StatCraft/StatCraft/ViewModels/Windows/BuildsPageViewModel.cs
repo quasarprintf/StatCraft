@@ -103,7 +103,7 @@ namespace StatCraft.ViewModels
 
         private static void RefreshOpponentFilter(BuildNode node, Matchups flags)
         {
-            node.MatchesOpponentFilter = (node.Matchups & flags) != Matchups.None;
+            node.MatchesOpponentFilter = node.Matchups == Matchups.None || (node.Matchups & flags) != Matchups.None;
             foreach (BuildNode child in node.Children)
                 RefreshOpponentFilter(child, flags);
         }
