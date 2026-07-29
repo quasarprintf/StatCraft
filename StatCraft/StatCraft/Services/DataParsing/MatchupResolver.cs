@@ -1,29 +1,35 @@
 using StatCraft.Models.GameData;
 using StatCraft.ViewModels;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace StatCraft.Services.DataParsing
 {
     internal static class MatchupResolver
     {
-        internal static (Race Player, Race Opponent)? FromPlayerAndOpponents(char playerRace, GamePlayer[] opponents)
+        internal static Matchups FromOpponents(GamePlayer[] opponents)
         {
-            if (opponents.Length == 0)
-                return null;
-
-            Race? player = ParseRace(playerRace);
-            Race? opponent = ParseRace(opponents[0].Race);
-            if (player == null || opponent == null)
-                return null;
-
-            return (player.Value, opponent.Value);
+            Matchups matchups = Matchups.None;
+            foreach (var opponent in opponents)
+            {
+                matchups |= ParseMatchup(opponent.Race);
+            }
+            return matchups;
         }
 
-        private static Race? ParseRace(char race) => race switch
+        public static Race? AsRace(this char raw) => raw switch
         {
             'Z' => Race.Z,
             'T' => Race.T,
             'P' => Race.P,
-            _ => null,
+            _ => null
+        };
+        private static Matchups ParseMatchup(char race) => race switch
+        {
+            'Z' => Matchups.VsZ,
+            'T' => Matchups.VsT,
+            'P' => Matchups.VsP,
+            _ => Matchups.None,
         };
     }
 }

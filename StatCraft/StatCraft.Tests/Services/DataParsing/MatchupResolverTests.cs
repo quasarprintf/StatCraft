@@ -20,7 +20,7 @@ public class MatchupResolverTests
     {
         GamePlayer[] opponents = [CreateOpponent(opponentRace)];
 
-        (Race Player, Race Opponent)? result = MatchupResolver.FromPlayerAndOpponents(playerRace, opponents);
+        List<Race> result = MatchupResolver.FromOpponents(playerRace, opponents);
 
         Assert.Equal((expectedPlayer, expectedOpponent), result);
     }
@@ -30,7 +30,7 @@ public class MatchupResolverTests
     {
         GamePlayer[] opponents = [CreateOpponent('Z')];
 
-        (Race Player, Race Opponent)? result = MatchupResolver.FromPlayerAndOpponents('?', opponents);
+        (Race Player, Race Opponent)? result = MatchupResolver.FromOpponents('?', opponents);
 
         Assert.Null(result);
     }
@@ -40,7 +40,7 @@ public class MatchupResolverTests
     {
         GamePlayer[] opponents = [CreateOpponent('?')];
 
-        (Race Player, Race Opponent)? result = MatchupResolver.FromPlayerAndOpponents('Z', opponents);
+        (Race Player, Race Opponent)? result = MatchupResolver.FromOpponents('Z', opponents);
 
         Assert.Null(result);
     }
@@ -48,7 +48,7 @@ public class MatchupResolverTests
     [Fact]
     public void FromPlayerAndOpponents_NoOpponents_ReturnsNull()
     {
-        (Race Player, Race Opponent)? result = MatchupResolver.FromPlayerAndOpponents('Z', []);
+        (Race Player, Race Opponent)? result = MatchupResolver.FromOpponents('Z', []);
 
         Assert.Null(result);
     }
@@ -58,7 +58,7 @@ public class MatchupResolverTests
     {
         GamePlayer[] opponents = [CreateOpponent('T'), CreateOpponent('Z')];
 
-        (Race Player, Race Opponent)? result = MatchupResolver.FromPlayerAndOpponents('Z', opponents);
+        (Race Player, Race Opponent)? result = MatchupResolver.FromOpponents('Z', opponents);
 
         Assert.Equal((Race.Z, Race.T), result);
     }

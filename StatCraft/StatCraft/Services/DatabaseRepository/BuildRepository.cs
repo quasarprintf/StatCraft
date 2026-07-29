@@ -98,13 +98,12 @@ namespace StatCraft.Services.DatabaseRepository
 
         // Only builds that support the given opponent race — used by the Data tab's build picker, which
         // only ever needs the exact-matchup subtree for a played game.
-        public List<BuildNode> GetBuildsForMatchup(Race playerRace, Race opponentRace)
+        public List<BuildNode> GetBuildsForMatchup(Race playerRace, Matchups matchups)
         {
-            Matchups flag = ToMatchupFlag(opponentRace);
             return LoadTree("PlayerRace = @playerRace AND (Matchups & @flag) != 0", cmd =>
             {
                 cmd.Parameters.AddWithValue("@playerRace", (int)playerRace);
-                cmd.Parameters.AddWithValue("@flag", (int)flag);
+                cmd.Parameters.AddWithValue("@flag", (int)matchups);
             });
         }
 
