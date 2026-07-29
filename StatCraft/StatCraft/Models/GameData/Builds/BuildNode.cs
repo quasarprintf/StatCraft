@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 using StatCraft.Models.GameData.Race;
 using System.Text;
 using StatCraft.ViewModels;
@@ -28,6 +29,14 @@ namespace StatCraft.Models.GameData.Builds
 
         // Transient UI-only flag driving the Builds tab's opponent-race filter; never persisted.
         [ObservableProperty] private bool _matchesOpponentFilter = true;
+
+        // Transient UI-only nesting depth (0 = root), set when the tree is loaded/built; never persisted.
+        // Drives DepthTicks, which the TreeView's item template renders as a per-level guide line.
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(DepthTicks))]
+        private int _depth;
+
+        public IEnumerable<int> DepthTicks => Enumerable.Range(0, Depth);
 
         public ObservableCollection<BuildAttribute> Attributes { get; } = [];
         public ObservableCollection<BuildNode> Children { get; } = [];
