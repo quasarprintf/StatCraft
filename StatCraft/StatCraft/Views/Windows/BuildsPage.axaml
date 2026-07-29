@@ -36,7 +36,7 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:RaceOption">
                             <Button Content="{Binding Value}"
-                                    Command="{Binding $parent[ItemsControl].((vm:BuildsPageViewModel)DataContext).SelectOpponentRaceCommand}"
+                                    Command="{Binding $parent[ItemsControl].((vm:BuildsPageViewModel)DataContext).ToggleOpponentRaceCommand}"
                                     CommandParameter="{Binding Value}"
                                     Classes.active="{Binding IsSelected}"/>
                         </DataTemplate>

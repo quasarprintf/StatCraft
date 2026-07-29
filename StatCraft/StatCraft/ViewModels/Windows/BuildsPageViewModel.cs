@@ -44,7 +44,7 @@ namespace StatCraft.ViewModels
                 .Select(r => new RaceOption(r) { IsSelected = r == PlayerRace })
                 .ToList();
             OpponentRaceOptions = Enum.GetValues<Race>()
-                .Select(r => new RaceOption(r) { IsSelected = r == OpponentRace })
+                .Select(r => new RaceOption(r) { IsSelected = r == Race.Z })
                 .ToList();
             LoadPlayerRaceIfNeeded(PlayerRace);
             RefreshOpponentFilter();
@@ -53,8 +53,6 @@ namespace StatCraft.ViewModels
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(Builds))]
         private Race _playerRace = Race.Z;
-
-        [ObservableProperty] private Race _opponentRace = Race.Z;
 
         [ObservableProperty] private BuildNode? _selectedBuild;
 
@@ -78,32 +76,36 @@ namespace StatCraft.ViewModels
         }
 
         [RelayCommand]
-        public void SelectOpponentRace(Race race)
+        public void ToggleOpponentRace(Race race)
         {
-            OpponentRace = race;
-            foreach (RaceOption option in OpponentRaceOptions)
-                option.IsSelected = option.Value == race;
+            RaceOption? option = OpponentRaceOptions.FirstOrDefault(o => o.Value == race);
+            if (option == null) return;
+
+            option.IsSelected = !option.IsSelected;
             RefreshOpponentFilter();
             if (SelectedBuild == null || !SelectedBuild.MatchesOpponentFilter)
                 SelectFirstBuild();
         }
 
         // Recomputes BuildNode.MatchesOpponentFilter (which drives the TreeView's per-item visibility)
-        // for every currently-loaded build under the current PlayerRace, based on the current
-        // OpponentRace. The child-⊆-parent matchup invariant guarantees a non-matching node never has a
-        // matching descendant, so filtering never orphans a visible child under a hidden parent.
+        // for every currently-loaded build under the current PlayerRace, based on the union of every
+        // currently-selected opponent race — a build matches if it supports at least one of them. The
+        // child-⊆-parent matchup invariant still guarantees a non-matching node never has a matching
+        // descendant under this OR'd filter (any bit a child has, its parent has too), so filtering
+        // never orphans a visible child under a hidden parent.
         private void RefreshOpponentFilter()
         {
-            Matchups flag = ToMatchupFlag(OpponentRace);
+            Matchups flags = OpponentRaceOptions.Where(o => o.IsSelected)
+                .Aggregate(Matchups.None, (acc, o) => acc | ToMatchupFlag(o.Value));
             foreach (BuildNode root in Builds)
-                RefreshOpponentFilter(root, flag);
+                RefreshOpponentFilter(root, flags);
         }
 
-        private static void RefreshOpponentFilter(BuildNode node, Matchups flag)
+        private static void RefreshOpponentFilter(BuildNode node, Matchups flags)
         {
-            node.MatchesOpponentFilter = node.Matchups.HasFlag(flag);
+            node.MatchesOpponentFilter = (node.Matchups & flags) != Matchups.None;
             foreach (BuildNode child in node.Children)
-                RefreshOpponentFilter(child, flag);
+                RefreshOpponentFilter(child, flags);
         }
 
         private static Matchups ToMatchupFlag(Race race) => race switch
