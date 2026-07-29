@@ -70,6 +70,19 @@ namespace StatCraft.ViewModels
             if (option == null) return;
 
             option.IsSelected = !option.IsSelected;
+            AfterOpponentFilterChanged();
+        }
+
+        [RelayCommand]
+        public void SelectOpponentRaceExclusive(Race race)
+        {
+            foreach (RaceOption option in OpponentRaceOptions)
+                option.IsSelected = option.Value == race;
+            AfterOpponentFilterChanged();
+        }
+
+        private void AfterOpponentFilterChanged()
+        {
             RefreshOpponentFilter();
             if (SelectedBuild == null || !SelectedBuild.MatchesOpponentFilter)
                 SelectFirstBuild();

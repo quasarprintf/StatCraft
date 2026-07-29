@@ -1,5 +1,6 @@
 using System.Threading.Tasks;
 using Avalonia.Controls;
+using Avalonia.Input;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.ViewModels;
@@ -18,6 +19,14 @@ namespace StatCraft.Views
             BuildsPageViewModel vm = App.Services.GetRequiredService<BuildsPageViewModel>();
             vm.DeleteConfirmationRequested += async node => await OnDeleteConfirmationRequestedAsync(node);
             DataContext = vm;
+        }
+
+        // Right-clicking an opponent-race filter button adds/removes it from the filter set instead of
+        // selecting it exclusively (which is what a left click / Command does).
+        private void OnOpponentRaceRightTapped(object? sender, TappedEventArgs e)
+        {
+            if (sender is Button { DataContext: RaceOption option })
+                ViewModel.ToggleOpponentRace(option.Value);
         }
 
         private async Task OnDeleteConfirmationRequestedAsync(BuildNode node)

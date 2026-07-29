@@ -37,8 +37,9 @@
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:RaceOption">
                             <Button Content="{Binding Value}"
-                                    Command="{Binding $parent[ItemsControl].((vm:BuildsPageViewModel)DataContext).ToggleOpponentRaceCommand}"
+                                    Command="{Binding $parent[ItemsControl].((vm:BuildsPageViewModel)DataContext).SelectOpponentRaceExclusiveCommand}"
                                     CommandParameter="{Binding Value}"
+                                    RightTapped="OnOpponentRaceRightTapped"
                                     Classes.active="{Binding IsSelected}"/>
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
