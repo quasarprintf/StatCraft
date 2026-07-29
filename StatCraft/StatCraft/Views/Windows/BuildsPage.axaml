@@ -85,7 +85,6 @@
 
             <GridSplitter Grid.Column="1" ResizeDirection="Columns"/>
 
-            <!-- Build details: left details + right description -->
             <local:BuildDetailsPanel Grid.Column="2"/>
         </Grid>
     </DockPanel>
