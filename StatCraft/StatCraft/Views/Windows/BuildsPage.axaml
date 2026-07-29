@@ -3,6 +3,7 @@
              xmlns:vm="using:StatCraft.ViewModels"
              xmlns:builds="using:StatCraft.Models.GameData.Builds"
              xmlns:local="using:StatCraft.Views"
+             xmlns:converters="using:StatCraft.Views.Converters"
              x:Class="StatCraft.Views.BuildsPage"
              x:DataType="vm:BuildsPageViewModel">
     <DockPanel>
@@ -86,7 +87,18 @@
                     <TreeView.ItemTemplate>
                         <TreeDataTemplate ItemsSource="{Binding Children}">
                             <StackPanel Orientation="Horizontal">
-                                <Border Width="1" Background="Gray" Margin="-38,0,0,0" IsVisible="{Binding !HasChildren}" />
+                                <!-- Leaf builds get a short line where the (hidden) expand chevron would be,
+                                     pulled left by exactly the width TreeViewItem's own theme reserves for
+                                     that chevron column, derived from the theme's own resources rather than
+                                     a hardcoded pixel offset. -->
+                                <Border Width="1" Background="Gray" IsVisible="{Binding !HasChildren}">
+                                    <Border.Margin>
+                                        <MultiBinding Converter="{x:Static converters:ChevronReservedSpaceConverter.Instance}">
+                                            <DynamicResource ResourceKey="TreeViewItemExpandCollapseChevronSize"/>
+                                            <DynamicResource ResourceKey="TreeViewItemExpandCollapseChevronMargin"/>
+                                        </MultiBinding>
+                                    </Border.Margin>
+                                </Border>
                                 <TextBlock Text="{Binding Name}"/>
                             </StackPanel>
                         </TreeDataTemplate>
