@@ -4,6 +4,15 @@
              xmlns:builds="using:StatCraft.Models.GameData.Builds"
              x:Class="StatCraft.Views.BuildsPage"
              x:DataType="vm:BuildsPageViewModel">
+    <UserControl.Styles>
+        <Style Selector="Button.active">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
+            <Setter Property="Foreground" Value="White"/>
+        </Style>
+        <Style Selector="Button.active:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="{DynamicResource SystemAccentColor}"/>
+        </Style>
+    </UserControl.Styles>
     <DockPanel>
         <!-- Player race / opponent race selectors -->
         <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="4">
