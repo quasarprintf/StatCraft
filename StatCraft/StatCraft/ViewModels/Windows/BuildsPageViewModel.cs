@@ -32,7 +32,7 @@ namespace StatCraft.ViewModels
                 .Select(r => new RaceOption(r) { IsSelected = r == PlayerRace })
                 .ToList();
             OpponentRaceOptions = Enum.GetValues<Race>()
-                .Select(r => new RaceOption(r) { IsSelected = r == Race.Z })
+                .Select(r => new RaceOption(r))
                 .ToList();
             LoadPlayerRaceIfNeeded(PlayerRace);
             RefreshOpponentFilter();
