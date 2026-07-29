@@ -11,8 +11,6 @@ using StatCraft.Services.DatabaseRepository;
 
 namespace StatCraft.ViewModels
 {
-    public enum AttributeType { Numeric, Bool, Percent, Values }
-
     public partial class RaceOption(Race value) : ObservableObject
     {
         public Race Value { get; } = value;
