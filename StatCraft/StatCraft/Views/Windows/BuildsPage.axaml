@@ -52,6 +52,10 @@
             <!-- Build tree -->
             <DockPanel Grid.Column="0">
                 <TreeView x:Name="BuildTreeView" ItemsSource="{Binding Builds}" SelectedItem="{Binding SelectedBuild}">
+                    <TreeView.Resources>
+                        <!-- Widen the built-in per-level indent (default 16) so depth is easier to read at a glance. -->
+                        <x:Double x:Key="TreeViewItemIndent">28</x:Double>
+                    </TreeView.Resources>
                     <TreeView.ContextMenu>
                         <ContextMenu>
                             <MenuItem Header="Add Build" Command="{Binding AddBuildCommand}"/>
@@ -61,6 +65,15 @@
                         <Style Selector="TreeViewItem" x:DataType="builds:BuildNode">
                             <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
                             <Setter Property="IsVisible" Value="{Binding MatchesOpponentFilter}"/>
+                            <!-- Root builds stand out in bold; nested builds are normal weight, so the top of
+                                 each subtree is obvious even before reading the indentation. -->
+                            <Setter Property="FontWeight" Value="Bold"/>
+                            <!-- A vertical guide line at each row's own indent, reinforcing the step down per
+                                 level (BorderBrush/Thickness are standard TemplatedControl properties the
+                                 theme's own template already binds through to its header border). -->
+                            <Setter Property="BorderThickness" Value="1,0,0,0"/>
+                            <Setter Property="BorderBrush" Value="Gray"/>
+                            <Setter Property="Padding" Value="4,2,2,2"/>
                             <Setter Property="ContextMenu">
                                 <Template>
                                     <ContextMenu>
@@ -74,6 +87,10 @@
                                     </ContextMenu>
                                 </Template>
                             </Setter>
+                        </Style>
+                        <!-- Any nested (non-root) item — descendant combinator, matches every depth below root. -->
+                        <Style Selector="TreeViewItem TreeViewItem">
+                            <Setter Property="FontWeight" Value="Normal"/>
                         </Style>
                     </TreeView.Styles>
                     <TreeView.ItemTemplate>
