@@ -64,10 +64,22 @@ public class BuildRepositoryTests : IDisposable
         BuildNode node = new BuildNode { Name = "Only vs Z", PlayerRace = Race.T, Matchups = Matchups.VsZ };
         _repository.InsertBuild(node, null, 0);
 
-        BuildNode matched = Assert.Single(_repository.GetBuildsForMatchup(Race.T, Race.Z));
+        BuildNode matched = Assert.Single(_repository.GetBuildsForMatchup(Race.T, Matchups.VsZ));
         Assert.Equal("Only vs Z", matched.Name);
 
-        Assert.Empty(_repository.GetBuildsForMatchup(Race.T, Race.T));
+        Assert.Empty(_repository.GetBuildsForMatchup(Race.T, Matchups.VsT));
+    }
+
+    [Fact]
+    public void GetBuildsForMatchup_CombinedFlags_MatchesAnyOfThem()
+    {
+        BuildNode node = new BuildNode { Name = "Only vs Z", PlayerRace = Race.T, Matchups = Matchups.VsZ };
+        _repository.InsertBuild(node, null, 0);
+
+        BuildNode matched = Assert.Single(_repository.GetBuildsForMatchup(Race.T, Matchups.VsZ | Matchups.VsP));
+        Assert.Equal("Only vs Z", matched.Name);
+
+        Assert.Empty(_repository.GetBuildsForMatchup(Race.T, Matchups.VsT | Matchups.VsP));
     }
 
     [Fact]

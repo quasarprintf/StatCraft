@@ -7,60 +7,83 @@ namespace StatCraft.Tests;
 public class MatchupResolverTests
 {
     [Theory]
-    [InlineData('Z', 'Z', Race.Z, Race.Z)]
-    [InlineData('Z', 'T', Race.Z, Race.T)]
-    [InlineData('Z', 'P', Race.Z, Race.P)]
-    [InlineData('T', 'Z', Race.T, Race.Z)]
-    [InlineData('T', 'T', Race.T, Race.T)]
-    [InlineData('T', 'P', Race.T, Race.P)]
-    [InlineData('P', 'Z', Race.P, Race.Z)]
-    [InlineData('P', 'T', Race.P, Race.T)]
-    [InlineData('P', 'P', Race.P, Race.P)]
-    public void FromPlayerAndOpponents_KnownRaces_ReturnsMatchingMatchup(char playerRace, char opponentRace, Race expectedPlayer, Race expectedOpponent)
+    [InlineData('Z', Matchups.VsZ)]
+    [InlineData('T', Matchups.VsT)]
+    [InlineData('P', Matchups.VsP)]
+    public void FromOpponents_SingleKnownRace_ReturnsMatchingFlag(char race, Matchups expected)
     {
-        GamePlayer[] opponents = [CreateOpponent(opponentRace)];
+        GamePlayer[] opponents = [CreateOpponent(race)];
 
-        List<Race> result = MatchupResolver.FromOpponents(playerRace, opponents);
+        Matchups result = MatchupResolver.FromOpponents(opponents);
 
-        Assert.Equal((expectedPlayer, expectedOpponent), result);
+        Assert.Equal(expected, result);
     }
 
     [Fact]
-    public void FromPlayerAndOpponents_UnresolvedPlayerRace_ReturnsNull()
-    {
-        GamePlayer[] opponents = [CreateOpponent('Z')];
-
-        (Race Player, Race Opponent)? result = MatchupResolver.FromOpponents('?', opponents);
-
-        Assert.Null(result);
-    }
-
-    [Fact]
-    public void FromPlayerAndOpponents_UnresolvedOpponentRace_ReturnsNull()
+    public void FromOpponents_UnresolvedRace_ReturnsNone()
     {
         GamePlayer[] opponents = [CreateOpponent('?')];
 
-        (Race Player, Race Opponent)? result = MatchupResolver.FromOpponents('Z', opponents);
+        Matchups result = MatchupResolver.FromOpponents(opponents);
 
-        Assert.Null(result);
+        Assert.Equal(Matchups.None, result);
     }
 
     [Fact]
-    public void FromPlayerAndOpponents_NoOpponents_ReturnsNull()
+    public void FromOpponents_NoOpponents_ReturnsNone()
     {
-        (Race Player, Race Opponent)? result = MatchupResolver.FromOpponents('Z', []);
+        Matchups result = MatchupResolver.FromOpponents([]);
 
-        Assert.Null(result);
+        Assert.Equal(Matchups.None, result);
     }
 
     [Fact]
-    public void FromPlayerAndOpponents_UsesFirstOpponentOnly()
+    public void FromOpponents_MultipleDifferentRaces_CombinesFlags()
     {
         GamePlayer[] opponents = [CreateOpponent('T'), CreateOpponent('Z')];
 
-        (Race Player, Race Opponent)? result = MatchupResolver.FromOpponents('Z', opponents);
+        Matchups result = MatchupResolver.FromOpponents(opponents);
 
-        Assert.Equal((Race.Z, Race.T), result);
+        Assert.Equal(Matchups.VsT | Matchups.VsZ, result);
+    }
+
+    [Fact]
+    public void FromOpponents_MultipleSameRace_DoesNotDuplicateFlag()
+    {
+        GamePlayer[] opponents = [CreateOpponent('Z'), CreateOpponent('Z')];
+
+        Matchups result = MatchupResolver.FromOpponents(opponents);
+
+        Assert.Equal(Matchups.VsZ, result);
+    }
+
+    [Fact]
+    public void FromOpponents_MixOfKnownAndUnresolvedRace_IgnoresUnresolved()
+    {
+        GamePlayer[] opponents = [CreateOpponent('P'), CreateOpponent('?')];
+
+        Matchups result = MatchupResolver.FromOpponents(opponents);
+
+        Assert.Equal(Matchups.VsP, result);
+    }
+
+    [Theory]
+    [InlineData('Z', Race.Z)]
+    [InlineData('T', Race.T)]
+    [InlineData('P', Race.P)]
+    public void AsRace_KnownChar_ReturnsMatchingRace(char raw, Race expected)
+    {
+        Race? result = raw.AsRace();
+
+        Assert.Equal(expected, result);
+    }
+
+    [Fact]
+    public void AsRace_UnknownChar_ReturnsNull()
+    {
+        Race? result = '?'.AsRace();
+
+        Assert.Null(result);
     }
 
     private static GamePlayer CreateOpponent(char race) => new()
