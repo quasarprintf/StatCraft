@@ -49,7 +49,7 @@ namespace StatCraft.ViewModels
             ParsedReplayData replay = game.ReplayData;
             MapName = replay.MapName;
             ResultLabel = replay.Win == 1m ? "Win" : replay.Win == 0m ? "Loss" : "Draw";
-            ResultColor = replay.Win == 1m ? Styles.Colors.VibrantGreen : replay.Win == 0m ? Styles.Colors.VibrantRed : Styles.Colors.VibrantBlue;
+            ResultColor = replay.Win == 1m ? Styles.Colors.ProtossGreen : replay.Win == 0m ? Styles.Colors.ZergRed : Styles.Colors.TerranBlue;
             GameLength = TimeSpan.FromSeconds(replay.GameLengthSeconds).ToString(@"mm\:ss");
             Matchup = $"{replay.Player.Race}{string.Concat(replay.Allies.Select(a => a.Race))}v{string.Concat(replay.Opponents.Select(o => o.Race))}";
             MatchupCharacters = BuildMatchupCharacters(replay);
@@ -94,9 +94,9 @@ namespace StatCraft.ViewModels
 
         private static IBrush RaceColor(char race) => race switch
         {
-            'P' => Styles.Colors.VibrantGreen,
-            'T' => Styles.Colors.VibrantBlue,
-            'Z' => Styles.Colors.VibrantRed,
+            'P' => Styles.Colors.ProtossGreen,
+            'T' => Styles.Colors.TerranBlue,
+            'Z' => Styles.Colors.ZergRed,
             _ => Brushes.Gray,
         };
 
