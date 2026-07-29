@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:StatCraft.ViewModels"
-             xmlns:race="using:StatCraft.Models.GameData.Race"
              xmlns:builds="using:StatCraft.Models.GameData.Builds"
+             xmlns:local="using:StatCraft.Views"
              x:Class="StatCraft.Views.BuildsPage"
              x:DataType="vm:BuildsPageViewModel">
     <DockPanel>
@@ -85,102 +85,8 @@
 
             <GridSplitter Grid.Column="1" ResizeDirection="Columns"/>
 
-            <!-- Build form: left details + right description -->
-            <Grid Grid.Column="2" ColumnDefinitions="*,4,*">
-
-                <!-- Left: Name + attributes -->
-                <DockPanel Grid.Column="0" Margin="12">
-                    <StackPanel DockPanel.Dock="Top" Spacing="6">
-                        <TextBlock Text="Name" FontWeight="SemiBold"/>
-                        <TextBox Text="{Binding SelectedBuild.Name}"/>
-                        <TextBlock Text="Matchups" FontWeight="SemiBold" Margin="0,8,0,0"/>
-                        <StackPanel Orientation="Horizontal" Spacing="4">
-                            <Button Content="vs Z" Command="{Binding ToggleMatchupCommand}"
-                                    CommandParameter="{x:Static race:Race.Z}" Classes.active="{Binding SelectedBuild.VsZ}"/>
-                            <Button Content="vs T" Command="{Binding ToggleMatchupCommand}"
-                                    CommandParameter="{x:Static race:Race.T}" Classes.active="{Binding SelectedBuild.VsT}"/>
-                            <Button Content="vs P" Command="{Binding ToggleMatchupCommand}"
-                                    CommandParameter="{x:Static race:Race.P}" Classes.active="{Binding SelectedBuild.VsP}"/>
-                        </StackPanel>
-                        <DockPanel Margin="0,8,0,0">
-                            <TextBlock Text="Attributes" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                            <Button Content="+" DockPanel.Dock="Right"
-                                    Command="{Binding AddAttributeCommand}"
-                                    Padding="6,2" HorizontalAlignment="Right"/>
-                        </DockPanel>
-                    </StackPanel>
-                    <ScrollViewer>
-                        <ItemsControl ItemsSource="{Binding SelectedBuild.Attributes}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="builds:BuildAttribute">
-                                    <StackPanel Margin="0,0,0,4">
-                                        <!-- Main attribute row -->
-                                        <Grid ColumnDefinitions="*,120,Auto">
-                                            <TextBox Grid.Column="0" Text="{Binding Name}" PlaceholderText="Name" Margin="0,0,4,0"/>
-                                            <ComboBox Grid.Column="1" SelectedItem="{Binding Type}"
-                                                      ItemsSource="{x:Static builds:BuildAttribute.AllTypes}"
-                                                      HorizontalAlignment="Stretch" Margin="0,0,4,0"/>
-                                            <Button Grid.Column="2" Content="✕"
-                                                    Command="{Binding $parent[UserControl].((vm:BuildsPageViewModel)DataContext).RemoveAttributeCommand}"
-                                                    CommandParameter="{Binding}"
-                                                    Padding="6,2"/>
-                                        </Grid>
-                                        <!-- Default value editor -->
-                                        <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0" IsVisible="{Binding !IsValues}">
-                                            <TextBlock Grid.Column="0" Text="Default:" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                            <NumericUpDown Grid.Column="1" Value="{Binding NumericValue}"
-                                                           IsVisible="{Binding IsNumeric}"
-                                                           FormatString="0.##" HorizontalAlignment="Stretch"/>
-                                            <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}"
-                                                      IsVisible="{Binding IsBool}"/>
-                                            <NumericUpDown Grid.Column="1" Value="{Binding PercentValue}"
-                                                           IsVisible="{Binding IsPercent}"
-                                                           Minimum="0" Maximum="100" FormatString="0.##'%'"
-                                                           HorizontalAlignment="Stretch"/>
-                                        </Grid>
-                                        <!-- Options editor (Values type only) -->
-                                        <StackPanel IsVisible="{Binding IsValues}" Margin="16,4,0,0" Spacing="2">
-                                            <ItemsControl ItemsSource="{Binding ValueOptions}">
-                                                <ItemsControl.ItemTemplate>
-                                                    <DataTemplate>
-                                                        <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,2">
-                                                            <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center"/>
-                                                            <Button Grid.Column="1" Content="✕" Padding="4,1"
-                                                                    Command="{Binding $parent[ItemsControl].DataContext.RemoveOptionCommand}"
-                                                                    CommandParameter="{Binding}"/>
-                                                        </Grid>
-                                                    </DataTemplate>
-                                                </ItemsControl.ItemTemplate>
-                                            </ItemsControl>
-                                            <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
-                                                <TextBox Grid.Column="0" Text="{Binding NewOptionText}"
-                                                         PlaceholderText="Add option..." Margin="0,0,4,0"/>
-                                                <Button Grid.Column="1" Content="+" Padding="6,2"
-                                                        Command="{Binding AddOptionCommand}"/>
-                                            </Grid>
-                                            <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0">
-                                                <TextBlock Grid.Column="0" Text="Default:" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                                <ComboBox Grid.Column="1" ItemsSource="{Binding ValueOptions}"
-                                                          SelectedItem="{Binding SelectedValue}"
-                                                          HorizontalAlignment="Stretch"/>
-                                            </Grid>
-                                        </StackPanel>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </DockPanel>
-
-                <GridSplitter Grid.Column="1" ResizeDirection="Columns"/>
-
-                <!-- Right: Description -->
-                <DockPanel Grid.Column="2" Margin="12">
-                    <TextBlock DockPanel.Dock="Top" Text="Description" FontWeight="SemiBold" Margin="0,0,0,6"/>
-                    <TextBox Text="{Binding SelectedBuild.Description}" AcceptsReturn="True" TextWrapping="Wrap"/>
-                </DockPanel>
-
-            </Grid>
+            <!-- Build details: left details + right description -->
+            <local:BuildDetailsPanel Grid.Column="2"/>
         </Grid>
     </DockPanel>
 </UserControl>
