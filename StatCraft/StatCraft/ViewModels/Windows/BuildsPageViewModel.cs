@@ -14,9 +14,11 @@ namespace StatCraft.ViewModels
 
     public enum AttributeType { Numeric, Bool, Percent, Values }
 
-    public partial class MatchupOption(Matchup value) : ObservableObject
+    public enum Race { Z, T, P }
+
+    public partial class RaceOption(Race value) : ObservableObject
     {
-        public Matchup Value { get; } = value;
+        public Race Value { get; } = value;
 
         [ObservableProperty] private bool _isSelected;
     }
@@ -31,11 +33,17 @@ namespace StatCraft.ViewModels
         {
             _repository = repository;
             _gameDataRepository = gameDataRepository;
-            MatchupOptions = Enum.GetValues<Matchup>()
-                .Select(m => new MatchupOption(m) { IsSelected = m == SelectedMatchup })
+            PlayerRaceOptions = Enum.GetValues<Race>()
+                .Select(r => new RaceOption(r) { IsSelected = r == PlayerRace })
+                .ToList();
+            OpponentRaceOptions = Enum.GetValues<Race>()
+                .Select(r => new RaceOption(r) { IsSelected = r == OpponentRace })
                 .ToList();
             LoadMatchupIfNeeded(SelectedMatchup);
         }
+
+        [ObservableProperty] private Race _playerRace = Race.Z;
+        [ObservableProperty] private Race _opponentRace = Race.Z;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(CurrentView), nameof(Builds))]
@@ -43,7 +51,8 @@ namespace StatCraft.ViewModels
 
         [ObservableProperty] private BuildNode? _selectedBuild;
 
-        public IReadOnlyList<MatchupOption> MatchupOptions { get; }
+        public IReadOnlyList<RaceOption> PlayerRaceOptions { get; }
+        public IReadOnlyList<RaceOption> OpponentRaceOptions { get; }
 
         public Matchup CurrentView => SelectedMatchup;
 
@@ -54,14 +63,41 @@ namespace StatCraft.ViewModels
 
         partial void OnSelectedMatchupChanged(Matchup value)
         {
-            foreach (MatchupOption option in MatchupOptions)
-                option.IsSelected = option.Value == value;
             LoadMatchupIfNeeded(value);
             SelectFirstBuild();
         }
 
         [RelayCommand]
-        public void SelectMatchup(Matchup matchup) => SelectedMatchup = matchup;
+        public void SelectPlayerRace(Race race)
+        {
+            PlayerRace = race;
+            foreach (RaceOption option in PlayerRaceOptions)
+                option.IsSelected = option.Value == race;
+            SelectedMatchup = ComputeMatchup(PlayerRace, OpponentRace);
+        }
+
+        [RelayCommand]
+        public void SelectOpponentRace(Race race)
+        {
+            OpponentRace = race;
+            foreach (RaceOption option in OpponentRaceOptions)
+                option.IsSelected = option.Value == race;
+            SelectedMatchup = ComputeMatchup(PlayerRace, OpponentRace);
+        }
+
+        private static Matchup ComputeMatchup(Race player, Race opponent) => (player, opponent) switch
+        {
+            (Race.Z, Race.Z) => Matchup.ZvZ,
+            (Race.Z, Race.T) => Matchup.ZvT,
+            (Race.Z, Race.P) => Matchup.ZvP,
+            (Race.T, Race.Z) => Matchup.TvZ,
+            (Race.T, Race.T) => Matchup.TvT,
+            (Race.T, Race.P) => Matchup.TvP,
+            (Race.P, Race.Z) => Matchup.PvZ,
+            (Race.P, Race.T) => Matchup.PvT,
+            (Race.P, Race.P) => Matchup.PvP,
+            _ => Matchup.ZvZ,
+        };
 
         private void LoadMatchupIfNeeded(Matchup matchup)
         {

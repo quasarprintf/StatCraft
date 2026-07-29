@@ -5,22 +5,45 @@
              x:Class="StatCraft.Views.BuildsPage"
              x:DataType="vm:BuildsPageViewModel">
     <DockPanel>
-        <!-- Matchup buttons -->
-        <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding MatchupOptions}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal" Spacing="4" Margin="4"/>
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:MatchupOption">
-                    <Button Content="{Binding Value}"
-                            Command="{Binding $parent[ItemsControl].((vm:BuildsPageViewModel)DataContext).SelectMatchupCommand}"
-                            CommandParameter="{Binding Value}"
-                            Classes.active="{Binding IsSelected}"/>
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
+        <!-- Player race / opponent race selectors -->
+        <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="4">
+            <DockPanel>
+                <TextBlock Text="You:" VerticalAlignment="Center" Width="80"/>
+                <ItemsControl ItemsSource="{Binding PlayerRaceOptions}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:RaceOption">
+                            <Button Content="{Binding Value}"
+                                    Command="{Binding $parent[ItemsControl].((vm:BuildsPageViewModel)DataContext).SelectPlayerRaceCommand}"
+                                    CommandParameter="{Binding Value}"
+                                    Classes.active="{Binding IsSelected}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </DockPanel>
+            <DockPanel>
+                <TextBlock Text="Opponent:" VerticalAlignment="Center" Width="80"/>
+                <ItemsControl ItemsSource="{Binding OpponentRaceOptions}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:RaceOption">
+                            <Button Content="{Binding Value}"
+                                    Command="{Binding $parent[ItemsControl].((vm:BuildsPageViewModel)DataContext).SelectOpponentRaceCommand}"
+                                    CommandParameter="{Binding Value}"
+                                    Classes.active="{Binding IsSelected}"/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </DockPanel>
+        </StackPanel>
 
         <!-- Left/right split -->
         <Grid ColumnDefinitions="200,4,*">
