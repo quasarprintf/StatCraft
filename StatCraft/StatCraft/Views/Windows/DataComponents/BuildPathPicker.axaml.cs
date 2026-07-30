@@ -32,8 +32,8 @@ namespace StatCraft.Views
                     catch (Exception ex)
                     {
                         //should never happen, log and fail loudly
-                        App.Services.GetRequiredService<ILogger>()
-                            .LogError($"BuildPathPicker: failed to wire menu item selection handlers: {ex}");
+                        ILogger logger = App.Services.GetRequiredService<ILogger>();
+                        logger.LogError($"BuildPathPicker: failed to wire menu item selection handlers: {ex}", ViewModel);
                         throw;
                     }
                 };
