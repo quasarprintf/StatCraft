@@ -20,11 +20,7 @@ namespace StatCraft.Views
         {
             InitializeComponent();
 
-            // Manually bind on-click handlers for menu items, to allow selecting non-leaf items. The cast
-            // below is deliberately unguarded — Popup.Child not being the ItemsControl we expect would only
-            // happen if Avalonia's own MenuFlyout internals changed out from under us, and that should fail
-            // loudly rather than degrade silently. The catch exists purely to get a diagnostic breadcrumb
-            // into the logs before letting the exception continue to propagate.
+            // Manually bind on-click handlers for menu items, to allow selecting non-leaf items.
             if (PickerButton.Flyout is PopupFlyoutBase popupBase)
             {
                 popupBase.Popup.Opened += (_, _) =>
@@ -35,6 +31,7 @@ namespace StatCraft.Views
                     }
                     catch (Exception ex)
                     {
+                        //should never happen, log and fail loudly
                         App.Services.GetRequiredService<ILogger>()
                             .LogError($"BuildPathPicker: failed to wire menu item selection handlers: {ex}");
                         throw;
