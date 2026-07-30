@@ -4,7 +4,6 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.DatabaseRepository;
@@ -20,6 +19,7 @@ namespace StatCraft.ViewModels
     {
         private readonly GameData _game;
         private readonly GameDataRepository _repository;
+        private readonly ObservableCollection<BuildNode> _buildTree;
 
         public string MapName { get; }
         public string PlayedAt { get; }
@@ -29,23 +29,20 @@ namespace StatCraft.ViewModels
         public string Matchup { get; }
         public IReadOnlyList<ColoredCharacter> MatchupCharacters { get; }
         public string OpponentName { get; }
-        public bool IsBuildPickerEnabled { get; }
 
         [ObservableProperty] private string _notes;
-        [ObservableProperty] private BuildNode? _selectedBuildNode;
-        [ObservableProperty] private string _selectedBuildLabel = DEFAULT_BUILD_TEXT;
+        [ObservableProperty] private string _selectedBuildsSummary = "";
 
-        private readonly static string DEFAULT_BUILD_TEXT = "";
-
-        public ObservableCollection<BuildNode> BuildTree { get; }
+        // Slots are always [...persisted selections, one trailing blank] — selecting a build in the
+        // trailing slot appends a new blank after it, and clearing a non-trailing slot removes it.
+        public ObservableCollection<BuildSelectionSlotViewModel> BuildSlots { get; } = [];
         public ObservableCollection<GameAttributeEditorViewModel> AttributeEditors { get; } = [];
 
         internal GameDataRowViewModel(GameData game, GameDataRepository repository, ObservableCollection<BuildNode>? buildTree)
         {
             _game = game;
             _repository = repository;
-            BuildTree = buildTree ?? [];
-            IsBuildPickerEnabled = buildTree != null;
+            _buildTree = buildTree ?? [];
 
             ParsedReplayData replay = game.ReplayData;
             MapName = replay.MapName;
@@ -58,35 +55,79 @@ namespace StatCraft.ViewModels
             OpponentName = string.Join(", ", replay.Opponents.Select(o => $"{o.FormattedClan} {o.Name}"));
             _notes = game.Notes;
 
-            // Setting SelectedBuildNode (when a build was previously saved) triggers OnSelectedBuildNodeChanged
-            // below, which sets SelectedBuildLabel and populates AttributeEditors. If there's no saved build,
-            // the field initializers above already leave things in the correct "nothing selected" state.
-            if (game.BuildId.HasValue)
-                SelectedBuildNode = BuildPathHelper.FindPath(BuildTree, game.BuildId.Value)?.LastOrDefault();
+            if (buildTree == null)
+            {
+                // Matchup couldn't be resolved (e.g. FFA/unusual team layout) — show a single disabled
+                // picker, same as before multi-select existed.
+                BuildSlots.Add(new BuildSelectionSlotViewModel(null));
+            }
+            else
+            {
+                foreach (int buildId in game.BuildIds)
+                {
+                    BuildNode? node = BuildPathHelper.FindPath(_buildTree, buildId)?.LastOrDefault();
+                    if (node == null)
+                        continue; // build was deleted since this game was tagged
+
+                    // Set SelectedBuildNode before subscribing SelectionChanged, so hydrating a saved
+                    // selection doesn't trigger the append/remove/persist logic meant for user edits.
+                    BuildSelectionSlotViewModel slot = new(buildTree) { SelectedBuildNode = node };
+                    slot.SelectionChanged += OnSlotSelectionChanged;
+                    BuildSlots.Add(slot);
+                }
+                AppendBlankSlot();
+            }
+
+            UpdateSelectedBuildsSummary();
+            RebuildAttributeEditors();
         }
 
         partial void OnNotesChanged(string value) => _repository.UpdateGameNotes(_game.GameId!.Value, value);
 
-        [RelayCommand]
-        private void SelectBuild(BuildNode node) => SelectedBuildNode = node;
-
-        partial void OnSelectedBuildNodeChanged(BuildNode? oldValue, BuildNode? newValue)
+        private void AppendBlankSlot()
         {
-            _game.BuildId = newValue?.Id;
-            _repository.UpdateGameBuild(_game.GameId!.Value, newValue?.Id);
-            SelectedBuildLabel = newValue == null ? DEFAULT_BUILD_TEXT : BuildLabel(newValue);
-            RebuildAttributeEditors(oldValue, newValue);
+            BuildSelectionSlotViewModel slot = new(_buildTree);
+            slot.SelectionChanged += OnSlotSelectionChanged;
+            BuildSlots.Add(slot);
         }
 
-        // Re-derives the attribute editors for the currently selected build without changing the
-        // selection itself — called after DataPageViewModel reloads the cached build tree, so an attribute
-        // added to (or removed from) the selected build or one of its ancestors on the Builds tab is
+        private void OnSlotSelectionChanged(BuildSelectionSlotViewModel slot)
+        {
+            int index = BuildSlots.IndexOf(slot);
+            bool isLast = index == BuildSlots.Count - 1;
+
+            if (slot.SelectedBuildNode != null && isLast)
+            {
+                AppendBlankSlot();
+            }
+            else if (slot.SelectedBuildNode == null && !isLast)
+            {
+                slot.SelectionChanged -= OnSlotSelectionChanged;
+                BuildSlots.RemoveAt(index);
+            }
+
+            List<int> buildIds = BuildSlots
+                .Select(s => s.SelectedBuildNode?.Id)
+                .Where(id => id.HasValue)
+                .Select(id => id!.Value)
+                .ToList();
+            _game.BuildIds = buildIds;
+            _repository.UpdateGameBuilds(_game.GameId!.Value, buildIds);
+
+            UpdateSelectedBuildsSummary();
+            RebuildAttributeEditors();
+        }
+
+        private void UpdateSelectedBuildsSummary() =>
+            SelectedBuildsSummary = string.Join("; ", BuildSlots
+                .Where(s => s.SelectedBuildNode != null)
+                .Select(s => s.SelectedBuildLabel));
+
+        // Re-derives the attribute editors for the currently selected builds without changing any
+        // selection — called after DataPageViewModel reloads the cached build tree, so an attribute
+        // added to (or removed from) a selected build or one of its ancestors on the Builds tab is
         // picked up here on the Data tab too.
-        public void RefreshAttributeEditors()
-        {
-            if (SelectedBuildNode != null)
-                RebuildAttributeEditors(SelectedBuildNode, SelectedBuildNode);
-        }
+        public void RefreshAttributeEditors() => RebuildAttributeEditors();
 
         private static List<ColoredCharacter> BuildMatchupCharacters(ParsedReplayData replay)
         {
@@ -112,23 +153,28 @@ namespace StatCraft.ViewModels
             _ => Brushes.Gray,
         };
 
-        private string BuildLabel(BuildNode node) =>
-            string.Join(" > ", BuildPathHelper.FindPath(BuildTree, node.Id)!.Select(n => n.Name));
-
-        private void RebuildAttributeEditors(BuildNode? oldSelection, BuildNode? newSelection)
+        // Deduplicated union of every selected build's root-to-leaf path, so a shared ancestor
+        // contributes its attributes exactly once no matter how many selected builds pass through it.
+        private void RebuildAttributeEditors()
         {
-            List<int> oldIds = oldSelection == null
-                ? []
-                : BuildPathHelper.FlattenAttributes(BuildPathHelper.FindPath(BuildTree, oldSelection.Id)!).Select(a => a.Id).ToList();
+            List<int> oldIds = AttributeEditors.Select(e => e.BuildAttributeId).ToList();
 
-            List<BuildAttribute> newPathAttrs = newSelection == null
-                ? []
-                : BuildPathHelper.FlattenAttributes(BuildPathHelper.FindPath(BuildTree, newSelection.Id)!);
-
+            List<BuildNode> unionPath = new();
+            HashSet<int> seen = new();
+            foreach (BuildNode leaf in BuildSlots.Select(s => s.SelectedBuildNode).OfType<BuildNode>())
+            {
+                List<BuildNode>? path = BuildPathHelper.FindPath(_buildTree, leaf.Id);
+                if (path == null)
+                    continue;
+                foreach (BuildNode node in path)
+                    if (seen.Add(node.Id))
+                        unionPath.Add(node);
+            }
+            List<BuildAttribute> newPathAttrs = BuildPathHelper.FlattenAttributes(unionPath);
             List<int> newIds = newPathAttrs.Select(a => a.Id).ToList();
 
-            // Left the path: drop the stored value from the DB, but leave it in _game.AttributeValues
-            // (in-memory) so switching back within this session restores it.
+            // Left every selected path: drop the stored value from the DB, but leave it in
+            // _game.AttributeValues (in-memory) so re-selecting the build within this session restores it.
             foreach (int leftId in oldIds.Except(newIds))
                 _repository.DeleteAttributeValue(_game.GameId!.Value, leftId);
 

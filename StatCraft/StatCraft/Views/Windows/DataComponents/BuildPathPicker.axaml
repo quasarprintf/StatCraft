@@ -3,7 +3,7 @@
              xmlns:vm="using:StatCraft.ViewModels"
              xmlns:builds="using:StatCraft.Models.GameData.Builds"
              x:Class="StatCraft.Views.BuildPathPicker"
-             x:DataType="vm:GameDataRowViewModel">
+             x:DataType="vm:BuildSelectionSlotViewModel">
     <UserControl.Styles>
         <Style Selector="MenuItem" x:DataType="builds:BuildNode">
             <Setter Property="Header" Value="{Binding Name}"/>
@@ -19,7 +19,7 @@
             IsEnabled="{Binding IsBuildPickerEnabled}"
             HorizontalContentAlignment="Left" HorizontalAlignment="Stretch">
         <Button.Flyout>
-            <MenuFlyout ItemsSource="{Binding BuildTree}" Placement="Bottom"/>
+            <MenuFlyout ItemsSource="{Binding MenuOptions}" Placement="Bottom"/>
         </Button.Flyout>
     </Button>
 </UserControl>

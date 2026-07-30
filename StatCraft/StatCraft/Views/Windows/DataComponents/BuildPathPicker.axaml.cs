@@ -14,7 +14,7 @@ namespace StatCraft.Views
 {
     public partial class BuildPathPicker : UserControl
     {
-        private GameDataRowViewModel ViewModel => (GameDataRowViewModel)DataContext!;
+        private BuildSelectionSlotViewModel ViewModel => (BuildSelectionSlotViewModel)DataContext!;
 
         public BuildPathPicker()
         {

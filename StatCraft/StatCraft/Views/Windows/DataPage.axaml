@@ -34,13 +34,19 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Opponent" Binding="{Binding OpponentName}" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Build" Binding="{Binding SelectedBuildLabel}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Build" Binding="{Binding SelectedBuildsSummary}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*"/>
             </DataGrid.Columns>
             <DataGrid.RowDetailsTemplate>
                 <DataTemplate x:DataType="vm:GameDataRowViewModel">
                     <StackPanel Margin="24,8" Spacing="8">
-                        <local:BuildPathPicker Width="300" HorizontalAlignment="Left"/>
+                        <ItemsControl ItemsSource="{Binding BuildSlots}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:BuildSelectionSlotViewModel">
+                                    <local:BuildPathPicker Width="300" HorizontalAlignment="Left" Margin="0,0,0,4"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                         <ItemsControl ItemsSource="{Binding AttributeEditors}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:GameAttributeEditorViewModel">

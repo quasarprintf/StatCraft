@@ -8,7 +8,7 @@ namespace StatCraft.Models.GameData
     {
         public int? GameId { get; set; }
         public required ParsedReplayData ReplayData { get; set; }
-        public int? BuildId { get; set; }
+        public List<int> BuildIds { get; set; } = [];
         public string Notes { get; set; } = string.Empty;
         public List<GameAttributeValue> AttributeValues { get; set; } = [];
     }

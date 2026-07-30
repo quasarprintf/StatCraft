@@ -82,17 +82,50 @@ public class GameDataRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void UpdateGameBuild_ThenReload_PersistsBuildId()
+    public void UpdateGameBuilds_ThenReload_PersistsBuildId()
     {
         BuildNode build = new() { Name = "4 Gate" };
         _buildRepository.InsertBuild(build, null, 0);
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpdateGameBuild(game.GameId!.Value, build.Id);
+        _repository.UpdateGameBuilds(game.GameId!.Value, [build.Id]);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
-        Assert.Equal(build.Id, loaded.BuildId);
+        Assert.Equal([build.Id], loaded.BuildIds);
+    }
+
+    [Fact]
+    public void UpdateGameBuilds_MultipleBuilds_ThenReload_PersistsInOrder()
+    {
+        BuildNode buildA = new() { Name = "A" };
+        _buildRepository.InsertBuild(buildA, null, 0);
+        BuildNode buildB = new() { Name = "B" };
+        _buildRepository.InsertBuild(buildB, null, 1);
+
+        GameData game = CreateGame();
+        _repository.InsertGame(game, _sc2ProfileId);
+        _repository.UpdateGameBuilds(game.GameId!.Value, [buildB.Id, buildA.Id]);
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        Assert.Equal([buildB.Id, buildA.Id], loaded.BuildIds);
+    }
+
+    [Fact]
+    public void UpdateGameBuilds_CalledAgainWithFewerBuilds_ReplacesPreviousSet()
+    {
+        BuildNode buildA = new() { Name = "A" };
+        _buildRepository.InsertBuild(buildA, null, 0);
+        BuildNode buildB = new() { Name = "B" };
+        _buildRepository.InsertBuild(buildB, null, 1);
+
+        GameData game = CreateGame();
+        _repository.InsertGame(game, _sc2ProfileId);
+        _repository.UpdateGameBuilds(game.GameId!.Value, [buildA.Id, buildB.Id]);
+        _repository.UpdateGameBuilds(game.GameId!.Value, [buildB.Id]);
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        Assert.Equal([buildB.Id], loaded.BuildIds);
     }
 
     [Fact]
@@ -180,7 +213,7 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpdateGameBuild(game.GameId!.Value, build.Id);
+        _repository.UpdateGameBuilds(game.GameId!.Value, [build.Id]);
 
         Assert.True(_repository.IsAnyBuildReferenced([build.Id]));
     }
@@ -210,7 +243,7 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpdateGameBuild(game.GameId!.Value, child.Id);
+        _repository.UpdateGameBuilds(game.GameId!.Value, [child.Id]);
 
         // Simulates deleting "parent", which would cascade-delete "child" too — the caller passes the
         // whole subtree, and only "child" (not "parent") is actually referenced by a game.
@@ -259,6 +292,72 @@ public class GameDataRepositoryTests : IDisposable
 
             GameData loaded = Assert.Single(repository.GetGamesForProfile(1));
             Assert.Equal(DateTimeOffset.Parse("2025-06-01T12:00:00.0000000+00:00"), loaded.ReplayData.ReplayTimestamp);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(dbPath))
+                    File.Delete(dbPath);
+            }
+            catch (IOException)
+            {
+                // Best-effort cleanup.
+            }
+        }
+    }
+
+    [Fact]
+    public void Initialize_ExistingOldSchemaWithBuildIdColumn_MigratesIntoGameBuilds()
+    {
+        string dbPath = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid() + ".db");
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+            using (SqliteConnection conn = new SqliteConnection($"Data Source={dbPath}"))
+            {
+                conn.Open();
+                using SqliteCommand createCmd = conn.CreateCommand();
+                createCmd.CommandText = @"
+                    CREATE TABLE Games (
+                        Id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Sc2ProfileId      INTEGER NOT NULL,
+                        MapName           TEXT    NOT NULL DEFAULT '',
+                        GameLengthSeconds INTEGER NOT NULL DEFAULT 0,
+                        ReplayPath        TEXT    NOT NULL UNIQUE,
+                        ReplayTimestamp   TEXT    NOT NULL DEFAULT '',
+                        Win               REAL    NOT NULL DEFAULT 0,
+                        PlayerName        TEXT    NOT NULL DEFAULT '',
+                        PlayerClan        TEXT    NOT NULL DEFAULT '',
+                        PlayerMmr         INTEGER NOT NULL DEFAULT 0,
+                        PlayerRace        TEXT    NOT NULL DEFAULT '',
+                        PlayerRandom      INTEGER NOT NULL DEFAULT 0,
+                        BuildId           INTEGER,
+                        Notes             TEXT    NOT NULL DEFAULT '',
+                        CreatedAtUtc      TEXT    NOT NULL DEFAULT ''
+                    );
+                    CREATE TABLE BuildNodes (
+                        Id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Name TEXT NOT NULL DEFAULT ''
+                    );";
+                createCmd.ExecuteNonQuery();
+
+                using SqliteCommand insertBuildCmd = conn.CreateCommand();
+                insertBuildCmd.CommandText = "INSERT INTO BuildNodes (Id, Name) VALUES (42, 'Legacy Build')";
+                insertBuildCmd.ExecuteNonQuery();
+
+                using SqliteCommand insertCmd = conn.CreateCommand();
+                insertCmd.CommandText = @"
+                    INSERT INTO Games (Sc2ProfileId, ReplayPath, ReplayTimestamp, PlayerRace, BuildId, CreatedAtUtc)
+                    VALUES (1, 'legacy.SC2Replay', '2025-06-01T12:00:00.0000000+00:00', 'T', 42, '2025-06-01T12:00:00.0000000+00:00')";
+                insertCmd.ExecuteNonQuery();
+            }
+
+            GameDataRepository repository = new GameDataRepository(dbPath);
+            repository.Initialize();
+
+            GameData loaded = Assert.Single(repository.GetGamesForProfile(1));
+            Assert.Equal([42], loaded.BuildIds);
         }
         finally
         {

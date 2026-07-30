@@ -41,9 +41,15 @@ namespace StatCraft.Services.DatabaseRepository
                     PlayerMmr         INTEGER NOT NULL DEFAULT 0,
                     PlayerRace        TEXT    NOT NULL DEFAULT '',
                     PlayerRandom      INTEGER NOT NULL DEFAULT 0,
-                    BuildId           INTEGER REFERENCES BuildNodes(Id) ON DELETE SET NULL,
                     Notes             TEXT    NOT NULL DEFAULT '',
                     CreatedAtUtc      TEXT    NOT NULL DEFAULT ''
+                );
+                CREATE TABLE IF NOT EXISTS GameBuilds (
+                    Id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                    GameId    INTEGER NOT NULL REFERENCES Games(Id) ON DELETE CASCADE,
+                    BuildId   INTEGER NOT NULL REFERENCES BuildNodes(Id) ON DELETE CASCADE,
+                    SortOrder INTEGER NOT NULL DEFAULT 0,
+                    UNIQUE(GameId, BuildId)
                 );
                 CREATE TABLE IF NOT EXISTS GamePlayers (
                     Id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -82,6 +88,24 @@ namespace StatCraft.Services.DatabaseRepository
             {
                 // Already migrated, or a fresh DB already created with the new schema.
             }
+
+            // Upgrades a pre-existing DB that predates GameBuilds, moving its single Games.BuildId column
+            // into the new join table before dropping the column. On a fresh DB (or one already migrated)
+            // Games never has a BuildId column, so the INSERT fails immediately and the batch aborts
+            // before ever reaching DROP COLUMN.
+            try
+            {
+                using SqliteCommand migrateCmd = conn.CreateCommand();
+                migrateCmd.CommandText = @"
+                    INSERT INTO GameBuilds (GameId, BuildId, SortOrder)
+                        SELECT Id, BuildId, 0 FROM Games WHERE BuildId IS NOT NULL;
+                    ALTER TABLE Games DROP COLUMN BuildId;";
+                migrateCmd.ExecuteNonQuery();
+            }
+            catch (SqliteException)
+            {
+                // Already migrated, or a fresh DB already created with the new schema.
+            }
         }
 
         // Side values in GamePlayers.
@@ -108,8 +132,8 @@ namespace StatCraft.Services.DatabaseRepository
             using (SqliteCommand cmd = conn.CreateCommand())
             {
                 cmd.CommandText = @"
-                    INSERT INTO Games (Sc2ProfileId, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, BuildId, Notes, CreatedAtUtc)
-                    VALUES (@sc2ProfileId, @mapName, @gameLengthSeconds, @replayPath, @replayTimestamp, @win, @playerName, @playerClan, @playerMmr, @playerRace, @playerRandom, @buildId, @notes, @createdAt);
+                    INSERT INTO Games (Sc2ProfileId, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes, CreatedAtUtc)
+                    VALUES (@sc2ProfileId, @mapName, @gameLengthSeconds, @replayPath, @replayTimestamp, @win, @playerName, @playerClan, @playerMmr, @playerRace, @playerRandom, @notes, @createdAt);
                     SELECT last_insert_rowid();";
                 cmd.Parameters.AddWithValue("@sc2ProfileId", sc2ProfileId);
                 cmd.Parameters.AddWithValue("@mapName", replay.MapName);
@@ -122,7 +146,6 @@ namespace StatCraft.Services.DatabaseRepository
                 cmd.Parameters.AddWithValue("@playerMmr", replay.Player.Mmr);
                 cmd.Parameters.AddWithValue("@playerRace", replay.Player.Race.ToString());
                 cmd.Parameters.AddWithValue("@playerRandom", replay.Player.Random ? 1 : 0);
-                cmd.Parameters.AddWithValue("@buildId", (object?)game.BuildId ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@notes", game.Notes);
                 cmd.Parameters.AddWithValue("@createdAt", DateTimeOffset.UtcNow.ToString("o", CultureInfo.InvariantCulture));
                 game.GameId = (int)(long)cmd.ExecuteScalar()!;
@@ -163,7 +186,7 @@ namespace StatCraft.Services.DatabaseRepository
             using (SqliteCommand cmd = conn.CreateCommand())
             {
                 cmd.CommandText = @"
-                    SELECT Id, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, BuildId, Notes
+                    SELECT Id, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes
                     FROM Games WHERE Sc2ProfileId = @sc2ProfileId ORDER BY Id ASC";
                 cmd.Parameters.AddWithValue("@sc2ProfileId", sc2ProfileId);
                 using SqliteDataReader reader = cmd.ExecuteReader();
@@ -182,8 +205,7 @@ namespace StatCraft.Services.DatabaseRepository
                         PlayerMmr: reader.GetInt64(8),
                         PlayerRace: reader.GetString(9)[0],
                         PlayerRandom: reader.GetInt32(10) != 0,
-                        BuildId: reader.IsDBNull(11) ? null : reader.GetInt32(11),
-                        Notes: reader.GetString(12));
+                        Notes: reader.GetString(11));
                 }
             }
 
@@ -214,6 +236,20 @@ namespace StatCraft.Services.DatabaseRepository
                     if (!target.TryGetValue(gameId, out List<GamePlayer>? list))
                         target[gameId] = list = new();
                     list.Add(player);
+                }
+            }
+
+            Dictionary<long, List<int>> buildIds = new();
+            using (SqliteCommand cmd = conn.CreateCommand())
+            {
+                cmd.CommandText = $"SELECT GameId, BuildId FROM GameBuilds WHERE GameId IN ({idList}) ORDER BY GameId, SortOrder";
+                using SqliteDataReader reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    long gameId = reader.GetInt64(0);
+                    if (!buildIds.TryGetValue(gameId, out List<int>? list))
+                        buildIds[gameId] = list = new();
+                    list.Add(reader.GetInt32(1));
                 }
             }
 
@@ -251,7 +287,7 @@ namespace StatCraft.Services.DatabaseRepository
                 {
                     GameId = (int)id,
                     ReplayData = replay,
-                    BuildId = row.BuildId,
+                    BuildIds = buildIds.TryGetValue(id, out List<int>? b) ? b : [],
                     Notes = row.Notes,
                     AttributeValues = attributeValues.TryGetValue(id, out List<GameAttributeValue>? v) ? v : [],
                 });
@@ -259,14 +295,26 @@ namespace StatCraft.Services.DatabaseRepository
             return games;
         }
 
-        public void UpdateGameBuild(int gameId, int? buildId)
+        public void UpdateGameBuilds(int gameId, IReadOnlyList<int> buildIds)
         {
             using SqliteConnection conn = OpenConnection();
-            using SqliteCommand cmd = conn.CreateCommand();
-            cmd.CommandText = "UPDATE Games SET BuildId = @buildId WHERE Id = @id";
-            cmd.Parameters.AddWithValue("@buildId", (object?)buildId ?? DBNull.Value);
-            cmd.Parameters.AddWithValue("@id", gameId);
-            cmd.ExecuteNonQuery();
+
+            using (SqliteCommand deleteCmd = conn.CreateCommand())
+            {
+                deleteCmd.CommandText = "DELETE FROM GameBuilds WHERE GameId = @gameId";
+                deleteCmd.Parameters.AddWithValue("@gameId", gameId);
+                deleteCmd.ExecuteNonQuery();
+            }
+
+            for (int i = 0; i < buildIds.Count; i++)
+            {
+                using SqliteCommand insertCmd = conn.CreateCommand();
+                insertCmd.CommandText = "INSERT INTO GameBuilds (GameId, BuildId, SortOrder) VALUES (@gameId, @buildId, @sortOrder)";
+                insertCmd.Parameters.AddWithValue("@gameId", gameId);
+                insertCmd.Parameters.AddWithValue("@buildId", buildIds[i]);
+                insertCmd.Parameters.AddWithValue("@sortOrder", i);
+                insertCmd.ExecuteNonQuery();
+            }
         }
 
         public void UpdateGameNotes(int gameId, string notes)
@@ -303,11 +351,11 @@ namespace StatCraft.Services.DatabaseRepository
             cmd.ExecuteNonQuery();
         }
 
-        // True if any Games row still points at one of these build node ids. Deleting a BuildNode
+        // True if any GameBuilds row still points at one of these build node ids. Deleting a BuildNode
         // cascades to its whole subtree (BuildNodes.ParentId ON DELETE CASCADE), and each deleted node
-        // sets any referencing Games.BuildId to NULL (ON DELETE SET NULL) while cascading away that
-        // game's recorded attribute values for it (via BuildAttributes -> GameAttributeValues) — so
-        // callers should pass every id in the subtree being deleted, not just the root.
+        // cascades away any GameBuilds row referencing it (ON DELETE CASCADE) along with that game's
+        // recorded attribute values for it (via BuildAttributes -> GameAttributeValues) — so callers
+        // should pass every id in the subtree being deleted, not just the root.
         public bool IsAnyBuildReferenced(IEnumerable<int> buildNodeIds)
         {
             List<int> ids = buildNodeIds.ToList();
@@ -317,15 +365,14 @@ namespace StatCraft.Services.DatabaseRepository
             using SqliteConnection conn = OpenConnection();
             using SqliteCommand cmd = conn.CreateCommand();
             string idList = string.Join(",", ids);
-            cmd.CommandText = $"SELECT COUNT(*) FROM Games WHERE BuildId IN ({idList})";
+            cmd.CommandText = $"SELECT COUNT(*) FROM GameBuilds WHERE BuildId IN ({idList})";
             long count = (long)cmd.ExecuteScalar()!;
             return count > 0;
         }
 
         private record GameRow(
             string MapName, int GameLengthSeconds, string ReplayPath, DateTimeOffset ReplayTimestamp, decimal Win,
-            string PlayerName, string PlayerClan, long PlayerMmr, char PlayerRace, bool PlayerRandom,
-            int? BuildId, string Notes);
+            string PlayerName, string PlayerClan, long PlayerMmr, char PlayerRace, bool PlayerRandom, string Notes);
 
         private SqliteConnection OpenConnection()
         {
