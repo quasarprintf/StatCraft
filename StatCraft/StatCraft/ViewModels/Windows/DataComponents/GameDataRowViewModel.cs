@@ -91,8 +91,18 @@ namespace StatCraft.ViewModels
             BuildSlots.Add(slot);
         }
 
-        private void OnSlotSelectionChanged(BuildSelectionSlotViewModel slot)
+        private void OnSlotSelectionChanged(BuildSelectionSlotViewModel slot, BuildNode? previousValue)
         {
+            // GameBuilds has a UNIQUE(GameId, BuildId) constraint — picking a build that's already
+            // selected in another slot would violate it on persist. Revert this slot instead of letting
+            // that happen; reverting fires this handler again with the (already-valid) previous value.
+            if (slot.SelectedBuildNode != null &&
+                BuildSlots.Any(s => s != slot && s.SelectedBuildNode?.Id == slot.SelectedBuildNode.Id))
+            {
+                slot.SelectedBuildNode = previousValue;
+                return;
+            }
+
             int index = BuildSlots.IndexOf(slot);
             bool isLast = index == BuildSlots.Count - 1;
 

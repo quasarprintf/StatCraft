@@ -30,10 +30,11 @@ namespace StatCraft.ViewModels
         [ObservableProperty] private BuildNode? _selectedBuildNode;
         [ObservableProperty] private string _selectedBuildLabel = DEFAULT_BUILD_TEXT;
 
-        // Raised whenever SelectedBuildNode changes. Callers that need to hydrate a saved selection
-        // without triggering side effects should set SelectedBuildNode via object initializer before
-        // subscribing here.
-        public event Action<BuildSelectionSlotViewModel>? SelectionChanged;
+        // Raised whenever SelectedBuildNode changes, passing the value it changed from. Callers that need
+        // to hydrate a saved selection without triggering side effects should set SelectedBuildNode via
+        // object initializer before subscribing here. The old value lets a subscriber revert a rejected
+        // selection (e.g. a duplicate) without needing to track prior state itself.
+        public event Action<BuildSelectionSlotViewModel, BuildNode?>? SelectionChanged;
 
         internal BuildSelectionSlotViewModel(ObservableCollection<BuildNode>? buildTree)
         {
@@ -63,7 +64,7 @@ namespace StatCraft.ViewModels
             SelectedBuildLabel = newValue == null
                 ? DEFAULT_BUILD_TEXT
                 : string.Join(" > ", BuildPathHelper.FindPath(BuildTree, newValue.Id)!.Select(n => n.Name));
-            SelectionChanged?.Invoke(this);
+            SelectionChanged?.Invoke(this, oldValue);
         }
     }
 }
