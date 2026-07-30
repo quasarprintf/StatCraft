@@ -1,11 +1,12 @@
-using System;
 using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
 using Avalonia.VisualTree;
+using Microsoft.Extensions.DependencyInjection;
 using StatCraft.Models.GameData.Builds;
+using StatCraft.Services.BackgroundService;
 using StatCraft.ViewModels;
 
 namespace StatCraft.Views
@@ -18,29 +19,33 @@ namespace StatCraft.Views
         {
             InitializeComponent();
 
-            //manually bind on-click handlers for menu items, to allow selecting non-leaf items
-            try
+            // Manually bind on-click handlers for menu items, to allow selecting non-leaf items. A
+            // mismatched shape here (Popup.Child not being the ItemsControl we expect) would only happen
+            // if Avalonia's own MenuFlyout internals changed out from under us — not something the user did
+            // or can act on — so it's logged rather than surfaced as a dialog, matching how ReplayWatcherService
+            // handles its own similarly internal, non-actionable failure (logs a warning and moves on).
+            if (PickerButton.Flyout is PopupFlyoutBase popupBase)
             {
-                if (PickerButton.Flyout is PopupFlyoutBase popupBase)
-                    popupBase.Popup.Opened += (_, _) => { WireMenuItems((ItemsControl)popupBase.Popup.Child!); };
-            }
-            catch (Exception ex)
-            {
-                //TODO: log and display error
+                popupBase.Popup.Opened += (_, _) =>
+                {
+                    if (popupBase.Popup.Child is ItemsControl root)
+                        WireMenuItems(root);
+                    else
+                        App.Services.GetRequiredService<ILogger>()
+                            .LogWarning($"BuildPathPicker: expected the flyout's Popup.Child to be an ItemsControl, got {popupBase.Popup.Child?.GetType().Name ?? "null"}");
+                };
             }
         }
 
         private void WireMenuItems(ItemsControl itemsControl)
         {
-            //TODO: the order of these looks backwards to me. Possible race condition of an item rendering between the GetVisualDescendants call and the ContainerPrepared bindings
-
-            //bind already-rendered items
-            foreach (MenuItem item in itemsControl.GetVisualDescendants().OfType<MenuItem>())
-                WireMenuItem(item);
-
-            //bind items that haven't rendered yet
+            // Subscribe before walking currently-realized containers, not after, so nothing generated in
+            // between could be missed — walking first and subscribing second would leave exactly that gap.
             itemsControl.ContainerPrepared -= OnContainerPrepared;
             itemsControl.ContainerPrepared += OnContainerPrepared;
+
+            foreach (MenuItem item in itemsControl.GetVisualDescendants().OfType<MenuItem>())
+                WireMenuItem(item);
         }
 
         private void OnContainerPrepared(object? sender, ContainerPreparedEventArgs e)
