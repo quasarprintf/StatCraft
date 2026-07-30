@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -17,28 +18,27 @@ namespace StatCraft.Views
         {
             InitializeComponent();
 
-            // A MenuFlyout's Popup is its own separate visual root — pointer events raised inside it
-            // never bubble up to PickerButton (the flyout's placement target), so a handler attached there
-            // (even with handledEventsToo) never sees clicks on the menu at all. The only reliable way to
-            // catch every click on every MenuItem, at every nesting depth (submenus are further separate
-            // Popups of their own), is to attach directly to each MenuItem instance once it exists.
-            if (PickerButton.Flyout is PopupFlyoutBase { Popup: Popup popup })
-                popup.Opened += (_, _) => { if (popup.Child is ItemsControl root) WireMenuItems(root); };
+            //manually bind on-click handlers for menu items, to allow selecting non-leaf items
+            try
+            {
+                if (PickerButton.Flyout is PopupFlyoutBase popupBase)
+                    popupBase.Popup.Opened += (_, _) => { WireMenuItems((ItemsControl)popupBase.Popup.Child!); };
+            }
+            catch (Exception ex)
+            {
+                //TODO: log and display error
+            }
         }
 
-        // Wires every currently-realized MenuItem under this ItemsControl (whatever GetVisualDescendants
-        // finds right now) AND subscribes ContainerPrepared to catch any that get realized afterward —
-        // needed because exactly when a MenuItem's children actually become walkable relative to
-        // SubmenuOpened/Popup.Opened firing isn't reliable (that mismatch is what left nested items
-        // unwired before: every click on one bubbled, unhandled, all the way up to the one MenuItem that
-        // WAS wired in time — the root — which is why every selection landed on the root instead of the
-        // clicked node). Between the immediate walk and the event subscription, every item is covered
-        // regardless of which one actually catches it first.
         private void WireMenuItems(ItemsControl itemsControl)
         {
+            //TODO: the order of these looks backwards to me. Possible race condition of an item rendering between the GetVisualDescendants call and the ContainerPrepared bindings
+
+            //bind already-rendered items
             foreach (MenuItem item in itemsControl.GetVisualDescendants().OfType<MenuItem>())
                 WireMenuItem(item);
 
+            //bind items that haven't rendered yet
             itemsControl.ContainerPrepared -= OnContainerPrepared;
             itemsControl.ContainerPrepared += OnContainerPrepared;
         }
