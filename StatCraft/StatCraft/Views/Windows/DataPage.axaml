@@ -14,7 +14,7 @@
         <DataGrid ItemsSource="{Binding Games}" AutoGenerateColumns="False"
                   RowDetailsVisibilityMode="VisibleWhenSelected" GridLinesVisibility="Horizontal">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Played" Binding="{Binding PlayedAt}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Date/Time" Binding="{Binding PlayedAt}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Map" Binding="{Binding MapName}" IsReadOnly="True"/>
                 <DataGridTemplateColumn Header="Result">
                     <DataGridTemplateColumn.CellTemplate>
