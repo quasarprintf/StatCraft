@@ -93,11 +93,13 @@ namespace StatCraft.ViewModels
 
         private void OnSlotSelectionChanged(BuildSelectionSlotViewModel slot, BuildNode? previousValue)
         {
-            // GameBuilds has a UNIQUE(GameId, BuildId) constraint — picking a build that's already
-            // selected in another slot would violate it on persist. Revert this slot instead of letting
-            // that happen; reverting fires this handler again with the (already-valid) previous value.
-            if (slot.SelectedBuildNode != null &&
-                BuildSlots.Any(s => s != slot && s.SelectedBuildNode?.Id == slot.SelectedBuildNode.Id))
+            // Picking a build that's already covered by another selected slot adds nothing: an exact
+            // duplicate would violate GameBuilds' UNIQUE(GameId, BuildId) constraint on persist, and
+            // picking an ancestor of an already-selected build (e.g. selecting A when A->B is already
+            // selected elsewhere) is redundant, since B's own path already includes A's attributes.
+            // Revert instead of letting either through; reverting fires this handler again with the
+            // (already-valid) previous value.
+            if (slot.SelectedBuildNode != null && IsRedundantSelection(slot.SelectedBuildNode, slot))
             {
                 slot.SelectedBuildNode = previousValue;
                 return;
@@ -127,6 +129,12 @@ namespace StatCraft.ViewModels
             UpdateSelectedBuildsSummary();
             RebuildAttributeEditors();
         }
+
+        // True if candidate is already selected in another slot, or is an ancestor of what's selected in
+        // another slot — either way, that other slot's own root-to-leaf path already covers candidate.
+        private bool IsRedundantSelection(BuildNode candidate, BuildSelectionSlotViewModel slot) =>
+            BuildSlots.Any(other => other != slot && other.SelectedBuildNode != null &&
+                BuildPathHelper.FindPath(_buildTree, other.SelectedBuildNode.Id)!.Any(n => n.Id == candidate.Id));
 
         private void UpdateSelectedBuildsSummary() =>
             SelectedBuildsSummary = string.Join("; ", BuildSlots
