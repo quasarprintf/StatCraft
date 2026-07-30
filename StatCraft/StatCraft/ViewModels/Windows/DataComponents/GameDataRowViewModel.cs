@@ -105,6 +105,13 @@ namespace StatCraft.ViewModels
                 return;
             }
 
+            // The opposite direction is meaningful, but makes any ancestor already selected elsewhere
+            // redundant (e.g. selecting A->B when A is already selected elsewhere) — clear those slots'
+            // selections, which recurses back into this method and removes them the same way clearing one
+            // by hand would.
+            if (slot.SelectedBuildNode != null)
+                ClearSubsumedAncestorSlots(slot);
+
             int index = BuildSlots.IndexOf(slot);
             bool isLast = index == BuildSlots.Count - 1;
 
@@ -135,6 +142,23 @@ namespace StatCraft.ViewModels
         private bool IsRedundantSelection(BuildNode candidate, BuildSelectionSlotViewModel slot) =>
             BuildSlots.Any(other => other != slot && other.SelectedBuildNode != null &&
                 BuildPathHelper.FindPath(_buildTree, other.SelectedBuildNode.Id)!.Any(n => n.Id == candidate.Id));
+
+        // Clears the selection of any other slot whose selected build is a strict ancestor of slot's
+        // newly selected build — that ancestor's own attributes are already covered by slot's longer path.
+        private void ClearSubsumedAncestorSlots(BuildSelectionSlotViewModel slot)
+        {
+            HashSet<int> ancestorIds = BuildPathHelper.FindPath(_buildTree, slot.SelectedBuildNode!.Id)!
+                .Select(n => n.Id)
+                .Where(id => id != slot.SelectedBuildNode.Id)
+                .ToHashSet();
+
+            foreach (BuildSelectionSlotViewModel other in BuildSlots
+                .Where(s => s != slot && s.SelectedBuildNode != null && ancestorIds.Contains(s.SelectedBuildNode.Id))
+                .ToList())
+            {
+                other.SelectedBuildNode = null;
+            }
+        }
 
         private void UpdateSelectedBuildsSummary() =>
             SelectedBuildsSummary = string.Join("; ", BuildSlots
