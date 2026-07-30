@@ -27,12 +27,8 @@
             <Setter Property="MinWidth" Value="1"/>
         </Style>
 
-        <!-- Leaf TreeViewItems (no children, FluentTheme's own ":empty" pseudo-class) show a short line
-             instead of a blank chevron slot. Re-shows the theme's own chevron ToggleButton (which the
-             theme otherwise hides via IsVisible=False for empty items, while still reserving its layout
-             space), hides its Path glyph, and reskins its Border into a thin line — so it sits in the
-             exact same slot a real chevron would, pixel-perfect, with no computed offset needed. Applies
-             to any TreeView in the app, not just the Builds tab's. -->
+        <!-- Leaf TreeViewItems (no children, FluentTheme's own ":empty" pseudo-class) show a short line instead of a blank chevron slot. 
+            Re-shows the theme's own chevron ToggleButton, hides its Path glyph, and reskins its Border into a thin line. -->
         <Style Selector="TreeViewItem:empty /template/ ToggleButton#PART_ExpandCollapseChevron">
             <Setter Property="IsVisible" Value="True"/>
             <Setter Property="Focusable" Value="False"/>
