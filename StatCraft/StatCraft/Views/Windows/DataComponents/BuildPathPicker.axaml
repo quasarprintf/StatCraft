@@ -5,11 +5,25 @@
              x:Class="StatCraft.Views.BuildPathPicker"
              x:DataType="vm:GameDataRowViewModel">
     <UserControl.Styles>
+        <!-- MenuItem.Command never fires for an item with a submenu — Avalonia's own menu interaction
+             handler (DefaultMenuInteractionHandler.PointerPressed) marks the click event Handled and opens
+             the submenu instead of invoking Click for any item where HasSubMenu is true, regardless of a
+             bound Command. Routing selection through a plain Button embedded as the header content instead
+             sidesteps that entirely: the Button's own click handling runs (and marks the event Handled)
+             before it ever reaches the outer MenuItem/interaction-handler logic, so clicking the name
+             always selects that build — leaf or not — while the submenu still opens on hover as before. -->
         <Style Selector="MenuItem" x:DataType="builds:BuildNode">
             <Setter Property="Header" Value="{Binding Name}"/>
             <Setter Property="ItemsSource" Value="{Binding Children}"/>
-            <Setter Property="Command" Value="{Binding #PickerButton.DataContext.SelectBuildCommand}"/>
-            <Setter Property="CommandParameter" Value="{Binding}"/>
+            <Setter Property="HeaderTemplate">
+                <DataTemplate>
+                    <Button Content="{Binding}"
+                            Command="{Binding #PickerButton.DataContext.SelectBuildCommand}"
+                            CommandParameter="{Binding $parent[MenuItem].DataContext}"
+                            Background="Transparent" BorderThickness="0" Padding="0"
+                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"/>
+                </DataTemplate>
+            </Setter>
         </Style>
         <!-- Submenus are misaligned by default for some reason. Shift up to fix -->
         <Style Selector="MenuItem /template/ Popup">
