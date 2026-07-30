@@ -22,6 +22,7 @@ namespace StatCraft.ViewModels
         private readonly GameDataRepository _repository;
 
         public string MapName { get; }
+        public string PlayedAt { get; }
         public string ResultLabel { get; }
         public IBrush ResultColor { get; }
         public string GameLength { get; }
@@ -48,6 +49,7 @@ namespace StatCraft.ViewModels
 
             ParsedReplayData replay = game.ReplayData;
             MapName = replay.MapName;
+            PlayedAt = replay.ReplayTimestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
             ResultLabel = replay.Win == 1m ? "Win" : replay.Win == 0m ? "Loss" : "Draw";
             ResultColor = replay.Win == 1m ? Styles.Colors.ProtossGreen : replay.Win == 0m ? Styles.Colors.ZergRed : Styles.Colors.TerranBlue;
             GameLength = TimeSpan.FromSeconds(replay.GameLengthSeconds).ToString(@"mm\:ss");

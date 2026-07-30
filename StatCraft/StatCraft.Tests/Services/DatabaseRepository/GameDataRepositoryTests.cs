@@ -1,3 +1,4 @@
+using Microsoft.Data.Sqlite;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
@@ -44,6 +45,7 @@ public class GameDataRepositoryTests : IDisposable
         Assert.Equal(game.GameId, loaded.GameId);
         Assert.Equal("Map", loaded.ReplayData.MapName);
         Assert.Equal(600, loaded.ReplayData.GameLengthSeconds);
+        Assert.Equal(new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero), loaded.ReplayData.ReplayTimestamp);
         Assert.Equal(1m, loaded.ReplayData.Win);
         Assert.Equal("Me", loaded.ReplayData.Player.Name);
         Assert.Equal(3000, loaded.ReplayData.Player.Mmr);
@@ -215,6 +217,63 @@ public class GameDataRepositoryTests : IDisposable
         Assert.True(_repository.IsAnyBuildReferenced([parent.Id, child.Id]));
     }
 
+    [Fact]
+    public void Initialize_ExistingOldSchemaWithoutReplayTimestamp_BackfillsFromCreatedAtUtc()
+    {
+        string dbPath = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid() + ".db");
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+            using (SqliteConnection conn = new SqliteConnection($"Data Source={dbPath}"))
+            {
+                conn.Open();
+                using SqliteCommand createCmd = conn.CreateCommand();
+                createCmd.CommandText = @"
+                    CREATE TABLE Games (
+                        Id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Sc2ProfileId      INTEGER NOT NULL,
+                        MapName           TEXT    NOT NULL DEFAULT '',
+                        GameLengthSeconds INTEGER NOT NULL DEFAULT 0,
+                        ReplayPath        TEXT    NOT NULL UNIQUE,
+                        Win               REAL    NOT NULL DEFAULT 0,
+                        PlayerName        TEXT    NOT NULL DEFAULT '',
+                        PlayerClan        TEXT    NOT NULL DEFAULT '',
+                        PlayerMmr         INTEGER NOT NULL DEFAULT 0,
+                        PlayerRace        TEXT    NOT NULL DEFAULT '',
+                        PlayerRandom      INTEGER NOT NULL DEFAULT 0,
+                        BuildId           INTEGER,
+                        Notes             TEXT    NOT NULL DEFAULT '',
+                        CreatedAtUtc      TEXT    NOT NULL DEFAULT ''
+                    );";
+                createCmd.ExecuteNonQuery();
+
+                using SqliteCommand insertCmd = conn.CreateCommand();
+                insertCmd.CommandText = @"
+                    INSERT INTO Games (Sc2ProfileId, ReplayPath, PlayerRace, CreatedAtUtc)
+                    VALUES (1, 'legacy.SC2Replay', 'T', '2025-06-01T12:00:00.0000000+00:00')";
+                insertCmd.ExecuteNonQuery();
+            }
+
+            GameDataRepository repository = new GameDataRepository(dbPath);
+            repository.Initialize();
+
+            GameData loaded = Assert.Single(repository.GetGamesForProfile(1));
+            Assert.Equal(DateTimeOffset.Parse("2025-06-01T12:00:00.0000000+00:00"), loaded.ReplayData.ReplayTimestamp);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(dbPath))
+                    File.Delete(dbPath);
+            }
+            catch (IOException)
+            {
+                // Best-effort cleanup.
+            }
+        }
+    }
+
     private Sc2Profile InsertProfile(string accountSub, int battleNetProfileId, string name)
     {
         BattleNetAccount account = new()
@@ -249,13 +308,14 @@ public class GameDataRepositoryTests : IDisposable
     }
 
     private static GameData CreateGame(string replayPath = "replay.SC2Replay", decimal win = 1m,
-        GamePlayer[]? allies = null, GamePlayer[]? opponents = null)
+        GamePlayer[]? allies = null, GamePlayer[]? opponents = null, DateTimeOffset? replayTimestamp = null)
     {
         ParsedReplayData replay = new()
         {
             MapName = "Map",
             GameLengthSeconds = 600,
             ReplayPath = replayPath,
+            ReplayTimestamp = replayTimestamp ?? new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero),
             Win = win,
             Player = new GamePlayer { Name = "Me", Clan = "", Mmr = 3000, Race = 'T', Random = false },
             Allies = allies ?? [],

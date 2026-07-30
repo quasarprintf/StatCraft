@@ -127,19 +127,22 @@ public class ReplayDataExtractorTests
     [Fact]
     public void Parse_MapsTopLevelFieldsFromRawReplayData()
     {
+        DateTimeOffset timestamp = new DateTimeOffset(2026, 3, 4, 9, 15, 0, TimeSpan.Zero);
         RawReplayData raw = CreateRawReplayData(
             profileIds: [100, 200],
             teams: [0, 1],
             winningIndices: [0],
             mapName: "Site Delta",
             gameLengthSeconds: 725,
-            replayPath: @"C:\Replays\game.SC2Replay");
+            replayPath: @"C:\Replays\game.SC2Replay",
+            replayTimestamp: timestamp);
 
         ParsedReplayData result = _extractor.Parse(raw, CreateProfile(100));
 
         Assert.Equal("Site Delta", result.MapName);
         Assert.Equal(725, result.GameLengthSeconds);
         Assert.Equal(@"C:\Replays\game.SC2Replay", result.ReplayPath);
+        Assert.Equal(timestamp, result.ReplayTimestamp);
     }
 
     [Fact]
@@ -182,7 +185,8 @@ public class ReplayDataExtractorTests
         IReadOnlyList<long?>? mmrs = null,
         string mapName = "Map",
         int gameLengthSeconds = 600,
-        string replayPath = "replay.SC2Replay")
+        string replayPath = "replay.SC2Replay",
+        DateTimeOffset? replayTimestamp = null)
     {
         int count = profileIds.Count;
 
@@ -200,6 +204,7 @@ public class ReplayDataExtractorTests
             WinningPlayerIndices = winningIndices.ToList(),
             GameLengthSeconds = gameLengthSeconds,
             ReplayPath = replayPath,
+            ReplayTimestamp = replayTimestamp ?? new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero),
         };
     }
 }

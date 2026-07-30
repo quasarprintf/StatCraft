@@ -93,7 +93,8 @@ namespace StatCraft.Services.BackgroundService
                 return;
             }
 
-            RawReplayData rawReplayData = replayDataExtractor.Extract(replay);
+            DateTimeOffset replayTimestamp = new DateTimeOffset(File.GetLastWriteTimeUtc(filePath));
+            RawReplayData rawReplayData = replayDataExtractor.Extract(replay, replayTimestamp);
             logger.LogInfo($"Replay parsed: {filePath}", _profile, rawReplayData);
 
             ParsedReplayData parsedReplayData;

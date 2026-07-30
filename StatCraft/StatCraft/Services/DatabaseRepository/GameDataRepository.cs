@@ -34,6 +34,7 @@ namespace StatCraft.Services.DatabaseRepository
                     MapName           TEXT    NOT NULL DEFAULT '',
                     GameLengthSeconds INTEGER NOT NULL DEFAULT 0,
                     ReplayPath        TEXT    NOT NULL UNIQUE,
+                    ReplayTimestamp   TEXT    NOT NULL DEFAULT '',
                     Win               REAL    NOT NULL DEFAULT 0,
                     PlayerName        TEXT    NOT NULL DEFAULT '',
                     PlayerClan        TEXT    NOT NULL DEFAULT '',
@@ -63,6 +64,24 @@ namespace StatCraft.Services.DatabaseRepository
                     UNIQUE(GameId, BuildAttributeId)
                 );";
             cmd.ExecuteNonQuery();
+
+            // Upgrades a pre-existing DB that predates ReplayTimestamp. Backfills it from CreatedAtUtc
+            // (the closest thing that existed before — when we recorded the game, not when the replay
+            // file itself was last written, but a reasonable stand-in for old rows) rather than leaving it
+            // blank. On a fresh DB the CREATE TABLE above already has the column, so ADD COLUMN fails
+            // immediately and the whole batch aborts before ever reaching the backfill.
+            try
+            {
+                using SqliteCommand migrateCmd = conn.CreateCommand();
+                migrateCmd.CommandText = @"
+                    ALTER TABLE Games ADD COLUMN ReplayTimestamp TEXT NOT NULL DEFAULT '';
+                    UPDATE Games SET ReplayTimestamp = CreatedAtUtc WHERE ReplayTimestamp = '';";
+                migrateCmd.ExecuteNonQuery();
+            }
+            catch (SqliteException)
+            {
+                // Already migrated, or a fresh DB already created with the new schema.
+            }
         }
 
         // Side values in GamePlayers.
@@ -89,13 +108,14 @@ namespace StatCraft.Services.DatabaseRepository
             using (SqliteCommand cmd = conn.CreateCommand())
             {
                 cmd.CommandText = @"
-                    INSERT INTO Games (Sc2ProfileId, MapName, GameLengthSeconds, ReplayPath, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, BuildId, Notes, CreatedAtUtc)
-                    VALUES (@sc2ProfileId, @mapName, @gameLengthSeconds, @replayPath, @win, @playerName, @playerClan, @playerMmr, @playerRace, @playerRandom, @buildId, @notes, @createdAt);
+                    INSERT INTO Games (Sc2ProfileId, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, BuildId, Notes, CreatedAtUtc)
+                    VALUES (@sc2ProfileId, @mapName, @gameLengthSeconds, @replayPath, @replayTimestamp, @win, @playerName, @playerClan, @playerMmr, @playerRace, @playerRandom, @buildId, @notes, @createdAt);
                     SELECT last_insert_rowid();";
                 cmd.Parameters.AddWithValue("@sc2ProfileId", sc2ProfileId);
                 cmd.Parameters.AddWithValue("@mapName", replay.MapName);
                 cmd.Parameters.AddWithValue("@gameLengthSeconds", replay.GameLengthSeconds);
                 cmd.Parameters.AddWithValue("@replayPath", replay.ReplayPath);
+                cmd.Parameters.AddWithValue("@replayTimestamp", replay.ReplayTimestamp.ToString("o", CultureInfo.InvariantCulture));
                 cmd.Parameters.AddWithValue("@win", (double)replay.Win);
                 cmd.Parameters.AddWithValue("@playerName", replay.Player.Name);
                 cmd.Parameters.AddWithValue("@playerClan", replay.Player.Clan);
@@ -143,7 +163,7 @@ namespace StatCraft.Services.DatabaseRepository
             using (SqliteCommand cmd = conn.CreateCommand())
             {
                 cmd.CommandText = @"
-                    SELECT Id, MapName, GameLengthSeconds, ReplayPath, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, BuildId, Notes
+                    SELECT Id, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, BuildId, Notes
                     FROM Games WHERE Sc2ProfileId = @sc2ProfileId ORDER BY Id ASC";
                 cmd.Parameters.AddWithValue("@sc2ProfileId", sc2ProfileId);
                 using SqliteDataReader reader = cmd.ExecuteReader();
@@ -155,14 +175,15 @@ namespace StatCraft.Services.DatabaseRepository
                         MapName: reader.GetString(1),
                         GameLengthSeconds: reader.GetInt32(2),
                         ReplayPath: reader.GetString(3),
-                        Win: (decimal)reader.GetDouble(4),
-                        PlayerName: reader.GetString(5),
-                        PlayerClan: reader.GetString(6),
-                        PlayerMmr: reader.GetInt64(7),
-                        PlayerRace: reader.GetString(8)[0],
-                        PlayerRandom: reader.GetInt32(9) != 0,
-                        BuildId: reader.IsDBNull(10) ? null : reader.GetInt32(10),
-                        Notes: reader.GetString(11));
+                        ReplayTimestamp: DateTimeOffset.Parse(reader.GetString(4), CultureInfo.InvariantCulture),
+                        Win: (decimal)reader.GetDouble(5),
+                        PlayerName: reader.GetString(6),
+                        PlayerClan: reader.GetString(7),
+                        PlayerMmr: reader.GetInt64(8),
+                        PlayerRace: reader.GetString(9)[0],
+                        PlayerRandom: reader.GetInt32(10) != 0,
+                        BuildId: reader.IsDBNull(11) ? null : reader.GetInt32(11),
+                        Notes: reader.GetString(12));
                 }
             }
 
@@ -220,6 +241,7 @@ namespace StatCraft.Services.DatabaseRepository
                     MapName = row.MapName,
                     GameLengthSeconds = row.GameLengthSeconds,
                     ReplayPath = row.ReplayPath,
+                    ReplayTimestamp = row.ReplayTimestamp,
                     Win = row.Win,
                     Player = new GamePlayer { Name = row.PlayerName, Clan = row.PlayerClan, Mmr = row.PlayerMmr, Race = row.PlayerRace, Random = row.PlayerRandom },
                     Allies = allies.TryGetValue(id, out List<GamePlayer>? a) ? a.ToArray() : [],
@@ -301,7 +323,7 @@ namespace StatCraft.Services.DatabaseRepository
         }
 
         private record GameRow(
-            string MapName, int GameLengthSeconds, string ReplayPath, decimal Win,
+            string MapName, int GameLengthSeconds, string ReplayPath, DateTimeOffset ReplayTimestamp, decimal Win,
             string PlayerName, string PlayerClan, long PlayerMmr, char PlayerRace, bool PlayerRandom,
             int? BuildId, string Notes);
 

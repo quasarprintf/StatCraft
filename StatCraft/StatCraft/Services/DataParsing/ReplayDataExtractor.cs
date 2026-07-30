@@ -10,7 +10,7 @@ namespace StatCraft.Services.DataParsing
 {
     public class ReplayDataExtractor
     {
-        internal RawReplayData Extract(Sc2Replay replay)
+        internal RawReplayData Extract(Sc2Replay replay, DateTimeOffset replayTimestamp)
         {
             List<DetailsPlayer> detailsPlayers = replay.Details?.Players?.ToList() ?? new List<DetailsPlayer>();
             List<MetadataPlayer> metadataPlayers = replay.Metadata?.Players?.ToList() ?? new List<MetadataPlayer>();
@@ -60,6 +60,7 @@ namespace StatCraft.Services.DataParsing
                 WinningPlayerIndices = winningIndices,
                 GameLengthSeconds = replay.Metadata?.Duration ?? 0, //TODO: this is using hots time. Need to get the exact conversion ratio to lotv time
                 ReplayPath = replay.FileName,
+                ReplayTimestamp = replayTimestamp,
             };
         }
 
@@ -109,6 +110,7 @@ namespace StatCraft.Services.DataParsing
                 MapName = rawReplayData.MapName,
                 GameLengthSeconds = rawReplayData.GameLengthSeconds,
                 ReplayPath = rawReplayData.ReplayPath,
+                ReplayTimestamp = rawReplayData.ReplayTimestamp,
                 Win = win,
                 Player = BuildPlayer(playerIndex),
                 Allies = allies.ToArray(),

@@ -18,5 +18,6 @@ namespace StatCraft.Models.GameData
         public required ICollection<int> WinningPlayerIndices { get; set; }
         public int GameLengthSeconds { get; set; }
         public required string ReplayPath { get; set; }
+        public required DateTimeOffset ReplayTimestamp { get; set; }
     }
 }
