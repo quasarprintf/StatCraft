@@ -11,15 +11,18 @@
              bound Command. Routing selection through a plain Button embedded as the header content instead
              sidesteps that entirely: the Button's own click handling runs (and marks the event Handled)
              before it ever reaches the outer MenuItem/interaction-handler logic, so clicking the name
-             always selects that build — leaf or not — while the submenu still opens on hover as before. -->
+             always selects that build — leaf or not — while the submenu still opens on hover as before.
+             Selection itself is applied from the Click handler in code-behind (not a declarative Command)
+             because Button.OnClick raises Click before reading Command/CommandParameter, and closing the
+             flyout from that same handler tears down the visual tree those bindings depend on before
+             Command.Execute would ever run — see OnBuildSelected. -->
         <Style Selector="MenuItem" x:DataType="builds:BuildNode">
             <Setter Property="Header" Value="{Binding Name}"/>
             <Setter Property="ItemsSource" Value="{Binding Children}"/>
             <Setter Property="HeaderTemplate">
                 <DataTemplate>
                     <Button Content="{Binding}"
-                            Command="{Binding #PickerButton.DataContext.SelectBuildCommand}"
-                            CommandParameter="{Binding $parent[MenuItem].DataContext}"
+                            Click="OnBuildSelected"
                             Background="Transparent" BorderThickness="0" Padding="0"
                             HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"/>
                 </DataTemplate>
