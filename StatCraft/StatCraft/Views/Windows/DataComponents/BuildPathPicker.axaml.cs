@@ -1,3 +1,4 @@
+using System;
 using System.Linq;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
@@ -19,20 +20,25 @@ namespace StatCraft.Views
         {
             InitializeComponent();
 
-            // Manually bind on-click handlers for menu items, to allow selecting non-leaf items. A
-            // mismatched shape here (Popup.Child not being the ItemsControl we expect) would only happen
-            // if Avalonia's own MenuFlyout internals changed out from under us — not something the user did
-            // or can act on — so it's logged rather than surfaced as a dialog, matching how ReplayWatcherService
-            // handles its own similarly internal, non-actionable failure (logs a warning and moves on).
+            // Manually bind on-click handlers for menu items, to allow selecting non-leaf items. The cast
+            // below is deliberately unguarded — Popup.Child not being the ItemsControl we expect would only
+            // happen if Avalonia's own MenuFlyout internals changed out from under us, and that should fail
+            // loudly rather than degrade silently. The catch exists purely to get a diagnostic breadcrumb
+            // into the logs before letting the exception continue to propagate.
             if (PickerButton.Flyout is PopupFlyoutBase popupBase)
             {
                 popupBase.Popup.Opened += (_, _) =>
                 {
-                    if (popupBase.Popup.Child is ItemsControl root)
-                        WireMenuItems(root);
-                    else
+                    try
+                    {
+                        WireMenuItems((ItemsControl)popupBase.Popup.Child!);
+                    }
+                    catch (Exception ex)
+                    {
                         App.Services.GetRequiredService<ILogger>()
-                            .LogWarning($"BuildPathPicker: expected the flyout's Popup.Child to be an ItemsControl, got {popupBase.Popup.Child?.GetType().Name ?? "null"}");
+                            .LogError($"BuildPathPicker: failed to wire menu item selection handlers: {ex}");
+                        throw;
+                    }
                 };
             }
         }
