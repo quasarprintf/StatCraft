@@ -76,6 +76,16 @@ namespace StatCraft.ViewModels
             RebuildAttributeEditors(oldValue, newValue);
         }
 
+        // Re-derives the attribute editors for the currently selected build without changing the
+        // selection itself — called after DataPageViewModel reloads the cached build tree, so an attribute
+        // added to (or removed from) the selected build or one of its ancestors on the Builds tab is
+        // picked up here on the Data tab too.
+        public void RefreshAttributeEditors()
+        {
+            if (SelectedBuildNode != null)
+                RebuildAttributeEditors(SelectedBuildNode, SelectedBuildNode);
+        }
+
         private static List<ColoredCharacter> BuildMatchupCharacters(ParsedReplayData replay)
         {
             List<ColoredCharacter> characters = new();
