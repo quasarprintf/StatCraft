@@ -39,11 +39,11 @@ namespace StatCraft.Views
 
         private void WireMenuItems(ItemsControl itemsControl)
         {
-            // Subscribe before walking currently-realized containers, not after, so nothing generated in
-            // between could be missed — walking first and subscribing second would leave exactly that gap.
+            //bind items that haven't rendered yet
             itemsControl.ContainerPrepared -= OnContainerPrepared;
             itemsControl.ContainerPrepared += OnContainerPrepared;
 
+            //bind items that already rendered
             foreach (MenuItem item in itemsControl.GetVisualDescendants().OfType<MenuItem>())
                 WireMenuItem(item);
         }
