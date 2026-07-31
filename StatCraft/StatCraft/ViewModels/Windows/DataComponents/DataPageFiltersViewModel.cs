@@ -59,7 +59,7 @@ namespace StatCraft.ViewModels
             };
 
             MapSlot = new CheckboxFilterSlotViewModel<string>("Map", [], showSearch: true);
-            MatchupSlot = new CheckboxFilterSlotViewModel<(Race, Race)>("Matchup", BuildMatchupOptions());
+            MatchupSlot = new CheckboxFilterSlotViewModel<(Race, Race)>("Matchup", BuildMatchupOptions(), columns: 3);
             OutcomeSlot = new CheckboxFilterSlotViewModel<GameOutcome>("Outcome", BuildOutcomeOptions());
             MmrSlot = new NumericRangeFilterSlotViewModel("Opponent MMR");
             BuildSlot = new CheckboxFilterSlotViewModel<BuildNode>("Build", BuildBuildOptions(buildRepository));

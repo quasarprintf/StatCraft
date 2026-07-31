@@ -44,7 +44,8 @@
                         <DataTemplate x:DataType="vm:CheckboxFilterSlotViewModel">
                             <StackPanel Classes="filterSlot">
                                 <local:CheckboxFilterDropdown Header="{Binding Title}" Options="{Binding Options}"
-                                                               ShowSearch="{Binding ShowSearch}" SearchText="{Binding SearchText}"/>
+                                                               ShowSearch="{Binding ShowSearch}" SearchText="{Binding SearchText}"
+                                                               Columns="{Binding Columns}"/>
                                 <Button Classes="removeFilter" Command="{Binding RemoveCommand}"/>
                             </StackPanel>
                         </DataTemplate>

@@ -17,11 +17,16 @@ namespace StatCraft.ViewModels
         // Shows a search box to filter the checkbox list.
         public bool ShowSearch { get; }
 
+        // How many columns the checkbox list lays out in — 1 for most filters, but e.g. the Matchup
+        // filter's fixed 9 options read better as a 3x3 grid than one long column.
+        public int Columns { get; }
+
         [ObservableProperty] private string _searchText = "";
 
-        protected CheckboxFilterSlotViewModel(string title, bool showSearch) : base(title)
+        protected CheckboxFilterSlotViewModel(string title, bool showSearch, int columns) : base(title)
         {
             ShowSearch = showSearch;
+            Columns = columns;
         }
     }
 
@@ -30,8 +35,8 @@ namespace StatCraft.ViewModels
     {
         public override ObservableCollection<CheckboxFilterOptionViewModel<T>> Options { get; } = [];
 
-        internal CheckboxFilterSlotViewModel(string title, IEnumerable<CheckboxFilterOptionViewModel<T>> options, bool showSearch = false)
-            : base(title, showSearch)
+        internal CheckboxFilterSlotViewModel(string title, IEnumerable<CheckboxFilterOptionViewModel<T>> options, bool showSearch = false, int columns = 1)
+            : base(title, showSearch, columns)
         {
             ReplaceOptions(options);
         }

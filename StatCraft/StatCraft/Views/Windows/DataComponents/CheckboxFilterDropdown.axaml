@@ -17,6 +17,11 @@
                              IsVisible="{Binding ShowSearch, ElementName=Root}"/>
                     <ScrollViewer MaxHeight="240">
                         <ItemsControl ItemsSource="{Binding Options, ElementName=Root}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <UniformGrid Columns="{Binding Columns, ElementName=Root}"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:CheckboxFilterOptionViewModel">
                                     <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}">

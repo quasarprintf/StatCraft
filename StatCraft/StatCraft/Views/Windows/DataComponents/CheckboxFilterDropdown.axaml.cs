@@ -26,6 +26,9 @@ namespace StatCraft.Views
         public static readonly StyledProperty<string?> SearchTextProperty =
             AvaloniaProperty.Register<CheckboxFilterDropdown, string?>(nameof(SearchText), defaultBindingMode: Avalonia.Data.BindingMode.TwoWay);
 
+        public static readonly StyledProperty<int> ColumnsProperty =
+            AvaloniaProperty.Register<CheckboxFilterDropdown, int>(nameof(Columns), defaultValue: 1);
+
         public IEnumerable? Options
         {
             get => GetValue(OptionsProperty);
@@ -48,6 +51,12 @@ namespace StatCraft.Views
         {
             get => GetValue(SearchTextProperty);
             set => SetValue(SearchTextProperty, value);
+        }
+
+        public int Columns
+        {
+            get => GetValue(ColumnsProperty);
+            set => SetValue(ColumnsProperty, value);
         }
 
         public CheckboxFilterDropdown()
