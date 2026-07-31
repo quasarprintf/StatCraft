@@ -86,6 +86,41 @@ public class GameDataRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void InsertGame_AllyAndOpponentGetTheirOwnDistinctGamePlayerId()
+    {
+        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = 2900, Race = 'T', Random = false };
+        GamePlayer opponent = new() { Name = "Foe", Clan = "", Mmr = 3100, Race = 'Z', Random = false };
+        GameData game = CreateGame(allies: [ally], opponents: [opponent]);
+        _repository.InsertGame(game, _sc2ProfileId);
+
+        Assert.NotNull(ally.GamePlayerId);
+        Assert.NotNull(opponent.GamePlayerId);
+        Assert.NotEqual(ally.GamePlayerId, opponent.GamePlayerId);
+        Assert.NotEqual(game.ReplayData.Player.GamePlayerId, ally.GamePlayerId);
+    }
+
+    [Fact]
+    public void UpdateGameBuilds_ForAllyGamePlayerId_TracksIndependentlyFromSelf()
+    {
+        BuildNode selfBuild = new() { Name = "Self Build" };
+        _buildRepository.InsertBuild(selfBuild, null, 0);
+        BuildNode allyBuild = new() { Name = "Ally Build" };
+        _buildRepository.InsertBuild(allyBuild, null, 1);
+
+        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = 2900, Race = 'T', Random = false };
+        GameData game = CreateGame(allies: [ally]);
+        _repository.InsertGame(game, _sc2ProfileId);
+
+        _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [selfBuild.Id]);
+        _repository.UpdateGameBuilds(ally.GamePlayerId!.Value, [allyBuild.Id]);
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        Assert.Equal([selfBuild.Id], loaded.ReplayData.Player.BuildIds);
+        GamePlayer loadedAlly = Assert.Single(loaded.ReplayData.Allies);
+        Assert.Equal([allyBuild.Id], loadedAlly.BuildIds);
+    }
+
+    [Fact]
     public void UpdateGameBuilds_ThenReload_PersistsBuildId()
     {
         BuildNode build = new() { Name = "4 Gate" };
@@ -96,7 +131,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [build.Id]);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
-        Assert.Equal([build.Id], loaded.BuildIds);
+        Assert.Equal([build.Id], loaded.ReplayData.Player.BuildIds);
     }
 
     [Fact]
@@ -112,7 +147,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [buildB.Id, buildA.Id]);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
-        Assert.Equal([buildB.Id, buildA.Id], loaded.BuildIds);
+        Assert.Equal([buildB.Id, buildA.Id], loaded.ReplayData.Player.BuildIds);
     }
 
     [Fact]
@@ -129,7 +164,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [buildB.Id]);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
-        Assert.Equal([buildB.Id], loaded.BuildIds);
+        Assert.Equal([buildB.Id], loaded.ReplayData.Player.BuildIds);
     }
 
     [Fact]
@@ -153,7 +188,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Id, "14");
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
-        GameAttributeValue value = Assert.Single(loaded.AttributeValues);
+        GameAttributeValue value = Assert.Single(loaded.ReplayData.Player.AttributeValues);
         Assert.Equal(attr.Id, value.BuildAttributeId);
         Assert.Equal("14", value.Value);
     }
@@ -169,7 +204,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Id, "16");
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
-        GameAttributeValue value = Assert.Single(loaded.AttributeValues);
+        GameAttributeValue value = Assert.Single(loaded.ReplayData.Player.AttributeValues);
         Assert.Equal("16", value.Value);
     }
 
@@ -191,7 +226,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.DeleteAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr1.Id);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
-        GameAttributeValue remaining = Assert.Single(loaded.AttributeValues);
+        GameAttributeValue remaining = Assert.Single(loaded.ReplayData.Player.AttributeValues);
         Assert.Equal(attr2.Id, remaining.BuildAttributeId);
     }
 
@@ -361,7 +396,7 @@ public class GameDataRepositoryTests : IDisposable
             repository.Initialize();
 
             GameData loaded = Assert.Single(repository.GetGamesForProfile(1));
-            Assert.Equal([42], loaded.BuildIds);
+            Assert.Equal([42], loaded.ReplayData.Player.BuildIds);
         }
         finally
         {
@@ -472,8 +507,8 @@ public class GameDataRepositoryTests : IDisposable
 
             GameData loaded = Assert.Single(repository.GetGamesForProfile(1));
             Assert.NotNull(loaded.ReplayData.Player.GamePlayerId);
-            Assert.Equal([42], loaded.BuildIds);
-            GameAttributeValue value = Assert.Single(loaded.AttributeValues);
+            Assert.Equal([42], loaded.ReplayData.Player.BuildIds);
+            GameAttributeValue value = Assert.Single(loaded.ReplayData.Player.AttributeValues);
             Assert.Equal(7, value.BuildAttributeId);
             Assert.Equal("99", value.Value);
             // The pre-existing Opponent row (Side = 1) must not be mistaken for the migrated Self row.

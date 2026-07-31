@@ -1,0 +1,38 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StatCraft.ViewModels"
+             xmlns:local="using:StatCraft.Views"
+             x:Class="StatCraft.Views.PlayerBuildTracker"
+             x:DataType="vm:PlayerBuildTrackerViewModel">
+    <StackPanel Spacing="8">
+        <ItemsControl ItemsSource="{Binding BuildSlots}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:BuildSelectionSlotViewModel">
+                    <local:BuildPathPicker Width="300" HorizontalAlignment="Left" Margin="0,0,0,4"/>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <ItemsControl ItemsSource="{Binding AttributeEditors}">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="vm:GameAttributeEditorViewModel">
+                    <Grid ColumnDefinitions="140,*" Margin="0,0,0,4">
+                        <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center"/>
+                        <NumericUpDown Grid.Column="1" Value="{Binding NumericValue}"
+                                       IsVisible="{Binding IsNumeric}"
+                                       FormatString="0.##" HorizontalAlignment="Left"/>
+                        <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}"
+                                  IsVisible="{Binding IsBool}"/>
+                        <NumericUpDown Grid.Column="1" Value="{Binding PercentValue}"
+                                       IsVisible="{Binding IsPercent}"
+                                       Minimum="0" Maximum="100" FormatString="0.##'%'"
+                                       HorizontalAlignment="Left"/>
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding ValueOptions}"
+                                  SelectedItem="{Binding SelectedValue}"
+                                  IsVisible="{Binding IsValues}"
+                                  HorizontalAlignment="Left" MinWidth="150"/>
+                    </Grid>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+        </ItemsControl>
+    </StackPanel>
+</UserControl>

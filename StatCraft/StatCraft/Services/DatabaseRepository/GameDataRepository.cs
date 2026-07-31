@@ -236,25 +236,30 @@ namespace StatCraft.Services.DatabaseRepository
             InsertGamePlayers(conn, game.GameId.Value, SideOpponent, replay.Opponents);
         }
 
+        // Inserted one row at a time (rather than Dapper's batched IEnumerable-params Execute) so each
+        // player's generated GamePlayerId can be captured back onto it — every tracked player (not just
+        // the session user) can have their own build selections, so every GamePlayer needs its own id.
         private static void InsertGamePlayers(SqliteConnection conn, int gameId, int side, GamePlayer[] players)
         {
-            if (players.Length == 0)
-                return;
-
-            conn.Execute(@"
-                INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random)
-                VALUES (@gameId, @side, @sortOrder, @name, @clan, @mmr, @race, @random)",
-                players.Select((player, i) => new
-                {
-                    gameId,
-                    side,
-                    sortOrder = i,
-                    name = player.Name,
-                    clan = player.Clan,
-                    mmr = player.Mmr,
-                    race = player.Race,
-                    random = player.Random ? 1 : 0,
-                }));
+            for (int i = 0; i < players.Length; i++)
+            {
+                GamePlayer player = players[i];
+                player.GamePlayerId = (int)conn.ExecuteScalar<long>(@"
+                    INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random)
+                    VALUES (@gameId, @side, @sortOrder, @name, @clan, @mmr, @race, @random);
+                    SELECT last_insert_rowid();",
+                    new
+                    {
+                        gameId,
+                        side,
+                        sortOrder = i,
+                        name = player.Name,
+                        clan = player.Clan,
+                        mmr = player.Mmr,
+                        race = player.Race,
+                        random = player.Random ? 1 : 0,
+                    });
+            }
         }
 
         // Plain classes with settable properties, not positional records — Dapper's constructor-based
@@ -318,54 +323,59 @@ namespace StatCraft.Services.DatabaseRepository
 
             Dictionary<long, List<GamePlayer>> allies = new();
             Dictionary<long, List<GamePlayer>> opponents = new();
-            Dictionary<long, long> selfGamePlayerIds = new(); // Games.Id -> GamePlayers.Id
+            Dictionary<long, GamePlayer> selfPlayers = new(); // Games.Id -> self GamePlayer
+            Dictionary<long, GamePlayer> playersById = new(); // GamePlayers.Id -> GamePlayer, every side
             IEnumerable<GamePlayerRow> playerRows = conn.Query<GamePlayerRow>(
                 $"SELECT Id, GameId, Side, Name, Clan, Mmr, Race, Random FROM GamePlayers WHERE GameId IN ({idList}) ORDER BY GameId, Side, SortOrder");
             foreach (GamePlayerRow row in playerRows)
             {
+                GamePlayer player = new() { GamePlayerId = (int)row.Id, Name = row.Name, Clan = row.Clan, Mmr = row.Mmr, Race = row.Race, Random = row.Random };
+                playersById[row.Id] = player;
+
                 if (row.Side == SideSelf)
                 {
-                    selfGamePlayerIds[row.GameId] = row.Id;
+                    selfPlayers[row.GameId] = player;
                     continue;
                 }
 
-                GamePlayer player = new() { GamePlayerId = (int)row.Id, Name = row.Name, Clan = row.Clan, Mmr = row.Mmr, Race = row.Race, Random = row.Random };
                 Dictionary<long, List<GamePlayer>> target = row.Side == SideAlly ? allies : opponents;
                 if (!target.TryGetValue(row.GameId, out List<GamePlayer>? list))
                     target[row.GameId] = list = new();
                 list.Add(player);
             }
 
-            Dictionary<long, List<int>> buildIdsByGamePlayer = new();
-            Dictionary<long, List<GameAttributeValue>> attributeValuesByGamePlayer = new();
-            if (selfGamePlayerIds.Count > 0)
+            // Every tracked player (not just the session user) can have their own build selections, so
+            // builds/attributes are fetched for every player loaded above, not just the self ones.
+            if (playersById.Count > 0)
             {
-                string selfIdList = string.Join(",", selfGamePlayerIds.Values);
+                string playerIdList = string.Join(",", playersById.Keys);
 
                 IEnumerable<GameBuildRow> buildRows = conn.Query<GameBuildRow>(
-                    $"SELECT GamePlayerId, BuildId FROM GameBuilds WHERE GamePlayerId IN ({selfIdList}) ORDER BY GamePlayerId, SortOrder");
+                    $"SELECT GamePlayerId, BuildId FROM GameBuilds WHERE GamePlayerId IN ({playerIdList}) ORDER BY GamePlayerId, SortOrder");
                 foreach (GameBuildRow row in buildRows)
-                {
-                    if (!buildIdsByGamePlayer.TryGetValue(row.GamePlayerId, out List<int>? list))
-                        buildIdsByGamePlayer[row.GamePlayerId] = list = new();
-                    list.Add(row.BuildId);
-                }
+                    playersById[row.GamePlayerId].BuildIds.Add(row.BuildId);
 
                 IEnumerable<GameAttributeValueRow> attributeRows = conn.Query<GameAttributeValueRow>(
-                    $"SELECT GamePlayerId, BuildAttributeId, Value FROM GameAttributeValues WHERE GamePlayerId IN ({selfIdList})");
+                    $"SELECT GamePlayerId, BuildAttributeId, Value FROM GameAttributeValues WHERE GamePlayerId IN ({playerIdList})");
                 foreach (GameAttributeValueRow row in attributeRows)
-                {
-                    GameAttributeValue value = new() { BuildAttributeId = row.BuildAttributeId, Value = row.Value };
-                    if (!attributeValuesByGamePlayer.TryGetValue(row.GamePlayerId, out List<GameAttributeValue>? list))
-                        attributeValuesByGamePlayer[row.GamePlayerId] = list = new();
-                    list.Add(value);
-                }
+                    playersById[row.GamePlayerId].AttributeValues.Add(new GameAttributeValue { BuildAttributeId = row.BuildAttributeId, Value = row.Value });
             }
 
             List<GameData> games = new();
             foreach (GameRow row in gameRows)
             {
-                long? selfId = selfGamePlayerIds.TryGetValue(row.Id, out long sid) ? sid : null;
+                // A missing Self row would mean the GamePlayers backfill in Initialize() somehow never
+                // ran for this game — shouldn't happen, but fall back to reconstructing from the Games
+                // row's own Player* columns rather than crashing.
+                GamePlayer selfPlayer = selfPlayers.TryGetValue(row.Id, out GamePlayer? sp) ? sp : new GamePlayer
+                {
+                    Name = row.PlayerName,
+                    Clan = row.PlayerClan,
+                    Mmr = row.PlayerMmr,
+                    Race = row.PlayerRace,
+                    Random = row.PlayerRandom,
+                };
+
                 ParsedReplayData replay = new()
                 {
                     MapName = row.MapName,
@@ -373,15 +383,7 @@ namespace StatCraft.Services.DatabaseRepository
                     ReplayPath = row.ReplayPath,
                     ReplayTimestamp = row.ReplayTimestamp,
                     Win = row.Win,
-                    Player = new GamePlayer
-                    {
-                        GamePlayerId = selfId.HasValue ? (int)selfId.Value : null,
-                        Name = row.PlayerName,
-                        Clan = row.PlayerClan,
-                        Mmr = row.PlayerMmr,
-                        Race = row.PlayerRace,
-                        Random = row.PlayerRandom,
-                    },
+                    Player = selfPlayer,
                     Allies = allies.TryGetValue(row.Id, out List<GamePlayer>? a) ? a.ToArray() : [],
                     Opponents = opponents.TryGetValue(row.Id, out List<GamePlayer>? o) ? o.ToArray() : [],
                 };
@@ -390,9 +392,7 @@ namespace StatCraft.Services.DatabaseRepository
                 {
                     GameId = (int)row.Id,
                     ReplayData = replay,
-                    BuildIds = selfId.HasValue && buildIdsByGamePlayer.TryGetValue(selfId.Value, out List<int>? b) ? b : [],
                     Notes = row.Notes,
-                    AttributeValues = selfId.HasValue && attributeValuesByGamePlayer.TryGetValue(selfId.Value, out List<GameAttributeValue>? v) ? v : [],
                 });
             }
             return games;

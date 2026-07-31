@@ -13,7 +13,6 @@ using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DatabaseRepository;
-using StatCraft.Services.DataParsing;
 
 namespace StatCraft.ViewModels
 {
@@ -105,11 +104,8 @@ namespace StatCraft.ViewModels
                 row.RefreshAttributeEditors();
         }
 
-        private GameDataRowViewModel WrapGame(GameData game)
-        {
-            Matchups matchups = MatchupResolver.FromOpponents(game.ReplayData.Opponents);
-            return new GameDataRowViewModel(game, _gameDataRepository, GetBuildTree(game.ReplayData.Player.Race.AsRace(), matchups));
-        }
+        private GameDataRowViewModel WrapGame(GameData game) =>
+            new GameDataRowViewModel(game, _gameDataRepository, GetBuildTree);
 
         private ObservableCollection<BuildNode>? GetBuildTree(Race? player, Matchups matchups)
         {

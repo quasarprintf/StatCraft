@@ -34,42 +34,33 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Opponent" Binding="{Binding OpponentName}" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Build" Binding="{Binding SelectedBuildsSummary}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Build" Binding="{Binding SelfTracker.SelectedBuildsSummary}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*"/>
             </DataGrid.Columns>
             <DataGrid.RowDetailsTemplate>
                 <DataTemplate x:DataType="vm:GameDataRowViewModel">
-                    <StackPanel Margin="24,8" Spacing="8">
-                        <ItemsControl ItemsSource="{Binding BuildSlots}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:BuildSelectionSlotViewModel">
-                                    <local:BuildPathPicker Width="300" HorizontalAlignment="Left" Margin="0,0,0,4"/>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                        <ItemsControl ItemsSource="{Binding AttributeEditors}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vm:GameAttributeEditorViewModel">
-                                    <Grid ColumnDefinitions="140,*" Margin="0,0,0,4">
-                                        <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center"/>
-                                        <NumericUpDown Grid.Column="1" Value="{Binding NumericValue}"
-                                                       IsVisible="{Binding IsNumeric}"
-                                                       FormatString="0.##" HorizontalAlignment="Left"/>
-                                        <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}"
-                                                  IsVisible="{Binding IsBool}"/>
-                                        <NumericUpDown Grid.Column="1" Value="{Binding PercentValue}"
-                                                       IsVisible="{Binding IsPercent}"
-                                                       Minimum="0" Maximum="100" FormatString="0.##'%'"
-                                                       HorizontalAlignment="Left"/>
-                                        <ComboBox Grid.Column="1" ItemsSource="{Binding ValueOptions}"
-                                                  SelectedItem="{Binding SelectedValue}"
-                                                  IsVisible="{Binding IsValues}"
-                                                  HorizontalAlignment="Left" MinWidth="150"/>
-                                    </Grid>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
+                    <Grid Margin="24,8" ColumnDefinitions="Auto,24,*">
+                        <StackPanel Grid.Column="0" Spacing="8" MinWidth="320">
+                            <TextBlock Text="Your Build" FontWeight="Bold"/>
+                            <local:PlayerBuildTracker DataContext="{Binding SelfTracker}"/>
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="2" Spacing="8">
+                            <TextBlock Text="Other Players" FontWeight="Bold"/>
+                            <TabControl ItemsSource="{Binding OtherPlayers}">
+                                <TabControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vm:OtherPlayerBuildViewModel">
+                                        <TextBlock Text="{Binding TabHeader}"/>
+                                    </DataTemplate>
+                                </TabControl.ItemTemplate>
+                                <TabControl.ContentTemplate>
+                                    <DataTemplate x:DataType="vm:OtherPlayerBuildViewModel">
+                                        <local:PlayerBuildTracker DataContext="{Binding Tracker}" Margin="0,8,0,0"/>
+                                    </DataTemplate>
+                                </TabControl.ContentTemplate>
+                            </TabControl>
+                        </StackPanel>
+                    </Grid>
                 </DataTemplate>
             </DataGrid.RowDetailsTemplate>
         </DataGrid>
