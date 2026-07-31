@@ -29,6 +29,15 @@ namespace StatCraft.ViewModels
         internal GameAttributeEditorViewModel(BuildAttribute template)
         {
             _template = template;
+
+            // Seed from the template's own configured default (set on the Builds tab) so a value that's
+            // never been explicitly set for this player still shows something meaningful instead of the
+            // field's bare 0/false/null default. RebuildAttributeEditors overwrites this via ApplyValue
+            // when a cached GameAttributeValue exists for this player.
+            _numericValue = template.NumericValue;
+            _boolValue = template.BoolValue;
+            _percentValue = template.PercentValue;
+            _selectedValue = template.SelectedValue;
         }
 
         internal string SerializeValue() =>
