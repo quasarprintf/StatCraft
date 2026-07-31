@@ -117,6 +117,29 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public async Task ImportReplay_ReturnsWhateverProcessReplayReturns()
+    {
+        string file = Path.Combine(_folderPath, "bad.SC2Replay");
+        File.WriteAllText(file, "");
+        _watcher.NextResult = "Could not read \"bad.SC2Replay\" — it doesn't look like a valid StarCraft II replay.";
+
+        string? result = await _watcher.ImportReplay(file);
+
+        Assert.Equal(_watcher.NextResult, result);
+    }
+
+    [Fact]
+    public async Task ImportReplay_Success_ReturnsNull()
+    {
+        string file = Path.Combine(_folderPath, "good.SC2Replay");
+        File.WriteAllText(file, "");
+
+        string? result = await _watcher.ImportReplay(file);
+
+        Assert.Null(result);
+    }
+
+    [Fact]
     public async Task ImportReplay_FileOutsideWatchedFolder_IsStillProcessed()
     {
         string outsideFile = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid() + "-outside.SC2Replay");
@@ -161,11 +184,12 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
         : ReplayWatcherService(logger, replayDataExtractor, gameDataRepository)
     {
         public List<string> ProcessedFiles { get; } = [];
+        public string? NextResult { get; set; }
 
-        protected override Task ProcessReplay(string filePath)
+        protected override Task<string?> ProcessReplay(string filePath)
         {
             ProcessedFiles.Add(filePath);
-            return Task.CompletedTask;
+            return Task.FromResult(NextResult);
         }
     }
 }

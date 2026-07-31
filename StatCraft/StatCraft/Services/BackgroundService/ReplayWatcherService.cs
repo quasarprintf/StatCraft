@@ -75,7 +75,8 @@ namespace StatCraft.Services.BackgroundService
         // decode/parse/insert/GameParsed pipeline as the folder watcher. InsertGame already dedupes by
         // ReplayPath, so importing an already-recorded replay is a harmless no-op rather than a
         // duplicate. Callers are expected to have already validated filePath is within WatchedFolderPath.
-        public Task ImportReplay(string filePath) => ProcessReplay(filePath);
+        // Returns null on success, or a user-facing message describing why the replay was rejected.
+        public Task<string?> ImportReplay(string filePath) => ProcessReplay(filePath);
 
         public async Task CheckNow()
         {
@@ -84,15 +85,18 @@ namespace StatCraft.Services.BackgroundService
 
             foreach (string file in Directory.EnumerateFiles(_folderPath))
             {
+                // Failures are already logged inside ProcessReplay; the folder watcher runs unattended in
+                // the background, so there's no active user action to surface an error message to here.
                 if (_knownFiles.Add(file))
                     await ProcessReplay(file);
             }
         }
 
-        protected virtual async Task ProcessReplay(string filePath)
+        // Returns null on success, or a user-facing message describing why the replay was rejected.
+        protected virtual async Task<string?> ProcessReplay(string filePath)
         {
             if (_profile == null)
-                return;
+                return "No active session.";
             logger.LogInfo($"Replay file found: {filePath}", _profile);
 
             using ReplayDecoder decoder = new();
@@ -100,8 +104,7 @@ namespace StatCraft.Services.BackgroundService
             if (replay == null)
             {
                 logger.LogWarning($"Failed to decode replay: {filePath}", _profile);
-                //TODO: notify user of error
-                return;
+                return $"Could not read \"{Path.GetFileName(filePath)}\" — it doesn't look like a valid StarCraft II replay.";
             }
 
             DateTimeOffset replayTimestamp = new DateTimeOffset(File.GetLastWriteTimeUtc(filePath));
@@ -116,12 +119,13 @@ namespace StatCraft.Services.BackgroundService
             catch (InvalidOperationException ex)
             {
                 logger.LogWarning($"Could not match active profile in replay, skipping: {filePath} ({ex.Message})", _profile);
-                return;
+                return $"\"{Path.GetFileName(filePath)}\" doesn't contain a match for the active profile.";
             }
 
             GameData game = new() { ReplayData = parsedReplayData };
             gameDataRepository.InsertGame(game, _profile.Id);
             GameParsed?.Invoke(game);
+            return null;
         }
 
         public async ValueTask DisposeAsync()

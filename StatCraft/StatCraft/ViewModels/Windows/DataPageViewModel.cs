@@ -61,7 +61,8 @@ namespace StatCraft.ViewModels
         // The folder the file picker should default to and validate the user's selection against.
         public string? ReplayFolderPath => _replayWatcherService.WatchedFolderPath;
 
-        public async Task ImportReplayFile(string filePath) => await _replayWatcherService.ImportReplay(filePath);
+        // Returns null on success, or a user-facing message describing why the replay was rejected.
+        public async Task<string?> ImportReplayFile(string filePath) => await _replayWatcherService.ImportReplay(filePath);
 
         // Raised instead of deleting immediately, so the view can show a confirmation dialog and, if
         // accepted, call ConfirmDeleteGame.

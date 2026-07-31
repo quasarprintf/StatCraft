@@ -70,15 +70,14 @@ namespace StatCraft.Views
 
         private async Task OnImportReplayRequestedAsync()
         {
-            TopLevel? topLevel = TopLevel.GetTopLevel(this);
-            if (topLevel == null) return;
+            if (!(TopLevel.GetTopLevel(this) is Window owner)) return;
 
             string? replayFolderPath = ViewModel.ReplayFolderPath;
             IStorageFolder? suggestedFolder = replayFolderPath != null
-                ? await topLevel.StorageProvider.TryGetFolderFromPathAsync(replayFolderPath)
+                ? await owner.StorageProvider.TryGetFolderFromPathAsync(replayFolderPath)
                 : null;
 
-            IReadOnlyList<IStorageFile> files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            IReadOnlyList<IStorageFile> files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
                 Title = "Select a replay to import",
                 AllowMultiple = false,
@@ -95,12 +94,18 @@ namespace StatCraft.Views
             // manual import is held to the same boundary rather than letting the user reach outside it.
             if (replayFolderPath == null || !IsDirectlyInFolder(path, replayFolderPath))
             {
-                ILogger logger = App.Services.GetRequiredService<ILogger>();
-                logger.LogWarning($"Rejected replay import: \"{path}\" is not directly inside the watched replay folder \"{replayFolderPath}\".");
+                string rejectionMessage = replayFolderPath == null
+                    ? "No replay folder is currently being watched."
+                    : $"\"{Path.GetFileName(path)}\" is not inside the current replay folder:\n{replayFolderPath}";
+                App.Services.GetRequiredService<ILogger>()
+                    .LogWarning($"Rejected replay import: \"{path}\" is not directly inside the watched replay folder \"{replayFolderPath}\".");
+                await new MessageWindow("Import Failed", rejectionMessage).ShowDialog(owner);
                 return;
             }
 
-            await ViewModel.ImportReplayFile(path);
+            string? error = await ViewModel.ImportReplayFile(path);
+            if (error != null)
+                await new MessageWindow("Import Failed", error).ShowDialog(owner);
         }
 
         private static bool IsDirectlyInFolder(string filePath, string folderPath)
