@@ -175,8 +175,8 @@ namespace StatCraft.ViewModels
         private static List<CheckboxFilterOptionViewModel<(Race, Race)>> BuildMatchupOptions()
         {
             List<CheckboxFilterOptionViewModel<(Race, Race)>> options = new();
-            foreach (Race playerRace in Enum.GetValues<Race>())
-                foreach (Race opponentRace in Enum.GetValues<Race>())
+            foreach (Race opponentRace in Enum.GetValues<Race>())
+                foreach (Race playerRace in Enum.GetValues<Race>())
                     options.Add(new CheckboxFilterOptionViewModel<(Race, Race)>((playerRace, opponentRace), $"{playerRace}v{opponentRace}"));
             return options;
         }
