@@ -8,7 +8,7 @@
          month/year/decade navigation logic is untouched) inside our own Flyout, wrapped in a
          LayoutTransformControl — which genuinely shrinks the layout footprint, not just the render, even
          across the popup boundary. -->
-    <Button HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
+    <Button x:Name="ToggleButton" HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
             Content="{Binding SelectedDate, ElementName=Root, StringFormat=MM/dd/yyyy}">
         <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedLeft">
@@ -16,7 +16,7 @@
                     <LayoutTransformControl.LayoutTransform>
                         <ScaleTransform ScaleX="0.7" ScaleY="0.7"/>
                     </LayoutTransformControl.LayoutTransform>
-                    <Calendar SelectedDate="{Binding SelectedDate, ElementName=Root, Mode=TwoWay}"/>
+                    <Calendar x:Name="CalendarControl" SelectedDate="{Binding SelectedDate, ElementName=Root, Mode=TwoWay}"/>
                 </LayoutTransformControl>
             </Flyout>
         </Button.Flyout>
