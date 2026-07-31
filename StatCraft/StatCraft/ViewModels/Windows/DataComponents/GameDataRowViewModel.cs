@@ -94,7 +94,7 @@ namespace StatCraft.ViewModels
         private void OnSlotSelectionChanged(BuildSelectionSlotViewModel slot, BuildNode? previousValue)
         {
             // Picking a build that's already covered by another selected slot adds nothing: an exact
-            // duplicate would violate GameBuilds' UNIQUE(GameId, BuildId) constraint on persist, and
+            // duplicate would violate GameBuilds' UNIQUE(GamePlayerId, BuildId) constraint on persist, and
             // picking an ancestor of an already-selected build (e.g. selecting A when A->B is already
             // selected elsewhere) is redundant, since B's own path already includes A's attributes.
             // Revert instead of letting either through; reverting fires this handler again with the
@@ -131,7 +131,7 @@ namespace StatCraft.ViewModels
                 .Select(id => id!.Value)
                 .ToList();
             _game.BuildIds = buildIds;
-            _repository.UpdateGameBuilds(_game.GameId!.Value, buildIds);
+            _repository.UpdateGameBuilds(_game.SelfGamePlayerId!.Value, buildIds);
 
             UpdateSelectedBuildsSummary();
             RebuildAttributeEditors();
@@ -218,7 +218,7 @@ namespace StatCraft.ViewModels
             // Left every selected path: drop the stored value from the DB, but leave it in
             // _game.AttributeValues (in-memory) so re-selecting the build within this session restores it.
             foreach (int leftId in oldIds.Except(newIds))
-                _repository.DeleteAttributeValue(_game.GameId!.Value, leftId);
+                _repository.DeleteAttributeValue(_game.SelfGamePlayerId!.Value, leftId);
 
             AttributeEditors.Clear();
             foreach (BuildAttribute template in newPathAttrs)
@@ -228,7 +228,7 @@ namespace StatCraft.ViewModels
                 if (cached != null)
                 {
                     editor.ApplyValue(cached.Value);
-                    _repository.UpsertAttributeValue(_game.GameId!.Value, template.Id, cached.Value);
+                    _repository.UpsertAttributeValue(_game.SelfGamePlayerId!.Value, template.Id, cached.Value);
                 }
 
                 editor.PropertyChanged += (_, e) =>
@@ -244,7 +244,7 @@ namespace StatCraft.ViewModels
                             existing.Value = value;
                         else
                             _game.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Id, Value = value });
-                        _repository.UpsertAttributeValue(_game.GameId!.Value, template.Id, value);
+                        _repository.UpsertAttributeValue(_game.SelfGamePlayerId!.Value, template.Id, value);
                     }
                 };
                 AttributeEditors.Add(editor);

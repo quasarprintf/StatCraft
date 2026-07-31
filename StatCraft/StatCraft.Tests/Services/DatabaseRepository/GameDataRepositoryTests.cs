@@ -40,9 +40,12 @@ public class GameDataRepositoryTests : IDisposable
     {
         GameData game = CreateGame(replayPath: "r1.SC2Replay");
         _repository.InsertGame(game, _sc2ProfileId);
+        Assert.NotNull(game.SelfGamePlayerId);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         Assert.Equal(game.GameId, loaded.GameId);
+        Assert.Equal(game.SelfGamePlayerId, loaded.SelfGamePlayerId);
+        Assert.NotNull(loaded.SelfGamePlayerId);
         Assert.Equal("Map", loaded.ReplayData.MapName);
         Assert.Equal(600, loaded.ReplayData.GameLengthSeconds);
         Assert.Equal(new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero), loaded.ReplayData.ReplayTimestamp);
@@ -63,6 +66,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.InsertGame(second, _sc2ProfileId);
 
         Assert.Equal(firstId, second.GameId);
+        Assert.Equal(first.SelfGamePlayerId, second.SelfGamePlayerId);
         Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
     }
 
@@ -89,7 +93,7 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpdateGameBuilds(game.GameId!.Value, [build.Id]);
+        _repository.UpdateGameBuilds(game.SelfGamePlayerId!.Value, [build.Id]);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         Assert.Equal([build.Id], loaded.BuildIds);
@@ -105,7 +109,7 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpdateGameBuilds(game.GameId!.Value, [buildB.Id, buildA.Id]);
+        _repository.UpdateGameBuilds(game.SelfGamePlayerId!.Value, [buildB.Id, buildA.Id]);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         Assert.Equal([buildB.Id, buildA.Id], loaded.BuildIds);
@@ -121,8 +125,8 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpdateGameBuilds(game.GameId!.Value, [buildA.Id, buildB.Id]);
-        _repository.UpdateGameBuilds(game.GameId!.Value, [buildB.Id]);
+        _repository.UpdateGameBuilds(game.SelfGamePlayerId!.Value, [buildA.Id, buildB.Id]);
+        _repository.UpdateGameBuilds(game.SelfGamePlayerId!.Value, [buildB.Id]);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         Assert.Equal([buildB.Id], loaded.BuildIds);
@@ -146,7 +150,7 @@ public class GameDataRepositoryTests : IDisposable
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
 
-        _repository.UpsertAttributeValue(game.GameId!.Value, attr.Id, "14");
+        _repository.UpsertAttributeValue(game.SelfGamePlayerId!.Value, attr.Id, "14");
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         GameAttributeValue value = Assert.Single(loaded.AttributeValues);
@@ -161,8 +165,8 @@ public class GameDataRepositoryTests : IDisposable
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
 
-        _repository.UpsertAttributeValue(game.GameId!.Value, attr.Id, "14");
-        _repository.UpsertAttributeValue(game.GameId!.Value, attr.Id, "16");
+        _repository.UpsertAttributeValue(game.SelfGamePlayerId!.Value, attr.Id, "14");
+        _repository.UpsertAttributeValue(game.SelfGamePlayerId!.Value, attr.Id, "16");
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         GameAttributeValue value = Assert.Single(loaded.AttributeValues);
@@ -181,10 +185,10 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpsertAttributeValue(game.GameId!.Value, attr1.Id, "1");
-        _repository.UpsertAttributeValue(game.GameId!.Value, attr2.Id, "2");
+        _repository.UpsertAttributeValue(game.SelfGamePlayerId!.Value, attr1.Id, "1");
+        _repository.UpsertAttributeValue(game.SelfGamePlayerId!.Value, attr2.Id, "2");
 
-        _repository.DeleteAttributeValue(game.GameId!.Value, attr1.Id);
+        _repository.DeleteAttributeValue(game.SelfGamePlayerId!.Value, attr1.Id);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         GameAttributeValue remaining = Assert.Single(loaded.AttributeValues);
@@ -213,7 +217,7 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpdateGameBuilds(game.GameId!.Value, [build.Id]);
+        _repository.UpdateGameBuilds(game.SelfGamePlayerId!.Value, [build.Id]);
 
         Assert.True(_repository.IsAnyBuildReferenced([build.Id]));
     }
@@ -243,7 +247,7 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpdateGameBuilds(game.GameId!.Value, [child.Id]);
+        _repository.UpdateGameBuilds(game.SelfGamePlayerId!.Value, [child.Id]);
 
         // Simulates deleting "parent", which would cascade-delete "child" too — the caller passes the
         // whole subtree, and only "child" (not "parent") is actually referenced by a game.
@@ -358,6 +362,123 @@ public class GameDataRepositoryTests : IDisposable
 
             GameData loaded = Assert.Single(repository.GetGamesForProfile(1));
             Assert.Equal([42], loaded.BuildIds);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(dbPath))
+                    File.Delete(dbPath);
+            }
+            catch (IOException)
+            {
+                // Best-effort cleanup.
+            }
+        }
+    }
+
+    [Fact]
+    public void Initialize_ExistingOldSchemaWithGameIdKeyedGameBuilds_MigratesToGamePlayerId()
+    {
+        string dbPath = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid() + ".db");
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+            using (SqliteConnection conn = new SqliteConnection($"Data Source={dbPath}"))
+            {
+                conn.Open();
+                using SqliteCommand createCmd = conn.CreateCommand();
+                createCmd.CommandText = @"
+                    CREATE TABLE Games (
+                        Id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Sc2ProfileId      INTEGER NOT NULL,
+                        MapName           TEXT    NOT NULL DEFAULT '',
+                        GameLengthSeconds INTEGER NOT NULL DEFAULT 0,
+                        ReplayPath        TEXT    NOT NULL UNIQUE,
+                        ReplayTimestamp   TEXT    NOT NULL DEFAULT '',
+                        Win               REAL    NOT NULL DEFAULT 0,
+                        PlayerName        TEXT    NOT NULL DEFAULT '',
+                        PlayerClan        TEXT    NOT NULL DEFAULT '',
+                        PlayerMmr         INTEGER NOT NULL DEFAULT 0,
+                        PlayerRace        TEXT    NOT NULL DEFAULT '',
+                        PlayerRandom      INTEGER NOT NULL DEFAULT 0,
+                        Notes             TEXT    NOT NULL DEFAULT '',
+                        CreatedAtUtc      TEXT    NOT NULL DEFAULT ''
+                    );
+                    CREATE TABLE GamePlayers (
+                        Id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                        GameId    INTEGER NOT NULL,
+                        Side      INTEGER NOT NULL,
+                        SortOrder INTEGER NOT NULL DEFAULT 0,
+                        Name      TEXT    NOT NULL DEFAULT '',
+                        Clan      TEXT    NOT NULL DEFAULT '',
+                        Mmr       INTEGER NOT NULL DEFAULT 0,
+                        Race      TEXT    NOT NULL DEFAULT '',
+                        Random    INTEGER NOT NULL DEFAULT 0
+                    );
+                    CREATE TABLE GameBuilds (
+                        Id        INTEGER PRIMARY KEY AUTOINCREMENT,
+                        GameId    INTEGER NOT NULL,
+                        BuildId   INTEGER NOT NULL,
+                        SortOrder INTEGER NOT NULL DEFAULT 0,
+                        UNIQUE(GameId, BuildId)
+                    );
+                    CREATE TABLE GameAttributeValues (
+                        Id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                        GameId           INTEGER NOT NULL,
+                        BuildAttributeId INTEGER NOT NULL,
+                        Value            TEXT    NOT NULL DEFAULT '',
+                        UNIQUE(GameId, BuildAttributeId)
+                    );
+                    CREATE TABLE BuildNodes (
+                        Id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Name TEXT NOT NULL DEFAULT ''
+                    );
+                    CREATE TABLE BuildAttributes (
+                        Id   INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Name TEXT NOT NULL DEFAULT ''
+                    );";
+                createCmd.ExecuteNonQuery();
+
+                using SqliteCommand insertGameCmd = conn.CreateCommand();
+                insertGameCmd.CommandText = @"
+                    INSERT INTO Games (Sc2ProfileId, ReplayPath, ReplayTimestamp, PlayerName, PlayerRace, CreatedAtUtc)
+                    VALUES (1, 'legacy.SC2Replay', '2025-06-01T12:00:00.0000000+00:00', 'Me', 'T', '2025-06-01T12:00:00.0000000+00:00')";
+                insertGameCmd.ExecuteNonQuery();
+
+                using SqliteCommand insertAllyCmd = conn.CreateCommand();
+                insertAllyCmd.CommandText = "INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Race) VALUES (1, 1, 0, 'Foe', 'Z')";
+                insertAllyCmd.ExecuteNonQuery();
+
+                using SqliteCommand insertBuildNodeCmd = conn.CreateCommand();
+                insertBuildNodeCmd.CommandText = "INSERT INTO BuildNodes (Id, Name) VALUES (42, 'Legacy Build')";
+                insertBuildNodeCmd.ExecuteNonQuery();
+
+                using SqliteCommand insertAttrCmd = conn.CreateCommand();
+                insertAttrCmd.CommandText = "INSERT INTO BuildAttributes (Id, Name) VALUES (7, 'Legacy Attr')";
+                insertAttrCmd.ExecuteNonQuery();
+
+                using SqliteCommand insertGameBuildCmd = conn.CreateCommand();
+                insertGameBuildCmd.CommandText = "INSERT INTO GameBuilds (GameId, BuildId, SortOrder) VALUES (1, 42, 0)";
+                insertGameBuildCmd.ExecuteNonQuery();
+
+                using SqliteCommand insertAttrValueCmd = conn.CreateCommand();
+                insertAttrValueCmd.CommandText = "INSERT INTO GameAttributeValues (GameId, BuildAttributeId, Value) VALUES (1, 7, '99')";
+                insertAttrValueCmd.ExecuteNonQuery();
+            }
+
+            GameDataRepository repository = new GameDataRepository(dbPath);
+            repository.Initialize();
+
+            GameData loaded = Assert.Single(repository.GetGamesForProfile(1));
+            Assert.NotNull(loaded.SelfGamePlayerId);
+            Assert.Equal([42], loaded.BuildIds);
+            GameAttributeValue value = Assert.Single(loaded.AttributeValues);
+            Assert.Equal(7, value.BuildAttributeId);
+            Assert.Equal("99", value.Value);
+            // The pre-existing Opponent row (Side = 1) must not be mistaken for the migrated Self row.
+            GamePlayer opponent = Assert.Single(loaded.ReplayData.Opponents);
+            Assert.Equal("Foe", opponent.Name);
         }
         finally
         {

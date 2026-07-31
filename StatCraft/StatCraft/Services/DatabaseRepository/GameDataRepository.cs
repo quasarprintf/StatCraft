@@ -44,13 +44,6 @@ namespace StatCraft.Services.DatabaseRepository
                     Notes             TEXT    NOT NULL DEFAULT '',
                     CreatedAtUtc      TEXT    NOT NULL DEFAULT ''
                 );
-                CREATE TABLE IF NOT EXISTS GameBuilds (
-                    Id        INTEGER PRIMARY KEY AUTOINCREMENT,
-                    GameId    INTEGER NOT NULL REFERENCES Games(Id) ON DELETE CASCADE,
-                    BuildId   INTEGER NOT NULL REFERENCES BuildNodes(Id) ON DELETE CASCADE,
-                    SortOrder INTEGER NOT NULL DEFAULT 0,
-                    UNIQUE(GameId, BuildId)
-                );
                 CREATE TABLE IF NOT EXISTS GamePlayers (
                     Id        INTEGER PRIMARY KEY AUTOINCREMENT,
                     GameId    INTEGER NOT NULL REFERENCES Games(Id) ON DELETE CASCADE,
@@ -62,12 +55,19 @@ namespace StatCraft.Services.DatabaseRepository
                     Race      TEXT    NOT NULL DEFAULT '',
                     Random    INTEGER NOT NULL DEFAULT 0
                 );
+                CREATE TABLE IF NOT EXISTS GameBuilds (
+                    Id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                    GamePlayerId INTEGER NOT NULL REFERENCES GamePlayers(Id) ON DELETE CASCADE,
+                    BuildId      INTEGER NOT NULL REFERENCES BuildNodes(Id) ON DELETE CASCADE,
+                    SortOrder    INTEGER NOT NULL DEFAULT 0,
+                    UNIQUE(GamePlayerId, BuildId)
+                );
                 CREATE TABLE IF NOT EXISTS GameAttributeValues (
                     Id               INTEGER PRIMARY KEY AUTOINCREMENT,
-                    GameId           INTEGER NOT NULL REFERENCES Games(Id) ON DELETE CASCADE,
+                    GamePlayerId     INTEGER NOT NULL REFERENCES GamePlayers(Id) ON DELETE CASCADE,
                     BuildAttributeId INTEGER NOT NULL REFERENCES BuildAttributes(Id) ON DELETE CASCADE,
                     Value            TEXT    NOT NULL DEFAULT '',
-                    UNIQUE(GameId, BuildAttributeId)
+                    UNIQUE(GamePlayerId, BuildAttributeId)
                 );");
 
             // Upgrades a pre-existing DB that predates ReplayTimestamp. Backfills it from CreatedAtUtc
@@ -86,15 +86,86 @@ namespace StatCraft.Services.DatabaseRepository
                 // Already migrated, or a fresh DB already created with the new schema.
             }
 
-            // Upgrades a pre-existing DB that predates GameBuilds, moving its single Games.BuildId column
-            // into the new join table before dropping the column. On a fresh DB (or one already migrated)
-            // Games never has a BuildId column, so the INSERT fails immediately and the batch aborts
-            // before ever reaching DROP COLUMN.
+            // Every game must always have exactly one "Self" GamePlayers row (Side = SideSelf) representing
+            // the tracked user themselves, synthesized from the Player* columns already stored on Games —
+            // GameBuilds/GameAttributeValues reference it rather than Games.Id directly (see below). Safe
+            // to run unconditionally on every Initialize() call: the NOT EXISTS guard makes it a no-op for
+            // any game that already has one (a fresh DB has no Games rows at all yet either way).
+            conn.Execute($@"
+                INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random)
+                    SELECT g.Id, {SideSelf}, 0, g.PlayerName, g.PlayerClan, g.PlayerMmr, g.PlayerRace, g.PlayerRandom
+                    FROM Games g
+                    WHERE NOT EXISTS (SELECT 1 FROM GamePlayers gp WHERE gp.GameId = g.Id AND gp.Side = {SideSelf});");
+
+            // Upgrades a pre-existing DB where GameBuilds/GameAttributeValues were tied directly to
+            // Games.Id. Build/attribute tracking is inherently about the tracked player's own performance
+            // in a game, not the game as a whole, so they're retargeted to that player's own GamePlayers
+            // row instead (backfilled just above). SQLite can't drop a column that's part of a UNIQUE
+            // constraint (GameId was part of UNIQUE(GameId, BuildId) etc.), so the two tables are rebuilt
+            // from scratch rather than altered in place; the whole rebuild runs in one transaction so a
+            // failure partway through can't leave the schema half-migrated. On a fresh DB (or one already
+            // migrated) GameBuilds already has a GamePlayerId column, so the first ADD COLUMN fails
+            // immediately and the whole batch — including the transaction — is rolled back and aborted
+            // before ever reaching the destructive table-recreation statements below. Must run before the
+            // Games.BuildId migration further down, which assumes GameBuilds is already GamePlayerId-keyed.
             try
             {
-                conn.Execute(@"
-                    INSERT INTO GameBuilds (GameId, BuildId, SortOrder)
-                        SELECT Id, BuildId, 0 FROM Games WHERE BuildId IS NOT NULL;
+                using SqliteTransaction tx = conn.BeginTransaction();
+
+                conn.Execute("ALTER TABLE GameBuilds ADD COLUMN GamePlayerId INTEGER REFERENCES GamePlayers(Id) ON DELETE CASCADE", transaction: tx);
+
+                conn.Execute($@"
+                    UPDATE GameBuilds SET GamePlayerId = (
+                        SELECT gp.Id FROM GamePlayers gp WHERE gp.GameId = GameBuilds.GameId AND gp.Side = {SideSelf});
+
+                    ALTER TABLE GameAttributeValues ADD COLUMN GamePlayerId INTEGER REFERENCES GamePlayers(Id) ON DELETE CASCADE;
+                    UPDATE GameAttributeValues SET GamePlayerId = (
+                        SELECT gp.Id FROM GamePlayers gp WHERE gp.GameId = GameAttributeValues.GameId AND gp.Side = {SideSelf});
+
+                    CREATE TABLE GameBuilds_New (
+                        Id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                        GamePlayerId INTEGER NOT NULL REFERENCES GamePlayers(Id) ON DELETE CASCADE,
+                        BuildId      INTEGER NOT NULL REFERENCES BuildNodes(Id) ON DELETE CASCADE,
+                        SortOrder    INTEGER NOT NULL DEFAULT 0,
+                        UNIQUE(GamePlayerId, BuildId)
+                    );
+                    INSERT INTO GameBuilds_New (Id, GamePlayerId, BuildId, SortOrder)
+                        SELECT Id, GamePlayerId, BuildId, SortOrder FROM GameBuilds;
+                    DROP TABLE GameBuilds;
+                    ALTER TABLE GameBuilds_New RENAME TO GameBuilds;
+
+                    CREATE TABLE GameAttributeValues_New (
+                        Id               INTEGER PRIMARY KEY AUTOINCREMENT,
+                        GamePlayerId     INTEGER NOT NULL REFERENCES GamePlayers(Id) ON DELETE CASCADE,
+                        BuildAttributeId INTEGER NOT NULL REFERENCES BuildAttributes(Id) ON DELETE CASCADE,
+                        Value            TEXT    NOT NULL DEFAULT '',
+                        UNIQUE(GamePlayerId, BuildAttributeId)
+                    );
+                    INSERT INTO GameAttributeValues_New (Id, GamePlayerId, BuildAttributeId, Value)
+                        SELECT Id, GamePlayerId, BuildAttributeId, Value FROM GameAttributeValues;
+                    DROP TABLE GameAttributeValues;
+                    ALTER TABLE GameAttributeValues_New RENAME TO GameAttributeValues;",
+                    transaction: tx);
+
+                tx.Commit();
+            }
+            catch (SqliteException)
+            {
+                // Already migrated, or a fresh DB already created with the new schema.
+            }
+
+            // Upgrades a pre-existing DB that predates GameBuilds entirely, moving its single Games.BuildId
+            // column into GameBuilds (already GamePlayerId-keyed by this point, whether freshly created
+            // above or migrated by the block just above) before dropping the column — resolving each
+            // game's GamePlayerId via the Self row backfilled earlier in this method. On a fresh DB (or one
+            // already migrated) Games never has a BuildId column, so the INSERT fails immediately and the
+            // batch aborts before ever reaching DROP COLUMN.
+            try
+            {
+                conn.Execute($@"
+                    INSERT INTO GameBuilds (GamePlayerId, BuildId, SortOrder)
+                        SELECT (SELECT gp.Id FROM GamePlayers gp WHERE gp.GameId = Games.Id AND gp.Side = {SideSelf}), BuildId, 0
+                        FROM Games WHERE BuildId IS NOT NULL;
                     ALTER TABLE Games DROP COLUMN BuildId;");
             }
             catch (SqliteException)
@@ -106,6 +177,7 @@ namespace StatCraft.Services.DatabaseRepository
         // Side values in GamePlayers.
         private const int SideAlly = 0;
         private const int SideOpponent = 1;
+        private const int SideSelf = 2;
 
         internal void InsertGame(GameData game, int sc2ProfileId)
         {
@@ -117,6 +189,9 @@ namespace StatCraft.Services.DatabaseRepository
             if (existingId != null)
             {
                 game.GameId = (int)existingId.Value;
+                game.SelfGamePlayerId = (int)conn.ExecuteScalar<long>(
+                    "SELECT Id FROM GamePlayers WHERE GameId = @gameId AND Side = @side",
+                    new { gameId = game.GameId, side = SideSelf });
                 return;
             }
 
@@ -140,6 +215,21 @@ namespace StatCraft.Services.DatabaseRepository
                     playerRandom = replay.Player.Random ? 1 : 0,
                     notes = game.Notes,
                     createdAt = DateTimeOffset.UtcNow,
+                });
+
+            game.SelfGamePlayerId = (int)conn.ExecuteScalar<long>(@"
+                INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random)
+                VALUES (@gameId, @side, 0, @name, @clan, @mmr, @race, @random);
+                SELECT last_insert_rowid();",
+                new
+                {
+                    gameId = game.GameId,
+                    side = SideSelf,
+                    name = replay.Player.Name,
+                    clan = replay.Player.Clan,
+                    mmr = replay.Player.Mmr,
+                    race = replay.Player.Race,
+                    random = replay.Player.Random ? 1 : 0,
                 });
 
             InsertGamePlayers(conn, game.GameId.Value, SideAlly, replay.Allies);
@@ -189,6 +279,7 @@ namespace StatCraft.Services.DatabaseRepository
 
         private class GamePlayerRow
         {
+            public long Id { get; set; }
             public long GameId { get; set; }
             public int Side { get; set; }
             public string Name { get; set; } = "";
@@ -200,13 +291,13 @@ namespace StatCraft.Services.DatabaseRepository
 
         private class GameBuildRow
         {
-            public long GameId { get; set; }
+            public long GamePlayerId { get; set; }
             public int BuildId { get; set; }
         }
 
         private class GameAttributeValueRow
         {
-            public long GameId { get; set; }
+            public long GamePlayerId { get; set; }
             public int BuildAttributeId { get; set; }
             public string Value { get; set; } = "";
         }
@@ -227,10 +318,17 @@ namespace StatCraft.Services.DatabaseRepository
 
             Dictionary<long, List<GamePlayer>> allies = new();
             Dictionary<long, List<GamePlayer>> opponents = new();
+            Dictionary<long, long> selfGamePlayerIds = new(); // Games.Id -> GamePlayers.Id
             IEnumerable<GamePlayerRow> playerRows = conn.Query<GamePlayerRow>(
-                $"SELECT GameId, Side, Name, Clan, Mmr, Race, Random FROM GamePlayers WHERE GameId IN ({idList}) ORDER BY GameId, Side, SortOrder");
+                $"SELECT Id, GameId, Side, Name, Clan, Mmr, Race, Random FROM GamePlayers WHERE GameId IN ({idList}) ORDER BY GameId, Side, SortOrder");
             foreach (GamePlayerRow row in playerRows)
             {
+                if (row.Side == SideSelf)
+                {
+                    selfGamePlayerIds[row.GameId] = row.Id;
+                    continue;
+                }
+
                 GamePlayer player = new() { Name = row.Name, Clan = row.Clan, Mmr = row.Mmr, Race = row.Race, Random = row.Random };
                 Dictionary<long, List<GamePlayer>> target = row.Side == SideAlly ? allies : opponents;
                 if (!target.TryGetValue(row.GameId, out List<GamePlayer>? list))
@@ -238,25 +336,30 @@ namespace StatCraft.Services.DatabaseRepository
                 list.Add(player);
             }
 
-            Dictionary<long, List<int>> buildIds = new();
-            IEnumerable<GameBuildRow> buildRows = conn.Query<GameBuildRow>(
-                $"SELECT GameId, BuildId FROM GameBuilds WHERE GameId IN ({idList}) ORDER BY GameId, SortOrder");
-            foreach (GameBuildRow row in buildRows)
+            Dictionary<long, List<int>> buildIdsByGamePlayer = new();
+            Dictionary<long, List<GameAttributeValue>> attributeValuesByGamePlayer = new();
+            if (selfGamePlayerIds.Count > 0)
             {
-                if (!buildIds.TryGetValue(row.GameId, out List<int>? list))
-                    buildIds[row.GameId] = list = new();
-                list.Add(row.BuildId);
-            }
+                string selfIdList = string.Join(",", selfGamePlayerIds.Values);
 
-            Dictionary<long, List<GameAttributeValue>> attributeValues = new();
-            IEnumerable<GameAttributeValueRow> attributeRows = conn.Query<GameAttributeValueRow>(
-                $"SELECT GameId, BuildAttributeId, Value FROM GameAttributeValues WHERE GameId IN ({idList})");
-            foreach (GameAttributeValueRow row in attributeRows)
-            {
-                GameAttributeValue value = new() { BuildAttributeId = row.BuildAttributeId, Value = row.Value };
-                if (!attributeValues.TryGetValue(row.GameId, out List<GameAttributeValue>? list))
-                    attributeValues[row.GameId] = list = new();
-                list.Add(value);
+                IEnumerable<GameBuildRow> buildRows = conn.Query<GameBuildRow>(
+                    $"SELECT GamePlayerId, BuildId FROM GameBuilds WHERE GamePlayerId IN ({selfIdList}) ORDER BY GamePlayerId, SortOrder");
+                foreach (GameBuildRow row in buildRows)
+                {
+                    if (!buildIdsByGamePlayer.TryGetValue(row.GamePlayerId, out List<int>? list))
+                        buildIdsByGamePlayer[row.GamePlayerId] = list = new();
+                    list.Add(row.BuildId);
+                }
+
+                IEnumerable<GameAttributeValueRow> attributeRows = conn.Query<GameAttributeValueRow>(
+                    $"SELECT GamePlayerId, BuildAttributeId, Value FROM GameAttributeValues WHERE GamePlayerId IN ({selfIdList})");
+                foreach (GameAttributeValueRow row in attributeRows)
+                {
+                    GameAttributeValue value = new() { BuildAttributeId = row.BuildAttributeId, Value = row.Value };
+                    if (!attributeValuesByGamePlayer.TryGetValue(row.GamePlayerId, out List<GameAttributeValue>? list))
+                        attributeValuesByGamePlayer[row.GamePlayerId] = list = new();
+                    list.Add(value);
+                }
             }
 
             List<GameData> games = new();
@@ -273,29 +376,32 @@ namespace StatCraft.Services.DatabaseRepository
                     Allies = allies.TryGetValue(row.Id, out List<GamePlayer>? a) ? a.ToArray() : [],
                     Opponents = opponents.TryGetValue(row.Id, out List<GamePlayer>? o) ? o.ToArray() : [],
                 };
+
+                long? selfId = selfGamePlayerIds.TryGetValue(row.Id, out long sid) ? sid : null;
                 games.Add(new GameData
                 {
                     GameId = (int)row.Id,
                     ReplayData = replay,
-                    BuildIds = buildIds.TryGetValue(row.Id, out List<int>? b) ? b : [],
+                    SelfGamePlayerId = selfId.HasValue ? (int)selfId.Value : null,
+                    BuildIds = selfId.HasValue && buildIdsByGamePlayer.TryGetValue(selfId.Value, out List<int>? b) ? b : [],
                     Notes = row.Notes,
-                    AttributeValues = attributeValues.TryGetValue(row.Id, out List<GameAttributeValue>? v) ? v : [],
+                    AttributeValues = selfId.HasValue && attributeValuesByGamePlayer.TryGetValue(selfId.Value, out List<GameAttributeValue>? v) ? v : [],
                 });
             }
             return games;
         }
 
-        public void UpdateGameBuilds(int gameId, IReadOnlyList<int> buildIds)
+        public void UpdateGameBuilds(int gamePlayerId, IReadOnlyList<int> buildIds)
         {
             using SqliteConnection conn = OpenConnection();
 
-            conn.Execute("DELETE FROM GameBuilds WHERE GameId = @gameId", new { gameId });
+            conn.Execute("DELETE FROM GameBuilds WHERE GamePlayerId = @gamePlayerId", new { gamePlayerId });
 
             if (buildIds.Count > 0)
             {
                 conn.Execute(
-                    "INSERT INTO GameBuilds (GameId, BuildId, SortOrder) VALUES (@gameId, @buildId, @sortOrder)",
-                    buildIds.Select((buildId, i) => new { gameId, buildId, sortOrder = i }));
+                    "INSERT INTO GameBuilds (GamePlayerId, BuildId, SortOrder) VALUES (@gamePlayerId, @buildId, @sortOrder)",
+                    buildIds.Select((buildId, i) => new { gamePlayerId, buildId, sortOrder = i }));
             }
         }
 
@@ -305,26 +411,26 @@ namespace StatCraft.Services.DatabaseRepository
             conn.Execute("UPDATE Games SET Notes = @notes WHERE Id = @id", new { notes, id = gameId });
         }
 
-        public void UpsertAttributeValue(int gameId, int buildAttributeId, string value)
+        public void UpsertAttributeValue(int gamePlayerId, int buildAttributeId, string value)
         {
             using SqliteConnection conn = OpenConnection();
             conn.Execute(@"
-                INSERT INTO GameAttributeValues (GameId, BuildAttributeId, Value)
-                VALUES (@gameId, @buildAttributeId, @value)
-                ON CONFLICT(GameId, BuildAttributeId) DO UPDATE SET Value = @value",
-                new { gameId, buildAttributeId, value });
+                INSERT INTO GameAttributeValues (GamePlayerId, BuildAttributeId, Value)
+                VALUES (@gamePlayerId, @buildAttributeId, @value)
+                ON CONFLICT(GamePlayerId, BuildAttributeId) DO UPDATE SET Value = @value",
+                new { gamePlayerId, buildAttributeId, value });
         }
 
-        public void DeleteAttributeValue(int gameId, int buildAttributeId)
+        public void DeleteAttributeValue(int gamePlayerId, int buildAttributeId)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("DELETE FROM GameAttributeValues WHERE GameId = @gameId AND BuildAttributeId = @buildAttributeId",
-                new { gameId, buildAttributeId });
+            conn.Execute("DELETE FROM GameAttributeValues WHERE GamePlayerId = @gamePlayerId AND BuildAttributeId = @buildAttributeId",
+                new { gamePlayerId, buildAttributeId });
         }
 
         // True if any GameBuilds row still points at one of these build node ids. Deleting a BuildNode
         // cascades to its whole subtree (BuildNodes.ParentId ON DELETE CASCADE), and each deleted node
-        // cascades away any GameBuilds row referencing it (ON DELETE CASCADE) along with that game's
+        // cascades away any GameBuilds row referencing it (ON DELETE CASCADE) along with that player's
         // recorded attribute values for it (via BuildAttributes -> GameAttributeValues) — so callers
         // should pass every id in the subtree being deleted, not just the root.
         public bool IsAnyBuildReferenced(IEnumerable<int> buildNodeIds)
