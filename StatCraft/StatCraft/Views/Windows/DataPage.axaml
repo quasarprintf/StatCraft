@@ -28,7 +28,8 @@
 
         <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="8,0,8,8">
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-                <local:CheckboxFilterDropdown Header="Profile" Options="{Binding Filters.ProfileOptions}"/>
+                <local:CheckboxFilterDropdown Header="Profile" Options="{Binding Filters.ProfileOptions}"
+                                               ShowSearch="True" SearchText="{Binding Filters.ProfileSearchText}"/>
                 <CalendarDatePicker SelectedDate="{Binding Filters.FromDate}"/>
                 <TextBlock Text="to" VerticalAlignment="Center"/>
                 <CalendarDatePicker SelectedDate="{Binding Filters.ToDate}"/>

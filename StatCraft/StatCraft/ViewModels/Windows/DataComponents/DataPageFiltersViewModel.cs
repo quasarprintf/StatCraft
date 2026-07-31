@@ -26,6 +26,10 @@ namespace StatCraft.ViewModels
 
         public ObservableCollection<CheckboxFilterOptionViewModel<Sc2Profile>> ProfileOptions { get; } = [];
 
+        // Narrows the Profile dropdown's own checkbox list, same as MapSlot.SearchText — display-only,
+        // doesn't affect which games are shown.
+        [ObservableProperty] private string _profileSearchText = "";
+
         // DateTime (not DateTimeOffset) because CalendarDatePicker.SelectedDate is DateTime?.
         [ObservableProperty] private DateTime? _fromDate;
         [ObservableProperty] private DateTime? _toDate;
