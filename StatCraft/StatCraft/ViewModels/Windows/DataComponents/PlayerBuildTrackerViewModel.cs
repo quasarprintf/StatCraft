@@ -24,7 +24,7 @@ namespace StatCraft.ViewModels
         // Slots are always [...persisted selections, one trailing blank] — selecting a build in the
         // trailing slot appends a new blank after it, and clearing a non-trailing slot removes it.
         public ObservableCollection<BuildSelectionSlotViewModel> BuildSlots { get; } = [];
-        public ObservableCollection<GameAttributeEditorViewModel> AttributeEditors { get; } = [];
+        public ObservableCollection<BuildAttribute> AttributeEditors { get; } = [];
 
         internal PlayerBuildTrackerViewModel(GamePlayer player, GameDataRepository repository, ObservableCollection<BuildNode>? buildTree)
         {
@@ -150,7 +150,7 @@ namespace StatCraft.ViewModels
         // contributes its attributes exactly once no matter how many selected builds pass through it.
         private void RebuildAttributeEditors()
         {
-            List<int> oldIds = AttributeEditors.Select(e => e.BuildAttributeId).ToList();
+            List<int> oldIds = AttributeEditors.Select(e => e.Id).ToList();
 
             List<BuildNode> unionPath = new();
             HashSet<int> seen = new();
@@ -174,7 +174,7 @@ namespace StatCraft.ViewModels
             AttributeEditors.Clear();
             foreach (BuildAttribute template in newPathAttrs)
             {
-                GameAttributeEditorViewModel editor = new(template);
+                BuildAttribute editor = template.Clone();
                 GameAttributeValue? cached = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Id);
                 if (cached != null)
                 {
@@ -190,10 +190,10 @@ namespace StatCraft.ViewModels
 
                 editor.PropertyChanged += (_, e) =>
                 {
-                    if (e.PropertyName is nameof(GameAttributeEditorViewModel.NumericValue)
-                        or nameof(GameAttributeEditorViewModel.BoolValue)
-                        or nameof(GameAttributeEditorViewModel.PercentValue)
-                        or nameof(GameAttributeEditorViewModel.SelectedValue))
+                    if (e.PropertyName is nameof(BuildAttribute.NumericValue)
+                        or nameof(BuildAttribute.BoolValue)
+                        or nameof(BuildAttribute.PercentValue)
+                        or nameof(BuildAttribute.SelectedValue))
                     {
                         string value = editor.SerializeValue();
                         GameAttributeValue? existing = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Id);

@@ -10,7 +10,7 @@ public class GameAttributeEditorViewModelTests
     {
         BuildAttribute template = new() { Type = AttributeType.Numeric, NumericValue = 14 };
 
-        GameAttributeEditorViewModel editor = new(template);
+        BuildAttribute editor = template.Clone();
 
         Assert.Equal(14, editor.NumericValue);
     }
@@ -20,7 +20,7 @@ public class GameAttributeEditorViewModelTests
     {
         BuildAttribute template = new() { Type = AttributeType.Bool, BoolValue = true };
 
-        GameAttributeEditorViewModel editor = new(template);
+        BuildAttribute editor = template.Clone();
 
         Assert.True(editor.BoolValue);
     }
@@ -30,7 +30,7 @@ public class GameAttributeEditorViewModelTests
     {
         BuildAttribute template = new() { Type = AttributeType.Percent, PercentValue = 75 };
 
-        GameAttributeEditorViewModel editor = new(template);
+        BuildAttribute editor = template.Clone();
 
         Assert.Equal(75, editor.PercentValue);
     }
@@ -40,7 +40,7 @@ public class GameAttributeEditorViewModelTests
     {
         BuildAttribute template = new() { Type = AttributeType.Values, SelectedValue = "Aggressive" };
 
-        GameAttributeEditorViewModel editor = new(template);
+        BuildAttribute editor = template.Clone();
 
         Assert.Equal("Aggressive", editor.SelectedValue);
     }
@@ -49,7 +49,7 @@ public class GameAttributeEditorViewModelTests
     public void ApplyValue_OverridesTemplateDefaultWithCachedValue()
     {
         BuildAttribute template = new() { Type = AttributeType.Numeric, NumericValue = 14 };
-        GameAttributeEditorViewModel editor = new(template);
+        BuildAttribute editor = template.Clone();
 
         editor.ApplyValue(editor.SerializeValue()); // sanity: round-trips at the default first
         Assert.Equal(14, editor.NumericValue);
