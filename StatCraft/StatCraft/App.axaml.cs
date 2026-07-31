@@ -119,6 +119,7 @@ namespace StatCraft
             services.AddSingleton(_ => new SettingsRepository(settingsPath));
             services.AddSingleton<ReplayDataExtractor>();
             services.AddSingleton<ReplayWatcherService>();
+            services.AddSingleton<ReplayImportService>();
             services.AddSingleton<ILogger>(_ => new LoggingService(Path.Combine(appDataDir, "Logs")));
 
             services.AddSingleton(new HttpClient());

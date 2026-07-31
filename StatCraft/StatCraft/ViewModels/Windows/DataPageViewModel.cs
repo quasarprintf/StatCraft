@@ -20,19 +20,22 @@ namespace StatCraft.ViewModels
     {
         private readonly SettingsRepository _settingsRepository;
         private readonly ReplayWatcherService _replayWatcherService;
+        private readonly ReplayImportService _replayImportService;
         private readonly BuildRepository _buildRepository;
         private readonly GameDataRepository _gameDataRepository;
         private readonly Dictionary<(Race Player, Matchups Opponent), ObservableCollection<BuildNode>> _buildTreeCache = new();
         private bool _buildTreeCacheDirty;
 
         public DataPageViewModel(SettingsRepository settingsRepository, ReplayWatcherService replayWatcherService,
-            BuildRepository buildRepository, GameDataRepository gameDataRepository)
+            ReplayImportService replayImportService, BuildRepository buildRepository, GameDataRepository gameDataRepository)
         {
             _settingsRepository = settingsRepository;
             _replayWatcherService = replayWatcherService;
+            _replayImportService = replayImportService;
             _buildRepository = buildRepository;
             _gameDataRepository = gameDataRepository;
-            _replayWatcherService.GameParsed += OnGameParsed;
+            _replayWatcherService.NewReplayFileFound += OnNewReplayFileFound;
+            _replayImportService.GameParsed += OnGameParsed;
             _buildRepository.BuildsChanged += OnBuildsChanged;
         }
 
@@ -62,7 +65,7 @@ namespace StatCraft.ViewModels
         public string? ReplayFolderPath => _replayWatcherService.WatchedFolderPath;
 
         // Returns null on success, or a user-facing message describing why the replay was rejected.
-        public async Task<string?> ImportReplayFile(string filePath) => await _replayWatcherService.ImportReplay(filePath);
+        public async Task<string?> ImportReplayFile(string filePath) => await _replayImportService.ImportReplay(filePath, ActiveProfile!);
 
         // Raised instead of deleting immediately, so the view can show a confirmation dialog and, if
         // accepted, call ConfirmDeleteGame.
@@ -93,7 +96,17 @@ namespace StatCraft.ViewModels
 
             string baseReplayFolderPath = _settingsRepository.Load().BaseReplayFolderPath ?? "";
             string replayFolderPath = Path.Combine(baseReplayFolderPath, profile.ReplayFolderPathSuffix);
-            await _replayWatcherService.Start(replayFolderPath, profile);
+            await _replayWatcherService.Start(replayFolderPath);
+        }
+
+        // The watcher only reports that a file appeared — importing it (and any failure handling) is
+        // ReplayImportService's job. Failures here run unattended in the background, so they're only
+        // logged (inside ImportReplay itself), not surfaced as a dialog like a manual import's would be.
+        private async void OnNewReplayFileFound(string filePath)
+        {
+            if (ActiveProfile == null)
+                return;
+            await _replayImportService.ImportReplay(filePath, ActiveProfile);
         }
 
         // Guards against a duplicate row if the same underlying game is reported twice — e.g. a manual
