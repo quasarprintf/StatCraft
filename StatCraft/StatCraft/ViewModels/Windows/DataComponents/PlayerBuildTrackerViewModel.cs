@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
@@ -15,6 +16,11 @@ namespace StatCraft.ViewModels
     public partial class PlayerBuildTrackerViewModel : ViewModelBase
     {
         public string TabHeader => _player.Name;
+
+        // Null for the session user's own tracker (no tab, so nothing reads this); set by
+        // GameDataRowViewModel for allies/opponents so their tab header can be colored by side.
+        public IBrush? NameColor { get; }
+
         private readonly GamePlayer _player;
         private readonly GameDataRepository _repository;
         private readonly ObservableCollection<BuildNode> _buildTree;
@@ -26,11 +32,12 @@ namespace StatCraft.ViewModels
         public ObservableCollection<BuildSelectionSlotViewModel> BuildSlots { get; } = [];
         public ObservableCollection<BuildAttribute> AttributeEditors { get; } = [];
 
-        internal PlayerBuildTrackerViewModel(GamePlayer player, GameDataRepository repository, ObservableCollection<BuildNode>? buildTree)
+        internal PlayerBuildTrackerViewModel(GamePlayer player, GameDataRepository repository, ObservableCollection<BuildNode>? buildTree, IBrush? nameColor = null)
         {
             _player = player;
             _repository = repository;
             _buildTree = buildTree ?? [];
+            NameColor = nameColor;
 
             if (buildTree == null)
             {

@@ -61,7 +61,7 @@
                                 </TabControl.Styles>
                                 <TabControl.ItemTemplate>
                                     <DataTemplate x:DataType="vm:PlayerBuildTrackerViewModel">
-                                        <TextBlock Text="{Binding TabHeader}"/>
+                                        <TextBlock Text="{Binding TabHeader}" Foreground="{Binding NameColor}"/>
                                     </DataTemplate>
                                 </TabControl.ItemTemplate>
                                 <TabControl.ContentTemplate>
