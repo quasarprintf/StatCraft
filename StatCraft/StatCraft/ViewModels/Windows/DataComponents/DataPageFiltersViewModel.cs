@@ -24,7 +24,8 @@ namespace StatCraft.ViewModels
 
         public CheckboxFilterSlotViewModel<Sc2Profile> ProfileSlot { get; }
 
-        // DateTime (not DateTimeOffset) because CalendarDatePicker.SelectedDate is DateTime?.
+        // DateTime (not DateTimeOffset) because Calendar.SelectedDate — which CompactDatePicker wraps —
+        // is DateTime?.
         [ObservableProperty] private DateTime? _fromDate;
         [ObservableProperty] private DateTime? _toDate;
 

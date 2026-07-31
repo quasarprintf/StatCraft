@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="StatCraft.Views.CompactDatePicker"
+             x:Name="Root">
+    <!-- CalendarDatePicker/DatePicker's popouts are hardcoded to a fixed pixel size in Avalonia's Fluent
+         theme (verified empirically — no FontSize/Width/MinWidth override reaches it), so there's no
+         lightweight way to shrink either built-in control. This composes the real Calendar control (its
+         month/year/decade navigation logic is untouched) inside our own Flyout, wrapped in a
+         LayoutTransformControl — which genuinely shrinks the layout footprint, not just the render, even
+         across the popup boundary. -->
+    <Button HorizontalContentAlignment="Left" HorizontalAlignment="Stretch"
+            Content="{Binding SelectedDate, ElementName=Root, StringFormat=MM/dd/yyyy}">
+        <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedLeft">
+                <LayoutTransformControl>
+                    <LayoutTransformControl.LayoutTransform>
+                        <ScaleTransform ScaleX="0.7" ScaleY="0.7"/>
+                    </LayoutTransformControl.LayoutTransform>
+                    <Calendar SelectedDate="{Binding SelectedDate, ElementName=Root, Mode=TwoWay}"/>
+                </LayoutTransformControl>
+            </Flyout>
+        </Button.Flyout>
+    </Button>
+</UserControl>
