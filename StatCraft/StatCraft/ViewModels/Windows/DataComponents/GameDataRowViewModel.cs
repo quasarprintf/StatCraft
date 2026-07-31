@@ -20,6 +20,8 @@ namespace StatCraft.ViewModels
     {
         private readonly GameData _game;
 
+        public int GameId => _game.GameId!.Value;
+
         public string MapName { get; }
         public string PlayedAt { get; }
         public string ResultLabel { get; }

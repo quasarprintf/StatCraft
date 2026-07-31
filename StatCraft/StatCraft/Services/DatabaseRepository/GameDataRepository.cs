@@ -418,6 +418,14 @@ namespace StatCraft.Services.DatabaseRepository
             conn.Execute("UPDATE Games SET Notes = @notes WHERE Id = @id", new { notes, id = gameId });
         }
 
+        // Cascades to GamePlayers (ON DELETE CASCADE), which in turn cascades to that game's
+        // GameBuilds/GameAttributeValues rows for every player — self, allies, and opponents alike.
+        public void DeleteGame(int gameId)
+        {
+            using SqliteConnection conn = OpenConnection();
+            conn.Execute("DELETE FROM Games WHERE Id = @id", new { id = gameId });
+        }
+
         public void UpsertAttributeValue(int gamePlayerId, int buildAttributeId, string value)
         {
             using SqliteConnection conn = OpenConnection();

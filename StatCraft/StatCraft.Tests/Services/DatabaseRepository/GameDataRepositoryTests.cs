@@ -168,6 +168,39 @@ public class GameDataRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void DeleteGame_RemovesGameAndItsPlayersBuildsAndAttributeValues()
+    {
+        BuildNode build = new() { Name = "4 Gate" };
+        _buildRepository.InsertBuild(build, null, 0);
+        BuildAttribute attr = InsertAttribute();
+
+        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = 2900, Race = 'T', Random = false };
+        GameData game = CreateGame(allies: [ally]);
+        _repository.InsertGame(game, _sc2ProfileId);
+        _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [build.Id]);
+        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Id, "14");
+
+        _repository.DeleteGame(game.GameId!.Value);
+
+        Assert.Empty(_repository.GetGamesForProfile(_sc2ProfileId));
+        Assert.False(_repository.IsAnyBuildReferenced([build.Id]));
+    }
+
+    [Fact]
+    public void DeleteGame_UnrelatedGameForSameProfile_IsUnaffected()
+    {
+        GameData keep = CreateGame(replayPath: "keep.SC2Replay");
+        _repository.InsertGame(keep, _sc2ProfileId);
+        GameData delete = CreateGame(replayPath: "delete.SC2Replay");
+        _repository.InsertGame(delete, _sc2ProfileId);
+
+        _repository.DeleteGame(delete.GameId!.Value);
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        Assert.Equal(keep.GameId, loaded.GameId);
+    }
+
+    [Fact]
     public void UpdateGameNotes_ThenReload_PersistsNotes()
     {
         GameData game = CreateGame();

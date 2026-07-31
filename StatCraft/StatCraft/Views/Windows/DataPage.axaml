@@ -14,6 +14,16 @@
         <DataGrid ItemsSource="{Binding Games}" AutoGenerateColumns="False"
                   RowDetailsVisibilityMode="VisibleWhenSelected" GridLinesVisibility="Horizontal">
             <DataGrid.Columns>
+                <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:GameDataRowViewModel">
+                            <Button Content="✕" Foreground="Red" Background="Transparent" BorderThickness="0"
+                                    FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    Command="{Binding $parent[DataGrid].((vm:DataPageViewModel)DataContext).DeleteGameCommand}"
+                                    CommandParameter="{Binding}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Date/Time" Binding="{Binding PlayedAt}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Map" Binding="{Binding MapName}" IsReadOnly="True"/>
                 <DataGridTemplateColumn Header="Result">

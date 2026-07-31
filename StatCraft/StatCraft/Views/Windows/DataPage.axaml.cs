@@ -4,6 +4,7 @@ using Avalonia.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.Models.Battlenet;
 using StatCraft.ViewModels;
+using StatCraft.Views.Components;
 
 namespace StatCraft.Views
 {
@@ -17,6 +18,7 @@ namespace StatCraft.Views
 
             DataPageViewModel vm = App.Services.GetRequiredService<DataPageViewModel>();
             vm.SessionRequested += async () => await OnSessionRequestedAsync();
+            vm.DeleteGameConfirmationRequested += async row => await OnDeleteGameConfirmationRequestedAsync(row);
             DataContext = vm;
         }
 
@@ -47,6 +49,17 @@ namespace StatCraft.Views
                 if (linkedProfile != null)
                     await ViewModel.SetActiveProfile(linkedProfile);
             }
+        }
+
+        private async Task OnDeleteGameConfirmationRequestedAsync(GameDataRowViewModel row)
+        {
+            if (!(TopLevel.GetTopLevel(this) is Window owner)) return;
+
+            string message = $"Delete this recorded game ({row.MapName}, {row.PlayedAt})? This cannot be undone.";
+            bool confirmed = await new ConfirmationWindow(message).ShowDialog<bool>(owner);
+
+            if (confirmed)
+                ViewModel.ConfirmDeleteGame(row);
         }
     }
 }

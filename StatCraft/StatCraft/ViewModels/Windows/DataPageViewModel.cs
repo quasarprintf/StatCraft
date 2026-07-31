@@ -49,6 +49,19 @@ namespace StatCraft.ViewModels
         [RelayCommand]
         private void BeginSession() => SessionRequested?.Invoke();
 
+        // Raised instead of deleting immediately, so the view can show a confirmation dialog and, if
+        // accepted, call ConfirmDeleteGame.
+        public event Action<GameDataRowViewModel>? DeleteGameConfirmationRequested;
+
+        [RelayCommand]
+        private void DeleteGame(GameDataRowViewModel row) => DeleteGameConfirmationRequested?.Invoke(row);
+
+        public void ConfirmDeleteGame(GameDataRowViewModel row)
+        {
+            _gameDataRepository.DeleteGame(row.GameId);
+            Games.Remove(row);
+        }
+
         public async Task SetActiveProfile(Sc2Profile? profile)
         {
             ActiveProfile = profile;
