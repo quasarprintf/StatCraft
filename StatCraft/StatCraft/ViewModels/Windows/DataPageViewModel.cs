@@ -186,7 +186,11 @@ namespace StatCraft.ViewModels
         // ApplyFilters (see OtherFiltersChanged), not a fresh database round trip.
         private async Task ReloadGamesFromDatabase()
         {
-            List<int> profileIds = Filters.ProfileOptions.Where(o => o.IsChecked).Select(o => o.Value.Id).ToList();
+            List<int> profileIds = Filters.ProfileSlot.Options
+                .Cast<CheckboxFilterOptionViewModel<Sc2Profile>>()
+                .Where(o => o.IsChecked)
+                .Select(o => o.Value.Id)
+                .ToList();
             _loadedGames = profileIds.Count == 0 ? [] : _gameDataRepository.GetGamesForProfiles(profileIds);
             Filters.RefreshMapOptions(_loadedGames.Select(g => g.ReplayData.MapName).Distinct());
             ApplyFilters();
@@ -205,7 +209,9 @@ namespace StatCraft.ViewModels
             new GameDataRowViewModel(game, _gameDataRepository, ResolveProfileLabel(game.Sc2ProfileId), GetBuildTree);
 
         private string ResolveProfileLabel(int sc2ProfileId) =>
-            Filters.ProfileOptions.FirstOrDefault(o => o.Value.Id == sc2ProfileId)?.Value.DisplayName ?? sc2ProfileId.ToString();
+            Filters.ProfileSlot.Options
+                .Cast<CheckboxFilterOptionViewModel<Sc2Profile>>()
+                .FirstOrDefault(o => o.Value.Id == sc2ProfileId)?.Value.DisplayName ?? sc2ProfileId.ToString();
 
         private ObservableCollection<BuildNode>? GetBuildTree(Race? player, Matchups matchups)
         {

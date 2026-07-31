@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Models.Battlenet;
@@ -24,11 +22,10 @@ namespace StatCraft.ViewModels
         // exactly one explicit reload right afterward.
         private bool _suppressChangeEvents;
 
-        public ObservableCollection<CheckboxFilterOptionViewModel<Sc2Profile>> ProfileOptions { get; } = [];
-
-        // Narrows the Profile dropdown's own checkbox list, same as MapSlot.SearchText — display-only,
-        // doesn't affect which games are shown.
-        [ObservableProperty] private string _profileSearchText = "";
+        // Same CheckboxFilterSlotViewModel shape as every other checkbox filter, just never added to
+        // ExtraFilterSlots — it's always visible rather than toggled via Add/Remove — and wired to
+        // ProfileSelectionChanged instead of OtherFiltersChanged (see constructor).
+        public CheckboxFilterSlotViewModel ProfileSlot { get; }
 
         // DateTime (not DateTimeOffset) because CalendarDatePicker.SelectedDate is DateTime?.
         [ObservableProperty] private DateTime? _fromDate;
@@ -52,6 +49,16 @@ namespace StatCraft.ViewModels
 
         internal DataPageFiltersViewModel(BuildRepository buildRepository)
         {
+            ProfileSlot = new CheckboxFilterSlotViewModel("Profile", [], showSearch: true);
+            // Checking/unchecking a profile requires a database reload, unlike every other checkbox
+            // filter, so it's wired to ProfileSelectionChanged instead of joining the ExtraFilterSlots
+            // loop below (which is also how it stays permanently visible, with no Add/Remove).
+            ProfileSlot.Changed += () =>
+            {
+                if (!_suppressChangeEvents)
+                    ProfileSelectionChanged?.Invoke();
+            };
+
             MapSlot = new CheckboxFilterSlotViewModel("Map", [], showSearch: true);
             MatchupSlot = new CheckboxFilterSlotViewModel("Matchup", BuildMatchupOptions());
             OutcomeSlot = new CheckboxFilterSlotViewModel("Outcome", BuildOutcomeOptions());
@@ -94,24 +101,15 @@ namespace StatCraft.ViewModels
         // state by profile id across the rebuild.
         internal void RefreshProfileOptions(IReadOnlyList<Sc2Profile> profiles)
         {
-            HashSet<int> previouslyChecked = ProfileOptions.Where(o => o.IsChecked).Select(o => o.Value.Id).ToHashSet();
+            HashSet<int> previouslyChecked = ProfileSlot.Options
+                .Cast<CheckboxFilterOptionViewModel<Sc2Profile>>()
+                .Where(o => o.IsChecked)
+                .Select(o => o.Value.Id)
+                .ToHashSet();
 
-            foreach (CheckboxFilterOptionViewModel<Sc2Profile> option in ProfileOptions)
-                option.PropertyChanged -= OnProfileOptionChanged;
-            ProfileOptions.Clear();
-
-            foreach (Sc2Profile profile in profiles)
-            {
-                CheckboxFilterOptionViewModel<Sc2Profile> option = new(profile, profile.DisplayName) { IsChecked = previouslyChecked.Contains(profile.Id) };
-                option.PropertyChanged += OnProfileOptionChanged;
-                ProfileOptions.Add(option);
-            }
-        }
-
-        private void OnProfileOptionChanged(object? sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(CheckboxFilterOptionViewModel.IsChecked) && !_suppressChangeEvents)
-                ProfileSelectionChanged?.Invoke();
+            IEnumerable<CheckboxFilterOptionViewModel> newOptions = profiles
+                .Select(p => (CheckboxFilterOptionViewModel)new CheckboxFilterOptionViewModel<Sc2Profile>(p, p.DisplayName) { IsChecked = previouslyChecked.Contains(p.Id) });
+            ProfileSlot.ReplaceOptions(newOptions);
         }
 
         // Rebuilds the map filter's option list from the currently-loaded games' distinct map names,
@@ -138,14 +136,15 @@ namespace StatCraft.ViewModels
             _suppressChangeEvents = true;
             try
             {
-                if (ProfileOptions.All(o => o.Value.Id != profile.Id))
+                List<CheckboxFilterOptionViewModel<Sc2Profile>> options =
+                    ProfileSlot.Options.Cast<CheckboxFilterOptionViewModel<Sc2Profile>>().ToList();
+                if (options.All(o => o.Value.Id != profile.Id))
                 {
-                    CheckboxFilterOptionViewModel<Sc2Profile> option = new(profile, profile.DisplayName) { IsChecked = true };
-                    option.PropertyChanged += OnProfileOptionChanged;
-                    ProfileOptions.Add(option);
+                    options.Add(new CheckboxFilterOptionViewModel<Sc2Profile>(profile, profile.DisplayName));
+                    ProfileSlot.ReplaceOptions(options);
                 }
 
-                foreach (CheckboxFilterOptionViewModel<Sc2Profile> option in ProfileOptions)
+                foreach (CheckboxFilterOptionViewModel<Sc2Profile> option in ProfileSlot.Options.Cast<CheckboxFilterOptionViewModel<Sc2Profile>>())
                     option.IsChecked = option.Value.Id == profile.Id;
 
                 DateTime today = DateTime.Today;

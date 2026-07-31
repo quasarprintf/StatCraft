@@ -73,12 +73,12 @@ public class DataPageFiltersViewModelTests : IDisposable
         Sc2Profile profileA = new() { Id = 1, Name = "A" };
         Sc2Profile profileB = new() { Id = 2, Name = "B" };
         _filters.RefreshProfileOptions([profileA, profileB]);
-        _filters.ProfileOptions.Single(o => o.Value.Id == 1).IsChecked = true;
+        ProfileOption(1).IsChecked = true;
 
         _filters.RefreshProfileOptions([profileA, profileB]);
 
-        Assert.True(_filters.ProfileOptions.Single(o => o.Value.Id == 1).IsChecked);
-        Assert.False(_filters.ProfileOptions.Single(o => o.Value.Id == 2).IsChecked);
+        Assert.True(ProfileOption(1).IsChecked);
+        Assert.False(ProfileOption(2).IsChecked);
     }
 
     [Fact]
@@ -99,12 +99,12 @@ public class DataPageFiltersViewModelTests : IDisposable
         Sc2Profile profileA = new() { Id = 1, Name = "A" };
         Sc2Profile profileB = new() { Id = 2, Name = "B" };
         _filters.RefreshProfileOptions([profileA, profileB]);
-        _filters.ProfileOptions.Single(o => o.Value.Id == 2).IsChecked = true;
+        ProfileOption(2).IsChecked = true;
 
         _filters.SetSingleActiveProfile(profileA);
 
-        Assert.True(_filters.ProfileOptions.Single(o => o.Value.Id == 1).IsChecked);
-        Assert.False(_filters.ProfileOptions.Single(o => o.Value.Id == 2).IsChecked);
+        Assert.True(ProfileOption(1).IsChecked);
+        Assert.False(ProfileOption(2).IsChecked);
         Assert.Equal(DateTime.Today, _filters.FromDate);
         Assert.Equal(DateTime.Today, _filters.ToDate);
     }
@@ -167,6 +167,9 @@ public class DataPageFiltersViewModelTests : IDisposable
 
         Assert.True(criteria.BuildIds!.SetEquals([parent.Id, child.Id]));
     }
+
+    private CheckboxFilterOptionViewModel<Sc2Profile> ProfileOption(int profileId) =>
+        _filters.ProfileSlot.Options.Cast<CheckboxFilterOptionViewModel<Sc2Profile>>().Single(o => o.Value.Id == profileId);
 
     public void Dispose()
     {
