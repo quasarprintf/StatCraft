@@ -1,10 +1,13 @@
+using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.Models.Battlenet;
+using StatCraft.Services.BackgroundService;
 using StatCraft.ViewModels;
 using StatCraft.Views.Components;
 
@@ -70,18 +73,42 @@ namespace StatCraft.Views
             TopLevel? topLevel = TopLevel.GetTopLevel(this);
             if (topLevel == null) return;
 
+            string? replayFolderPath = ViewModel.ReplayFolderPath;
+            IStorageFolder? suggestedFolder = replayFolderPath != null
+                ? await topLevel.StorageProvider.TryGetFolderFromPathAsync(replayFolderPath)
+                : null;
+
             IReadOnlyList<IStorageFile> files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
             {
                 Title = "Select a replay to import",
                 AllowMultiple = false,
+                SuggestedStartLocation = suggestedFolder,
                 FileTypeFilter = [new FilePickerFileType("StarCraft II Replay") { Patterns = ["*.SC2Replay"] }],
             });
 
             if (files.Count == 0) return;
 
             string? path = files[0].TryGetLocalPath();
-            if (path != null)
-                await ViewModel.ImportReplayFile(path);
+            if (path == null) return;
+
+            // The folder watcher only ever looks directly inside the watched folder (no subfolders), so a
+            // manual import is held to the same boundary rather than letting the user reach outside it.
+            if (replayFolderPath == null || !IsDirectlyInFolder(path, replayFolderPath))
+            {
+                ILogger logger = App.Services.GetRequiredService<ILogger>();
+                logger.LogWarning($"Rejected replay import: \"{path}\" is not directly inside the watched replay folder \"{replayFolderPath}\".");
+                return;
+            }
+
+            await ViewModel.ImportReplayFile(path);
+        }
+
+        private static bool IsDirectlyInFolder(string filePath, string folderPath)
+        {
+            string? fileDirectory = Path.GetDirectoryName(Path.GetFullPath(filePath));
+            string normalizedFolder = Path.GetFullPath(folderPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            return fileDirectory != null &&
+                string.Equals(fileDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), normalizedFolder, StringComparison.OrdinalIgnoreCase);
         }
     }
 }

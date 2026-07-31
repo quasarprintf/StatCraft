@@ -58,6 +58,9 @@ namespace StatCraft.ViewModels
         [RelayCommand]
         private void ImportReplay() => ImportReplayRequested?.Invoke();
 
+        // The folder the file picker should default to and validate the user's selection against.
+        public string? ReplayFolderPath => _replayWatcherService.WatchedFolderPath;
+
         public async Task ImportReplayFile(string filePath) => await _replayWatcherService.ImportReplay(filePath);
 
         // Raised instead of deleting immediately, so the view can show a confirmation dialog and, if

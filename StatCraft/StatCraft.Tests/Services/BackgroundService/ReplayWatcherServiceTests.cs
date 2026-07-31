@@ -19,6 +19,29 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
     }
 
     [Fact]
+    public void WatchedFolderPath_BeforeStart_IsNull()
+    {
+        Assert.Null(_watcher.WatchedFolderPath);
+    }
+
+    [Fact]
+    public async Task WatchedFolderPath_AfterStart_ReflectsTheWatchedFolder()
+    {
+        await _watcher.Start(_folderPath, new Sc2Profile());
+
+        Assert.Equal(_folderPath, _watcher.WatchedFolderPath);
+    }
+
+    [Fact]
+    public async Task WatchedFolderPath_AfterStop_IsNullAgain()
+    {
+        await _watcher.Start(_folderPath, new Sc2Profile());
+        await _watcher.Stop();
+
+        Assert.Null(_watcher.WatchedFolderPath);
+    }
+
+    [Fact]
     public async Task Start_IgnoresFilesThatExistBeforeWatchingBegins()
     {
         File.WriteAllText(Path.Combine(_folderPath, "old1.SC2Replay"), "");

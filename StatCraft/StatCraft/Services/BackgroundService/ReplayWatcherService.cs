@@ -25,6 +25,11 @@ namespace StatCraft.Services.BackgroundService
         // Internal because GameData is internal; the class itself stays public.
         internal event Action<GameData>? GameParsed;
 
+        // The folder currently being watched (null when no session is active). Exposed so a manual
+        // "import a replay" UI can default its file picker here and validate the user's selection
+        // against it.
+        public string? WatchedFolderPath => _folderPath;
+
         public async Task Start(string folderPath, Sc2Profile profile)
         {
             await Stop();
@@ -66,10 +71,10 @@ namespace StatCraft.Services.BackgroundService
             }
         }
 
-        // Manually import a single replay file (e.g. one outside the watched folder, or from before
-        // watching started), reusing the same decode/parse/insert/GameParsed pipeline as the folder
-        // watcher. InsertGame already dedupes by ReplayPath, so importing an already-recorded replay is
-        // a harmless no-op rather than a duplicate.
+        // Manually import a single replay file (e.g. one from before watching started), reusing the same
+        // decode/parse/insert/GameParsed pipeline as the folder watcher. InsertGame already dedupes by
+        // ReplayPath, so importing an already-recorded replay is a harmless no-op rather than a
+        // duplicate. Callers are expected to have already validated filePath is within WatchedFolderPath.
         public Task ImportReplay(string filePath) => ProcessReplay(filePath);
 
         public async Task CheckNow()
