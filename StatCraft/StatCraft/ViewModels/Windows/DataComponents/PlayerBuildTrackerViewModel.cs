@@ -183,11 +183,6 @@ namespace StatCraft.ViewModels
                 }
                 else
                 {
-                    // First time this attribute is associated with this player — lock in the template's
-                    // current default as this player's own value now, rather than leaving it derived from
-                    // the template. Otherwise, editing the default later (on the Builds tab) would silently
-                    // change this player's already-displayed value instead of only affecting builds that
-                    // pick up the attribute for the first time after the edit.
                     string defaultValue = editor.SerializeValue();
                     _player.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Id, Value = defaultValue });
                     _repository.UpsertAttributeValue(_player.GamePlayerId!.Value, template.Id, defaultValue);
