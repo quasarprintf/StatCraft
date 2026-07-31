@@ -15,8 +15,6 @@ namespace StatCraft.Models.GameData
         public required char Race { get; set; }
         public required bool Random { get; set; }
 
-        // This player's own selected build path(s) and per-build attribute values, keyed by GamePlayerId
-        // above — every tracked player (self, allies, opponents) can have their own build selections.
         public List<int> BuildIds { get; set; } = [];
         public List<GameAttributeValue> AttributeValues { get; set; } = [];
     }
