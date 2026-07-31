@@ -45,7 +45,7 @@ public class DataPageFiltersViewModelTests : IDisposable
     {
         _filters.RefreshMapOptions(["Altitude", "Deathaura"]);
         _filters.MapSlot.AddCommand.Execute(null);
-        CheckboxFilterOptionViewModel<string> option = (CheckboxFilterOptionViewModel<string>)_filters.MapSlot.Options[0];
+        CheckboxFilterOptionViewModel<string> option = _filters.MapSlot.Options[0];
         option.IsChecked = true;
 
         _filters.MapSlot.RemoveCommand.Execute(null);
@@ -85,7 +85,7 @@ public class DataPageFiltersViewModelTests : IDisposable
     public void RefreshMapOptions_PreservesCheckedStateByName()
     {
         _filters.RefreshMapOptions(["Altitude", "Deathaura"]);
-        ((CheckboxFilterOptionViewModel<string>)_filters.MapSlot.Options.Single(o => o.Label == "Altitude")).IsChecked = true;
+        _filters.MapSlot.Options.Single(o => o.Label == "Altitude").IsChecked = true;
 
         _filters.RefreshMapOptions(["Altitude", "Deathaura", "Ley Lines"]);
 
@@ -128,17 +128,14 @@ public class DataPageFiltersViewModelTests : IDisposable
     public void BuildCriteria_ReflectsCheckedOptions()
     {
         _filters.RefreshMapOptions(["Altitude"]);
-        ((CheckboxFilterOptionViewModel<string>)_filters.MapSlot.Options[0]).IsChecked = true;
+        _filters.MapSlot.Options[0].IsChecked = true;
         _filters.MmrSlot.Min = 1000;
         _filters.MmrSlot.Max = 2000;
 
-        CheckboxFilterOptionViewModel<GameOutcome> winOption =
-            (CheckboxFilterOptionViewModel<GameOutcome>)_filters.OutcomeSlot.Options.Single(o => o.Label == "Win");
+        CheckboxFilterOptionViewModel<GameOutcome> winOption = _filters.OutcomeSlot.Options.Single(o => o.Label == "Win");
         winOption.IsChecked = true;
 
-        CheckboxFilterOptionViewModel<(Race, Race)> tvzOption = _filters.MatchupSlot.Options
-            .Cast<CheckboxFilterOptionViewModel<(Race, Race)>>()
-            .Single(o => o.Value == (Race.T, Race.Z));
+        CheckboxFilterOptionViewModel<(Race, Race)> tvzOption = _filters.MatchupSlot.Options.Single(o => o.Value == (Race.T, Race.Z));
         tvzOption.IsChecked = true;
 
         GameFilterCriteria criteria = _filters.BuildCriteria();
@@ -159,8 +156,7 @@ public class DataPageFiltersViewModelTests : IDisposable
         _buildRepository.InsertBuild(child, parent.Id, 0);
 
         DataPageFiltersViewModel filters = new(_buildRepository);
-        CheckboxFilterOptionViewModel<BuildNode> parentOption =
-            (CheckboxFilterOptionViewModel<BuildNode>)filters.BuildSlot.Options.Single(o => o.Label.Contains("Parent"));
+        CheckboxFilterOptionViewModel<BuildNode> parentOption = filters.BuildSlot.Options.Single(o => o.Label.Contains("Parent"));
         parentOption.IsChecked = true;
 
         GameFilterCriteria criteria = filters.BuildCriteria();
@@ -169,7 +165,7 @@ public class DataPageFiltersViewModelTests : IDisposable
     }
 
     private CheckboxFilterOptionViewModel<Sc2Profile> ProfileOption(int profileId) =>
-        _filters.ProfileSlot.Options.Cast<CheckboxFilterOptionViewModel<Sc2Profile>>().Single(o => o.Value.Id == profileId);
+        _filters.ProfileSlot.Options.Single(o => o.Value.Id == profileId);
 
     public void Dispose()
     {
