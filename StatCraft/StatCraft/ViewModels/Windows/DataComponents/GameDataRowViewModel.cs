@@ -65,9 +65,9 @@ namespace StatCraft.ViewModels
             SelfTracker = new PlayerBuildTrackerViewModel(replay.Player, repository, getBuildTree(replay.Player.Race.AsRace(), selfSideMatchups));
 
             foreach (GamePlayer ally in replay.Allies)
-                OtherPlayers.Add(new PlayerBuildTrackerViewModel(ally, repository, getBuildTree(ally.Race.AsRace(), selfSideMatchups), Styles.Colors.ProtossGreen));
+                OtherPlayers.Add(new PlayerBuildTrackerViewModel(ally, repository, getBuildTree(ally.Race.AsRace(), selfSideMatchups), Styles.Colors.AllyYellow));
             foreach (GamePlayer opponent in replay.Opponents)
-                OtherPlayers.Add(new PlayerBuildTrackerViewModel(opponent, repository, getBuildTree(opponent.Race.AsRace(), opponentSideMatchups), Styles.Colors.ZergRed));
+                OtherPlayers.Add(new PlayerBuildTrackerViewModel(opponent, repository, getBuildTree(opponent.Race.AsRace(), opponentSideMatchups), Styles.Colors.OpponentRed));
         }
 
         partial void OnNotesChanged(string value) => _repository.UpdateGameNotes(_game.GameId!.Value, value);
