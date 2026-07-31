@@ -2,24 +2,28 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:StatCraft.ViewModels"
              xmlns:local="using:StatCraft.Views"
-             x:Class="StatCraft.Views.CheckboxFilterDropdown">
-    <Button x:Name="DropdownButton" Content="{Binding Header, RelativeSource={RelativeSource AncestorType=local:CheckboxFilterDropdown}}"
+             x:Class="StatCraft.Views.CheckboxFilterDropdown"
+             x:Name="Root">
+    <!-- Flyout content is hosted in a separate popup root, not a visual descendant of this control, so
+         RelativeSource AncestorType lookups from inside it silently fail. ElementName bindings resolve
+         via the XAML NameScope instead of the visual tree, so they work across that popup boundary. -->
+    <Button x:Name="DropdownButton" Content="{Binding Header, ElementName=Root}"
             HorizontalContentAlignment="Left" HorizontalAlignment="Stretch">
         <Button.Flyout>
             <Flyout Placement="BottomEdgeAlignedLeft">
                 <StackPanel Width="220" Spacing="4">
-                    <TextBox Text="{Binding SearchText, RelativeSource={RelativeSource AncestorType=local:CheckboxFilterDropdown}}"
+                    <TextBox Text="{Binding SearchText, ElementName=Root}"
                              PlaceholderText="Search..."
-                             IsVisible="{Binding ShowSearch, RelativeSource={RelativeSource AncestorType=local:CheckboxFilterDropdown}}"/>
+                             IsVisible="{Binding ShowSearch, ElementName=Root}"/>
                     <ScrollViewer MaxHeight="240">
-                        <ItemsControl ItemsSource="{Binding Options, RelativeSource={RelativeSource AncestorType=local:CheckboxFilterDropdown}}">
+                        <ItemsControl ItemsSource="{Binding Options, ElementName=Root}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate x:DataType="vm:CheckboxFilterOptionViewModel">
                                     <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}">
                                         <CheckBox.IsVisible>
                                             <MultiBinding Converter="{x:Static local:CheckboxFilterDropdown.LabelContainsSearchConverter}">
                                                 <Binding Path="Label"/>
-                                                <Binding Path="SearchText" RelativeSource="{RelativeSource AncestorType=local:CheckboxFilterDropdown}"/>
+                                                <Binding Path="SearchText" ElementName="Root"/>
                                             </MultiBinding>
                                         </CheckBox.IsVisible>
                                     </CheckBox>
