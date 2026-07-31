@@ -22,9 +22,6 @@ namespace StatCraft.ViewModels
         // exactly one explicit reload right afterward.
         private bool _suppressChangeEvents;
 
-        // Same CheckboxFilterSlotViewModel<T> shape as every other checkbox filter, just never added to
-        // ExtraFilterSlots — it's always visible rather than toggled via Add/Remove — and wired to
-        // ProfileSelectionChanged instead of OtherFiltersChanged (see constructor).
         public CheckboxFilterSlotViewModel<Sc2Profile> ProfileSlot { get; }
 
         // DateTime (not DateTimeOffset) because CalendarDatePicker.SelectedDate is DateTime?.
@@ -35,7 +32,7 @@ namespace StatCraft.ViewModels
         public CheckboxFilterSlotViewModel<(Race, Race)> MatchupSlot { get; }
         // Internal, not public, because GameOutcome itself is internal — this stays consistent with the
         // same-assembly-only visibility of the type it filters on.
-        internal CheckboxFilterSlotViewModel<GameOutcome> OutcomeSlot { get; }
+        public CheckboxFilterSlotViewModel<GameOutcome> OutcomeSlot { get; }
         public NumericRangeFilterSlotViewModel MmrSlot { get; }
         public CheckboxFilterSlotViewModel<BuildNode> BuildSlot { get; }
 

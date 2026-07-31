@@ -1,8 +1,8 @@
 namespace StatCraft.Models.GameData
 {
-    internal enum GameOutcome { Win, Loss, Draw }
+    public enum GameOutcome { Win, Loss, Draw }
 
-    internal static class GameOutcomeExtensions
+    public static class GameOutcomeExtensions
     {
         // Matches the win-value convention already established for ParsedReplayData.Win: 1 = win, 0 = loss
         // anything else (in practice 0.5) = draw.

@@ -14,7 +14,7 @@ namespace StatCraft.ViewModels
     {
         public abstract IEnumerable<CheckboxFilterOptionViewModel> Options { get; }
 
-        // Only the map filter shows a search box to narrow its own (potentially long) checkbox list.
+        // Shows a search box to filter the checkbox list.
         public bool ShowSearch { get; }
 
         [ObservableProperty] private string _searchText = "";
