@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
 using System.Linq;
+using Dapper;
 using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData;
 
@@ -15,6 +15,7 @@ namespace StatCraft.Services.DatabaseRepository
 
         public GameDataRepository(string dbPath)
         {
+            DapperTypeHandlers.EnsureRegistered();
             _dbPath = dbPath;
             _connectionString = $"Data Source={dbPath}";
         }
@@ -26,8 +27,7 @@ namespace StatCraft.Services.DatabaseRepository
                 Directory.CreateDirectory(dir);
 
             using SqliteConnection conn = OpenConnection();
-            using SqliteCommand cmd = conn.CreateCommand();
-            cmd.CommandText = @"
+            conn.Execute(@"
                 CREATE TABLE IF NOT EXISTS Games (
                     Id                INTEGER PRIMARY KEY AUTOINCREMENT,
                     Sc2ProfileId      INTEGER NOT NULL REFERENCES Sc2Profiles(Id) ON DELETE CASCADE,
@@ -68,8 +68,7 @@ namespace StatCraft.Services.DatabaseRepository
                     BuildAttributeId INTEGER NOT NULL REFERENCES BuildAttributes(Id) ON DELETE CASCADE,
                     Value            TEXT    NOT NULL DEFAULT '',
                     UNIQUE(GameId, BuildAttributeId)
-                );";
-            cmd.ExecuteNonQuery();
+                );");
 
             // Upgrades a pre-existing DB that predates ReplayTimestamp. Backfills it from CreatedAtUtc
             // (the closest thing that existed before — when we recorded the game, not when the replay
@@ -78,11 +77,9 @@ namespace StatCraft.Services.DatabaseRepository
             // immediately and the whole batch aborts before ever reaching the backfill.
             try
             {
-                using SqliteCommand migrateCmd = conn.CreateCommand();
-                migrateCmd.CommandText = @"
+                conn.Execute(@"
                     ALTER TABLE Games ADD COLUMN ReplayTimestamp TEXT NOT NULL DEFAULT '';
-                    UPDATE Games SET ReplayTimestamp = CreatedAtUtc WHERE ReplayTimestamp = '';";
-                migrateCmd.ExecuteNonQuery();
+                    UPDATE Games SET ReplayTimestamp = CreatedAtUtc WHERE ReplayTimestamp = '';");
             }
             catch (SqliteException)
             {
@@ -95,12 +92,10 @@ namespace StatCraft.Services.DatabaseRepository
             // before ever reaching DROP COLUMN.
             try
             {
-                using SqliteCommand migrateCmd = conn.CreateCommand();
-                migrateCmd.CommandText = @"
+                conn.Execute(@"
                     INSERT INTO GameBuilds (GameId, BuildId, SortOrder)
                         SELECT Id, BuildId, 0 FROM Games WHERE BuildId IS NOT NULL;
-                    ALTER TABLE Games DROP COLUMN BuildId;";
-                migrateCmd.ExecuteNonQuery();
+                    ALTER TABLE Games DROP COLUMN BuildId;");
             }
             catch (SqliteException)
             {
@@ -116,40 +111,36 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
 
-            using (SqliteCommand existingCmd = conn.CreateCommand())
+            long? existingId = conn.ExecuteScalar<long?>(
+                "SELECT Id FROM Games WHERE ReplayPath = @replayPath",
+                new { replayPath = game.ReplayData.ReplayPath });
+            if (existingId != null)
             {
-                existingCmd.CommandText = "SELECT Id FROM Games WHERE ReplayPath = @replayPath";
-                existingCmd.Parameters.AddWithValue("@replayPath", game.ReplayData.ReplayPath);
-                object? existingId = existingCmd.ExecuteScalar();
-                if (existingId != null)
-                {
-                    game.GameId = (int)(long)existingId;
-                    return;
-                }
+                game.GameId = (int)existingId.Value;
+                return;
             }
 
             ParsedReplayData replay = game.ReplayData;
-            using (SqliteCommand cmd = conn.CreateCommand())
-            {
-                cmd.CommandText = @"
-                    INSERT INTO Games (Sc2ProfileId, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes, CreatedAtUtc)
-                    VALUES (@sc2ProfileId, @mapName, @gameLengthSeconds, @replayPath, @replayTimestamp, @win, @playerName, @playerClan, @playerMmr, @playerRace, @playerRandom, @notes, @createdAt);
-                    SELECT last_insert_rowid();";
-                cmd.Parameters.AddWithValue("@sc2ProfileId", sc2ProfileId);
-                cmd.Parameters.AddWithValue("@mapName", replay.MapName);
-                cmd.Parameters.AddWithValue("@gameLengthSeconds", replay.GameLengthSeconds);
-                cmd.Parameters.AddWithValue("@replayPath", replay.ReplayPath);
-                cmd.Parameters.AddWithValue("@replayTimestamp", replay.ReplayTimestamp.ToString("o", CultureInfo.InvariantCulture));
-                cmd.Parameters.AddWithValue("@win", (double)replay.Win);
-                cmd.Parameters.AddWithValue("@playerName", replay.Player.Name);
-                cmd.Parameters.AddWithValue("@playerClan", replay.Player.Clan);
-                cmd.Parameters.AddWithValue("@playerMmr", replay.Player.Mmr);
-                cmd.Parameters.AddWithValue("@playerRace", replay.Player.Race.ToString());
-                cmd.Parameters.AddWithValue("@playerRandom", replay.Player.Random ? 1 : 0);
-                cmd.Parameters.AddWithValue("@notes", game.Notes);
-                cmd.Parameters.AddWithValue("@createdAt", DateTimeOffset.UtcNow.ToString("o", CultureInfo.InvariantCulture));
-                game.GameId = (int)(long)cmd.ExecuteScalar()!;
-            }
+            game.GameId = (int)conn.ExecuteScalar<long>(@"
+                INSERT INTO Games (Sc2ProfileId, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes, CreatedAtUtc)
+                VALUES (@sc2ProfileId, @mapName, @gameLengthSeconds, @replayPath, @replayTimestamp, @win, @playerName, @playerClan, @playerMmr, @playerRace, @playerRandom, @notes, @createdAt);
+                SELECT last_insert_rowid();",
+                new
+                {
+                    sc2ProfileId,
+                    mapName = replay.MapName,
+                    gameLengthSeconds = replay.GameLengthSeconds,
+                    replayPath = replay.ReplayPath,
+                    replayTimestamp = replay.ReplayTimestamp,
+                    win = (double)replay.Win,
+                    playerName = replay.Player.Name,
+                    playerClan = replay.Player.Clan,
+                    playerMmr = replay.Player.Mmr,
+                    playerRace = replay.Player.Race,
+                    playerRandom = replay.Player.Random ? 1 : 0,
+                    notes = game.Notes,
+                    createdAt = DateTimeOffset.UtcNow,
+                });
 
             InsertGamePlayers(conn, game.GameId.Value, SideAlly, replay.Allies);
             InsertGamePlayers(conn, game.GameId.Value, SideOpponent, replay.Opponents);
@@ -157,121 +148,120 @@ namespace StatCraft.Services.DatabaseRepository
 
         private static void InsertGamePlayers(SqliteConnection conn, int gameId, int side, GamePlayer[] players)
         {
-            for (int i = 0; i < players.Length; i++)
-            {
-                GamePlayer player = players[i];
-                using SqliteCommand cmd = conn.CreateCommand();
-                cmd.CommandText = @"
-                    INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random)
-                    VALUES (@gameId, @side, @sortOrder, @name, @clan, @mmr, @race, @random)";
-                cmd.Parameters.AddWithValue("@gameId", gameId);
-                cmd.Parameters.AddWithValue("@side", side);
-                cmd.Parameters.AddWithValue("@sortOrder", i);
-                cmd.Parameters.AddWithValue("@name", player.Name);
-                cmd.Parameters.AddWithValue("@clan", player.Clan);
-                cmd.Parameters.AddWithValue("@mmr", player.Mmr);
-                cmd.Parameters.AddWithValue("@race", player.Race.ToString());
-                cmd.Parameters.AddWithValue("@random", player.Random ? 1 : 0);
-                cmd.ExecuteNonQuery();
-            }
+            if (players.Length == 0)
+                return;
+
+            conn.Execute(@"
+                INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random)
+                VALUES (@gameId, @side, @sortOrder, @name, @clan, @mmr, @race, @random)",
+                players.Select((player, i) => new
+                {
+                    gameId,
+                    side,
+                    sortOrder = i,
+                    name = player.Name,
+                    clan = player.Clan,
+                    mmr = player.Mmr,
+                    race = player.Race,
+                    random = player.Random ? 1 : 0,
+                }));
+        }
+
+        // Plain classes with settable properties, not positional records — Dapper's constructor-based
+        // materialization requires constructor parameter types to exactly match the raw column types,
+        // which bypasses both its numeric widening and our DateTimeOffsetTypeHandler. The property-setter
+        // path it uses for a parameterless-constructible type applies both correctly.
+        private class GameRow
+        {
+            public long Id { get; set; }
+            public string MapName { get; set; } = "";
+            public int GameLengthSeconds { get; set; }
+            public string ReplayPath { get; set; } = "";
+            public DateTimeOffset ReplayTimestamp { get; set; }
+            public decimal Win { get; set; }
+            public string PlayerName { get; set; } = "";
+            public string PlayerClan { get; set; } = "";
+            public long PlayerMmr { get; set; }
+            public char PlayerRace { get; set; }
+            public bool PlayerRandom { get; set; }
+            public string Notes { get; set; } = "";
+        }
+
+        private class GamePlayerRow
+        {
+            public long GameId { get; set; }
+            public int Side { get; set; }
+            public string Name { get; set; } = "";
+            public string Clan { get; set; } = "";
+            public long Mmr { get; set; }
+            public char Race { get; set; }
+            public bool Random { get; set; }
+        }
+
+        private class GameBuildRow
+        {
+            public long GameId { get; set; }
+            public int BuildId { get; set; }
+        }
+
+        private class GameAttributeValueRow
+        {
+            public long GameId { get; set; }
+            public int BuildAttributeId { get; set; }
+            public string Value { get; set; } = "";
         }
 
         internal List<GameData> GetGamesForProfile(int sc2ProfileId)
         {
             using SqliteConnection conn = OpenConnection();
 
-            Dictionary<long, GameRow> rows = new();
-            List<long> gameIds = new();
+            List<GameRow> gameRows = conn.Query<GameRow>(@"
+                SELECT Id, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes
+                FROM Games WHERE Sc2ProfileId = @sc2ProfileId ORDER BY Id ASC",
+                new { sc2ProfileId }).ToList();
 
-            using (SqliteCommand cmd = conn.CreateCommand())
-            {
-                cmd.CommandText = @"
-                    SELECT Id, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes
-                    FROM Games WHERE Sc2ProfileId = @sc2ProfileId ORDER BY Id ASC";
-                cmd.Parameters.AddWithValue("@sc2ProfileId", sc2ProfileId);
-                using SqliteDataReader reader = cmd.ExecuteReader();
-                while (reader.Read())
-                {
-                    long id = reader.GetInt64(0);
-                    gameIds.Add(id);
-                    rows[id] = new GameRow(
-                        MapName: reader.GetString(1),
-                        GameLengthSeconds: reader.GetInt32(2),
-                        ReplayPath: reader.GetString(3),
-                        ReplayTimestamp: DateTimeOffset.Parse(reader.GetString(4), CultureInfo.InvariantCulture),
-                        Win: (decimal)reader.GetDouble(5),
-                        PlayerName: reader.GetString(6),
-                        PlayerClan: reader.GetString(7),
-                        PlayerMmr: reader.GetInt64(8),
-                        PlayerRace: reader.GetString(9)[0],
-                        PlayerRandom: reader.GetInt32(10) != 0,
-                        Notes: reader.GetString(11));
-                }
-            }
-
-            if (gameIds.Count == 0)
+            if (gameRows.Count == 0)
                 return [];
 
-            string idList = string.Join(",", gameIds);
+            string idList = string.Join(",", gameRows.Select(r => r.Id));
 
             Dictionary<long, List<GamePlayer>> allies = new();
             Dictionary<long, List<GamePlayer>> opponents = new();
-            using (SqliteCommand cmd = conn.CreateCommand())
+            IEnumerable<GamePlayerRow> playerRows = conn.Query<GamePlayerRow>(
+                $"SELECT GameId, Side, Name, Clan, Mmr, Race, Random FROM GamePlayers WHERE GameId IN ({idList}) ORDER BY GameId, Side, SortOrder");
+            foreach (GamePlayerRow row in playerRows)
             {
-                cmd.CommandText = $"SELECT GameId, Side, Name, Clan, Mmr, Race, Random FROM GamePlayers WHERE GameId IN ({idList}) ORDER BY GameId, Side, SortOrder";
-                using SqliteDataReader reader = cmd.ExecuteReader();
-                while (reader.Read())
-                {
-                    long gameId = reader.GetInt64(0);
-                    int side = reader.GetInt32(1);
-                    GamePlayer player = new()
-                    {
-                        Name = reader.GetString(2),
-                        Clan = reader.GetString(3),
-                        Mmr = reader.GetInt64(4),
-                        Race = reader.GetString(5)[0],
-                        Random = reader.GetInt32(6) != 0,
-                    };
-                    Dictionary<long, List<GamePlayer>> target = side == SideAlly ? allies : opponents;
-                    if (!target.TryGetValue(gameId, out List<GamePlayer>? list))
-                        target[gameId] = list = new();
-                    list.Add(player);
-                }
+                GamePlayer player = new() { Name = row.Name, Clan = row.Clan, Mmr = row.Mmr, Race = row.Race, Random = row.Random };
+                Dictionary<long, List<GamePlayer>> target = row.Side == SideAlly ? allies : opponents;
+                if (!target.TryGetValue(row.GameId, out List<GamePlayer>? list))
+                    target[row.GameId] = list = new();
+                list.Add(player);
             }
 
             Dictionary<long, List<int>> buildIds = new();
-            using (SqliteCommand cmd = conn.CreateCommand())
+            IEnumerable<GameBuildRow> buildRows = conn.Query<GameBuildRow>(
+                $"SELECT GameId, BuildId FROM GameBuilds WHERE GameId IN ({idList}) ORDER BY GameId, SortOrder");
+            foreach (GameBuildRow row in buildRows)
             {
-                cmd.CommandText = $"SELECT GameId, BuildId FROM GameBuilds WHERE GameId IN ({idList}) ORDER BY GameId, SortOrder";
-                using SqliteDataReader reader = cmd.ExecuteReader();
-                while (reader.Read())
-                {
-                    long gameId = reader.GetInt64(0);
-                    if (!buildIds.TryGetValue(gameId, out List<int>? list))
-                        buildIds[gameId] = list = new();
-                    list.Add(reader.GetInt32(1));
-                }
+                if (!buildIds.TryGetValue(row.GameId, out List<int>? list))
+                    buildIds[row.GameId] = list = new();
+                list.Add(row.BuildId);
             }
 
             Dictionary<long, List<GameAttributeValue>> attributeValues = new();
-            using (SqliteCommand cmd = conn.CreateCommand())
+            IEnumerable<GameAttributeValueRow> attributeRows = conn.Query<GameAttributeValueRow>(
+                $"SELECT GameId, BuildAttributeId, Value FROM GameAttributeValues WHERE GameId IN ({idList})");
+            foreach (GameAttributeValueRow row in attributeRows)
             {
-                cmd.CommandText = $"SELECT GameId, BuildAttributeId, Value FROM GameAttributeValues WHERE GameId IN ({idList})";
-                using SqliteDataReader reader = cmd.ExecuteReader();
-                while (reader.Read())
-                {
-                    long gameId = reader.GetInt64(0);
-                    GameAttributeValue value = new() { BuildAttributeId = reader.GetInt32(1), Value = reader.GetString(2) };
-                    if (!attributeValues.TryGetValue(gameId, out List<GameAttributeValue>? list))
-                        attributeValues[gameId] = list = new();
-                    list.Add(value);
-                }
+                GameAttributeValue value = new() { BuildAttributeId = row.BuildAttributeId, Value = row.Value };
+                if (!attributeValues.TryGetValue(row.GameId, out List<GameAttributeValue>? list))
+                    attributeValues[row.GameId] = list = new();
+                list.Add(value);
             }
 
             List<GameData> games = new();
-            foreach (long id in gameIds)
+            foreach (GameRow row in gameRows)
             {
-                GameRow row = rows[id];
                 ParsedReplayData replay = new()
                 {
                     MapName = row.MapName,
@@ -280,16 +270,16 @@ namespace StatCraft.Services.DatabaseRepository
                     ReplayTimestamp = row.ReplayTimestamp,
                     Win = row.Win,
                     Player = new GamePlayer { Name = row.PlayerName, Clan = row.PlayerClan, Mmr = row.PlayerMmr, Race = row.PlayerRace, Random = row.PlayerRandom },
-                    Allies = allies.TryGetValue(id, out List<GamePlayer>? a) ? a.ToArray() : [],
-                    Opponents = opponents.TryGetValue(id, out List<GamePlayer>? o) ? o.ToArray() : [],
+                    Allies = allies.TryGetValue(row.Id, out List<GamePlayer>? a) ? a.ToArray() : [],
+                    Opponents = opponents.TryGetValue(row.Id, out List<GamePlayer>? o) ? o.ToArray() : [],
                 };
                 games.Add(new GameData
                 {
-                    GameId = (int)id,
+                    GameId = (int)row.Id,
                     ReplayData = replay,
-                    BuildIds = buildIds.TryGetValue(id, out List<int>? b) ? b : [],
+                    BuildIds = buildIds.TryGetValue(row.Id, out List<int>? b) ? b : [],
                     Notes = row.Notes,
-                    AttributeValues = attributeValues.TryGetValue(id, out List<GameAttributeValue>? v) ? v : [],
+                    AttributeValues = attributeValues.TryGetValue(row.Id, out List<GameAttributeValue>? v) ? v : [],
                 });
             }
             return games;
@@ -299,56 +289,37 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
 
-            using (SqliteCommand deleteCmd = conn.CreateCommand())
-            {
-                deleteCmd.CommandText = "DELETE FROM GameBuilds WHERE GameId = @gameId";
-                deleteCmd.Parameters.AddWithValue("@gameId", gameId);
-                deleteCmd.ExecuteNonQuery();
-            }
+            conn.Execute("DELETE FROM GameBuilds WHERE GameId = @gameId", new { gameId });
 
-            for (int i = 0; i < buildIds.Count; i++)
+            if (buildIds.Count > 0)
             {
-                using SqliteCommand insertCmd = conn.CreateCommand();
-                insertCmd.CommandText = "INSERT INTO GameBuilds (GameId, BuildId, SortOrder) VALUES (@gameId, @buildId, @sortOrder)";
-                insertCmd.Parameters.AddWithValue("@gameId", gameId);
-                insertCmd.Parameters.AddWithValue("@buildId", buildIds[i]);
-                insertCmd.Parameters.AddWithValue("@sortOrder", i);
-                insertCmd.ExecuteNonQuery();
+                conn.Execute(
+                    "INSERT INTO GameBuilds (GameId, BuildId, SortOrder) VALUES (@gameId, @buildId, @sortOrder)",
+                    buildIds.Select((buildId, i) => new { gameId, buildId, sortOrder = i }));
             }
         }
 
         public void UpdateGameNotes(int gameId, string notes)
         {
             using SqliteConnection conn = OpenConnection();
-            using SqliteCommand cmd = conn.CreateCommand();
-            cmd.CommandText = "UPDATE Games SET Notes = @notes WHERE Id = @id";
-            cmd.Parameters.AddWithValue("@notes", notes);
-            cmd.Parameters.AddWithValue("@id", gameId);
-            cmd.ExecuteNonQuery();
+            conn.Execute("UPDATE Games SET Notes = @notes WHERE Id = @id", new { notes, id = gameId });
         }
 
         public void UpsertAttributeValue(int gameId, int buildAttributeId, string value)
         {
             using SqliteConnection conn = OpenConnection();
-            using SqliteCommand cmd = conn.CreateCommand();
-            cmd.CommandText = @"
+            conn.Execute(@"
                 INSERT INTO GameAttributeValues (GameId, BuildAttributeId, Value)
                 VALUES (@gameId, @buildAttributeId, @value)
-                ON CONFLICT(GameId, BuildAttributeId) DO UPDATE SET Value = @value";
-            cmd.Parameters.AddWithValue("@gameId", gameId);
-            cmd.Parameters.AddWithValue("@buildAttributeId", buildAttributeId);
-            cmd.Parameters.AddWithValue("@value", value);
-            cmd.ExecuteNonQuery();
+                ON CONFLICT(GameId, BuildAttributeId) DO UPDATE SET Value = @value",
+                new { gameId, buildAttributeId, value });
         }
 
         public void DeleteAttributeValue(int gameId, int buildAttributeId)
         {
             using SqliteConnection conn = OpenConnection();
-            using SqliteCommand cmd = conn.CreateCommand();
-            cmd.CommandText = "DELETE FROM GameAttributeValues WHERE GameId = @gameId AND BuildAttributeId = @buildAttributeId";
-            cmd.Parameters.AddWithValue("@gameId", gameId);
-            cmd.Parameters.AddWithValue("@buildAttributeId", buildAttributeId);
-            cmd.ExecuteNonQuery();
+            conn.Execute("DELETE FROM GameAttributeValues WHERE GameId = @gameId AND BuildAttributeId = @buildAttributeId",
+                new { gameId, buildAttributeId });
         }
 
         // True if any GameBuilds row still points at one of these build node ids. Deleting a BuildNode
@@ -363,24 +334,16 @@ namespace StatCraft.Services.DatabaseRepository
                 return false;
 
             using SqliteConnection conn = OpenConnection();
-            using SqliteCommand cmd = conn.CreateCommand();
             string idList = string.Join(",", ids);
-            cmd.CommandText = $"SELECT COUNT(*) FROM GameBuilds WHERE BuildId IN ({idList})";
-            long count = (long)cmd.ExecuteScalar()!;
+            long count = conn.ExecuteScalar<long>($"SELECT COUNT(*) FROM GameBuilds WHERE BuildId IN ({idList})");
             return count > 0;
         }
-
-        private record GameRow(
-            string MapName, int GameLengthSeconds, string ReplayPath, DateTimeOffset ReplayTimestamp, decimal Win,
-            string PlayerName, string PlayerClan, long PlayerMmr, char PlayerRace, bool PlayerRandom, string Notes);
 
         private SqliteConnection OpenConnection()
         {
             SqliteConnection conn = new SqliteConnection(_connectionString);
             conn.Open();
-            using SqliteCommand pragma = conn.CreateCommand();
-            pragma.CommandText = "PRAGMA foreign_keys = ON";
-            pragma.ExecuteNonQuery();
+            conn.Execute("PRAGMA foreign_keys = ON");
             return conn;
         }
     }
