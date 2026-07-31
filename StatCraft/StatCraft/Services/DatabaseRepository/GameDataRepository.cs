@@ -189,7 +189,7 @@ namespace StatCraft.Services.DatabaseRepository
             if (existingId != null)
             {
                 game.GameId = (int)existingId.Value;
-                game.SelfGamePlayerId = (int)conn.ExecuteScalar<long>(
+                game.ReplayData.Player.GamePlayerId = (int)conn.ExecuteScalar<long>(
                     "SELECT Id FROM GamePlayers WHERE GameId = @gameId AND Side = @side",
                     new { gameId = game.GameId, side = SideSelf });
                 return;
@@ -217,7 +217,7 @@ namespace StatCraft.Services.DatabaseRepository
                     createdAt = DateTimeOffset.UtcNow,
                 });
 
-            game.SelfGamePlayerId = (int)conn.ExecuteScalar<long>(@"
+            replay.Player.GamePlayerId = (int)conn.ExecuteScalar<long>(@"
                 INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random)
                 VALUES (@gameId, @side, 0, @name, @clan, @mmr, @race, @random);
                 SELECT last_insert_rowid();",
@@ -329,7 +329,7 @@ namespace StatCraft.Services.DatabaseRepository
                     continue;
                 }
 
-                GamePlayer player = new() { Name = row.Name, Clan = row.Clan, Mmr = row.Mmr, Race = row.Race, Random = row.Random };
+                GamePlayer player = new() { GamePlayerId = (int)row.Id, Name = row.Name, Clan = row.Clan, Mmr = row.Mmr, Race = row.Race, Random = row.Random };
                 Dictionary<long, List<GamePlayer>> target = row.Side == SideAlly ? allies : opponents;
                 if (!target.TryGetValue(row.GameId, out List<GamePlayer>? list))
                     target[row.GameId] = list = new();
@@ -365,6 +365,7 @@ namespace StatCraft.Services.DatabaseRepository
             List<GameData> games = new();
             foreach (GameRow row in gameRows)
             {
+                long? selfId = selfGamePlayerIds.TryGetValue(row.Id, out long sid) ? sid : null;
                 ParsedReplayData replay = new()
                 {
                     MapName = row.MapName,
@@ -372,17 +373,23 @@ namespace StatCraft.Services.DatabaseRepository
                     ReplayPath = row.ReplayPath,
                     ReplayTimestamp = row.ReplayTimestamp,
                     Win = row.Win,
-                    Player = new GamePlayer { Name = row.PlayerName, Clan = row.PlayerClan, Mmr = row.PlayerMmr, Race = row.PlayerRace, Random = row.PlayerRandom },
+                    Player = new GamePlayer
+                    {
+                        GamePlayerId = selfId.HasValue ? (int)selfId.Value : null,
+                        Name = row.PlayerName,
+                        Clan = row.PlayerClan,
+                        Mmr = row.PlayerMmr,
+                        Race = row.PlayerRace,
+                        Random = row.PlayerRandom,
+                    },
                     Allies = allies.TryGetValue(row.Id, out List<GamePlayer>? a) ? a.ToArray() : [],
                     Opponents = opponents.TryGetValue(row.Id, out List<GamePlayer>? o) ? o.ToArray() : [],
                 };
 
-                long? selfId = selfGamePlayerIds.TryGetValue(row.Id, out long sid) ? sid : null;
                 games.Add(new GameData
                 {
                     GameId = (int)row.Id,
                     ReplayData = replay,
-                    SelfGamePlayerId = selfId.HasValue ? (int)selfId.Value : null,
                     BuildIds = selfId.HasValue && buildIdsByGamePlayer.TryGetValue(selfId.Value, out List<int>? b) ? b : [],
                     Notes = row.Notes,
                     AttributeValues = selfId.HasValue && attributeValuesByGamePlayer.TryGetValue(selfId.Value, out List<GameAttributeValue>? v) ? v : [],

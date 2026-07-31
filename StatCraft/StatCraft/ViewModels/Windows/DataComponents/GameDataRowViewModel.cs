@@ -131,7 +131,7 @@ namespace StatCraft.ViewModels
                 .Select(id => id!.Value)
                 .ToList();
             _game.BuildIds = buildIds;
-            _repository.UpdateGameBuilds(_game.SelfGamePlayerId!.Value, buildIds);
+            _repository.UpdateGameBuilds(_game.ReplayData.Player.GamePlayerId!.Value, buildIds);
 
             UpdateSelectedBuildsSummary();
             RebuildAttributeEditors();
@@ -218,7 +218,7 @@ namespace StatCraft.ViewModels
             // Left every selected path: drop the stored value from the DB, but leave it in
             // _game.AttributeValues (in-memory) so re-selecting the build within this session restores it.
             foreach (int leftId in oldIds.Except(newIds))
-                _repository.DeleteAttributeValue(_game.SelfGamePlayerId!.Value, leftId);
+                _repository.DeleteAttributeValue(_game.ReplayData.Player.GamePlayerId!.Value, leftId);
 
             AttributeEditors.Clear();
             foreach (BuildAttribute template in newPathAttrs)
@@ -228,7 +228,7 @@ namespace StatCraft.ViewModels
                 if (cached != null)
                 {
                     editor.ApplyValue(cached.Value);
-                    _repository.UpsertAttributeValue(_game.SelfGamePlayerId!.Value, template.Id, cached.Value);
+                    _repository.UpsertAttributeValue(_game.ReplayData.Player.GamePlayerId!.Value, template.Id, cached.Value);
                 }
 
                 editor.PropertyChanged += (_, e) =>
@@ -244,7 +244,7 @@ namespace StatCraft.ViewModels
                             existing.Value = value;
                         else
                             _game.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Id, Value = value });
-                        _repository.UpsertAttributeValue(_game.SelfGamePlayerId!.Value, template.Id, value);
+                        _repository.UpsertAttributeValue(_game.ReplayData.Player.GamePlayerId!.Value, template.Id, value);
                     }
                 };
                 AttributeEditors.Add(editor);
