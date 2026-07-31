@@ -51,6 +51,13 @@ namespace StatCraft.ViewModels
             Filters = new DataPageFiltersViewModel(buildRepository);
             Filters.ProfileSelectionChanged += async () => await ReloadGamesFromDatabase();
             Filters.OtherFiltersChanged += ApplyFilters;
+
+            // Give the two always-visible filters sensible defaults as soon as the page exists, rather
+            // than leaving them blank until a session actually starts.
+            Filters.RefreshProfileOptions(_accountRepository.GetAllProfiles());
+            DateTime today = DateTime.Today;
+            Filters.FromDate = today;
+            Filters.ToDate = today;
         }
 
         [ObservableProperty]
