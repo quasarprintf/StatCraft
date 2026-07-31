@@ -10,7 +10,7 @@
          across the popup boundary. A plain TextBox sits alongside it so a date can be typed directly
          instead of always going through the flyout. -->
     <StackPanel Orientation="Horizontal" Spacing="2">
-        <TextBox x:Name="DateTextBox" Width="90" PlaceholderText="MM/dd/yyyy"/>
+        <TextBox x:Name="DateTextBox" Width="100" PlaceholderText="MM/dd/yyyy"/>
         <Button x:Name="ToggleButton" Content="📅" Padding="6,0" VerticalAlignment="Stretch">
             <Button.Flyout>
                 <Flyout Placement="BottomEdgeAlignedLeft">
