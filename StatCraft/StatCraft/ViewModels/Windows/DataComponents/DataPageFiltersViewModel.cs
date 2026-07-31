@@ -57,10 +57,17 @@ namespace StatCraft.ViewModels
             ExtraFilterSlots = [MapSlot, MatchupSlot, OutcomeSlot, MmrSlot, BuildSlot];
             foreach (FilterSlotViewModel slot in ExtraFilterSlots)
             {
-                slot.Changed += () =>
+                // Only a visibility toggle (Add/Remove) should rebuild the filter bar's own item list —
+                // rebuilding on every criteria edit too would tear down and recreate the ItemsControl's
+                // containers on every keystroke/checkbox click, stealing focus from whatever the user is
+                // actively interacting with.
+                slot.VisibilityChanged += () =>
                 {
                     OnPropertyChanged(nameof(VisibleExtraFilterSlots));
                     OnPropertyChanged(nameof(HiddenExtraFilterSlots));
+                };
+                slot.Changed += () =>
+                {
                     if (!_suppressChangeEvents)
                         OtherFiltersChanged?.Invoke();
                 };
