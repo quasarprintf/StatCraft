@@ -52,9 +52,9 @@
                         <DataTemplate x:DataType="vm:NumericRangeFilterSlotViewModel">
                             <StackPanel Classes="filterSlot">
                                 <TextBlock Text="{Binding Title}" VerticalAlignment="Center"/>
-                                <NumericUpDown Value="{Binding Min}" Width="100" PlaceholderText="Min" FormatString="0"/>
+                                <NumericUpDown Value="{Binding Min}" Width="140" PlaceholderText="Min" FormatString="0" ShowButtonSpinner="False"/>
                                 <TextBlock Text="-" VerticalAlignment="Center"/>
-                                <NumericUpDown Value="{Binding Max}" Width="100" PlaceholderText="Max" FormatString="0"/>
+                                <NumericUpDown Value="{Binding Max}" Width="140" PlaceholderText="Max" FormatString="0" ShowButtonSpinner="False"/>
                                 <Button Classes="removeFilter" Command="{Binding RemoveCommand}"/>
                             </StackPanel>
                         </DataTemplate>
