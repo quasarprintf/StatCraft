@@ -5,12 +5,74 @@
              xmlns:component="using:StatCraft.Views.Components"
               x:Class="StatCraft.Views.DataPage"
              x:DataType="vm:DataPageViewModel">
+    <UserControl.Styles>
+        <Style Selector="StackPanel.filterSlot">
+            <Setter Property="Orientation" Value="Horizontal"/>
+            <Setter Property="Spacing" Value="2"/>
+        </Style>
+        <Style Selector="Button.removeFilter">
+            <Setter Property="Content" Value="✕"/>
+            <Setter Property="Foreground" Value="Red"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="8">
             <TextBlock Text="{Binding ActiveProfileLabel}" FontSize="16" VerticalAlignment="Center"/>
             <Button Content="Begin Session" Command="{Binding BeginSessionCommand}"/>
             <Button Content="Import Replay" Command="{Binding ImportReplayCommand}" IsVisible="{Binding HasActiveSession}"/>
         </StackPanel>
+
+        <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="8,0,8,8">
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                <local:CheckboxFilterDropdown Header="Profile" Options="{Binding Filters.ProfileOptions}"/>
+                <CalendarDatePicker SelectedDate="{Binding Filters.FromDate}"/>
+                <TextBlock Text="to" VerticalAlignment="Center"/>
+                <CalendarDatePicker SelectedDate="{Binding Filters.ToDate}"/>
+
+                <ItemsControl ItemsSource="{Binding Filters.VisibleExtraFilterSlots}">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Orientation="Horizontal" Spacing="8"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.DataTemplates>
+                        <DataTemplate x:DataType="vm:CheckboxFilterSlotViewModel">
+                            <StackPanel Classes="filterSlot">
+                                <local:CheckboxFilterDropdown Header="{Binding Title}" Options="{Binding Options}"
+                                                               ShowSearch="{Binding ShowSearch}" SearchText="{Binding SearchText}"/>
+                                <Button Classes="removeFilter" Command="{Binding RemoveCommand}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                        <DataTemplate x:DataType="vm:NumericRangeFilterSlotViewModel">
+                            <StackPanel Classes="filterSlot">
+                                <TextBlock Text="{Binding Title}" VerticalAlignment="Center"/>
+                                <NumericUpDown Value="{Binding Min}" Width="100" PlaceholderText="Min" FormatString="0"/>
+                                <TextBlock Text="-" VerticalAlignment="Center"/>
+                                <NumericUpDown Value="{Binding Max}" Width="100" PlaceholderText="Max" FormatString="0"/>
+                                <Button Classes="removeFilter" Command="{Binding RemoveCommand}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.DataTemplates>
+                </ItemsControl>
+            </StackPanel>
+
+            <Button Grid.Column="1" Content="+ Filters" VerticalAlignment="Center">
+                <Button.Flyout>
+                    <MenuFlyout ItemsSource="{Binding Filters.HiddenExtraFilterSlots}" Placement="BottomEdgeAlignedRight">
+                        <MenuFlyout.ItemContainerTheme>
+                            <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vm:FilterSlotViewModel">
+                                <Setter Property="Header" Value="{Binding Title}"/>
+                                <Setter Property="Command" Value="{Binding AddCommand}"/>
+                            </ControlTheme>
+                        </MenuFlyout.ItemContainerTheme>
+                    </MenuFlyout>
+                </Button.Flyout>
+            </Button>
+        </Grid>
 
         <DataGrid ItemsSource="{Binding Games}" AutoGenerateColumns="False"
                   RowDetailsVisibilityMode="VisibleWhenSelected" GridLinesVisibility="Horizontal">
@@ -25,6 +87,7 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
+                <DataGridTextColumn Header="Profile" Binding="{Binding ProfileLabel}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Date/Time" Binding="{Binding PlayedAt}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Map" Binding="{Binding MapName}" IsReadOnly="True"/>
                 <DataGridTemplateColumn Header="Result">

@@ -13,6 +13,7 @@ using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DatabaseRepository;
+using StatCraft.Services.DataFiltering;
 
 namespace StatCraft.ViewModels
 {
@@ -21,22 +22,35 @@ namespace StatCraft.ViewModels
         private readonly SettingsRepository _settingsRepository;
         private readonly ReplayWatcherService _replayWatcherService;
         private readonly ReplayImportService _replayImportService;
+        private readonly AccountRepository _accountRepository;
         private readonly BuildRepository _buildRepository;
         private readonly GameDataRepository _gameDataRepository;
         private readonly Dictionary<(Race Player, Matchups Opponent), ObservableCollection<BuildNode>> _buildTreeCache = new();
         private bool _buildTreeCacheDirty;
 
+        // The profile-scoped superset before the other (in-memory) filter dimensions are applied —
+        // Games is always a filtered projection of this, never populated directly.
+        private List<GameData> _loadedGames = [];
+
+        public DataPageFiltersViewModel Filters { get; }
+
         public DataPageViewModel(SettingsRepository settingsRepository, ReplayWatcherService replayWatcherService,
-            ReplayImportService replayImportService, BuildRepository buildRepository, GameDataRepository gameDataRepository)
+            ReplayImportService replayImportService, AccountRepository accountRepository, BuildRepository buildRepository,
+            GameDataRepository gameDataRepository)
         {
             _settingsRepository = settingsRepository;
             _replayWatcherService = replayWatcherService;
             _replayImportService = replayImportService;
+            _accountRepository = accountRepository;
             _buildRepository = buildRepository;
             _gameDataRepository = gameDataRepository;
             _replayWatcherService.NewReplayFileFound += OnNewReplayFileFound;
             _replayImportService.GameParsed += OnGameParsed;
             _buildRepository.BuildsChanged += OnBuildsChanged;
+
+            Filters = new DataPageFiltersViewModel(buildRepository);
+            Filters.ProfileSelectionChanged += async () => await ReloadGamesFromDatabase();
+            Filters.OtherFiltersChanged += ApplyFilters;
         }
 
         [ObservableProperty]
@@ -77,22 +91,30 @@ namespace StatCraft.ViewModels
         public void ConfirmDeleteGame(GameDataRowViewModel row)
         {
             _gameDataRepository.DeleteGame(row.GameId);
+            _loadedGames.RemoveAll(g => g.GameId == row.GameId);
             Games.Remove(row);
         }
 
+        // The filter bar is a display/query layer on top of session state, not a replacement for it —
+        // ActiveProfile/the replay watcher/ImportReplayFile all keep referring to exactly this one
+        // profile regardless of which profiles are checked in the filter bar.
         public async Task SetActiveProfile(Sc2Profile? profile)
         {
             ActiveProfile = profile;
-            Games.Clear();
 
             if (profile == null)
             {
+                _loadedGames = [];
+                Games.Clear();
                 await _replayWatcherService.Stop();
                 return;
             }
 
-            foreach (GameData game in _gameDataRepository.GetGamesForProfile(profile.Id))
-                Games.Add(WrapGame(game));
+            // Every session start collapses the profile filter back to just this profile and the date
+            // range back to today, per spec, even if the user had broadened either beforehand.
+            Filters.RefreshProfileOptions(_accountRepository.GetAllProfiles());
+            Filters.SetSingleActiveProfile(profile);
+            await ReloadGamesFromDatabase();
 
             string baseReplayFolderPath = _settingsRepository.Load().BaseReplayFolderPath ?? "";
             string replayFolderPath = Path.Combine(baseReplayFolderPath, profile.ReplayFolderPathSuffix);
@@ -109,14 +131,17 @@ namespace StatCraft.ViewModels
             await _replayImportService.ImportReplay(filePath, ActiveProfile);
         }
 
-        // Guards against a duplicate row if the same underlying game is reported twice — e.g. a manual
+        // Guards against a duplicate entry if the same underlying game is reported twice — e.g. a manual
         // import (via ImportReplayFile) of a replay the folder watcher already picked up, or vice versa.
-        // InsertGame itself already dedupes by ReplayPath, so this only ever skips the redundant UI add.
+        // InsertGame itself already dedupes by ReplayPath, so this only ever skips the redundant add.
+        // A freshly-imported replay may not immediately show up in Games if the current filters exclude
+        // it (e.g. the date range no longer covers today) — that's the correct result of real filtering.
         private void OnGameParsed(GameData game) => Dispatcher.UIThread.Post(() =>
         {
-            if (Games.Any(row => row.GameId == game.GameId))
+            if (_loadedGames.Any(g => g.GameId == game.GameId))
                 return;
-            Games.Add(WrapGame(game));
+            _loadedGames.Add(game);
+            ApplyFilters();
         });
 
         // Don't reload immediately — builds can change many times in a row while editing on the Builds
@@ -127,6 +152,9 @@ namespace StatCraft.ViewModels
         // Called by DataPage's code-behind when the Data tab becomes visible.
         public void NotifyActivated()
         {
+            if (ActiveProfile != null)
+                Filters.RefreshProfileOptions(_accountRepository.GetAllProfiles());
+
             if (!_buildTreeCacheDirty)
                 return;
 
@@ -153,8 +181,31 @@ namespace StatCraft.ViewModels
                 row.RefreshAttributeEditors();
         }
 
+        // Re-queries the database for every currently-checked profile — the only filter dimension that
+        // changes which rows exist in the candidate set at all. Every other filter dimension only needs
+        // ApplyFilters (see OtherFiltersChanged), not a fresh database round trip.
+        private async Task ReloadGamesFromDatabase()
+        {
+            List<int> profileIds = Filters.ProfileOptions.Where(o => o.IsChecked).Select(o => o.Value.Id).ToList();
+            _loadedGames = profileIds.Count == 0 ? [] : _gameDataRepository.GetGamesForProfiles(profileIds);
+            Filters.RefreshMapOptions(_loadedGames.Select(g => g.ReplayData.MapName).Distinct());
+            ApplyFilters();
+            await Task.CompletedTask;
+        }
+
+        private void ApplyFilters()
+        {
+            GameFilterCriteria criteria = Filters.BuildCriteria();
+            Games.Clear();
+            foreach (GameData game in _loadedGames.Where(g => GameDataFilter.Matches(g, criteria)).OrderBy(g => g.ReplayData.ReplayTimestamp))
+                Games.Add(WrapGame(game));
+        }
+
         private GameDataRowViewModel WrapGame(GameData game) =>
-            new GameDataRowViewModel(game, _gameDataRepository, GetBuildTree);
+            new GameDataRowViewModel(game, _gameDataRepository, ResolveProfileLabel(game.Sc2ProfileId), GetBuildTree);
+
+        private string ResolveProfileLabel(int sc2ProfileId) =>
+            Filters.ProfileOptions.FirstOrDefault(o => o.Value.Id == sc2ProfileId)?.Value.DisplayName ?? sc2ProfileId.ToString();
 
         private ObservableCollection<BuildNode>? GetBuildTree(Race? player, Matchups matchups)
         {

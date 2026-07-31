@@ -22,6 +22,10 @@ namespace StatCraft.ViewModels
 
         public int GameId => _game.GameId!.Value;
 
+        // Which profile this game belongs to — meaningful once the Data tab's profile filter can merge
+        // games from more than one profile into a single table.
+        public string ProfileLabel { get; }
+
         public string MapName { get; }
         public string PlayedAt { get; }
         public string ResultLabel { get; }
@@ -41,17 +45,24 @@ namespace StatCraft.ViewModels
 
         private readonly GameDataRepository _repository;
 
-        internal GameDataRowViewModel(GameData game, GameDataRepository repository,
+        internal GameDataRowViewModel(GameData game, GameDataRepository repository, string profileLabel,
             Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree)
         {
             _game = game;
             _repository = repository;
+            ProfileLabel = profileLabel;
 
             ParsedReplayData replay = game.ReplayData;
             MapName = replay.MapName;
             PlayedAt = replay.ReplayTimestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
-            ResultLabel = replay.Win == 1m ? "Win" : replay.Win == 0m ? "Loss" : "Draw";
-            ResultColor = replay.Win == 1m ? Styles.Colors.ProtossGreen : replay.Win == 0m ? Styles.Colors.ZergRed : Styles.Colors.TerranBlue;
+            GameOutcome outcome = GameOutcomeExtensions.FromWin(replay.Win);
+            ResultLabel = outcome switch { GameOutcome.Win => "Win", GameOutcome.Loss => "Loss", _ => "Draw" };
+            ResultColor = outcome switch
+            {
+                GameOutcome.Win => Styles.Colors.ProtossGreen,
+                GameOutcome.Loss => Styles.Colors.ZergRed,
+                _ => Styles.Colors.TerranBlue,
+            };
             GameLength = TimeSpan.FromSeconds(replay.GameLengthSeconds).ToString(@"mm\:ss");
             Matchup = $"{replay.Player.Race}{string.Concat(replay.Allies.Select(a => a.Race))}v{string.Concat(replay.Opponents.Select(o => o.Race))}";
             MatchupCharacters = BuildMatchupCharacters(replay);

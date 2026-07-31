@@ -278,6 +278,54 @@ public class GameDataRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void GetGamesForProfiles_MergesGamesFromMultipleProfiles()
+    {
+        int otherProfileId = InsertProfile("sub-2", 222, "Other").Id;
+
+        GameData myGame = CreateGame(replayPath: "mine.SC2Replay");
+        _repository.InsertGame(myGame, _sc2ProfileId);
+        GameData otherGame = CreateGame(replayPath: "theirs.SC2Replay");
+        _repository.InsertGame(otherGame, otherProfileId);
+
+        List<GameData> loaded = _repository.GetGamesForProfiles([_sc2ProfileId, otherProfileId]);
+        Assert.Equal(2, loaded.Count);
+        Assert.Contains(loaded, g => g.ReplayData.ReplayPath == "mine.SC2Replay");
+        Assert.Contains(loaded, g => g.ReplayData.ReplayPath == "theirs.SC2Replay");
+    }
+
+    [Fact]
+    public void GetGamesForProfiles_EmptyIdList_ReturnsEmpty()
+    {
+        _repository.InsertGame(CreateGame(), _sc2ProfileId);
+
+        Assert.Empty(_repository.GetGamesForProfiles([]));
+    }
+
+    [Fact]
+    public void GetGamesForProfiles_OrdersAcrossProfilesByReplayTimestamp()
+    {
+        int otherProfileId = InsertProfile("sub-2", 222, "Other").Id;
+
+        GameData later = CreateGame(replayPath: "later.SC2Replay", replayTimestamp: new DateTimeOffset(2026, 1, 20, 0, 0, 0, TimeSpan.Zero));
+        _repository.InsertGame(later, _sc2ProfileId);
+        GameData earlier = CreateGame(replayPath: "earlier.SC2Replay", replayTimestamp: new DateTimeOffset(2026, 1, 10, 0, 0, 0, TimeSpan.Zero));
+        _repository.InsertGame(earlier, otherProfileId);
+
+        List<GameData> loaded = _repository.GetGamesForProfiles([_sc2ProfileId, otherProfileId]);
+        Assert.Equal(["earlier.SC2Replay", "later.SC2Replay"], loaded.Select(g => g.ReplayData.ReplayPath));
+    }
+
+    [Fact]
+    public void GetGamesForProfile_IsEquivalentToGetGamesForProfilesWithSingleId()
+    {
+        _repository.InsertGame(CreateGame(replayPath: "solo.SC2Replay"), _sc2ProfileId);
+
+        List<GameData> viaSingle = _repository.GetGamesForProfile(_sc2ProfileId);
+        List<GameData> viaMulti = _repository.GetGamesForProfiles([_sc2ProfileId]);
+        Assert.Equal(viaSingle.Select(g => g.GameId), viaMulti.Select(g => g.GameId));
+    }
+
+    [Fact]
     public void IsAnyBuildReferenced_BuildUsedByAGame_ReturnsTrue()
     {
         BuildNode build = new() { Name = "4 Gate" };

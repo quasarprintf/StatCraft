@@ -1,0 +1,34 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StatCraft.ViewModels"
+             xmlns:local="using:StatCraft.Views"
+             x:Class="StatCraft.Views.CheckboxFilterDropdown">
+    <Button x:Name="DropdownButton" Content="{Binding Header, RelativeSource={RelativeSource AncestorType=local:CheckboxFilterDropdown}}"
+            HorizontalContentAlignment="Left" HorizontalAlignment="Stretch">
+        <Button.Flyout>
+            <Flyout Placement="BottomEdgeAlignedLeft">
+                <StackPanel Width="220" Spacing="4">
+                    <TextBox Text="{Binding SearchText, RelativeSource={RelativeSource AncestorType=local:CheckboxFilterDropdown}}"
+                             PlaceholderText="Search..."
+                             IsVisible="{Binding ShowSearch, RelativeSource={RelativeSource AncestorType=local:CheckboxFilterDropdown}}"/>
+                    <ScrollViewer MaxHeight="240">
+                        <ItemsControl ItemsSource="{Binding Options, RelativeSource={RelativeSource AncestorType=local:CheckboxFilterDropdown}}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CheckboxFilterOptionViewModel">
+                                    <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}">
+                                        <CheckBox.IsVisible>
+                                            <MultiBinding Converter="{x:Static local:CheckboxFilterDropdown.LabelContainsSearchConverter}">
+                                                <Binding Path="Label"/>
+                                                <Binding Path="SearchText" RelativeSource="{RelativeSource AncestorType=local:CheckboxFilterDropdown}"/>
+                                            </MultiBinding>
+                                        </CheckBox.IsVisible>
+                                    </CheckBox>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </StackPanel>
+            </Flyout>
+        </Button.Flyout>
+    </Button>
+</UserControl>

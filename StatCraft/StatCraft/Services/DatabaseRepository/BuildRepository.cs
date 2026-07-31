@@ -99,6 +99,10 @@ namespace StatCraft.Services.DatabaseRepository
         public List<BuildNode> GetBuildsForMatchup(Race playerRace, Matchups matchups) =>
             LoadTree("PlayerRace = @playerRace AND (Matchups & @flag) != 0", new { playerRace, flag = matchups });
 
+        // Every build across every player race — used by the Data tab's build filter, which (unlike the
+        // Builds tab or the per-game build picker) isn't scoped to a single race or matchup.
+        public List<BuildNode> GetAllBuilds() => LoadTree("1=1", new { });
+
         private static Matchups ToMatchupFlag(Race race) => race switch
         {
             Race.Z => Matchups.VsZ,

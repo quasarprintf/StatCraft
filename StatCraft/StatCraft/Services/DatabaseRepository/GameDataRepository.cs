@@ -182,6 +182,7 @@ namespace StatCraft.Services.DatabaseRepository
         internal void InsertGame(GameData game, int sc2ProfileId)
         {
             using SqliteConnection conn = OpenConnection();
+            game.Sc2ProfileId = sc2ProfileId;
 
             long? existingId = conn.ExecuteScalar<long?>(
                 "SELECT Id FROM Games WHERE ReplayPath = @replayPath",
@@ -269,6 +270,7 @@ namespace StatCraft.Services.DatabaseRepository
         private class GameRow
         {
             public long Id { get; set; }
+            public int Sc2ProfileId { get; set; }
             public string MapName { get; set; } = "";
             public int GameLengthSeconds { get; set; }
             public string ReplayPath { get; set; } = "";
@@ -307,14 +309,22 @@ namespace StatCraft.Services.DatabaseRepository
             public string Value { get; set; } = "";
         }
 
-        internal List<GameData> GetGamesForProfile(int sc2ProfileId)
+        internal List<GameData> GetGamesForProfile(int sc2ProfileId) => GetGamesForProfiles([sc2ProfileId]);
+
+        // Loads and merges games across every given profile, ordered by when they were actually played
+        // rather than by Id — each profile has its own independent Id sequence, so merging by Id would
+        // interleave profiles inconsistently.
+        internal List<GameData> GetGamesForProfiles(IReadOnlyCollection<int> sc2ProfileIds)
         {
+            if (sc2ProfileIds.Count == 0)
+                return [];
+
             using SqliteConnection conn = OpenConnection();
 
             List<GameRow> gameRows = conn.Query<GameRow>(@"
-                SELECT Id, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes
-                FROM Games WHERE Sc2ProfileId = @sc2ProfileId ORDER BY Id ASC",
-                new { sc2ProfileId }).ToList();
+                SELECT Id, Sc2ProfileId, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes
+                FROM Games WHERE Sc2ProfileId IN @sc2ProfileIds ORDER BY ReplayTimestamp ASC",
+                new { sc2ProfileIds }).ToList();
 
             if (gameRows.Count == 0)
                 return [];
@@ -391,6 +401,7 @@ namespace StatCraft.Services.DatabaseRepository
                 games.Add(new GameData
                 {
                     GameId = (int)row.Id,
+                    Sc2ProfileId = row.Sc2ProfileId,
                     ReplayData = replay,
                     Notes = row.Notes,
                 });
