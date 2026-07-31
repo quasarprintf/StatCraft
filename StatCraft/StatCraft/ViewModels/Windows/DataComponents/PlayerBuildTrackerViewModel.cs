@@ -14,6 +14,7 @@ namespace StatCraft.ViewModels
     // GamePlayer's own id, not to the game as a whole.
     public partial class PlayerBuildTrackerViewModel : ViewModelBase
     {
+        public string TabHeader => _player.Name;
         private readonly GamePlayer _player;
         private readonly GameDataRepository _repository;
         private readonly ObservableCollection<BuildNode> _buildTree;

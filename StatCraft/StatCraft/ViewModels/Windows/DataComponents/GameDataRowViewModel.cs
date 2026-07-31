@@ -35,7 +35,7 @@ namespace StatCraft.ViewModels
         public PlayerBuildTrackerViewModel SelfTracker { get; }
 
         // Right side: one tab per ally/opponent, each with their own build selection.
-        public ObservableCollection<OtherPlayerBuildViewModel> OtherPlayers { get; } = [];
+        public ObservableCollection<PlayerBuildTrackerViewModel> OtherPlayers { get; } = [];
 
         private readonly GameDataRepository _repository;
 
@@ -65,9 +65,9 @@ namespace StatCraft.ViewModels
             SelfTracker = new PlayerBuildTrackerViewModel(replay.Player, repository, getBuildTree(replay.Player.Race.AsRace(), selfSideMatchups));
 
             foreach (GamePlayer ally in replay.Allies)
-                OtherPlayers.Add(new OtherPlayerBuildViewModel("Ally", ally, repository, getBuildTree(ally.Race.AsRace(), selfSideMatchups)));
+                OtherPlayers.Add(new PlayerBuildTrackerViewModel(ally, repository, getBuildTree(ally.Race.AsRace(), selfSideMatchups)));
             foreach (GamePlayer opponent in replay.Opponents)
-                OtherPlayers.Add(new OtherPlayerBuildViewModel("Opponent", opponent, repository, getBuildTree(opponent.Race.AsRace(), opponentSideMatchups)));
+                OtherPlayers.Add(new PlayerBuildTrackerViewModel(opponent, repository, getBuildTree(opponent.Race.AsRace(), opponentSideMatchups)));
         }
 
         partial void OnNotesChanged(string value) => _repository.UpdateGameNotes(_game.GameId!.Value, value);
@@ -79,8 +79,8 @@ namespace StatCraft.ViewModels
         public void RefreshAttributeEditors()
         {
             SelfTracker.RefreshAttributeEditors();
-            foreach (OtherPlayerBuildViewModel other in OtherPlayers)
-                other.Tracker.RefreshAttributeEditors();
+            foreach (PlayerBuildTrackerViewModel other in OtherPlayers)
+                other.RefreshAttributeEditors();
         }
 
         private static List<ColoredCharacter> BuildMatchupCharacters(ParsedReplayData replay)

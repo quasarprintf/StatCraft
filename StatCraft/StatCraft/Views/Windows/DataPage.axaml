@@ -41,21 +41,32 @@
                 <DataTemplate x:DataType="vm:GameDataRowViewModel">
                     <Grid Margin="24,8" ColumnDefinitions="Auto,24,*">
                         <StackPanel Grid.Column="0" Spacing="8" MinWidth="320">
-                            <TextBlock Text="Your Build" FontWeight="Bold"/>
+                            <TextBlock Text="{Binding SelfTracker.TabHeader}" FontWeight="Bold"/>
                             <local:PlayerBuildTracker DataContext="{Binding SelfTracker}"/>
                         </StackPanel>
 
                         <StackPanel Grid.Column="2" Spacing="8">
-                            <TextBlock Text="Other Players" FontWeight="Bold"/>
                             <TabControl ItemsSource="{Binding OtherPlayers}">
+                                <TabControl.Styles>
+                                    <Style Selector="TabItem">
+                                        <Setter Property="MinHeight" Value="16" />
+                                        <Setter Property="Padding" Value="4,0" />
+                                        <Setter Property="FontSize" Value="14" />
+                                        <Setter Property="FontWeight" Value="Bold" />
+                                        <Setter Property="Margin" Value="7, -2, 0, -5" />
+                                    </Style>
+                                    <Style Selector="TabItem:selected /template/ Border#PART_SelectedPipe">
+                                        <Setter Property="Margin" Value="0, 20, 0, 0" />
+                                    </Style>
+                                </TabControl.Styles>
                                 <TabControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:OtherPlayerBuildViewModel">
+                                    <DataTemplate x:DataType="vm:PlayerBuildTrackerViewModel">
                                         <TextBlock Text="{Binding TabHeader}"/>
                                     </DataTemplate>
                                 </TabControl.ItemTemplate>
                                 <TabControl.ContentTemplate>
-                                    <DataTemplate x:DataType="vm:OtherPlayerBuildViewModel">
-                                        <local:PlayerBuildTracker DataContext="{Binding Tracker}" Margin="0,8,0,0"/>
+                                    <DataTemplate x:DataType="vm:PlayerBuildTrackerViewModel">
+                                        <local:PlayerBuildTracker Margin="0,8,0,0"/>
                                     </DataTemplate>
                                 </TabControl.ContentTemplate>
                             </TabControl>
