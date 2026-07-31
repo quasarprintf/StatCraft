@@ -37,10 +37,13 @@ namespace StatCraft.ViewModels
         }
 
         [ObservableProperty]
-        [NotifyPropertyChangedFor(nameof(ActiveProfileLabel))]
+        [NotifyPropertyChangedFor(nameof(ActiveProfileLabel), nameof(HasActiveSession))]
         private Sc2Profile? _activeProfile;
 
         public string ActiveProfileLabel => ActiveProfile == null ? "No active session" : ActiveProfile.DisplayName;
+
+        // Drives visibility of session-only actions (e.g. importing a replay file).
+        public bool HasActiveSession => ActiveProfile != null;
 
         public ObservableCollection<GameDataRowViewModel> Games { get; } = [];
 
@@ -48,6 +51,14 @@ namespace StatCraft.ViewModels
 
         [RelayCommand]
         private void BeginSession() => SessionRequested?.Invoke();
+
+        // Raised so the view can show a file picker and, if a file was chosen, call ImportReplayFile.
+        public event Action? ImportReplayRequested;
+
+        [RelayCommand]
+        private void ImportReplay() => ImportReplayRequested?.Invoke();
+
+        public async Task ImportReplayFile(string filePath) => await _replayWatcherService.ImportReplay(filePath);
 
         // Raised instead of deleting immediately, so the view can show a confirmation dialog and, if
         // accepted, call ConfirmDeleteGame.
@@ -81,7 +92,15 @@ namespace StatCraft.ViewModels
             await _replayWatcherService.Start(replayFolderPath, profile);
         }
 
-        private void OnGameParsed(GameData game) => Dispatcher.UIThread.Post(() => Games.Add(WrapGame(game)));
+        // Guards against a duplicate row if the same underlying game is reported twice — e.g. a manual
+        // import (via ImportReplayFile) of a replay the folder watcher already picked up, or vice versa.
+        // InsertGame itself already dedupes by ReplayPath, so this only ever skips the redundant UI add.
+        private void OnGameParsed(GameData game) => Dispatcher.UIThread.Post(() =>
+        {
+            if (Games.Any(row => row.GameId == game.GameId))
+                return;
+            Games.Add(WrapGame(game));
+        });
 
         // Don't reload immediately — builds can change many times in a row while editing on the Builds
         // tab. Just remember a reload is owed, and pay for it once when the user actually comes back

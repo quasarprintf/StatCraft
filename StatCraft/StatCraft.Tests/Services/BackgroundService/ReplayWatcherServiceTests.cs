@@ -82,6 +82,44 @@ public class ReplayWatcherServiceTests : IAsyncDisposable
         Assert.Empty(_watcher.ProcessedFiles);
     }
 
+    [Fact]
+    public async Task ImportReplay_ProcessesTheGivenFileDirectly()
+    {
+        string file = Path.Combine(_folderPath, "manual.SC2Replay");
+        File.WriteAllText(file, "");
+
+        await _watcher.ImportReplay(file);
+
+        Assert.Equal([file], _watcher.ProcessedFiles);
+    }
+
+    [Fact]
+    public async Task ImportReplay_FileOutsideWatchedFolder_IsStillProcessed()
+    {
+        string outsideFile = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid() + "-outside.SC2Replay");
+        File.WriteAllText(outsideFile, "");
+        try
+        {
+            await _watcher.Start(_folderPath, new Sc2Profile());
+
+            await _watcher.ImportReplay(outsideFile);
+
+            Assert.Equal([outsideFile], _watcher.ProcessedFiles);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(outsideFile))
+                    File.Delete(outsideFile);
+            }
+            catch (IOException)
+            {
+                // Best-effort cleanup.
+            }
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         await _watcher.DisposeAsync();

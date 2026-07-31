@@ -66,6 +66,12 @@ namespace StatCraft.Services.BackgroundService
             }
         }
 
+        // Manually import a single replay file (e.g. one outside the watched folder, or from before
+        // watching started), reusing the same decode/parse/insert/GameParsed pipeline as the folder
+        // watcher. InsertGame already dedupes by ReplayPath, so importing an already-recorded replay is
+        // a harmless no-op rather than a duplicate.
+        public Task ImportReplay(string filePath) => ProcessReplay(filePath);
+
         public async Task CheckNow()
         {
             if (_folderPath == null || !Directory.Exists(_folderPath))

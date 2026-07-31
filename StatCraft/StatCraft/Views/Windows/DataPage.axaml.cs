@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Platform.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.Models.Battlenet;
 using StatCraft.ViewModels;
@@ -19,6 +21,7 @@ namespace StatCraft.Views
             DataPageViewModel vm = App.Services.GetRequiredService<DataPageViewModel>();
             vm.SessionRequested += async () => await OnSessionRequestedAsync();
             vm.DeleteGameConfirmationRequested += async row => await OnDeleteGameConfirmationRequestedAsync(row);
+            vm.ImportReplayRequested += async () => await OnImportReplayRequestedAsync();
             DataContext = vm;
         }
 
@@ -60,6 +63,25 @@ namespace StatCraft.Views
 
             if (confirmed)
                 ViewModel.ConfirmDeleteGame(row);
+        }
+
+        private async Task OnImportReplayRequestedAsync()
+        {
+            TopLevel? topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel == null) return;
+
+            IReadOnlyList<IStorageFile> files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+            {
+                Title = "Select a replay to import",
+                AllowMultiple = false,
+                FileTypeFilter = [new FilePickerFileType("StarCraft II Replay") { Patterns = ["*.SC2Replay"] }],
+            });
+
+            if (files.Count == 0) return;
+
+            string? path = files[0].TryGetLocalPath();
+            if (path != null)
+                await ViewModel.ImportReplayFile(path);
         }
     }
 }
