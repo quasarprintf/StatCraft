@@ -10,7 +10,7 @@ namespace StatCraft.ViewModels
         public Race Race { get; }
         public long Mmr { get; }
 
-        public string Label => $"{Race} {Mmr}";
+        public string Label => $"{Race}: {Mmr}";
         public IBrush Color => Race switch
         {
             Race.P => Styles.Colors.ProtossGreen,
