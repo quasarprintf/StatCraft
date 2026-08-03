@@ -175,15 +175,15 @@ namespace StatCraft.ViewModels
         {
             Games.FirstOrDefault(row => row.GameId == game.GameId)?.RefreshMmrChange();
 
-            // The freshly-observed rating is by definition this profile's current one for the race just
+            // The freshly-observed rating is by definition this profile's current one for the ladder just
             // played, so the header can be updated straight from it rather than re-querying the API.
             GamePlayer self = game.ReplayData.Player;
-            if (self.MmrAfter is { } mmrAfter && self.Race.AsRace() is { } race)
+            if (self.MmrAfter is { } mmrAfter && LadderRaceExtensions.FromPlayer(self.Race, self.Random) is { } race)
                 UpsertCurrentMmr(race, mmrAfter);
         });
 
         // Keeps CurrentMmrs sorted by race so entries don't jump around as they're replaced.
-        private void UpsertCurrentMmr(Race race, long mmr)
+        private void UpsertCurrentMmr(LadderRace race, long mmr)
         {
             RaceMmrViewModel? existing = CurrentMmrs.FirstOrDefault(m => m.Race == race);
             if (existing != null)
@@ -200,7 +200,7 @@ namespace StatCraft.ViewModels
         {
             try
             {
-                IReadOnlyDictionary<Race, long> byRace = await _ladderService.GetCurrentMmrByRaceAsync(profile, CancellationToken.None);
+                IReadOnlyDictionary<LadderRace, long> byRace = await _ladderService.GetCurrentMmrByRaceAsync(profile, CancellationToken.None);
                 Dispatcher.UIThread.Post(() =>
                 {
                     // Guard against a slow lookup landing after the user already switched profiles.
@@ -208,7 +208,7 @@ namespace StatCraft.ViewModels
                         return;
 
                     CurrentMmrs.Clear();
-                    foreach ((Race race, long mmr) in byRace.OrderBy(kv => kv.Key))
+                    foreach ((LadderRace race, long mmr) in byRace.OrderBy(kv => kv.Key))
                         CurrentMmrs.Add(new RaceMmrViewModel(race, mmr));
                 });
             }

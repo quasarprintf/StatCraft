@@ -40,6 +40,14 @@ public class Sc2LadderServiceTests
         }
         """;
 
+    private const string RandomLadder = """
+        {
+          "ladderTeams": [
+            { "teamMembers": [ { "id": "1234567", "realm": 1, "region": 2, "favoriteRace": "random" } ], "mmr": 3900 }
+          ]
+        }
+        """;
+
     private static Sc2Profile EuProfile => new() { RegionId = "2", RealmId = "1", ProfileId = 1234567, Name = "TestPlayer" };
 
     [Fact]
@@ -47,7 +55,7 @@ public class Sc2LadderServiceTests
     {
         Sc2LadderService service = CreateService(SummaryWithOne1v1Ladder, LadderWithSelfProtoss);
 
-        long? mmr = await service.GetCurrentMmrAsync(EuProfile, 'P', CancellationToken.None);
+        long? mmr = await service.GetCurrentMmrAsync(EuProfile, LadderRace.P, CancellationToken.None);
 
         Assert.Equal(5239, mmr);
     }
@@ -57,7 +65,7 @@ public class Sc2LadderServiceTests
     {
         Sc2LadderService service = CreateService(SummaryWithOne1v1Ladder, LadderWithSelfProtoss);
 
-        long? mmr = await service.GetCurrentMmrAsync(EuProfile, 'P', CancellationToken.None);
+        long? mmr = await service.GetCurrentMmrAsync(EuProfile, LadderRace.P, CancellationToken.None);
 
         // 5739 is another player's team in the same ladder and must never be picked up.
         Assert.NotEqual(5739, mmr);
@@ -69,7 +77,7 @@ public class Sc2LadderServiceTests
         Sc2Profile stranger = new() { RegionId = "2", RealmId = "1", ProfileId = 12345, Name = "nobody" };
         Sc2LadderService service = CreateService(SummaryWithOne1v1Ladder, LadderWithSelfProtoss);
 
-        Assert.Null(await service.GetCurrentMmrAsync(stranger, 'P', CancellationToken.None));
+        Assert.Null(await service.GetCurrentMmrAsync(stranger, LadderRace.P, CancellationToken.None));
     }
 
     [Fact]
@@ -79,7 +87,7 @@ public class Sc2LadderServiceTests
         Sc2Profile otherRegion = new() { RegionId = "1", RealmId = "1", ProfileId = 1234567, Name = "TestPlayer" };
         Sc2LadderService service = CreateService(SummaryWithOne1v1Ladder, LadderWithSelfProtoss);
 
-        Assert.Null(await service.GetCurrentMmrAsync(otherRegion, 'P', CancellationToken.None));
+        Assert.Null(await service.GetCurrentMmrAsync(otherRegion, LadderRace.P, CancellationToken.None));
     }
 
     [Fact]
@@ -88,7 +96,7 @@ public class Sc2LadderServiceTests
         // A Random game's replay records the spawned race, which needn't match the queued ladder race.
         Sc2LadderService service = CreateService(SummaryWithOne1v1Ladder, LadderWithSelfProtoss);
 
-        Assert.Equal(5239, await service.GetCurrentMmrAsync(EuProfile, 'Z', CancellationToken.None));
+        Assert.Equal(5239, await service.GetCurrentMmrAsync(EuProfile, LadderRace.Z, CancellationToken.None));
     }
 
     [Fact]
@@ -120,7 +128,7 @@ public class Sc2LadderServiceTests
         Sc2LadderService service = CreateService(twoLadders, zergLadder, protossLadder);
 
         // Zerg ladder is visited first and would be the fallback, but the Protoss one is the real match.
-        Assert.Equal(5239, await service.GetCurrentMmrAsync(EuProfile, 'P', CancellationToken.None));
+        Assert.Equal(5239, await service.GetCurrentMmrAsync(EuProfile, LadderRace.P, CancellationToken.None));
     }
 
     [Fact]
@@ -129,7 +137,7 @@ public class Sc2LadderServiceTests
         const string empty = """{ "showCaseEntries": [], "placementMatches": [], "allLadderMemberships": [] }""";
         Sc2LadderService service = CreateService(empty);
 
-        Assert.Null(await service.GetCurrentMmrAsync(EuProfile, 'P', CancellationToken.None));
+        Assert.Null(await service.GetCurrentMmrAsync(EuProfile, LadderRace.P, CancellationToken.None));
     }
 
     [Fact]
@@ -146,7 +154,7 @@ public class Sc2LadderServiceTests
             """;
         Sc2LadderService service = CreateService(teamOnly);
 
-        Assert.Null(await service.GetCurrentMmrAsync(EuProfile, 'P', CancellationToken.None));
+        Assert.Null(await service.GetCurrentMmrAsync(EuProfile, LadderRace.P, CancellationToken.None));
     }
 
     [Fact]
@@ -155,7 +163,7 @@ public class Sc2LadderServiceTests
         StubHandler handler = new();
         Sc2LadderService service = new(new HttpClient(handler), new StubTokenProvider(null), new MockLogger());
 
-        Assert.Null(await service.GetCurrentMmrAsync(EuProfile, 'P', CancellationToken.None));
+        Assert.Null(await service.GetCurrentMmrAsync(EuProfile, LadderRace.P, CancellationToken.None));
         Assert.Equal(0, handler.RequestCount);
     }
 
@@ -166,7 +174,7 @@ public class Sc2LadderServiceTests
         handler.Enqueue(HttpStatusCode.ServiceUnavailable, "");
         Sc2LadderService service = new(new HttpClient(handler), new StubTokenProvider("token"), new MockLogger());
 
-        Assert.Null(await service.GetCurrentMmrAsync(EuProfile, 'P', CancellationToken.None));
+        Assert.Null(await service.GetCurrentMmrAsync(EuProfile, LadderRace.P, CancellationToken.None));
     }
 
     [Fact]
@@ -197,26 +205,67 @@ public class Sc2LadderServiceTests
 
         Sc2LadderService service = CreateService(twoLadders, protossLadder, zergLadder);
 
-        IReadOnlyDictionary<Race, long> byRace = await service.GetCurrentMmrByRaceAsync(EuProfile, CancellationToken.None);
+        IReadOnlyDictionary<LadderRace, long> byRace = await service.GetCurrentMmrByRaceAsync(EuProfile, CancellationToken.None);
 
         Assert.Equal(2, byRace.Count);
-        Assert.Equal(5239, byRace[Race.P]);
-        Assert.Equal(4100, byRace[Race.Z]);
+        Assert.Equal(5239, byRace[LadderRace.P]);
+        Assert.Equal(4100, byRace[LadderRace.Z]);
     }
 
     [Fact]
-    public async Task GetCurrentMmrByRace_SkipsTeamsWithoutAKnownRace()
+    public async Task GetCurrentMmrByRace_IncludesRandomLadder()
     {
-        const string randomLadder = """
+        // Random is its own ladder with its own rating, not an absence of a race.
+        Sc2LadderService service = CreateService(SummaryWithOne1v1Ladder, RandomLadder);
+
+        IReadOnlyDictionary<LadderRace, long> byRace = await service.GetCurrentMmrByRaceAsync(EuProfile, CancellationToken.None);
+
+        Assert.Equal(3900, byRace[LadderRace.R]);
+    }
+
+    [Fact]
+    public async Task GetCurrentMmrByRace_SkipsUnrecognisedRace()
+    {
+        const string oddLadder = """
             {
               "ladderTeams": [
-                { "teamMembers": [ { "id": "1234567", "realm": 1, "region": 2, "favoriteRace": "random" } ], "mmr": 3900 }
+                { "teamMembers": [ { "id": "1234567", "realm": 1, "region": 2, "favoriteRace": "xelnaga" } ], "mmr": 3900 }
               ]
             }
             """;
-        Sc2LadderService service = CreateService(SummaryWithOne1v1Ladder, randomLadder);
+        Sc2LadderService service = CreateService(SummaryWithOne1v1Ladder, oddLadder);
 
         Assert.Empty(await service.GetCurrentMmrByRaceAsync(EuProfile, CancellationToken.None));
+    }
+
+    [Fact]
+    public async Task GetCurrentMmr_RandomQueue_PrefersRandomLadderOverSpawnedRace()
+    {
+        // A Random player who also ladders Protoss must not have a Protoss game's rating attributed to
+        // them just because Random happened to spawn Protoss that game.
+        const string twoLadders = """
+            {
+              "allLadderMemberships": [
+                { "ladderId": "1", "localizedGameMode": "1v1 Master", "rank": 1 },
+                { "ladderId": "2", "localizedGameMode": "1v1 Diamond", "rank": 2 }
+              ]
+            }
+            """;
+        Sc2LadderService service = CreateService(twoLadders, LadderWithSelfProtoss, RandomLadder);
+
+        Assert.Equal(3900, await service.GetCurrentMmrAsync(EuProfile, LadderRace.R, CancellationToken.None));
+    }
+
+    [Theory]
+    [InlineData('P', false, LadderRace.P)]
+    [InlineData('Z', false, LadderRace.Z)]
+    [InlineData('T', false, LadderRace.T)]
+    // Queueing Random earns Random MMR no matter which race actually spawned.
+    [InlineData('P', true, LadderRace.R)]
+    [InlineData('Z', true, LadderRace.R)]
+    public void FromPlayer_MapsSpawnedRaceAndRandomFlagToLadder(char spawned, bool random, LadderRace expected)
+    {
+        Assert.Equal(expected, LadderRaceExtensions.FromPlayer(spawned, random));
     }
 
     [Fact]
@@ -232,11 +281,11 @@ public class Sc2LadderServiceTests
             """;
         Sc2LadderService service = CreateService(mixedModes, LadderWithSelfProtoss);
 
-        IReadOnlyDictionary<Race, long> byRace = await service.GetCurrentMmrByRaceAsync(EuProfile, CancellationToken.None);
+        IReadOnlyDictionary<LadderRace, long> byRace = await service.GetCurrentMmrByRaceAsync(EuProfile, CancellationToken.None);
 
         // Only the 1v1 ladder is fetched at all, and only this profile's own team within it counts.
         RaceMmr single = Assert.Single(byRace.Select(kv => new RaceMmr(kv.Key, kv.Value)));
-        Assert.Equal(new RaceMmr(Race.P, 5239), single);
+        Assert.Equal(new RaceMmr(LadderRace.P, 5239), single);
     }
 
     [Fact]
@@ -247,7 +296,7 @@ public class Sc2LadderServiceTests
         Assert.Empty(await service.GetCurrentMmrByRaceAsync(EuProfile, CancellationToken.None));
     }
 
-    private record RaceMmr(Race Race, long Mmr);
+    private record RaceMmr(LadderRace Race, long Mmr);
 
     private static Sc2LadderService CreateService(params string[] responses)
     {

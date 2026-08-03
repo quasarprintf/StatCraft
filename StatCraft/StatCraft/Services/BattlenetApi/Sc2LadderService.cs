@@ -34,16 +34,15 @@ namespace StatCraft.Services.BattlenetApi
             _ => "https://us.api.blizzard.com",
         };
 
-        // Every 1v1 rating this profile currently holds, keyed by the race it was earned on. SC2 rates
-        // each race separately, so a player who ladders as more than one has more than one MMR and there
-        // is no single "current rating" to show. Empty whenever nothing could be determined.
-        public async Task<IReadOnlyDictionary<Race, long>> GetCurrentMmrByRaceAsync(Sc2Profile profile, CancellationToken cancellationToken)
+        // Every 1v1 rating this profile currently holds, keyed by the ladder it was earned on. SC2 rates
+        // each race separately — and Random separately again — so a player who ladders as more than one
+        // has more than one MMR and there is no single "current rating" to show. Empty whenever nothing
+        // could be determined.
+        public async Task<IReadOnlyDictionary<LadderRace, long>> GetCurrentMmrByRaceAsync(Sc2Profile profile, CancellationToken cancellationToken)
         {
-            Dictionary<Race, long> byRace = new();
-            foreach ((Race? race, long mmr) in await GetOwn1v1TeamsAsync(profile, cancellationToken))
+            Dictionary<LadderRace, long> byRace = new();
+            foreach ((LadderRace? race, long mmr) in await GetOwn1v1TeamsAsync(profile, cancellationToken))
             {
-                // Skip teams whose race the API doesn't pin down (e.g. queued as Random) — there's no
-                // race to file them under, though GetCurrentMmrAsync still falls back to them.
                 if (race.HasValue)
                     byRace.TryAdd(race.Value, mmr);
             }
@@ -54,24 +53,24 @@ namespace StatCraft.Services.BattlenetApi
         // Returns null whenever MMR can't be determined — no credentials, network failure, or (commonly)
         // the profile simply has no placed ladder for the current season. None of those are errors worth
         // interrupting a replay import over.
-        public async Task<long?> GetCurrentMmrAsync(Sc2Profile profile, char race, CancellationToken cancellationToken)
+        public async Task<long?> GetCurrentMmrAsync(Sc2Profile profile, LadderRace ladderRace, CancellationToken cancellationToken)
         {
-            List<(Race? Race, long Mmr)> teams = await GetOwn1v1TeamsAsync(profile, cancellationToken);
+            List<(LadderRace? Race, long Mmr)> teams = await GetOwn1v1TeamsAsync(profile, cancellationToken);
 
-            foreach ((Race? teamRace, long mmr) in teams)
-                if (teamRace.HasValue && MatchesRace(teamRace.Value, race))
+            foreach ((LadderRace? teamRace, long mmr) in teams)
+                if (teamRace == ladderRace)
                     return mmr;
 
-            // No exact race match: fall back to any rating this profile holds, so a Random game — whose
-            // replay records the spawned race rather than the queued one — still resolves to something.
+            // No exact ladder match — fall back to any rating this profile holds rather than reporting
+            // nothing, since a single-ladder player is overwhelmingly the common case.
             return teams.Count > 0 ? teams[0].Mmr : null;
         }
 
         // Shared fetch behind both public methods: resolves every 1v1 ladder this profile sits in and
         // pulls out the team row that is actually theirs.
-        private async Task<List<(Race? Race, long Mmr)>> GetOwn1v1TeamsAsync(Sc2Profile profile, CancellationToken cancellationToken)
+        private async Task<List<(LadderRace? Race, long Mmr)>> GetOwn1v1TeamsAsync(Sc2Profile profile, CancellationToken cancellationToken)
         {
-            List<(Race? Race, long Mmr)> results = [];
+            List<(LadderRace? Race, long Mmr)> results = [];
 
             string? token = await tokenProvider.GetTokenAsync(cancellationToken);
             if (token == null)
@@ -110,21 +109,22 @@ namespace StatCraft.Services.BattlenetApi
             && member.Realm.ToString() == profile.RealmId
             && member.Region.ToString() == profile.RegionId;
 
-        private static Race? ParseRace(string? favoriteRace) => favoriteRace?.ToLowerInvariant() switch
+        private LadderRace? ParseRace(string? favoriteRace)
         {
-            "zerg" => Race.Z,
-            "terran" => Race.T,
-            "protoss" => Race.P,
-            _ => null,
-        };
-
-        private static bool MatchesRace(Race ladderRace, char replayRace) => (ladderRace, replayRace) switch
-        {
-            (Race.Z, 'Z') => true,
-            (Race.T, 'T') => true,
-            (Race.P, 'P') => true,
-            _ => false,
-        };
+            switch (favoriteRace?.ToLowerInvariant())
+            {
+                case "zerg": return LadderRace.Z;
+                case "terran": return LadderRace.T;
+                case "protoss": return LadderRace.P;
+                case "random": return LadderRace.R;
+                case null or "": return null;
+                default:
+                    // Logged rather than silently dropped: an unrecognised value here means Blizzard uses
+                    // a token we don't know about, which would quietly hide that ladder's rating.
+                    logger.LogWarning($"Unrecognised ladder favoriteRace \"{favoriteRace}\"; its rating will be ignored.");
+                    return null;
+            }
+        }
 
         private async Task<T?> GetJsonAsync<T>(string url, string token, CancellationToken cancellationToken) where T : class
         {

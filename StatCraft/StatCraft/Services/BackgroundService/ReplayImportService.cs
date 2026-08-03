@@ -1,6 +1,7 @@
 using s2protocol.NET;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Race;
 using StatCraft.Services.BattlenetApi;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
@@ -99,11 +100,17 @@ namespace StatCraft.Services.BackgroundService
                 if (gamePlayerId == null)
                     return;
 
+                // Queueing as Random earns Random MMR whatever race then spawned, so the ladder to watch
+                // comes from the flag rather than from the race the replay recorded.
+                LadderRace? ladderRace = LadderRaceExtensions.FromPlayer(replay.Player.Race, replay.Player.Random);
+                if (ladderRace == null)
+                    return;
+
                 foreach (TimeSpan delay in MmrPollDelays)
                 {
                     await Task.Delay(delay, CancellationToken.None);
 
-                    long? currentMmr = await ladderService.GetCurrentMmrAsync(profile, replay.Player.Race, CancellationToken.None);
+                    long? currentMmr = await ladderService.GetCurrentMmrAsync(profile, ladderRace.Value, CancellationToken.None);
                     if (currentMmr == null || currentMmr == replay.Player.Mmr)
                         continue;
 
