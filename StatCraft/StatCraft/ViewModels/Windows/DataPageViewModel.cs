@@ -11,9 +11,12 @@ using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
+using System.Threading;
 using StatCraft.Services.BackgroundService;
+using StatCraft.Services.BattlenetApi;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
+using StatCraft.Services.DataParsing;
 
 namespace StatCraft.ViewModels
 {
@@ -25,6 +28,7 @@ namespace StatCraft.ViewModels
         private readonly AccountRepository _accountRepository;
         private readonly BuildRepository _buildRepository;
         private readonly GameDataRepository _gameDataRepository;
+        private readonly Sc2LadderService _ladderService;
         private readonly Dictionary<(Race Player, Matchups Opponent), ObservableCollection<BuildNode>> _buildTreeCache = new();
         private bool _buildTreeCacheDirty;
 
@@ -36,7 +40,7 @@ namespace StatCraft.ViewModels
 
         public DataPageViewModel(SettingsRepository settingsRepository, ReplayWatcherService replayWatcherService,
             ReplayImportService replayImportService, AccountRepository accountRepository, BuildRepository buildRepository,
-            GameDataRepository gameDataRepository)
+            GameDataRepository gameDataRepository, Sc2LadderService ladderService)
         {
             _settingsRepository = settingsRepository;
             _replayWatcherService = replayWatcherService;
@@ -44,6 +48,7 @@ namespace StatCraft.ViewModels
             _accountRepository = accountRepository;
             _buildRepository = buildRepository;
             _gameDataRepository = gameDataRepository;
+            _ladderService = ladderService;
             _replayWatcherService.NewReplayFileFound += OnNewReplayFileFound;
             _replayImportService.GameParsed += OnGameParsed;
             _replayImportService.GameMmrUpdated += OnGameMmrUpdated;
@@ -71,6 +76,11 @@ namespace StatCraft.ViewModels
         public bool HasActiveSession => ActiveProfile != null;
 
         public ObservableCollection<GameDataRowViewModel> Games { get; } = [];
+
+        // The active session profile's current ladder rating, one entry per race it has placed in. Empty
+        // until the lookup completes, and stays empty when there's nothing to show (no saved API
+        // credentials, or a profile with no current-season ladder).
+        public ObservableCollection<RaceMmrViewModel> CurrentMmrs { get; } = [];
 
         public event Action? SessionRequested;
 
@@ -114,9 +124,15 @@ namespace StatCraft.ViewModels
             {
                 _loadedGames = [];
                 Games.Clear();
+                CurrentMmrs.Clear();
                 await _replayWatcherService.Stop();
                 return;
             }
+
+            // Not awaited: a network round-trip shouldn't hold up the session starting or the games
+            // table appearing. The header simply fills in whenever the lookup lands.
+            CurrentMmrs.Clear();
+            _ = LoadCurrentMmrs(profile);
 
             // Every session start collapses the profile filter back to just this profile and the date
             // range back to today, per spec, even if the user had broadened either beforehand.
@@ -158,7 +174,49 @@ namespace StatCraft.ViewModels
         private void OnGameMmrUpdated(GameData game) => Dispatcher.UIThread.Post(() =>
         {
             Games.FirstOrDefault(row => row.GameId == game.GameId)?.RefreshMmrChange();
+
+            // The freshly-observed rating is by definition this profile's current one for the race just
+            // played, so the header can be updated straight from it rather than re-querying the API.
+            GamePlayer self = game.ReplayData.Player;
+            if (self.MmrAfter is { } mmrAfter && self.Race.AsRace() is { } race)
+                UpsertCurrentMmr(race, mmrAfter);
         });
+
+        // Keeps CurrentMmrs sorted by race so entries don't jump around as they're replaced.
+        private void UpsertCurrentMmr(Race race, long mmr)
+        {
+            RaceMmrViewModel? existing = CurrentMmrs.FirstOrDefault(m => m.Race == race);
+            if (existing != null)
+                CurrentMmrs.Remove(existing);
+
+            RaceMmrViewModel updated = new(race, mmr);
+            int index = 0;
+            while (index < CurrentMmrs.Count && CurrentMmrs[index].Race < race)
+                index++;
+            CurrentMmrs.Insert(index, updated);
+        }
+
+        private async Task LoadCurrentMmrs(Sc2Profile profile)
+        {
+            try
+            {
+                IReadOnlyDictionary<Race, long> byRace = await _ladderService.GetCurrentMmrByRaceAsync(profile, CancellationToken.None);
+                Dispatcher.UIThread.Post(() =>
+                {
+                    // Guard against a slow lookup landing after the user already switched profiles.
+                    if (ActiveProfile?.Id != profile.Id)
+                        return;
+
+                    CurrentMmrs.Clear();
+                    foreach ((Race race, long mmr) in byRace.OrderBy(kv => kv.Key))
+                        CurrentMmrs.Add(new RaceMmrViewModel(race, mmr));
+                });
+            }
+            catch (Exception)
+            {
+                // Best-effort: the header just stays empty if the rating can't be fetched.
+            }
+        }
 
         // Don't reload immediately — builds can change many times in a row while editing on the Builds
         // tab. Just remember a reload is owed, and pay for it once when the user actually comes back
