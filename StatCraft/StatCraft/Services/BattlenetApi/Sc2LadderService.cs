@@ -83,7 +83,7 @@ namespace StatCraft.Services.BattlenetApi
             if (summary?.AllLadderMemberships == null)
                 return results;
 
-            // 1v1 only: team modes have their own MMR that doesn't correspond to a solo replay's rating.
+            // 1v1 only: it's not obvious which team to load for 2v2/3v3/4v4 since it's separate for each teammate
             List<LadderMembership> candidates = summary.AllLadderMemberships
                 .Where(m => m.LocalizedGameMode?.StartsWith("1v1", StringComparison.OrdinalIgnoreCase) == true)
                 .ToList();
