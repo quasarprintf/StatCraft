@@ -40,8 +40,8 @@ namespace StatCraft.ViewModels
 
         public IBrush MmrChangeColor => _game.ReplayData.Player.MmrChange switch
         {
-            > 0 => Styles.Colors.ProtossGreen,
-            < 0 => Styles.Colors.ZergRed,
+            > 0 => Styles.Colors.WinGreen,
+            < 0 => Styles.Colors.LossRed,
             _ => Brushes.Gray,
         };
 
@@ -73,9 +73,9 @@ namespace StatCraft.ViewModels
             ResultLabel = outcome switch { GameOutcome.Win => "Win", GameOutcome.Loss => "Loss", _ => "Draw" };
             ResultColor = outcome switch
             {
-                GameOutcome.Win => Styles.Colors.ProtossGreen,
-                GameOutcome.Loss => Styles.Colors.ZergRed,
-                _ => Styles.Colors.TerranBlue,
+                GameOutcome.Win => Styles.Colors.WinGreen,
+                GameOutcome.Loss => Styles.Colors.LossRed,
+                _ => Styles.Colors.DrawBlue,
             };
             GameLength = TimeSpan.FromSeconds(replay.GameLengthSeconds).ToString(@"mm\:ss");
             Matchup = $"{replay.Player.Race}{string.Concat(replay.Allies.Select(a => a.Race))}v{string.Concat(replay.Opponents.Select(o => o.Race))}";
