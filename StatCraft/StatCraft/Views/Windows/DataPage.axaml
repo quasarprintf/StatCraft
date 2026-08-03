@@ -21,10 +21,10 @@
     </UserControl.Styles>
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="8">
-            <TextBlock Text="{Binding ActiveProfileLabel}" FontSize="16" VerticalAlignment="Center"/>
             <Button Content="Begin Session" Command="{Binding BeginSessionCommand}"/>
             <Button Content="Import Replay" Command="{Binding ImportReplayCommand}" IsVisible="{Binding HasActiveSession}"/>
 
+            <TextBlock Text="{Binding ActiveProfileLabel}" FontSize="16" VerticalAlignment="Center"/>
             <!-- One entry per race the active profile has a current ladder rating on. -->
             <ItemsControl ItemsSource="{Binding CurrentMmrs}" VerticalAlignment="Center">
                 <ItemsControl.ItemsPanel>
