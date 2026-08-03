@@ -31,6 +31,20 @@ namespace StatCraft.ViewModels
         public string ResultLabel { get; }
         public IBrush ResultColor { get; }
         public string GameLength { get; }
+
+        // Blank until the post-game rating has been resolved (and permanently blank for games where it
+        // never can be — unranked, team games, or no saved API credentials). Not get-only-at-construction
+        // like the rest: MMR arrives asynchronously minutes after the row already exists, so these are
+        // computed on demand and re-announced by RefreshMmrChange.
+        public string MmrChangeLabel => _game.ReplayData.Player.MmrChange is { } change ? change.ToString("+#;-#;0") : "";
+
+        public IBrush MmrChangeColor => _game.ReplayData.Player.MmrChange switch
+        {
+            > 0 => Styles.Colors.ProtossGreen,
+            < 0 => Styles.Colors.ZergRed,
+            _ => Brushes.Gray,
+        };
+
         public string Matchup { get; }
         public IReadOnlyList<ColoredCharacter> MatchupCharacters { get; }
         public string OpponentName { get; }
@@ -94,6 +108,14 @@ namespace StatCraft.ViewModels
             SelfTracker.RefreshAttributeEditors();
             foreach (PlayerBuildTrackerViewModel other in OtherPlayers)
                 other.RefreshAttributeEditors();
+        }
+
+        // Called once the post-game MMR poll resolves, since the underlying GamePlayer is mutated
+        // directly rather than replaced and so raises no change notification of its own.
+        public void RefreshMmrChange()
+        {
+            OnPropertyChanged(nameof(MmrChangeLabel));
+            OnPropertyChanged(nameof(MmrChangeColor));
         }
 
         private static List<ColoredCharacter> BuildMatchupCharacters(ParsedReplayData replay)

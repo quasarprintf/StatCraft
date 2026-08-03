@@ -100,6 +100,14 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="MMR Δ">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:GameDataRowViewModel">
+                            <TextBlock Text="{Binding MmrChangeLabel}" Foreground="{Binding MmrChangeColor}"
+                                       VerticalAlignment="Center" Margin="4,0"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Length" Binding="{Binding GameLength}" IsReadOnly="True"/>
                 <DataGridTemplateColumn Header="Matchup">
                     <DataGridTemplateColumn.CellTemplate>

@@ -52,6 +52,7 @@ namespace StatCraft.Services.DatabaseRepository
                     Name      TEXT    NOT NULL DEFAULT '',
                     Clan      TEXT    NOT NULL DEFAULT '',
                     Mmr       INTEGER NOT NULL DEFAULT 0,
+                    MmrAfter  INTEGER,
                     Race      TEXT    NOT NULL DEFAULT '',
                     Random    INTEGER NOT NULL DEFAULT 0
                 );
@@ -80,6 +81,19 @@ namespace StatCraft.Services.DatabaseRepository
                 conn.Execute(@"
                     ALTER TABLE Games ADD COLUMN ReplayTimestamp TEXT NOT NULL DEFAULT '';
                     UPDATE Games SET ReplayTimestamp = CreatedAtUtc WHERE ReplayTimestamp = '';");
+            }
+            catch (SqliteException)
+            {
+                // Already migrated, or a fresh DB already created with the new schema.
+            }
+
+            // Upgrades a pre-existing DB that predates post-game MMR tracking. Deliberately left NULL
+            // rather than backfilled: MMR after a game can only be observed shortly after it's played, so
+            // historical rows genuinely have no value to recover, and NULL is already how "unknown" is
+            // represented everywhere downstream.
+            try
+            {
+                conn.Execute("ALTER TABLE GamePlayers ADD COLUMN MmrAfter INTEGER;");
             }
             catch (SqliteException)
             {
@@ -292,6 +306,7 @@ namespace StatCraft.Services.DatabaseRepository
             public string Name { get; set; } = "";
             public string Clan { get; set; } = "";
             public long Mmr { get; set; }
+            public long? MmrAfter { get; set; }
             public char Race { get; set; }
             public bool Random { get; set; }
         }
@@ -336,10 +351,10 @@ namespace StatCraft.Services.DatabaseRepository
             Dictionary<long, GamePlayer> selfPlayers = new(); // Games.Id -> self GamePlayer
             Dictionary<long, GamePlayer> playersById = new(); // GamePlayers.Id -> GamePlayer, every side
             IEnumerable<GamePlayerRow> playerRows = conn.Query<GamePlayerRow>(
-                $"SELECT Id, GameId, Side, Name, Clan, Mmr, Race, Random FROM GamePlayers WHERE GameId IN ({idList}) ORDER BY GameId, Side, SortOrder");
+                $"SELECT Id, GameId, Side, Name, Clan, Mmr, MmrAfter, Race, Random FROM GamePlayers WHERE GameId IN ({idList}) ORDER BY GameId, Side, SortOrder");
             foreach (GamePlayerRow row in playerRows)
             {
-                GamePlayer player = new() { GamePlayerId = (int)row.Id, Name = row.Name, Clan = row.Clan, Mmr = row.Mmr, Race = row.Race, Random = row.Random };
+                GamePlayer player = new() { GamePlayerId = (int)row.Id, Name = row.Name, Clan = row.Clan, Mmr = row.Mmr, MmrAfter = row.MmrAfter, Race = row.Race, Random = row.Random };
                 playersById[row.Id] = player;
 
                 if (row.Side == SideSelf)
@@ -427,6 +442,14 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
             conn.Execute("UPDATE Games SET Notes = @notes WHERE Id = @id", new { notes, id = gameId });
+        }
+
+        // Records the tracked player's post-game ladder MMR, observed from the Battle.net API after the
+        // replay was imported (see ReplayImportService's polling).
+        public void UpdateGamePlayerMmrAfter(int gamePlayerId, long mmrAfter)
+        {
+            using SqliteConnection conn = OpenConnection();
+            conn.Execute("UPDATE GamePlayers SET MmrAfter = @mmrAfter WHERE Id = @id", new { mmrAfter, id = gamePlayerId });
         }
 
         // Cascades to GamePlayers (ON DELETE CASCADE), which in turn cascades to that game's

@@ -125,6 +125,8 @@ namespace StatCraft
             services.AddSingleton(new HttpClient());
             services.AddSingleton<BattleNetAuthService>();
             services.AddSingleton<StarCraft2ProfileService>();
+            services.AddSingleton<BlizzardAppTokenProvider>();
+            services.AddSingleton<Sc2LadderService>();
 
             services.AddTransient<BuildsPageViewModel>();
             services.AddTransient<DataPageViewModel>();

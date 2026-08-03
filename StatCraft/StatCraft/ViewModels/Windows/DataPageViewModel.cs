@@ -46,6 +46,7 @@ namespace StatCraft.ViewModels
             _gameDataRepository = gameDataRepository;
             _replayWatcherService.NewReplayFileFound += OnNewReplayFileFound;
             _replayImportService.GameParsed += OnGameParsed;
+            _replayImportService.GameMmrUpdated += OnGameMmrUpdated;
             _buildRepository.BuildsChanged += OnBuildsChanged;
 
             Filters = new DataPageFiltersViewModel(buildRepository);
@@ -149,6 +150,14 @@ namespace StatCraft.ViewModels
                 return;
             _loadedGames.Add(game);
             ApplyFilters();
+        });
+
+        // Arrives minutes after the game was imported, on a background polling task. The row's underlying
+        // GamePlayer has already been mutated in place, so this only needs to prompt the row to
+        // re-announce its derived MMR properties — no reload or re-filter.
+        private void OnGameMmrUpdated(GameData game) => Dispatcher.UIThread.Post(() =>
+        {
+            Games.FirstOrDefault(row => row.GameId == game.GameId)?.RefreshMmrChange();
         });
 
         // Don't reload immediately — builds can change many times in a row while editing on the Builds

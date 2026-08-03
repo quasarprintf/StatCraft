@@ -201,6 +201,57 @@ public class GameDataRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void InsertGame_MmrAfterStartsNull()
+    {
+        GameData game = CreateGame();
+        _repository.InsertGame(game, _sc2ProfileId);
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        Assert.Null(loaded.ReplayData.Player.MmrAfter);
+        Assert.Null(loaded.ReplayData.Player.MmrChange);
+    }
+
+    [Fact]
+    public void UpdateGamePlayerMmrAfter_ThenReload_PersistsValueAndDerivesChange()
+    {
+        GameData game = CreateGame();
+        _repository.InsertGame(game, _sc2ProfileId);
+
+        // CreateGame gives the self player an Mmr of 3000 going into the game.
+        _repository.UpdateGamePlayerMmrAfter(game.ReplayData.Player.GamePlayerId!.Value, 3024);
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        Assert.Equal(3024, loaded.ReplayData.Player.MmrAfter);
+        Assert.Equal(24, loaded.ReplayData.Player.MmrChange);
+    }
+
+    [Fact]
+    public void UpdateGamePlayerMmrAfter_LowerThanBefore_YieldsNegativeChange()
+    {
+        GameData game = CreateGame();
+        _repository.InsertGame(game, _sc2ProfileId);
+
+        _repository.UpdateGamePlayerMmrAfter(game.ReplayData.Player.GamePlayerId!.Value, 2976);
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        Assert.Equal(-24, loaded.ReplayData.Player.MmrChange);
+    }
+
+    [Fact]
+    public void UpdateGamePlayerMmrAfter_DoesNotTouchOtherPlayers()
+    {
+        GamePlayer opponent = new() { Name = "Foe", Clan = "", Mmr = 3100, Race = 'Z', Random = false };
+        GameData game = CreateGame(opponents: [opponent]);
+        _repository.InsertGame(game, _sc2ProfileId);
+
+        _repository.UpdateGamePlayerMmrAfter(game.ReplayData.Player.GamePlayerId!.Value, 3024);
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        Assert.Equal(3024, loaded.ReplayData.Player.MmrAfter);
+        Assert.Null(Assert.Single(loaded.ReplayData.Opponents).MmrAfter);
+    }
+
+    [Fact]
     public void UpdateGameNotes_ThenReload_PersistsNotes()
     {
         GameData game = CreateGame();

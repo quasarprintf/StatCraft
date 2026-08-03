@@ -15,8 +15,10 @@ namespace StatCraft.ViewModels
 
     public partial class LinkAccountViewModel : ViewModelBase
     {
-        private const string ClientIdSettingKey = "BlizzardClientId";
-        private const string ClientSecretSettingKey = "BlizzardClientSecretEncryptedB64";
+        // Shared with BlizzardAppTokenProvider, which reads the same saved credentials to mint app
+        // tokens for the ladder endpoints — these keys must not drift apart.
+        private const string ClientIdSettingKey = BlizzardAppTokenProvider.ClientIdSettingKey;
+        private const string ClientSecretSettingKey = BlizzardAppTokenProvider.ClientSecretSettingKey;
 
         private readonly AccountRepository _accountRepository;
         private readonly TokenProtector _tokenProtector;
