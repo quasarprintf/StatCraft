@@ -31,7 +31,6 @@ namespace StatCraft.Views
             // default — entering edit mode (and focusing the editor) normally needs a second click on
             // an already-current cell. Force both to happen on the very first click instead.
             GamesGrid.CellPointerPressed += OnGamesGridCellPointerPressed;
-            GamesGrid.PreparingCellForEdit += OnGamesGridPreparingCellForEdit;
         }
 
         private static bool IsNotesColumn(DataGridColumn column) => column.Header as string == "Notes";
@@ -43,12 +42,6 @@ namespace StatCraft.Views
             GamesGrid.SelectedItem = e.Row.DataContext;
             GamesGrid.CurrentColumn = e.Column;
             GamesGrid.BeginEdit();
-        }
-
-        private void OnGamesGridPreparingCellForEdit(object? sender, DataGridPreparingCellForEditEventArgs e)
-        {
-            if (IsNotesColumn(e.Column))
-                e.EditingElement.Focus();
         }
 
         // TabControl detaches an inactive tab's content from the visual tree rather than just hiding
