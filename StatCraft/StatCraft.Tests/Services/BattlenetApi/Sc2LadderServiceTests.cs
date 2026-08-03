@@ -7,8 +7,9 @@ using StatCraft.Tests.Mocks;
 
 namespace StatCraft.Tests;
 
-// JSON fixtures below are trimmed copies of real responses captured from the live Battle.net API, so
-// the property names and nesting here match what the service actually has to parse.
+// JSON fixtures below preserve the exact property names and nesting of real Battle.net API responses,
+// which is what the service has to parse — but every profile id and display name in them is synthetic,
+// so the suite isn't pinned to any one real account.
 public class Sc2LadderServiceTests
 {
     private const string SummaryWithOne1v1Ladder = """
