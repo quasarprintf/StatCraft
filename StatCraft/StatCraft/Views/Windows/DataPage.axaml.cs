@@ -26,6 +26,29 @@ namespace StatCraft.Views
             vm.DeleteGameConfirmationRequested += async row => await OnDeleteGameConfirmationRequestedAsync(row);
             vm.ImportReplayRequested += async () => await OnImportReplayRequestedAsync();
             DataContext = vm;
+
+            // A single click on the Notes cell of a not-yet-selected row only selects the row by
+            // default — entering edit mode (and focusing the editor) normally needs a second click on
+            // an already-current cell. Force both to happen on the very first click instead.
+            GamesGrid.CellPointerPressed += OnGamesGridCellPointerPressed;
+            GamesGrid.PreparingCellForEdit += OnGamesGridPreparingCellForEdit;
+        }
+
+        private static bool IsNotesColumn(DataGridColumn column) => column.Header as string == "Notes";
+
+        private void OnGamesGridCellPointerPressed(object? sender, DataGridCellPointerPressedEventArgs e)
+        {
+            if (!IsNotesColumn(e.Column)) return;
+
+            GamesGrid.SelectedItem = e.Row.DataContext;
+            GamesGrid.CurrentColumn = e.Column;
+            GamesGrid.BeginEdit();
+        }
+
+        private void OnGamesGridPreparingCellForEdit(object? sender, DataGridPreparingCellForEditEventArgs e)
+        {
+            if (IsNotesColumn(e.Column))
+                e.EditingElement.Focus();
         }
 
         // TabControl detaches an inactive tab's content from the visual tree rather than just hiding

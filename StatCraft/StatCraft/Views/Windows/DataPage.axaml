@@ -76,7 +76,7 @@
             </Button>
         </Grid>
 
-        <DataGrid ItemsSource="{Binding Games}" AutoGenerateColumns="False"
+        <DataGrid x:Name="GamesGrid" ItemsSource="{Binding Games}" AutoGenerateColumns="False"
                   RowDetailsVisibilityMode="VisibleWhenSelected" GridLinesVisibility="Horizontal">
             <DataGrid.Columns>
                 <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False">
