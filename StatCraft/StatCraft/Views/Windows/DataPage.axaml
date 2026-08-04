@@ -118,8 +118,8 @@
                 <DataGridTemplateColumn Header="MMR Δ">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vm:GameDataRowViewModel">
-                            <TextBlock Text="{Binding MmrChangeLabel}" Foreground="{Binding MmrChangeColor}"
-                                       VerticalAlignment="Center" Margin="4,0"/>
+                            <component:ColoredTextBlock Characters="{Binding MmrChangeCharacters}"
+                                                        VerticalAlignment="Center" Margin="4,0"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>

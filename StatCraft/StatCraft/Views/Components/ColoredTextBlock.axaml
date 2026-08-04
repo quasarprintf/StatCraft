@@ -11,7 +11,14 @@
         </ItemsControl.ItemsPanel>
         <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="style:ColoredCharacter">
-                <TextBlock Text="{Binding Text}" Foreground="{Binding Color}"/>
+                <TextBlock Text="{Binding Text}">
+                    <TextBlock.Foreground>
+                        <MultiBinding Converter="{x:Static local:ColoredTextBlock.ColorOrInherited}">
+                            <Binding Path="Color"/>
+                            <Binding Path="Foreground" RelativeSource="{RelativeSource AncestorType=local:ColoredTextBlock}"/>
+                        </MultiBinding>
+                    </TextBlock.Foreground>
+                </TextBlock>
             </DataTemplate>
         </ItemsControl.ItemTemplate>
     </ItemsControl>

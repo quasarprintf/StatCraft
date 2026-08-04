@@ -32,18 +32,30 @@ namespace StatCraft.ViewModels
         public IBrush ResultColor { get; }
         public string GameLength { get; }
 
-        // Blank until the post-game rating has been resolved (and permanently blank for games where it
-        // never can be — unranked, team games, or no saved API credentials). Not get-only-at-construction
-        // like the rest: MMR arrives asynchronously minutes after the row already exists, so these are
-        // computed on demand and re-announced by RefreshMmrChange.
-        public string MmrChangeLabel => _game.ReplayData.Player.MmrChange is { } change ? change.ToString("+#;-#;0") : "";
-
-        public IBrush MmrChangeColor => _game.ReplayData.Player.MmrChange switch
+        // Post-game rating as "3024(+24)", with only the delta coloured — the rating itself is left
+        // uncoloured so it reads as ordinary text in whichever theme is active. Empty until the rating
+        // has been resolved, and permanently empty for games where it never can be (unranked, team
+        // games, or no saved API credentials). Not get-only-at-construction like the rest: MMR arrives
+        // asynchronously minutes after the row already exists, so it's computed on demand and
+        // re-announced by RefreshMmrChange.
+        public IReadOnlyList<ColoredCharacter> MmrChangeCharacters
         {
-            > 0 => Styles.Colors.WinGreen,
-            < 0 => Styles.Colors.LossRed,
-            _ => Brushes.Gray,
-        };
+            get
+            {
+                GamePlayer self = _game.ReplayData.Player;
+                if (self.MmrAfter is not { } after || self.MmrChange is not { } change)
+                    return [];
+
+                IBrush changeColor = change switch
+                {
+                    > 0 => Styles.Colors.WinGreen,
+                    < 0 => Styles.Colors.LossRed,
+                    _ => Brushes.Gray,
+                };
+
+                return [new ColoredCharacter(after.ToString()), new ColoredCharacter($"({change:+#;-#;0})", changeColor)];
+            }
+        }
 
         public string Matchup { get; }
         public IReadOnlyList<ColoredCharacter> MatchupCharacters { get; }
@@ -112,11 +124,7 @@ namespace StatCraft.ViewModels
 
         // Called once the post-game MMR poll resolves, since the underlying GamePlayer is mutated
         // directly rather than replaced and so raises no change notification of its own.
-        public void RefreshMmrChange()
-        {
-            OnPropertyChanged(nameof(MmrChangeLabel));
-            OnPropertyChanged(nameof(MmrChangeColor));
-        }
+        public void RefreshMmrChange() => OnPropertyChanged(nameof(MmrChangeCharacters));
 
         private static List<ColoredCharacter> BuildMatchupCharacters(ParsedReplayData replay)
         {
