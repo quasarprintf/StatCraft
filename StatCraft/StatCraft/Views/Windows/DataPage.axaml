@@ -22,6 +22,7 @@
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="8">
             <Button Content="Begin Session" Command="{Binding BeginSessionCommand}"/>
+            <Button Content="End Session" Command="{Binding EndSessionCommand}" IsVisible="{Binding HasActiveSession}"/>
             <Button Content="Import Replay" Command="{Binding ImportReplayCommand}" IsVisible="{Binding HasActiveSession}"/>
 
             <TextBlock Text="{Binding ActiveProfileLabel}" FontSize="16" VerticalAlignment="Center"/>

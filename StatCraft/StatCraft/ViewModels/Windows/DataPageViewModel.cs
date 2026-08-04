@@ -96,6 +96,12 @@ namespace StatCraft.ViewModels
         [RelayCommand]
         private void BeginSession() => SessionRequested?.Invoke();
 
+        // Clears the active session back to "no active session" — stops the replay watcher and empties
+        // the header/table — without deleting anything already recorded. Begin Session can still be used
+        // afterward to start a fresh one, for this profile or another.
+        [RelayCommand]
+        private async Task EndSession() => await SetActiveProfile(null);
+
         // Raised so the view can show a file picker and, if a file was chosen, call ImportReplayFile.
         public event Action? ImportReplayRequested;
 
