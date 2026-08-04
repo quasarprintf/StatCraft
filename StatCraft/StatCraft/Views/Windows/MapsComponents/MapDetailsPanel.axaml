@@ -15,10 +15,6 @@
                         Command="{Binding AddAttributeCommand}"
                         Padding="6,2" HorizontalAlignment="Right"/>
             </DockPanel>
-            <!-- Attributes are defined globally: adding, renaming, retyping or deleting one here does it
-                 for every map at once. Only the value below each definition belongs to this map. -->
-            <TextBlock Text="Definitions apply to every map; values are per map."
-                       FontSize="11" Opacity="0.7" TextWrapping="Wrap"/>
         </StackPanel>
 
         <ScrollViewer>
