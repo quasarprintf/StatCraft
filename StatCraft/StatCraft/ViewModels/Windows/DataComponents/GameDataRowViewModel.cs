@@ -38,13 +38,13 @@ namespace StatCraft.ViewModels
         // games, or no saved API credentials). Not get-only-at-construction like the rest: MMR arrives
         // asynchronously minutes after the row already exists, so it's computed on demand and
         // re-announced by RefreshMmrChange.
-        public IReadOnlyList<ColoredCharacter> MmrChangeCharacters
+        public IReadOnlyList<ColoredCharacter> MmrText
         {
             get
             {
                 GamePlayer self = _game.ReplayData.Player;
                 if (self.MmrAfter is not { } after || self.MmrChange is not { } change)
-                    return [];
+                    return [new ColoredCharacter(self.Mmr.ToString())];
 
                 IBrush changeColor = change switch
                 {
@@ -124,7 +124,7 @@ namespace StatCraft.ViewModels
 
         // Called once the post-game MMR poll resolves, since the underlying GamePlayer is mutated
         // directly rather than replaced and so raises no change notification of its own.
-        public void RefreshMmrChange() => OnPropertyChanged(nameof(MmrChangeCharacters));
+        public void RefreshMmrChange() => OnPropertyChanged(nameof(MmrText));
 
         private static List<ColoredCharacter> BuildMatchupCharacters(ParsedReplayData replay)
         {

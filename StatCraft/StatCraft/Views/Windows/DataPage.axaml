@@ -115,10 +115,10 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="MMR Δ">
+                <DataGridTemplateColumn Header="MMR(Δ)">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vm:GameDataRowViewModel">
-                            <component:ColoredTextBlock Characters="{Binding MmrChangeCharacters}"
+                            <component:ColoredTextBlock Characters="{Binding MmrText}"
                                                         VerticalAlignment="Center" Margin="4,0"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
