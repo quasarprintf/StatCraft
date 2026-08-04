@@ -86,6 +86,11 @@ namespace StatCraft.ViewModels
         // then. Reset on every session start; a ladder absent here has no baseline to measure against.
         private readonly Dictionary<LadderRace, long> _sessionStartMmrs = [];
 
+        // Win/loss over exactly the games the table is currently showing, aggregated across every ladder
+        // race and game mode. Recomputed by ApplyFilters, so narrowing to a matchup or map reports the
+        // rate for that matchup or map. Blank when nothing is in view.
+        [ObservableProperty] private string _winRateLabel = "";
+
         public event Action? SessionRequested;
 
         [RelayCommand]
@@ -128,6 +133,7 @@ namespace StatCraft.ViewModels
             {
                 _loadedGames = [];
                 Games.Clear();
+                WinRateLabel = "";
                 CurrentMmrs.Clear();
                 _sessionStartMmrs.Clear();
                 await _replayWatcherService.Stop();
@@ -303,9 +309,17 @@ namespace StatCraft.ViewModels
         private void ApplyFilters()
         {
             GameFilterCriteria criteria = Filters.BuildCriteria();
+            List<GameData> matching = _loadedGames
+                .Where(g => GameDataFilter.Matches(g, criteria))
+                .OrderBy(g => g.ReplayData.ReplayTimestamp)
+                .ToList();
+
             Games.Clear();
-            foreach (GameData game in _loadedGames.Where(g => GameDataFilter.Matches(g, criteria)).OrderBy(g => g.ReplayData.ReplayTimestamp))
+            foreach (GameData game in matching)
                 Games.Add(WrapGame(game));
+
+            // Derived from the same set the table shows, so the two can never disagree.
+            WinRateLabel = WinLossRecord.From(matching.Select(g => GameOutcomeExtensions.FromWin(g.ReplayData.Win))).Label;
         }
 
         private GameDataRowViewModel WrapGame(GameData game) =>
