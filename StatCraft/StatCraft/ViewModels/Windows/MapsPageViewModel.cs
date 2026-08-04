@@ -64,11 +64,19 @@ namespace StatCraft.ViewModels
 
         [ObservableProperty] private string _nameFilter = "";
 
-        // One slot per attribute definition, rebuilt whenever the definitions change. Unlike the Data
-        // tab's fixed five, these come and go with the attributes themselves.
+        // One slot per attribute definition, added/removed as the definitions themselves change. Unlike
+        // the Data tab's fixed five, these come and go with the attributes.
         public ObservableCollection<FilterSlotViewModel> AttributeFilterSlots { get; } = [];
-        public IEnumerable<FilterSlotViewModel> VisibleFilterSlots => AttributeFilterSlots.Where(s => s.IsVisible);
-        public IEnumerable<FilterSlotViewModel> HiddenFilterSlots => AttributeFilterSlots.Where(s => !s.IsVisible);
+
+        // Split views of AttributeFilterSlots by visibility, kept in sync incrementally rather than as a
+        // computed `Where(...)` property notified via OnPropertyChanged. The visible-side ItemsControl
+        // tolerated that pattern fine, but the "+ " button's MenuFlyout (bound to HiddenFilterSlots) does
+        // not reliably re-evaluate a property-changed-only binding once its popup content has been
+        // realized once — reopening it kept showing whatever attributes existed the first time it was
+        // shown, silently missing anything added or removed afterward. Real ObservableCollections raise
+        // CollectionChanged, which the flyout's presenter does honor correctly.
+        public ObservableCollection<FilterSlotViewModel> VisibleFilterSlots { get; } = [];
+        public ObservableCollection<FilterSlotViewModel> HiddenFilterSlots { get; } = [];
 
         // Raised instead of deleting when the map still has games recorded on it. Unlike a build, a map
         // can't be detached from its games — Games.MapId has no cascade — so the view reports this rather
@@ -243,12 +251,12 @@ namespace StatCraft.ViewModels
         {
             FilterSlotViewModel slot = CreateSlot(attribute);
             slot.IsVisible = isVisible;
-            slot.VisibilityChanged += OnSlotVisibilityChanged;
+            slot.VisibilityChanged += () => OnSlotVisibilityChanged(slot);
             slot.Changed += ApplyFilters;
 
             _slotByAttribute[attribute] = slot;
             AttributeFilterSlots.Add(slot);
-            OnSlotVisibilityChanged();
+            (isVisible ? VisibleFilterSlots : HiddenFilterSlots).Add(slot);
         }
 
         private void RemoveFilterSlot(MapAttribute attribute)
@@ -256,16 +264,28 @@ namespace StatCraft.ViewModels
             if (!_slotByAttribute.Remove(attribute, out FilterSlotViewModel? slot))
                 return;
 
-            slot.VisibilityChanged -= OnSlotVisibilityChanged;
             slot.Changed -= ApplyFilters;
             AttributeFilterSlots.Remove(slot);
-            OnSlotVisibilityChanged();
+            VisibleFilterSlots.Remove(slot);
+            HiddenFilterSlots.Remove(slot);
         }
 
-        private void OnSlotVisibilityChanged()
+        // Moves a slot between the visible/hidden collections when its own IsVisible flips — via the
+        // Add/Remove commands the "+" menu and the filter's own ✕ button invoke.
+        private void OnSlotVisibilityChanged(FilterSlotViewModel slot)
         {
-            OnPropertyChanged(nameof(VisibleFilterSlots));
-            OnPropertyChanged(nameof(HiddenFilterSlots));
+            if (slot.IsVisible)
+            {
+                HiddenFilterSlots.Remove(slot);
+                if (!VisibleFilterSlots.Contains(slot))
+                    VisibleFilterSlots.Add(slot);
+            }
+            else
+            {
+                VisibleFilterSlots.Remove(slot);
+                if (!HiddenFilterSlots.Contains(slot))
+                    HiddenFilterSlots.Add(slot);
+            }
         }
 
         private static FilterSlotViewModel CreateSlot(MapAttribute attribute) => attribute.Type switch
