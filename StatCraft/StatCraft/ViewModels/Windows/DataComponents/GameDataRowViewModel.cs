@@ -32,8 +32,13 @@ namespace StatCraft.ViewModels
         public IBrush ResultColor { get; }
         public string GameLength { get; }
 
-        // Blank for games imported before game-type detection existed.
-        public string GameTypeLabel { get; }
+        // User-overridable. Ranked vs Unranked is inferred rather than read from the replay, so it can be
+        // wrong; null for games imported before detection existed, which shows as blank until set.
+        [ObservableProperty] private GameType? _gameType;
+
+        public IReadOnlyList<GameType> GameTypeOptions => AllGameTypes;
+
+        private static readonly GameType[] AllGameTypes = Enum.GetValues<GameType>();
 
         // Post-game rating as "3024(+24)", with only the delta coloured — the rating itself is left
         // uncoloured so it reads as ordinary text in whichever theme is active. Empty until the rating
@@ -93,7 +98,9 @@ namespace StatCraft.ViewModels
                 _ => Styles.Colors.DrawBlue,
             };
             GameLength = TimeSpan.FromSeconds(replay.GameLengthSeconds).ToString(@"mm\:ss");
-            GameTypeLabel = game.GameType?.ToString() ?? "";
+            // Assigned to the backing field, not the property, so hydrating a row doesn't look like a
+            // user edit and write straight back to the database (same reason as _notes below).
+            _gameType = game.GameType;
             Matchup = $"{replay.Player.Race}{string.Concat(replay.Allies.Select(a => a.Race))}v{string.Concat(replay.Opponents.Select(o => o.Race))}";
             MatchupCharacters = BuildMatchupCharacters(replay);
             OpponentName = string.Join(", ", replay.Opponents.Select(o => $"({o.Mmr}){o.FormattedClan} {o.Name}"));
@@ -114,6 +121,14 @@ namespace StatCraft.ViewModels
         }
 
         partial void OnNotesChanged(string value) => _repository.UpdateGameNotes(_game.GameId!.Value, value);
+
+        partial void OnGameTypeChanged(GameType? value)
+        {
+            // Kept on the underlying GameData too, so anything re-reading it in this session (filters,
+            // re-wrapped rows) sees the override rather than the original inference.
+            _game.GameType = value;
+            _repository.UpdateGameType(_game.GameId!.Value, value);
+        }
 
         // Re-derives every player's attribute editors for their currently selected builds without
         // changing any selection — called after DataPageViewModel reloads the cached build tree, so an

@@ -106,7 +106,16 @@
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Profile" Binding="{Binding ProfileLabel}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Date/Time" Binding="{Binding PlayedAt}" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Type" Binding="{Binding GameTypeLabel}" IsReadOnly="True"/>
+                <!-- Always an editable dropdown rather than click-to-edit: Ranked vs Unranked is
+                     inferred and can be wrong, so correcting it should be obvious and one click. -->
+                <DataGridTemplateColumn Header="Type">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:GameDataRowViewModel">
+                            <ComboBox ItemsSource="{Binding GameTypeOptions}" SelectedItem="{Binding GameType}"
+                                      MinWidth="104" Margin="2,0" VerticalAlignment="Center"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Map" Binding="{Binding MapName}" IsReadOnly="True"/>
                 <DataGridTemplateColumn Header="Result">
                     <DataGridTemplateColumn.CellTemplate>

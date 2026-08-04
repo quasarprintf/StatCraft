@@ -460,6 +460,14 @@ namespace StatCraft.Services.DatabaseRepository
             conn.Execute("UPDATE Games SET Notes = @notes WHERE Id = @id", new { notes, id = gameId });
         }
 
+        // Ranked vs Unranked can only be inferred, never read directly off the replay, so the user is
+        // allowed to correct it by hand — this persists that override.
+        public void UpdateGameType(int gameId, GameType? gameType)
+        {
+            using SqliteConnection conn = OpenConnection();
+            conn.Execute("UPDATE Games SET GameType = @gameType WHERE Id = @id", new { gameType = (int?)gameType, id = gameId });
+        }
+
         // Records the tracked player's post-game ladder MMR, observed from the Battle.net API after the
         // replay was imported (see ReplayImportService's polling).
         public void UpdateGamePlayerMmrAfter(int gamePlayerId, long mmrAfter)

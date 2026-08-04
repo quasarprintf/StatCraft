@@ -222,6 +222,50 @@ public class GameDataRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void UpdateGameType_OverridesTheInferredValue()
+    {
+        // Ranked vs Unranked is inferred and can be wrong, so a manual correction has to stick.
+        GameData game = CreateGame();
+        game.GameType = GameType.Ranked;
+        _repository.InsertGame(game, _sc2ProfileId);
+
+        _repository.UpdateGameType(game.GameId!.Value, GameType.Unranked);
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        Assert.Equal(GameType.Unranked, loaded.GameType);
+    }
+
+    [Fact]
+    public void UpdateGameType_CanClassifyAPreviouslyUnknownGame()
+    {
+        // Games imported before detection existed start null and should be settable by hand.
+        GameData game = CreateGame();
+        _repository.InsertGame(game, _sc2ProfileId);
+        Assert.Null(Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId)).GameType);
+
+        _repository.UpdateGameType(game.GameId!.Value, GameType.Custom);
+
+        Assert.Equal(GameType.Custom, Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId)).GameType);
+    }
+
+    [Fact]
+    public void UpdateGameType_LeavesOtherGamesAlone()
+    {
+        GameData first = CreateGame(replayPath: "a.SC2Replay");
+        first.GameType = GameType.Ranked;
+        _repository.InsertGame(first, _sc2ProfileId);
+        GameData second = CreateGame(replayPath: "b.SC2Replay");
+        second.GameType = GameType.Ranked;
+        _repository.InsertGame(second, _sc2ProfileId);
+
+        _repository.UpdateGameType(first.GameId!.Value, GameType.Unranked);
+
+        List<GameData> loaded = _repository.GetGamesForProfile(_sc2ProfileId);
+        Assert.Equal(GameType.Unranked, loaded.Single(g => g.GameId == first.GameId).GameType);
+        Assert.Equal(GameType.Ranked, loaded.Single(g => g.GameId == second.GameId).GameType);
+    }
+
+    [Fact]
     public void InsertGame_MmrAfterStartsNull()
     {
         GameData game = CreateGame();
