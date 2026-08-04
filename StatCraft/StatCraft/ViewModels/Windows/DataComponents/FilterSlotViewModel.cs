@@ -9,7 +9,10 @@ namespace StatCraft.ViewModels
     // pick the right visual (checkbox dropdown vs. numeric range) automatically.
     public abstract partial class FilterSlotViewModel : ViewModelBase
     {
-        public string Title { get; }
+        // Mutable rather than the more usual get-only, so the Maps tab can rename a filter's attribute in
+        // place (MapsPageViewModel.WireAttribute) without recreating the slot itself — recreating it would
+        // drop whatever criteria the user already entered.
+        [ObservableProperty] private string _title = "";
 
         [ObservableProperty] private bool _isVisible;
 

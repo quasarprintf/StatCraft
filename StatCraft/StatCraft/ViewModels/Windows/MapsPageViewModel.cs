@@ -26,9 +26,9 @@ namespace StatCraft.ViewModels
         // Every map, unfiltered. Maps (the bound collection) is the subset currently passing the filters.
         private readonly List<Map> _allMaps = [];
 
-        // Which attribute each dynamically-created filter slot constrains. A dictionary rather than a
-        // Map-aware slot subclass, so the existing filter-slot types can be reused unchanged.
-        private readonly Dictionary<FilterSlotViewModel, MapAttribute> _attributeBySlot = [];
+        // The filter slot for each attribute definition. A dictionary rather than a Map-aware slot
+        // subclass, so the existing filter-slot types can be reused unchanged.
+        private readonly Dictionary<MapAttribute, FilterSlotViewModel> _slotByAttribute = [];
 
         public MapsPageViewModel(MapRepository repository, GameDataRepository gameDataRepository)
         {
@@ -47,7 +47,8 @@ namespace StatCraft.ViewModels
                 _allMaps.Add(map);
             }
 
-            RebuildFilterSlots();
+            foreach (MapAttribute attribute in Attributes)
+                AddFilterSlot(attribute);
             ApplyFilters();
             SelectedMap = Maps.FirstOrDefault();
         }
@@ -126,7 +127,7 @@ namespace StatCraft.ViewModels
             foreach (Map map in _allMaps)
                 map.AttributeValues.Add(new MapAttributeValue(attribute));
 
-            RebuildFilterSlots();
+            AddFilterSlot(attribute);
             ApplyFilters();
         }
 
@@ -143,7 +144,7 @@ namespace StatCraft.ViewModels
                     map.AttributeValues.Remove(value);
             }
 
-            RebuildFilterSlots();
+            RemoveFilterSlot(attribute);
             ApplyFilters();
         }
 
@@ -190,14 +191,27 @@ namespace StatCraft.ViewModels
             attribute.PropertyChanged += (s, e) =>
             {
                 if (s is not MapAttribute a) return;
-                if (e.PropertyName != nameof(MapAttribute.Name) && e.PropertyName != nameof(MapAttribute.Type))
-                    return;
 
-                _repository.UpdateAttribute(a);
-                // The type decides which kind of filter slot the attribute gets, and the name is its
-                // label, so either edit invalidates the current slots.
-                RebuildFilterSlots();
-                ApplyFilters();
+                if (e.PropertyName == nameof(MapAttribute.Name))
+                {
+                    _repository.UpdateAttribute(a);
+                    // Title is mutable specifically so a rename — which fires on every keystroke, since
+                    // the TextBox binding updates per character — can update the existing slot in place
+                    // instead of recreating it and losing whatever the user already entered into it.
+                    if (_slotByAttribute.TryGetValue(a, out FilterSlotViewModel? slot))
+                        slot.Title = a.Name;
+                }
+                else if (e.PropertyName == nameof(MapAttribute.Type))
+                {
+                    _repository.UpdateAttribute(a);
+                    // Unlike a rename, a type change genuinely needs a new slot instance (Numeric/Percent
+                    // vs. Bool vs. Values are different FilterSlotViewModel subclasses) — but only for
+                    // this one attribute, not every other filter the user has open.
+                    bool wasVisible = _slotByAttribute.TryGetValue(a, out FilterSlotViewModel? old) && old.IsVisible;
+                    RemoveFilterSlot(a);
+                    AddFilterSlot(a, wasVisible);
+                    ApplyFilters();
+                }
             };
 
             attribute.ValueOptions.CollectionChanged += (s, e) =>
@@ -209,36 +223,42 @@ namespace StatCraft.ViewModels
                     foreach (string value in e.OldItems.OfType<string>())
                         _repository.DeleteValueOption(attribute.Id, value);
 
-                RebuildFilterSlots();
+                // Patches the existing slot's option list in place, preserving whichever options are
+                // still checked, rather than recreating the slot and losing the whole selection.
+                if (_slotByAttribute.TryGetValue(attribute, out FilterSlotViewModel? slot) &&
+                    slot is CheckboxFilterSlotViewModel<string> stringSlot)
+                {
+                    HashSet<string> previouslyChecked = stringSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
+                    stringSlot.ReplaceOptions(attribute.ValueOptions
+                        .Select(o => new CheckboxFilterOptionViewModel<string>(o, o) { IsChecked = previouslyChecked.Contains(o) }));
+                }
+
                 ApplyFilters();
             };
         }
 
-        // Discards and recreates every slot from the current definitions. Rebuilding wholesale (rather
-        // than patching) keeps this correct when an attribute changes type mid-flight, at the cost of
-        // dropping whatever was selected in the affected filter — acceptable, since the selection often
-        // isn't expressible in the new type anyway.
-        private void RebuildFilterSlots()
+        // Adds one new filter slot for this attribute, initially hidden unless told otherwise (used when
+        // a type change replaces a slot that was already showing).
+        private void AddFilterSlot(MapAttribute attribute, bool isVisible = false)
         {
-            HashSet<int> previouslyVisible = _attributeBySlot
-                .Where(kvp => kvp.Key.IsVisible)
-                .Select(kvp => kvp.Value.Id)
-                .ToHashSet();
+            FilterSlotViewModel slot = CreateSlot(attribute);
+            slot.IsVisible = isVisible;
+            slot.VisibilityChanged += OnSlotVisibilityChanged;
+            slot.Changed += ApplyFilters;
 
-            AttributeFilterSlots.Clear();
-            _attributeBySlot.Clear();
+            _slotByAttribute[attribute] = slot;
+            AttributeFilterSlots.Add(slot);
+            OnSlotVisibilityChanged();
+        }
 
-            foreach (MapAttribute attribute in Attributes)
-            {
-                FilterSlotViewModel slot = CreateSlot(attribute);
-                slot.IsVisible = previouslyVisible.Contains(attribute.Id);
-                slot.VisibilityChanged += OnSlotVisibilityChanged;
-                slot.Changed += ApplyFilters;
+        private void RemoveFilterSlot(MapAttribute attribute)
+        {
+            if (!_slotByAttribute.Remove(attribute, out FilterSlotViewModel? slot))
+                return;
 
-                _attributeBySlot[slot] = attribute;
-                AttributeFilterSlots.Add(slot);
-            }
-
+            slot.VisibilityChanged -= OnSlotVisibilityChanged;
+            slot.Changed -= ApplyFilters;
+            AttributeFilterSlots.Remove(slot);
             OnSlotVisibilityChanged();
         }
 
@@ -279,7 +299,7 @@ namespace StatCraft.ViewModels
             if (!MapFilter.MatchesName(map, NameFilter))
                 return false;
 
-            foreach ((FilterSlotViewModel slot, MapAttribute attribute) in _attributeBySlot)
+            foreach ((MapAttribute attribute, FilterSlotViewModel slot) in _slotByAttribute)
             {
                 if (!slot.IsVisible)
                     continue;
