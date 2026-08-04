@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Platform.Storage;
+using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.Models.Battlenet;
 using StatCraft.Services.BackgroundService;
@@ -31,18 +33,45 @@ namespace StatCraft.Views
             // default — entering edit mode (and focusing the editor) normally needs a second click on
             // an already-current cell. Force both to happen on the very first click instead.
             GamesGrid.CellPointerPressed += OnGamesGridCellPointerPressed;
+
+            // Rows are recycled as the grid scrolls, so a newly realised row has to be told whether it
+            // is the one currently showing its build details.
+            GamesGrid.LoadingRow += (_, e) => ApplyBuildDetailsVisibility(e.Row);
         }
 
+        // The row whose build-selection details are currently open, or null when none are. Held as the
+        // row's view model rather than a DataGridRow because the containers are recycled.
+        private object? _buildDetailsItem;
+
         private static bool IsNotesColumn(DataGridColumn column) => column.Header as string == "Notes";
+        private static bool IsBuildColumn(DataGridColumn column) => column.Header as string == "Build";
 
         private void OnGamesGridCellPointerPressed(object? sender, DataGridCellPointerPressedEventArgs e)
         {
+            // Build details open only from the Build cell, and close again as soon as any other cell is
+            // clicked. Clicking inside the details themselves never reaches here — those controls sit
+            // outside the cells presenter — so interacting with them leaves the panel open.
+            SetBuildDetailsItem(IsBuildColumn(e.Column) ? e.Row.DataContext : null);
+
             if (!IsNotesColumn(e.Column)) return;
 
             GamesGrid.SelectedItem = e.Row.DataContext;
             GamesGrid.CurrentColumn = e.Column;
             GamesGrid.BeginEdit();
         }
+
+        private void SetBuildDetailsItem(object? item)
+        {
+            if (ReferenceEquals(_buildDetailsItem, item))
+                return;
+
+            _buildDetailsItem = item;
+            foreach (DataGridRow row in GamesGrid.GetVisualDescendants().OfType<DataGridRow>())
+                ApplyBuildDetailsVisibility(row);
+        }
+
+        private void ApplyBuildDetailsVisibility(DataGridRow row) =>
+            row.AreDetailsVisible = _buildDetailsItem != null && ReferenceEquals(row.DataContext, _buildDetailsItem);
 
         // TabControl detaches an inactive tab's content from the visual tree rather than just hiding
         // it, so IsVisible never actually toggles on an existing instance when switching tabs.
