@@ -64,9 +64,6 @@ namespace StatCraft.ViewModels
 
         [ObservableProperty] private string _nameFilter = "";
 
-        // One slot per attribute definition, added/removed as the definitions themselves change. Unlike
-        // the Data tab's fixed five, these come and go with the attributes.
-        public ObservableCollection<FilterSlotViewModel> AttributeFilterSlots { get; } = [];
 
         // Split views of AttributeFilterSlots by visibility, kept in sync incrementally rather than as a
         // computed `Where(...)` property notified via OnPropertyChanged. The visible-side ItemsControl
@@ -255,7 +252,6 @@ namespace StatCraft.ViewModels
             slot.Changed += ApplyFilters;
 
             _slotByAttribute[attribute] = slot;
-            AttributeFilterSlots.Add(slot);
             (isVisible ? VisibleFilterSlots : HiddenFilterSlots).Add(slot);
         }
 
@@ -265,7 +261,6 @@ namespace StatCraft.ViewModels
                 return;
 
             slot.Changed -= ApplyFilters;
-            AttributeFilterSlots.Remove(slot);
             VisibleFilterSlots.Remove(slot);
             HiddenFilterSlots.Remove(slot);
         }
