@@ -90,10 +90,8 @@ namespace StatCraft.Services.BackgroundService
             {
                 ParsedReplayData replay = game.ReplayData;
 
-                // Only ranked 1v1 has a rating that moves in a way this can attribute to one game. Team
-                // games have separate per-team ratings, and an unranked/custom game reports no rating at
-                // all (Mmr 0), leaving nothing to compare against.
-                if (replay.Allies.Length != 0 || replay.Opponents.Length != 1 || replay.Player.Mmr <= 0)
+                // Only a rated 1v1 has a rating that moves in a way this can attribute to one game.
+                if (!replay.IsRatedOneVsOne)
                     return;
 
                 int? gamePlayerId = replay.Player.GamePlayerId;

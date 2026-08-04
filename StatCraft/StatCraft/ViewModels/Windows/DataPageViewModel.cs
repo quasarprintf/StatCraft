@@ -172,8 +172,25 @@ namespace StatCraft.ViewModels
             if (_loadedGames.Any(g => g.GameId == game.GameId))
                 return;
             _loadedGames.Add(game);
+            SeedSessionBaselineFrom(game);
             ApplyFilters();
         });
+
+        // The session-start lookup only covers ladders the profile had already placed in. Playing the
+        // first game of an unplaced race mid-session would otherwise leave that ladder with no baseline
+        // and so no visible change for the rest of the session. The replay records the rating going
+        // *into* the game, which is precisely where that ladder stood when the session's first game on
+        // it began — so it's the correct baseline. TryAdd, never overwrite: a ladder that already has a
+        // baseline must keep the one from session start, or the delta would silently reset each game.
+        private void SeedSessionBaselineFrom(GameData game)
+        {
+            ParsedReplayData replay = game.ReplayData;
+            if (!replay.IsRatedOneVsOne)
+                return;
+
+            if (LadderRaceExtensions.FromPlayer(replay.Player.Race, replay.Player.Random) is { } race)
+                _sessionStartMmrs.TryAdd(race, replay.Player.Mmr);
+        }
 
         // Arrives minutes after the game was imported, on a background polling task. The row's underlying
         // GamePlayer has already been mutated in place, so this only needs to prompt the row to
