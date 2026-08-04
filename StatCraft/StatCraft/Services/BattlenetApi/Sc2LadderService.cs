@@ -34,6 +34,27 @@ namespace StatCraft.Services.BattlenetApi
             _ => "https://us.api.blizzard.com",
         };
 
+        // The freshest ranked MMR seen for each ladder, from either an API lookup or a resolved post-game
+        // poll. Game-type detection leans on this: a ranked game's starting MMR should equal whatever
+        // ranked MMR we last knew for that ladder, so the value has to track *forward* through a session
+        // rather than stay pinned to its opening value.
+        private readonly Dictionary<(int ProfileId, LadderRace Race), long> _lastKnownMmr = new();
+        private readonly object _lastKnownMmrGate = new();
+
+        public long? GetLastKnownMmr(Sc2Profile profile, LadderRace race)
+        {
+            lock (_lastKnownMmrGate)
+                return _lastKnownMmr.TryGetValue((profile.Id, race), out long mmr) ? mmr : null;
+        }
+
+        // Called when a post-game poll observes a new ranked rating, so the next game is compared against
+        // the value it should actually have started from.
+        public void RecordObservedMmr(Sc2Profile profile, LadderRace race, long mmr)
+        {
+            lock (_lastKnownMmrGate)
+                _lastKnownMmr[(profile.Id, race)] = mmr;
+        }
+
         // Every 1v1 rating this profile currently holds, keyed by the ladder it was earned on. SC2 rates
         // each race separately — and Random separately again — so a player who ladders as more than one
         // has more than one MMR and there is no single "current rating" to show. Empty whenever nothing
@@ -43,8 +64,8 @@ namespace StatCraft.Services.BattlenetApi
             Dictionary<LadderRace, long> byRace = new();
             foreach ((LadderRace? race, long mmr) in await GetOwn1v1TeamsAsync(profile, cancellationToken))
             {
-                if (race.HasValue)
-                    byRace.TryAdd(race.Value, mmr);
+                if (race.HasValue && byRace.TryAdd(race.Value, mmr))
+                    RecordObservedMmr(profile, race.Value, mmr);
             }
 
             return byRace;

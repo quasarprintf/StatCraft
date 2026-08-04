@@ -201,6 +201,27 @@ public class GameDataRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void InsertGame_PersistsGameType()
+    {
+        GameData game = CreateGame();
+        game.GameType = GameType.Unranked;
+        _repository.InsertGame(game, _sc2ProfileId);
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        Assert.Equal(GameType.Unranked, loaded.GameType);
+    }
+
+    [Fact]
+    public void InsertGame_WithoutGameType_RoundTripsAsNull()
+    {
+        // How rows imported before game-type detection read back.
+        _repository.InsertGame(CreateGame(), _sc2ProfileId);
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        Assert.Null(loaded.GameType);
+    }
+
+    [Fact]
     public void InsertGame_MmrAfterStartsNull()
     {
         GameData game = CreateGame();

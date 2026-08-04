@@ -68,7 +68,11 @@ namespace StatCraft.Services.BackgroundService
                 return $"\"{Path.GetFileName(filePath)}\" doesn't contain a match for the active profile.";
             }
 
-            GameData game = new() { ReplayData = parsedReplayData };
+            GameData game = new()
+            {
+                ReplayData = parsedReplayData,
+                GameType = ResolveGameType(parsedReplayData, profile),
+            };
             gameDataRepository.InsertGame(game, profile.Id);
             GameParsed?.Invoke(game);
 
@@ -76,6 +80,16 @@ namespace StatCraft.Services.BackgroundService
             // the imported game should appear immediately regardless of whether that ever succeeds.
             _ = TrackMmrChange(game, profile);
             return null;
+        }
+
+        // Classified against the last ranked MMR known for the ladder this game was played on, which the
+        // ladder service keeps current as polls resolve. Must happen before TrackMmrChange starts, since
+        // that's what will move the known value on to this game's result.
+        private GameType ResolveGameType(ParsedReplayData replay, Sc2Profile profile)
+        {
+            LadderRace? race = LadderRaceExtensions.FromPlayer(replay.Player.Race, replay.Player.Random);
+            long? lastKnown = race.HasValue ? ladderService.GetLastKnownMmr(profile, race.Value) : null;
+            return GameTypeResolver.Resolve(replay, lastKnown);
         }
 
         // Polls the ladder API until the tracked player's rating differs from what the replay recorded
@@ -90,8 +104,10 @@ namespace StatCraft.Services.BackgroundService
             {
                 ParsedReplayData replay = game.ReplayData;
 
-                // Only a rated 1v1 has a rating that moves in a way this can attribute to one game.
-                if (!replay.IsRatedOneVsOne)
+                // Only a rated 1v1 has a rating that moves in a way this can attribute to one game, and
+                // only a ranked one moves the *ranked* rating this polls for — unranked play has its own
+                // separate hidden rating, so polling after one would just time out.
+                if (!replay.IsRatedOneVsOne || game.GameType != GameType.Ranked)
                     return;
 
                 int? gamePlayerId = replay.Player.GamePlayerId;
@@ -114,6 +130,11 @@ namespace StatCraft.Services.BackgroundService
 
                     gameDataRepository.UpdateGamePlayerMmrAfter(gamePlayerId.Value, currentMmr.Value);
                     replay.Player.MmrAfter = currentMmr.Value;
+
+                    // Moves the known ranked rating forward, so the *next* game on this ladder is
+                    // classified against where it will actually start rather than a stale value.
+                    ladderService.RecordObservedMmr(profile, ladderRace.Value, currentMmr.Value);
+
                     logger.LogInfo($"MMR after game resolved: {replay.Player.Mmr} -> {currentMmr.Value} ({currentMmr.Value - replay.Player.Mmr:+#;-#;0})", profile);
                     GameMmrUpdated?.Invoke(game);
                     return;

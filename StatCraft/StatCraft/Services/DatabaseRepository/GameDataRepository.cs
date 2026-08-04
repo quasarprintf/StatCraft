@@ -42,7 +42,8 @@ namespace StatCraft.Services.DatabaseRepository
                     PlayerRace        TEXT    NOT NULL DEFAULT '',
                     PlayerRandom      INTEGER NOT NULL DEFAULT 0,
                     Notes             TEXT    NOT NULL DEFAULT '',
-                    CreatedAtUtc      TEXT    NOT NULL DEFAULT ''
+                    CreatedAtUtc      TEXT    NOT NULL DEFAULT '',
+                    GameType          INTEGER
                 );
                 CREATE TABLE IF NOT EXISTS GamePlayers (
                     Id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,6 +95,18 @@ namespace StatCraft.Services.DatabaseRepository
             try
             {
                 conn.Execute("ALTER TABLE GamePlayers ADD COLUMN MmrAfter INTEGER;");
+            }
+            catch (SqliteException)
+            {
+                // Already migrated, or a fresh DB already created with the new schema.
+            }
+
+            // Upgrades a pre-existing DB that predates game-type detection. Left NULL rather than
+            // guessed: the type is derived from replay flags that were never stored, so existing rows
+            // have nothing to reclassify from.
+            try
+            {
+                conn.Execute("ALTER TABLE Games ADD COLUMN GameType INTEGER;");
             }
             catch (SqliteException)
             {
@@ -212,8 +225,8 @@ namespace StatCraft.Services.DatabaseRepository
 
             ParsedReplayData replay = game.ReplayData;
             game.GameId = (int)conn.ExecuteScalar<long>(@"
-                INSERT INTO Games (Sc2ProfileId, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes, CreatedAtUtc)
-                VALUES (@sc2ProfileId, @mapName, @gameLengthSeconds, @replayPath, @replayTimestamp, @win, @playerName, @playerClan, @playerMmr, @playerRace, @playerRandom, @notes, @createdAt);
+                INSERT INTO Games (Sc2ProfileId, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes, CreatedAtUtc, GameType)
+                VALUES (@sc2ProfileId, @mapName, @gameLengthSeconds, @replayPath, @replayTimestamp, @win, @playerName, @playerClan, @playerMmr, @playerRace, @playerRandom, @notes, @createdAt, @gameType);
                 SELECT last_insert_rowid();",
                 new
                 {
@@ -226,6 +239,7 @@ namespace StatCraft.Services.DatabaseRepository
                     playerName = replay.Player.Name,
                     playerClan = replay.Player.Clan,
                     playerMmr = replay.Player.Mmr,
+                    gameType = (int?)game.GameType,
                     playerRace = replay.Player.Race,
                     playerRandom = replay.Player.Random ? 1 : 0,
                     notes = game.Notes,
@@ -296,6 +310,7 @@ namespace StatCraft.Services.DatabaseRepository
             public char PlayerRace { get; set; }
             public bool PlayerRandom { get; set; }
             public string Notes { get; set; } = "";
+            public GameType? GameType { get; set; }
         }
 
         private class GamePlayerRow
@@ -337,7 +352,7 @@ namespace StatCraft.Services.DatabaseRepository
             using SqliteConnection conn = OpenConnection();
 
             List<GameRow> gameRows = conn.Query<GameRow>(@"
-                SELECT Id, Sc2ProfileId, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes
+                SELECT Id, Sc2ProfileId, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes, GameType
                 FROM Games WHERE Sc2ProfileId IN @sc2ProfileIds ORDER BY ReplayTimestamp ASC",
                 new { sc2ProfileIds }).ToList();
 
@@ -417,6 +432,7 @@ namespace StatCraft.Services.DatabaseRepository
                 {
                     GameId = (int)row.Id,
                     Sc2ProfileId = row.Sc2ProfileId,
+                    GameType = row.GameType,
                     ReplayData = replay,
                     Notes = row.Notes,
                 });

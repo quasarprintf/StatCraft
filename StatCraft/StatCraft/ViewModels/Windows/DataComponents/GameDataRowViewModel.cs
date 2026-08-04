@@ -32,6 +32,9 @@ namespace StatCraft.ViewModels
         public IBrush ResultColor { get; }
         public string GameLength { get; }
 
+        // Blank for games imported before game-type detection existed.
+        public string GameTypeLabel { get; }
+
         // Post-game rating as "3024(+24)", with only the delta coloured — the rating itself is left
         // uncoloured so it reads as ordinary text in whichever theme is active. Empty until the rating
         // has been resolved, and permanently empty for games where it never can be (unranked, team
@@ -90,6 +93,7 @@ namespace StatCraft.ViewModels
                 _ => Styles.Colors.DrawBlue,
             };
             GameLength = TimeSpan.FromSeconds(replay.GameLengthSeconds).ToString(@"mm\:ss");
+            GameTypeLabel = game.GameType?.ToString() ?? "";
             Matchup = $"{replay.Player.Race}{string.Concat(replay.Allies.Select(a => a.Race))}v{string.Concat(replay.Opponents.Select(o => o.Race))}";
             MatchupCharacters = BuildMatchupCharacters(replay);
             OpponentName = string.Join(", ", replay.Opponents.Select(o => $"({o.Mmr}){o.FormattedClan} {o.Name}"));

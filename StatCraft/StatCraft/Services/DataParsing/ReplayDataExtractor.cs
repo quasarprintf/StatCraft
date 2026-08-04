@@ -56,6 +56,7 @@ namespace StatCraft.Services.DataParsing
                 PlayerMmrs = replay.Initdata!.UserInitialData.Select(d => d.ScaledRating).ToArray(),
                 PlayerProfileIds = profileIds,
                 PlayerTeams = teamIds,
+                IsMatchmade = replay.Initdata?.GameDescription?.GameOptions?.Amm ?? false,
                 IsDraw = isDraw,
                 WinningPlayerIndices = winningIndices,
                 GameLengthSeconds = replay.Metadata?.Duration ?? 0, //TODO: this is using hots time. Need to get the exact conversion ratio to lotv time
@@ -115,6 +116,7 @@ namespace StatCraft.Services.DataParsing
                 Player = BuildPlayer(playerIndex),
                 Allies = allies.ToArray(),
                 Opponents = opponents.ToArray(),
+                IsMatchmade = rawReplayData.IsMatchmade,
             };
         }
     }

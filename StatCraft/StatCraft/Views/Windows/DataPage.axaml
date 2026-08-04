@@ -106,6 +106,7 @@
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Profile" Binding="{Binding ProfileLabel}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Date/Time" Binding="{Binding PlayedAt}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Type" Binding="{Binding GameTypeLabel}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Map" Binding="{Binding MapName}" IsReadOnly="True"/>
                 <DataGridTemplateColumn Header="Result">
                     <DataGridTemplateColumn.CellTemplate>
