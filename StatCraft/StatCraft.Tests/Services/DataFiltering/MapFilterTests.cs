@@ -82,13 +82,34 @@ public class MapFilterTests
         Assert.Equal(expected, MapFilter.MatchesSelection(new HashSet<string> { "Macro" }, hasValue: false, "", includeUnset));
     }
 
-    // "false" is a real value, not an absence — a Bool attribute explicitly set to No must be matched by
-    // a filter checking No, without needing includeUnset.
     [Fact]
-    public void MatchesSelection_BoolSetToFalse_MatchesTheFalseOption()
+    public void MatchesBool_NoFilterValue_MatchesEvenAnUnsetValue()
     {
-        Assert.True(MapFilter.MatchesSelection(new HashSet<bool> { false }, hasValue: true, false, includeUnset: false));
-        Assert.False(MapFilter.MatchesSelection(new HashSet<bool> { true }, hasValue: true, false, includeUnset: false));
+        MapAttributeValue value = Value(AttributeType.Bool);
+        Assert.True(MapFilter.MatchesBool(value, null, includeUnset: false));
+    }
+
+    // "false" is a real value, not an absence — a map explicitly set to No must be matched by a filter
+    // checking No, without needing includeUnset, and excluded by a filter checking Yes.
+    [Theory]
+    [InlineData(false, false, true)]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, true)]
+    [InlineData(false, true, false)]
+    public void MatchesBool_SetValue_MustEqualTheFilter(bool filterValue, bool actual, bool expected)
+    {
+        MapAttributeValue value = Value(AttributeType.Bool);
+        value.BoolValue = actual;
+        Assert.Equal(expected, MapFilter.MatchesBool(value, filterValue, includeUnset: false));
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public void MatchesBool_UnsetValueWithFilterSet_FollowsIncludeUnset(bool includeUnset, bool expected)
+    {
+        MapAttributeValue value = Value(AttributeType.Bool);
+        Assert.Equal(expected, MapFilter.MatchesBool(value, true, includeUnset));
     }
 
     private static MapAttributeValue Value(AttributeType type) => new(new MapAttribute { Name = "Attr", Type = type });

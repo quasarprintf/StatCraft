@@ -285,8 +285,7 @@ namespace StatCraft.ViewModels
 
         private static FilterSlotViewModel CreateSlot(MapAttribute attribute) => attribute.Type switch
         {
-            AttributeType.Bool => new CheckboxFilterSlotViewModel<bool>(attribute.Name,
-                [new CheckboxFilterOptionViewModel<bool>(true, "Yes"), new CheckboxFilterOptionViewModel<bool>(false, "No")]),
+            AttributeType.Bool => new BoolFilterSlotViewModel(attribute.Name),
             AttributeType.Values => new CheckboxFilterSlotViewModel<string>(attribute.Name,
                 attribute.ValueOptions.Select(o => new CheckboxFilterOptionViewModel<string>(o, o)), showSearch: true),
             // Numeric and Percent both filter by range.
@@ -334,8 +333,8 @@ namespace StatCraft.ViewModels
         {
             NumericRangeFilterSlotViewModel range =>
                 MapFilter.MatchesRange(value, range.Min, range.Max, range.IncludeUnset),
-            CheckboxFilterSlotViewModel<bool> booleans =>
-                MapFilter.MatchesSelection(Checked(booleans), value.HasValue, value.BoolValue ?? false, booleans.IncludeUnset),
+            BoolFilterSlotViewModel boolSlot =>
+                MapFilter.MatchesBool(value, boolSlot.Value, boolSlot.IncludeUnset),
             CheckboxFilterSlotViewModel<string> strings =>
                 MapFilter.MatchesSelection(Checked(strings), value.HasValue, value.SelectedValue ?? "", strings.IncludeUnset),
             _ => true,

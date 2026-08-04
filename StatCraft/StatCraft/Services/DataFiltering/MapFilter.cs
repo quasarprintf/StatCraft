@@ -32,9 +32,9 @@ namespace StatCraft.Services.DataFiltering
             return (min == null || actual >= min) && (max == null || actual <= max);
         }
 
-        // Bool and Values attributes, which differ only in what their options are: does the map's value
-        // appear among the checked ones? `actual` is only read once hasValue has ruled out the unset
-        // case, so callers may pass any placeholder for an unset value.
+        // Values attributes: does the map's selected option appear among the checked ones? `actual` is
+        // only read once hasValue has ruled out the unset case, so callers may pass any placeholder for
+        // an unset value.
         public static bool MatchesSelection<T>(IReadOnlySet<T> checkedValues, bool hasValue, T actual, bool includeUnset)
         {
             if (checkedValues.Count == 0)
@@ -43,6 +43,19 @@ namespace StatCraft.Services.DataFiltering
                 return includeUnset;
 
             return checkedValues.Contains(actual);
+        }
+
+        // Bool attributes. A three-state checkbox rather than a checked-values set: null means no
+        // constraint on this dimension (matches both true and false), otherwise the map's value must
+        // equal it exactly.
+        public static bool MatchesBool(MapAttributeValue value, bool? filterValue, bool includeUnset)
+        {
+            if (filterValue == null)
+                return true;
+            if (!value.HasValue)
+                return includeUnset;
+
+            return value.BoolValue == filterValue;
         }
     }
 }

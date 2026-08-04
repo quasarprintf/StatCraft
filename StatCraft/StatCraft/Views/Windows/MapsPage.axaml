@@ -64,6 +64,19 @@
                             <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
                         </StackPanel>
                     </DataTemplate>
+                    <DataTemplate x:DataType="vm:BoolFilterSlotViewModel">
+                        <StackPanel Spacing="2">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
+                                <Button Grid.Column="1" Classes="removeFilter" Command="{Binding RemoveCommand}"/>
+                            </Grid>
+                            <!-- Three-state: checked/unchecked pick true/false, indeterminate (the
+                                 attribute's own starting state) means no constraint on this dimension. -->
+                            <CheckBox IsChecked="{Binding Value}" IsThreeState="True"/>
+                            <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
+                        </StackPanel>
+                    </DataTemplate>
                     <DataTemplate x:DataType="vm:NumericRangeFilterSlotViewModel">
                         <StackPanel Spacing="2">
                             <Grid ColumnDefinitions="*,Auto">
