@@ -53,6 +53,7 @@ namespace StatCraft.ViewModels
             _replayImportService.GameParsed += OnGameParsed;
             _replayImportService.GameMmrUpdated += OnGameMmrUpdated;
             _buildRepository.BuildsChanged += OnBuildsChanged;
+            _settingsRepository.SettingsChanged += OnSettingsChanged;
 
             Filters = new DataPageFiltersViewModel(buildRepository);
             Filters.ProfileSelectionChanged += async () => await ReloadGamesFromDatabase();
@@ -159,9 +160,26 @@ namespace StatCraft.ViewModels
             Filters.SetSingleActiveProfile(profile);
             await ReloadGamesFromDatabase();
 
+            await StartWatcherFor(profile);
+        }
+
+        // Reads the base folder fresh from disk (rather than caching it) so a change made on the Settings
+        // tab takes effect on the very next call — both the normal one at session start and the one
+        // OnSettingsChanged makes to redirect an already-running watcher mid-session.
+        private async Task StartWatcherFor(Sc2Profile profile)
+        {
             string baseReplayFolderPath = _settingsRepository.Load().BaseReplayFolderPath ?? "";
             string replayFolderPath = Path.Combine(baseReplayFolderPath, profile.ReplayFolderPathSuffix);
             await _replayWatcherService.Start(replayFolderPath);
+        }
+
+        // The base folder can be changed from the Settings tab at any time, including mid-session. A
+        // session with no active profile has no watcher to redirect, so there's nothing to do until the
+        // next Begin Session — which reads the setting fresh via StartWatcherFor anyway.
+        private async void OnSettingsChanged()
+        {
+            if (ActiveProfile != null)
+                await StartWatcherFor(ActiveProfile);
         }
 
         // The watcher only reports that a file appeared — importing it (and any failure handling) is

@@ -146,6 +146,7 @@ namespace StatCraft
             services.AddTransient<AccountPickerViewModel>();
             services.AddTransient<LinkAccountViewModel>();
             services.AddTransient<SettingsPromptViewModel>();
+            services.AddTransient<SettingsPageViewModel>();
 
             return services.BuildServiceProvider();
         }

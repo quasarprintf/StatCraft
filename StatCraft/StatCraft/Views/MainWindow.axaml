@@ -27,6 +27,9 @@
         <TabItem Header="Analytics">
             <views:AnalyticsPage/>
         </TabItem>
+        <TabItem Header="Settings">
+            <views:SettingsPage/>
+        </TabItem>
     </TabControl>
 
 </Window>

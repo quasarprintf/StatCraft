@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Text.Json;
 using StatCraft.Models;
@@ -9,6 +10,10 @@ namespace StatCraft.Services.DatabaseRepository
         private static readonly JsonSerializerOptions SerializerOptions = new() { WriteIndented = true };
 
         private readonly string _filePath;
+
+        // Raised after every Save — lets a page other than the one that changed a setting react, e.g.
+        // DataPageViewModel redirecting its replay watcher when the base folder changes mid-session.
+        public event Action? SettingsChanged;
 
         public SettingsRepository(string filePath)
         {
@@ -36,6 +41,7 @@ namespace StatCraft.Services.DatabaseRepository
 
             string json = JsonSerializer.Serialize(settings, SerializerOptions);
             File.WriteAllText(_filePath, json);
+            SettingsChanged?.Invoke();
         }
     }
 }
