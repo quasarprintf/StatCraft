@@ -1,3 +1,4 @@
+using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.ViewModels;
 
@@ -54,7 +55,7 @@ public class GameAttributeEditorViewModelTests
         editor.ApplyValue(editor.SerializeValue()); // sanity: round-trips at the default first
         Assert.Equal(14, editor.NumericValue);
 
-        editor.ApplyValue(BuildAttributeValueSerializer.Serialize(AttributeType.Numeric, 20, false, 0, null));
+        editor.ApplyValue(AttributeValueSerializer.Serialize(AttributeType.Numeric, 20, false, 0, null));
 
         Assert.Equal(20, editor.NumericValue);
     }

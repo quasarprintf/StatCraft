@@ -6,7 +6,6 @@ namespace StatCraft.Models.GameData
 {
     internal class ParsedReplayData
     {
-        public required string MapName { get; set; }
         public int GameLengthSeconds { get; set; }
         public required string ReplayPath { get; set; }
         public required DateTimeOffset ReplayTimestamp { get; set; }

@@ -1,0 +1,93 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StatCraft.ViewModels"
+             xmlns:maps="using:StatCraft.Models.GameData.Maps"
+             x:Class="StatCraft.Views.MapDetailsPanel"
+             x:DataType="vm:MapsPageViewModel">
+    <DockPanel Margin="12">
+        <StackPanel DockPanel.Dock="Top" Spacing="6">
+            <TextBlock Text="Name" FontWeight="SemiBold"/>
+            <TextBox Text="{Binding SelectedMap.Name}"/>
+
+            <DockPanel Margin="0,8,0,0">
+                <TextBlock Text="Attributes" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                <Button Content="+" DockPanel.Dock="Right"
+                        Command="{Binding AddAttributeCommand}"
+                        Padding="6,2" HorizontalAlignment="Right"/>
+            </DockPanel>
+            <!-- Attributes are defined globally: adding, renaming, retyping or deleting one here does it
+                 for every map at once. Only the value below each definition belongs to this map. -->
+            <TextBlock Text="Definitions apply to every map; values are per map."
+                       FontSize="11" Opacity="0.7" TextWrapping="Wrap"/>
+        </StackPanel>
+
+        <ScrollViewer>
+            <ItemsControl ItemsSource="{Binding SelectedMap.AttributeValues}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="maps:MapAttributeValue">
+                        <StackPanel Margin="0,0,0,8">
+                            <!-- Definition row: name, type, delete -->
+                            <Grid ColumnDefinitions="*,120,Auto">
+                                <TextBox Grid.Column="0" Text="{Binding Attribute.Name}" PlaceholderText="Name" Margin="0,0,4,0"/>
+                                <ComboBox Grid.Column="1" SelectedItem="{Binding Attribute.Type}"
+                                          ItemsSource="{x:Static maps:MapAttribute.AllTypes}"
+                                          HorizontalAlignment="Stretch" Margin="0,0,4,0"/>
+                                <Button Grid.Column="2" Content="✕"
+                                        Command="{Binding $parent[UserControl].((vm:MapsPageViewModel)DataContext).RemoveAttributeCommand}"
+                                        CommandParameter="{Binding Attribute}"
+                                        Padding="6,2"/>
+                            </Grid>
+
+                            <!-- This map's value. Every editor is nullable, and the clear button puts it
+                                 back to unset — which is stored as the absence of a row, not as 0/false. -->
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0" IsVisible="{Binding !Attribute.IsValues}">
+                                <TextBlock Grid.Column="0" Text="Value:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <NumericUpDown Grid.Column="1" Value="{Binding NumericValue}"
+                                               IsVisible="{Binding Attribute.IsNumeric}"
+                                               FormatString="0.##" HorizontalAlignment="Stretch"/>
+                                <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}" IsThreeState="True"
+                                          IsVisible="{Binding Attribute.IsBool}"/>
+                                <NumericUpDown Grid.Column="1" Value="{Binding PercentValue}"
+                                               IsVisible="{Binding Attribute.IsPercent}"
+                                               Minimum="0" Maximum="100" FormatString="0.##'%'"
+                                               HorizontalAlignment="Stretch"/>
+                                <Button Grid.Column="2" Content="Clear" Padding="6,2" Margin="4,0,0,0"
+                                        Command="{Binding ClearCommand}"/>
+                            </Grid>
+
+                            <!-- Values type: the shared option list, then this map's pick from it -->
+                            <StackPanel IsVisible="{Binding Attribute.IsValues}" Margin="16,4,0,0" Spacing="2">
+                                <ItemsControl ItemsSource="{Binding Attribute.ValueOptions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="x:String">
+                                            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,2">
+                                                <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="1" Content="✕" Padding="4,1"
+                                                        Command="{Binding $parent[ItemsControl].((maps:MapAttributeValue)DataContext).Attribute.RemoveOptionCommand}"
+                                                        CommandParameter="{Binding}"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                    <TextBox Grid.Column="0" Text="{Binding Attribute.NewOptionText}"
+                                             PlaceholderText="Add option..." Margin="0,0,4,0"/>
+                                    <Button Grid.Column="1" Content="+" Padding="6,2"
+                                            Command="{Binding Attribute.AddOptionCommand}"/>
+                                </Grid>
+                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
+                                    <TextBlock Grid.Column="0" Text="Value:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding Attribute.ValueOptions}"
+                                              SelectedItem="{Binding SelectedValue}"
+                                              HorizontalAlignment="Stretch"/>
+                                    <Button Grid.Column="2" Content="Clear" Padding="6,2" Margin="4,0,0,0"
+                                            Command="{Binding ClearCommand}"/>
+                                </Grid>
+                            </StackPanel>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </DockPanel>
+</UserControl>

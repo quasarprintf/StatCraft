@@ -1,5 +1,6 @@
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
+using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DataFiltering;
 
@@ -160,7 +161,6 @@ public class GameDataFilterTests
     {
         ParsedReplayData replay = new()
         {
-            MapName = mapName,
             GameLengthSeconds = 600,
             ReplayPath = "replay.SC2Replay",
             ReplayTimestamp = replayTimestamp ?? new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero),
@@ -173,6 +173,6 @@ public class GameDataFilterTests
             Allies = [],
             Opponents = opponents ?? [new GamePlayer { Name = "Foe", Clan = "", Mmr = 3100, Race = 'Z', Random = false }],
         };
-        return new GameData { ReplayData = replay };
+        return new GameData { Map = new Map { Id = 1, Name = mapName }, ReplayData = replay };
     }
 }

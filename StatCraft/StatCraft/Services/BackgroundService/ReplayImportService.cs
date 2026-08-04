@@ -16,7 +16,7 @@ namespace StatCraft.Services.BackgroundService
     // decoding, extracting, parsing, and inserting. Doesn't know or care how the file was found (folder
     // watching vs. a manual import both funnel through here).
     public class ReplayImportService(ILogger logger, ReplayDataExtractor replayDataExtractor,
-        GameDataRepository gameDataRepository, Sc2LadderService ladderService)
+        GameDataRepository gameDataRepository, MapRepository mapRepository, Sc2LadderService ladderService)
     {
         // How long to keep asking Battle.net for the post-game rating. The ladder API doesn't reflect a
         // result the instant the replay file lands on disk, and the lag isn't fixed, so rather than guess
@@ -68,8 +68,11 @@ namespace StatCraft.Services.BackgroundService
                 return $"\"{Path.GetFileName(filePath)}\" doesn't contain a match for the active profile.";
             }
 
+            // Resolved here rather than inside ReplayDataExtractor, which is deliberately pure and holds
+            // no repositories. A map name never seen before becomes a new Map with every attribute unset.
             GameData game = new()
             {
+                Map = mapRepository.GetOrCreateMap(rawReplayData.MapName),
                 ReplayData = parsedReplayData,
                 GameType = ResolveGameType(parsedReplayData, profile),
             };

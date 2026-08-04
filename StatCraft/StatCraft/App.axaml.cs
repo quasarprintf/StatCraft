@@ -102,8 +102,20 @@ namespace StatCraft
                 return repository;
             });
 
-            services.AddSingleton<GameDataRepository>(_ =>
+            services.AddSingleton<MapRepository>(_ =>
             {
+                MapRepository repository = new MapRepository(dbPath);
+                repository.Initialize();
+                return repository;
+            });
+
+            services.AddSingleton<GameDataRepository>(sp =>
+            {
+                // Its MapName -> MapId migration writes into the Maps table, so that table has to exist
+                // first. Singleton factories run on first resolution rather than in registration order,
+                // so the dependency is forced explicitly here even though nothing else needs it.
+                sp.GetRequiredService<MapRepository>();
+
                 GameDataRepository repository = new GameDataRepository(dbPath);
                 repository.Initialize();
                 return repository;
@@ -129,6 +141,7 @@ namespace StatCraft
             services.AddSingleton<Sc2LadderService>();
 
             services.AddTransient<BuildsPageViewModel>();
+            services.AddTransient<MapsPageViewModel>();
             services.AddTransient<DataPageViewModel>();
             services.AddTransient<AccountPickerViewModel>();
             services.AddTransient<LinkAccountViewModel>();

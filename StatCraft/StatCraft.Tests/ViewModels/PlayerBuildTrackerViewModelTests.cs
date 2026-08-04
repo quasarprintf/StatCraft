@@ -1,3 +1,4 @@
+using StatCraft.Models.GameData.Attributes;
 using System.Collections.ObjectModel;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
@@ -24,6 +25,9 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         _accountRepository.Initialize();
         _buildRepository = new BuildRepository(_dbPath);
         _buildRepository.Initialize();
+        // Before GameDataRepository, whose MapName -> MapId migration writes into the Maps table — the
+        // same ordering App.axaml.cs enforces through DI.
+        new MapRepository(_dbPath).Initialize();
         _gameDataRepository = new GameDataRepository(_dbPath);
         _gameDataRepository.Initialize();
 
@@ -100,7 +104,6 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     {
         ParsedReplayData replay = new()
         {
-            MapName = "Map",
             GameLengthSeconds = 600,
             ReplayPath = Guid.NewGuid() + ".SC2Replay",
             ReplayTimestamp = DateTimeOffset.UtcNow,

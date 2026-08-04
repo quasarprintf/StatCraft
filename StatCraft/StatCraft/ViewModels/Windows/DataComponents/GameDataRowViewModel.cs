@@ -87,7 +87,7 @@ namespace StatCraft.ViewModels
             ProfileLabel = profileLabel;
 
             ParsedReplayData replay = game.ReplayData;
-            MapName = replay.MapName;
+            MapName = game.Map?.Name ?? "";
             PlayedAt = replay.ReplayTimestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
             GameOutcome outcome = GameOutcomeExtensions.FromWin(replay.Win);
             ResultLabel = outcome switch { GameOutcome.Win => "Win", GameOutcome.Loss => "Loss", _ => "Draw" };

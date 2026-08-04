@@ -108,7 +108,6 @@ namespace StatCraft.Services.DataParsing
 
             return new ParsedReplayData
             {
-                MapName = rawReplayData.MapName,
                 GameLengthSeconds = rawReplayData.GameLengthSeconds,
                 ReplayPath = rawReplayData.ReplayPath,
                 ReplayTimestamp = rawReplayData.ReplayTimestamp,

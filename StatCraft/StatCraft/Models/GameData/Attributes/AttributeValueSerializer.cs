@@ -1,11 +1,15 @@
 using System.Globalization;
-using StatCraft.ViewModels;
 
-namespace StatCraft.Models.GameData.Builds
+namespace StatCraft.Models.GameData.Attributes
 {
-    // Shared string round-trip convention for an attribute value, used both for a BuildAttribute's
-    // shared template default (BuildRepository) and a per-game value snapshot (GameDataRepository).
-    internal static class BuildAttributeValueSerializer
+    // Shared string round-trip convention for an attribute value: a BuildAttribute's template default
+    // (BuildRepository), a per-game value snapshot (GameDataRepository), and a map's per-attribute value
+    // (MapRepository) all store the same TEXT encoding.
+    //
+    // Note this encoding has no representation of "unset" for Numeric/Bool/Percent — Parse degrades an
+    // empty string to 0/false. Callers that need a null (map attribute values do) must track that
+    // separately, by the presence or absence of the row, and never Parse a missing value.
+    internal static class AttributeValueSerializer
     {
         internal readonly record struct ParsedValue(decimal NumericValue, bool BoolValue, decimal PercentValue, string? SelectedValue);
 

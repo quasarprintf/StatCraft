@@ -5,6 +5,7 @@ using System.Linq;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Maps;
 
 namespace StatCraft.Services.DatabaseRepository
 {
@@ -31,7 +32,7 @@ namespace StatCraft.Services.DatabaseRepository
                 CREATE TABLE IF NOT EXISTS Games (
                     Id                INTEGER PRIMARY KEY AUTOINCREMENT,
                     Sc2ProfileId      INTEGER NOT NULL REFERENCES Sc2Profiles(Id) ON DELETE CASCADE,
-                    MapName           TEXT    NOT NULL DEFAULT '',
+                    MapId             INTEGER REFERENCES Maps(Id),
                     GameLengthSeconds INTEGER NOT NULL DEFAULT 0,
                     ReplayPath        TEXT    NOT NULL UNIQUE,
                     ReplayTimestamp   TEXT    NOT NULL DEFAULT '',
@@ -199,6 +200,29 @@ namespace StatCraft.Services.DatabaseRepository
             {
                 // Already migrated, or a fresh DB already created with the new schema.
             }
+
+            // Upgrades a pre-existing DB that stored the map as a bare name on Games, creating one Maps
+            // row per distinct historical name and repointing each game at it. Blank legacy names (the
+            // old column's DEFAULT '') are deliberately left as a NULL MapId rather than becoming a map
+            // called "". On a fresh DB (or one already migrated) Games already has a MapId column, so the
+            // ADD COLUMN fails immediately and the batch aborts before reaching DROP COLUMN. (Adding a
+            // column with a REFERENCES clause is only legal under PRAGMA foreign_keys because its default
+            // is NULL, which is exactly what an unmigrated row should have anyway.)
+            //
+            // Requires the Maps table to already exist — see MapRepository, which App.axaml.cs and the
+            // tests both initialize before this repository for exactly that reason.
+            try
+            {
+                conn.Execute(@"
+                    ALTER TABLE Games ADD COLUMN MapId INTEGER REFERENCES Maps(Id);
+                    INSERT OR IGNORE INTO Maps (Name) SELECT DISTINCT MapName FROM Games WHERE MapName <> '';
+                    UPDATE Games SET MapId = (SELECT Id FROM Maps WHERE Maps.Name = Games.MapName) WHERE MapName <> '';
+                    ALTER TABLE Games DROP COLUMN MapName;");
+            }
+            catch (SqliteException)
+            {
+                // Already migrated, or a fresh DB already created with the new schema.
+            }
         }
 
         // Side values in GamePlayers.
@@ -225,13 +249,13 @@ namespace StatCraft.Services.DatabaseRepository
 
             ParsedReplayData replay = game.ReplayData;
             game.GameId = (int)conn.ExecuteScalar<long>(@"
-                INSERT INTO Games (Sc2ProfileId, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes, CreatedAtUtc, GameType)
-                VALUES (@sc2ProfileId, @mapName, @gameLengthSeconds, @replayPath, @replayTimestamp, @win, @playerName, @playerClan, @playerMmr, @playerRace, @playerRandom, @notes, @createdAt, @gameType);
+                INSERT INTO Games (Sc2ProfileId, MapId, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes, CreatedAtUtc, GameType)
+                VALUES (@sc2ProfileId, @mapId, @gameLengthSeconds, @replayPath, @replayTimestamp, @win, @playerName, @playerClan, @playerMmr, @playerRace, @playerRandom, @notes, @createdAt, @gameType);
                 SELECT last_insert_rowid();",
                 new
                 {
                     sc2ProfileId,
-                    mapName = replay.MapName,
+                    mapId = game.Map?.Id,
                     gameLengthSeconds = replay.GameLengthSeconds,
                     replayPath = replay.ReplayPath,
                     replayTimestamp = replay.ReplayTimestamp,
@@ -299,7 +323,7 @@ namespace StatCraft.Services.DatabaseRepository
         {
             public long Id { get; set; }
             public int Sc2ProfileId { get; set; }
-            public string MapName { get; set; } = "";
+            public int? MapId { get; set; }
             public int GameLengthSeconds { get; set; }
             public string ReplayPath { get; set; } = "";
             public DateTimeOffset ReplayTimestamp { get; set; }
@@ -311,6 +335,14 @@ namespace StatCraft.Services.DatabaseRepository
             public bool PlayerRandom { get; set; }
             public string Notes { get; set; } = "";
             public GameType? GameType { get; set; }
+        }
+
+        // Only the columns needed to identify a game's map. The full Map — including its attribute
+        // values — is MapRepository's business; games just need something to display and group by.
+        private class MapRow
+        {
+            public long Id { get; set; }
+            public string Name { get; set; } = "";
         }
 
         private class GamePlayerRow
@@ -352,7 +384,7 @@ namespace StatCraft.Services.DatabaseRepository
             using SqliteConnection conn = OpenConnection();
 
             List<GameRow> gameRows = conn.Query<GameRow>(@"
-                SELECT Id, Sc2ProfileId, MapName, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes, GameType
+                SELECT Id, Sc2ProfileId, MapId, GameLengthSeconds, ReplayPath, ReplayTimestamp, Win, PlayerName, PlayerClan, PlayerMmr, PlayerRace, PlayerRandom, Notes, GameType
                 FROM Games WHERE Sc2ProfileId IN @sc2ProfileIds ORDER BY ReplayTimestamp ASC",
                 new { sc2ProfileIds }).ToList();
 
@@ -360,6 +392,19 @@ namespace StatCraft.Services.DatabaseRepository
                 return [];
 
             string idList = string.Join(",", gameRows.Select(r => r.Id));
+
+            // Fetched separately and shared by id rather than joined onto each game row, so every game on
+            // the same map ends up holding the *same* Map instance — reference equality is what lets the
+            // Maps tab and anything grouping by map line up without needing value equality on Map.
+            Dictionary<int, Map> mapsById = new();
+            List<int> mapIds = gameRows.Where(r => r.MapId != null).Select(r => r.MapId!.Value).Distinct().ToList();
+            if (mapIds.Count > 0)
+            {
+                IEnumerable<MapRow> mapRows = conn.Query<MapRow>(
+                    $"SELECT Id, Name FROM Maps WHERE Id IN ({string.Join(",", mapIds)})");
+                foreach (MapRow row in mapRows)
+                    mapsById[(int)row.Id] = new Map { Id = (int)row.Id, Name = row.Name };
+            }
 
             Dictionary<long, List<GamePlayer>> allies = new();
             Dictionary<long, List<GamePlayer>> opponents = new();
@@ -418,7 +463,6 @@ namespace StatCraft.Services.DatabaseRepository
 
                 ParsedReplayData replay = new()
                 {
-                    MapName = row.MapName,
                     GameLengthSeconds = row.GameLengthSeconds,
                     ReplayPath = row.ReplayPath,
                     ReplayTimestamp = row.ReplayTimestamp,
@@ -432,6 +476,7 @@ namespace StatCraft.Services.DatabaseRepository
                 {
                     GameId = (int)row.Id,
                     Sc2ProfileId = row.Sc2ProfileId,
+                    Map = row.MapId != null && mapsById.TryGetValue(row.MapId.Value, out Map? map) ? map : null,
                     GameType = row.GameType,
                     ReplayData = replay,
                     Notes = row.Notes,
@@ -515,6 +560,16 @@ namespace StatCraft.Services.DatabaseRepository
             using SqliteConnection conn = OpenConnection();
             string idList = string.Join(",", ids);
             long count = conn.ExecuteScalar<long>($"SELECT COUNT(*) FROM GameBuilds WHERE BuildId IN ({idList})");
+            return count > 0;
+        }
+
+        // True if any game was played on this map. Unlike builds there's no subtree to collect — maps
+        // never nest — so the Maps tab passes a single id. Games.MapId has no ON DELETE CASCADE, so
+        // deleting a referenced map would leave dangling ids; the caller blocks the delete instead.
+        public bool IsAnyMapReferenced(int mapId)
+        {
+            using SqliteConnection conn = OpenConnection();
+            long count = conn.ExecuteScalar<long>("SELECT COUNT(*) FROM Games WHERE MapId = @mapId", new { mapId });
             return count > 0;
         }
 

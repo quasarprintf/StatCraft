@@ -13,6 +13,12 @@ namespace StatCraft.ViewModels
 
         [ObservableProperty] private bool _isVisible;
 
+        // Whether entities with no value at all for this dimension still pass. Only the Maps tab binds
+        // it: a newly defined map attribute is unset on every map, so without an opt-in an attribute
+        // filter would hide the very maps the user most likely wants to find and fill in. The Data tab's
+        // dimensions all come from the replay and are never unset, so its templates simply don't show it.
+        [ObservableProperty] private bool _includeUnset;
+
         // Raised whenever this slot's own criteria changes in a way that should affect which games are
         // shown — visibility toggling here, or (in each concrete subclass) its own selection/bounds.
         public event Action? Changed;
@@ -39,6 +45,8 @@ namespace StatCraft.ViewModels
             RaiseChanged();
         }
 
+        partial void OnIncludeUnsetChanged(bool value) => RaiseChanged();
+
         [RelayCommand]
         private void Add() => IsVisible = true;
 
@@ -46,6 +54,7 @@ namespace StatCraft.ViewModels
         private void Remove()
         {
             IsVisible = false;
+            IncludeUnset = false;
             Clear();
         }
     }

@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using StatCraft.Models.GameData.Attributes;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.ViewModels;
 using System;
@@ -46,11 +47,11 @@ namespace StatCraft.Models.GameData.Builds
         private void RemoveOption(string option) => ValueOptions.Remove(option);
 
         internal string SerializeValue() =>
-            BuildAttributeValueSerializer.Serialize(Type, NumericValue, BoolValue, PercentValue, SelectedValue);
+            AttributeValueSerializer.Serialize(Type, NumericValue, BoolValue, PercentValue, SelectedValue);
 
         internal void ApplyValue(string value)
         {
-            BuildAttributeValueSerializer.ParsedValue parsed = BuildAttributeValueSerializer.Parse(Type, value);
+            AttributeValueSerializer.ParsedValue parsed = AttributeValueSerializer.Parse(Type, value);
             switch (Type)
             {
                 case AttributeType.Numeric:

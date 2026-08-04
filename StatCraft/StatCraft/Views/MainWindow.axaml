@@ -21,6 +21,9 @@
         <TabItem Header="Builds">
             <views:BuildsPage/>
         </TabItem>
+        <TabItem Header="Maps">
+            <views:MapsPage/>
+        </TabItem>
         <TabItem Header="Analytics">
             <views:AnalyticsPage/>
         </TabItem>

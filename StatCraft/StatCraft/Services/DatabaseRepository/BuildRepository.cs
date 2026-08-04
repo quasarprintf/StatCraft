@@ -1,3 +1,4 @@
+using StatCraft.Models.GameData.Attributes;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -246,11 +247,11 @@ namespace StatCraft.Services.DatabaseRepository
         }
 
         private static string SerializeDefaultValue(BuildAttribute attr) =>
-            BuildAttributeValueSerializer.Serialize(attr.Type, attr.NumericValue, attr.BoolValue, attr.PercentValue, attr.SelectedValue);
+            AttributeValueSerializer.Serialize(attr.Type, attr.NumericValue, attr.BoolValue, attr.PercentValue, attr.SelectedValue);
 
         private static void ApplyDefaultValue(BuildAttribute attr, string defaultValue)
         {
-            BuildAttributeValueSerializer.ParsedValue parsed = BuildAttributeValueSerializer.Parse(attr.Type, defaultValue);
+            AttributeValueSerializer.ParsedValue parsed = AttributeValueSerializer.Parse(attr.Type, defaultValue);
             switch (attr.Type)
             {
                 case AttributeType.Numeric:

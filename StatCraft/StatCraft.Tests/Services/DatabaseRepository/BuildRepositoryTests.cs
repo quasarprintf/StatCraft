@@ -1,3 +1,4 @@
+using StatCraft.Models.GameData.Attributes;
 using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;

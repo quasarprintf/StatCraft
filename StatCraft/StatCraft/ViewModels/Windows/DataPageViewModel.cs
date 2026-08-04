@@ -301,7 +301,7 @@ namespace StatCraft.ViewModels
         {
             List<int> profileIds = Filters.ProfileSlot.Options.Where(o => o.IsChecked).Select(o => o.Value.Id).ToList();
             _loadedGames = profileIds.Count == 0 ? [] : _gameDataRepository.GetGamesForProfiles(profileIds);
-            Filters.RefreshMapOptions(_loadedGames.Select(g => g.ReplayData.MapName).Distinct());
+            Filters.RefreshMapOptions(_loadedGames.Where(g => g.Map != null).Select(g => g.Map!.Name).Distinct());
             ApplyFilters();
             await Task.CompletedTask;
         }

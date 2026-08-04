@@ -159,8 +159,8 @@ namespace StatCraft.ViewModels
                 ToSet(MapSlot),
                 ToSet(MatchupSlot),
                 ToSet(OutcomeSlot),
-                MmrSlot.Min,
-                MmrSlot.Max,
+                (long?)MmrSlot.Min,
+                (long?)MmrSlot.Max,
                 ToBuildIdSet(BuildSlot));
         }
 

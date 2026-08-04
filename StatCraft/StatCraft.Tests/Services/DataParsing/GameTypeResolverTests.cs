@@ -65,7 +65,6 @@ public class GameTypeResolverTests
 
     private static ParsedReplayData CreateReplay(bool isMatchmade = true, long selfMmr = 3000) => new()
     {
-        MapName = "Altitude LE",
         GameLengthSeconds = 600,
         ReplayPath = "replay.SC2Replay",
         ReplayTimestamp = DateTimeOffset.UtcNow,

@@ -1,7 +1,9 @@
+using StatCraft.Models.GameData.Attributes;
 using Microsoft.Data.Sqlite;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
+using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.ViewModels;
 
@@ -13,6 +15,7 @@ public class GameDataRepositoryTests : IDisposable
     private readonly GameDataRepository _repository;
     private readonly BuildRepository _buildRepository;
     private readonly AccountRepository _accountRepository;
+    private readonly MapRepository _mapRepository;
     private readonly int _sc2ProfileId;
 
     public GameDataRepositoryTests()
@@ -23,6 +26,10 @@ public class GameDataRepositoryTests : IDisposable
         _accountRepository.Initialize();
         _buildRepository = new BuildRepository(_dbPath);
         _buildRepository.Initialize();
+        // Before GameDataRepository, whose MapName -> MapId migration writes into the Maps table — the
+        // same ordering App.axaml.cs enforces through DI.
+        _mapRepository = new MapRepository(_dbPath);
+        _mapRepository.Initialize();
         _repository = new GameDataRepository(_dbPath);
         _repository.Initialize();
 
@@ -46,7 +53,7 @@ public class GameDataRepositoryTests : IDisposable
         Assert.Equal(game.GameId, loaded.GameId);
         Assert.Equal(game.ReplayData.Player.GamePlayerId, loaded.ReplayData.Player.GamePlayerId);
         Assert.NotNull(loaded.ReplayData.Player.GamePlayerId);
-        Assert.Equal("Map", loaded.ReplayData.MapName);
+        Assert.Equal("Map", loaded.Map?.Name);
         Assert.Equal(600, loaded.ReplayData.GameLengthSeconds);
         Assert.Equal(new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero), loaded.ReplayData.ReplayTimestamp);
         Assert.Equal(1m, loaded.ReplayData.Win);
@@ -523,8 +530,7 @@ public class GameDataRepositoryTests : IDisposable
                 insertCmd.ExecuteNonQuery();
             }
 
-            GameDataRepository repository = new GameDataRepository(dbPath);
-            repository.Initialize();
+            GameDataRepository repository = InitializeLegacyDb(dbPath);
 
             GameData loaded = Assert.Single(repository.GetGamesForProfile(1));
             Assert.Equal(DateTimeOffset.Parse("2025-06-01T12:00:00.0000000+00:00"), loaded.ReplayData.ReplayTimestamp);
@@ -589,8 +595,7 @@ public class GameDataRepositoryTests : IDisposable
                 insertCmd.ExecuteNonQuery();
             }
 
-            GameDataRepository repository = new GameDataRepository(dbPath);
-            repository.Initialize();
+            GameDataRepository repository = InitializeLegacyDb(dbPath);
 
             GameData loaded = Assert.Single(repository.GetGamesForProfile(1));
             Assert.Equal([42], loaded.ReplayData.Player.BuildIds);
@@ -699,8 +704,7 @@ public class GameDataRepositoryTests : IDisposable
                 insertAttrValueCmd.ExecuteNonQuery();
             }
 
-            GameDataRepository repository = new GameDataRepository(dbPath);
-            repository.Initialize();
+            GameDataRepository repository = InitializeLegacyDb(dbPath);
 
             GameData loaded = Assert.Single(repository.GetGamesForProfile(1));
             Assert.NotNull(loaded.ReplayData.Player.GamePlayerId);
@@ -711,6 +715,78 @@ public class GameDataRepositoryTests : IDisposable
             // The pre-existing Opponent row (Side = 1) must not be mistaken for the migrated Self row.
             GamePlayer opponent = Assert.Single(loaded.ReplayData.Opponents);
             Assert.Equal("Foe", opponent.Name);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(dbPath))
+                    File.Delete(dbPath);
+            }
+            catch (IOException)
+            {
+                // Best-effort cleanup.
+            }
+        }
+    }
+
+    [Fact]
+    public void Initialize_ExistingSchemaWithMapNameColumn_MigratesIntoMaps()
+    {
+        string dbPath = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid() + ".db");
+        try
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
+            using (SqliteConnection conn = new SqliteConnection($"Data Source={dbPath}"))
+            {
+                conn.Open();
+                using SqliteCommand createCmd = conn.CreateCommand();
+                createCmd.CommandText = @"
+                    CREATE TABLE Games (
+                        Id                INTEGER PRIMARY KEY AUTOINCREMENT,
+                        Sc2ProfileId      INTEGER NOT NULL,
+                        MapName           TEXT    NOT NULL DEFAULT '',
+                        GameLengthSeconds INTEGER NOT NULL DEFAULT 0,
+                        ReplayPath        TEXT    NOT NULL UNIQUE,
+                        ReplayTimestamp   TEXT    NOT NULL DEFAULT '',
+                        Win               REAL    NOT NULL DEFAULT 0,
+                        PlayerName        TEXT    NOT NULL DEFAULT '',
+                        PlayerClan        TEXT    NOT NULL DEFAULT '',
+                        PlayerMmr         INTEGER NOT NULL DEFAULT 0,
+                        PlayerRace        TEXT    NOT NULL DEFAULT '',
+                        PlayerRandom      INTEGER NOT NULL DEFAULT 0,
+                        Notes             TEXT    NOT NULL DEFAULT '',
+                        CreatedAtUtc      TEXT    NOT NULL DEFAULT ''
+                    );";
+                createCmd.ExecuteNonQuery();
+
+                // Two games on the same map plus one with the old column's DEFAULT '' — the distinct
+                // names must collapse to a single Maps row, and the blank one must not become a map.
+                using SqliteCommand insertCmd = conn.CreateCommand();
+                insertCmd.CommandText = @"
+                    INSERT INTO Games (Sc2ProfileId, MapName, ReplayPath, ReplayTimestamp, PlayerRace) VALUES
+                        (1, 'Altitude LE', 'a.SC2Replay', '2025-06-01T12:00:00.0000000+00:00', 'T'),
+                        (1, 'Altitude LE', 'b.SC2Replay', '2025-06-01T13:00:00.0000000+00:00', 'T'),
+                        (1, '',            'c.SC2Replay', '2025-06-01T14:00:00.0000000+00:00', 'T');";
+                insertCmd.ExecuteNonQuery();
+            }
+
+            GameDataRepository repository = InitializeLegacyDb(dbPath);
+
+            List<GameData> loaded = repository.GetGamesForProfile(1);
+            Assert.Equal(3, loaded.Count);
+            Assert.Equal("Altitude LE", loaded[0].Map?.Name);
+            Assert.Equal("Altitude LE", loaded[1].Map?.Name);
+            Assert.Null(loaded[2].Map);
+
+            // Both games point at the same row, not two rows that happen to share a name.
+            Assert.Equal(loaded[0].Map!.Id, loaded[1].Map!.Id);
+            Map onlyMap = Assert.Single(new MapRepository(dbPath).GetAllMaps([]));
+            Assert.Equal("Altitude LE", onlyMap.Name);
+
+            // Re-running must be a no-op rather than re-migrating or throwing.
+            repository.Initialize();
+            Assert.Equal("Altitude LE", repository.GetGamesForProfile(1)[0].Map?.Name);
         }
         finally
         {
@@ -750,6 +826,17 @@ public class GameDataRepositoryTests : IDisposable
         return profile;
     }
 
+    // Brings a hand-written legacy database up to the current schema in the same order production does
+    // (see App.axaml.cs): the Maps table has to exist before GameDataRepository's MapName -> MapId
+    // migration can move the legacy map names into it.
+    private static GameDataRepository InitializeLegacyDb(string dbPath)
+    {
+        new MapRepository(dbPath).Initialize();
+        GameDataRepository repository = new GameDataRepository(dbPath);
+        repository.Initialize();
+        return repository;
+    }
+
     private BuildAttribute InsertAttribute()
     {
         BuildNode build = new() { Name = "Build" };
@@ -759,12 +846,12 @@ public class GameDataRepositoryTests : IDisposable
         return attr;
     }
 
-    private static GameData CreateGame(string replayPath = "replay.SC2Replay", decimal win = 1m,
-        GamePlayer[]? allies = null, GamePlayer[]? opponents = null, DateTimeOffset? replayTimestamp = null)
+    private GameData CreateGame(string replayPath = "replay.SC2Replay", decimal win = 1m,
+        GamePlayer[]? allies = null, GamePlayer[]? opponents = null, DateTimeOffset? replayTimestamp = null,
+        string mapName = "Map")
     {
         ParsedReplayData replay = new()
         {
-            MapName = "Map",
             GameLengthSeconds = 600,
             ReplayPath = replayPath,
             ReplayTimestamp = replayTimestamp ?? new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero),
@@ -773,7 +860,7 @@ public class GameDataRepositoryTests : IDisposable
             Allies = allies ?? [],
             Opponents = opponents ?? [new GamePlayer { Name = "Foe", Clan = "", Mmr = 3100, Race = 'Z', Random = false }],
         };
-        return new GameData { ReplayData = replay };
+        return new GameData { Map = _mapRepository.GetOrCreateMap(mapName), ReplayData = replay };
     }
 
     public void Dispose()

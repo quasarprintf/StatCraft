@@ -1,0 +1,118 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:StatCraft.ViewModels"
+             xmlns:maps="using:StatCraft.Models.GameData.Maps"
+             xmlns:local="using:StatCraft.Views"
+             x:Class="StatCraft.Views.MapsPage"
+             x:DataType="vm:MapsPageViewModel">
+    <UserControl.Styles>
+        <Style Selector="StackPanel.filterSlot">
+            <Setter Property="Orientation" Value="Horizontal"/>
+            <Setter Property="Spacing" Value="2"/>
+        </Style>
+        <Style Selector="Button.removeFilter">
+            <Setter Property="Content" Value="✕"/>
+            <Setter Property="Foreground" Value="Red"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+    </UserControl.Styles>
+
+    <Grid ColumnDefinitions="240,4,*">
+        <!-- Left: name filter + attribute filters, then the map list -->
+        <DockPanel Grid.Column="0" Margin="4">
+            <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,4">
+                <TextBox Grid.Column="0" Text="{Binding NameFilter}" PlaceholderText="Filter maps..." Margin="0,0,4,0"/>
+                <Button Grid.Column="1" Content="+" Padding="6,2" VerticalAlignment="Center" ToolTip.Tip="Add attribute filter">
+                    <Button.Flyout>
+                        <MenuFlyout ItemsSource="{Binding HiddenFilterSlots}" Placement="BottomEdgeAlignedRight">
+                            <MenuFlyout.ItemContainerTheme>
+                                <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vm:FilterSlotViewModel">
+                                    <Setter Property="Header" Value="{Binding Title}"/>
+                                    <Setter Property="Command" Value="{Binding AddCommand}"/>
+                                </ControlTheme>
+                            </MenuFlyout.ItemContainerTheme>
+                        </MenuFlyout>
+                    </Button.Flyout>
+                </Button>
+            </Grid>
+
+            <!-- Attribute filters stack vertically here rather than in a horizontal bar, because the
+                 left pane is narrow and the slot count grows with the number of defined attributes. -->
+            <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding VisibleFilterSlots}" Margin="0,0,0,4">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <StackPanel Spacing="4"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <!-- Both slot kinds put the editor on its own line under a title/remove header row: the
+                     pane is far narrower than the Data tab's horizontal bar, and a single-line layout
+                     pushes the remove button off the edge. -->
+                <ItemsControl.DataTemplates>
+                    <DataTemplate x:DataType="vm:CheckboxFilterSlotViewModel">
+                        <StackPanel Spacing="2">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
+                                <Button Grid.Column="1" Classes="removeFilter" Command="{Binding RemoveCommand}"/>
+                            </Grid>
+                            <local:CheckboxFilterDropdown Header="{Binding Title}" Options="{Binding Options}"
+                                                          ShowSearch="{Binding ShowSearch}" SearchText="{Binding SearchText}"
+                                                          Columns="{Binding Columns}" HorizontalAlignment="Left"/>
+                            <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
+                        </StackPanel>
+                    </DataTemplate>
+                    <DataTemplate x:DataType="vm:NumericRangeFilterSlotViewModel">
+                        <StackPanel Spacing="2">
+                            <Grid ColumnDefinitions="*,Auto">
+                                <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
+                                <Button Grid.Column="1" Classes="removeFilter" Command="{Binding RemoveCommand}"/>
+                            </Grid>
+                            <StackPanel Classes="filterSlot">
+                                <NumericUpDown Value="{Binding Min}" Width="90" PlaceholderText="Min" FormatString="0.##" ShowButtonSpinner="False"/>
+                                <TextBlock Text="-" VerticalAlignment="Center"/>
+                                <NumericUpDown Value="{Binding Max}" Width="90" PlaceholderText="Max" FormatString="0.##" ShowButtonSpinner="False"/>
+                            </StackPanel>
+                            <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ItemsControl.DataTemplates>
+            </ItemsControl>
+
+            <ListBox x:Name="MapListBox" ItemsSource="{Binding Maps}" SelectedItem="{Binding SelectedMap}">
+                <ListBox.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Add Map" Command="{Binding AddMapCommand}"/>
+                    </ContextMenu>
+                </ListBox.ContextMenu>
+                <ListBox.Styles>
+                    <Style Selector="ListBoxItem" x:DataType="maps:Map">
+                        <Setter Property="ContextMenu">
+                            <Template>
+                                <ContextMenu>
+                                    <MenuItem Header="Add Map" Command="{Binding #MapListBox.DataContext.AddMapCommand}"/>
+                                    <Separator/>
+                                    <MenuItem Header="Delete Map"
+                                              Command="{Binding #MapListBox.DataContext.DeleteMapCommand}"
+                                              CommandParameter="{Binding}"/>
+                                </ContextMenu>
+                            </Template>
+                        </Setter>
+                    </Style>
+                </ListBox.Styles>
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="maps:Map">
+                        <TextBlock Text="{Binding Name}"/>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </DockPanel>
+
+        <GridSplitter Grid.Column="1" ResizeDirection="Columns"/>
+
+        <local:MapDetailsPanel Grid.Column="2"/>
+    </Grid>
+</UserControl>

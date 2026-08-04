@@ -44,7 +44,6 @@ public class ParsedReplayDataTests
 
     private static ParsedReplayData CreateReplay(long selfMmr = 3000, GamePlayer[]? allies = null, GamePlayer[]? opponents = null) => new()
     {
-        MapName = "Map",
         GameLengthSeconds = 600,
         ReplayPath = "replay.SC2Replay",
         ReplayTimestamp = DateTimeOffset.UtcNow,

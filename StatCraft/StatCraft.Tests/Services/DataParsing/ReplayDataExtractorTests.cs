@@ -139,7 +139,6 @@ public class ReplayDataExtractorTests
 
         ParsedReplayData result = _extractor.Parse(raw, CreateProfile(100));
 
-        Assert.Equal("Site Delta", result.MapName);
         Assert.Equal(725, result.GameLengthSeconds);
         Assert.Equal(@"C:\Replays\game.SC2Replay", result.ReplayPath);
         Assert.Equal(timestamp, result.ReplayTimestamp);

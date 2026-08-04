@@ -23,7 +23,9 @@ namespace StatCraft.Services.DataFiltering
             if (criteria.ToDate is { } to && played > to)
                 return false;
 
-            if (HasAny(criteria.Maps) && !criteria.Maps!.Contains(replay.MapName))
+            // Filtered by name rather than by Map identity: the options come from the loaded games as
+            // plain strings, and a game with no map (a legacy row) can never match a named selection.
+            if (HasAny(criteria.Maps) && !criteria.Maps!.Contains(game.Map?.Name ?? ""))
                 return false;
 
             if (HasAny(criteria.Outcomes) && !criteria.Outcomes!.Contains(GameOutcomeExtensions.FromWin(replay.Win)))
