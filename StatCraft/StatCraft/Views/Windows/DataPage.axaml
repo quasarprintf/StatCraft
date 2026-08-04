@@ -34,8 +34,8 @@
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="vm:RaceMmrViewModel">
-                        <TextBlock Text="{Binding Label}" Foreground="{Binding Color}"
-                                   FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                        <component:ColoredTextBlock Characters="{Binding Characters}"
+                                                    FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>

@@ -82,6 +82,10 @@ namespace StatCraft.ViewModels
         // credentials, or a profile with no current-season ladder).
         public ObservableCollection<RaceMmrViewModel> CurrentMmrs { get; } = [];
 
+        // Each ladder's rating as of when this session started, so the header can show movement since
+        // then. Reset on every session start; a ladder absent here has no baseline to measure against.
+        private readonly Dictionary<LadderRace, long> _sessionStartMmrs = [];
+
         public event Action? SessionRequested;
 
         [RelayCommand]
@@ -125,13 +129,16 @@ namespace StatCraft.ViewModels
                 _loadedGames = [];
                 Games.Clear();
                 CurrentMmrs.Clear();
+                _sessionStartMmrs.Clear();
                 await _replayWatcherService.Stop();
                 return;
             }
 
             // Not awaited: a network round-trip shouldn't hold up the session starting or the games
-            // table appearing. The header simply fills in whenever the lookup lands.
+            // table appearing. The header simply fills in whenever the lookup lands, which is also when
+            // the session's MMR baseline gets captured.
             CurrentMmrs.Clear();
+            _sessionStartMmrs.Clear();
             _ = LoadCurrentMmrs(profile);
 
             // Every session start collapses the profile filter back to just this profile and the date
@@ -189,12 +196,15 @@ namespace StatCraft.ViewModels
             if (existing != null)
                 CurrentMmrs.Remove(existing);
 
-            RaceMmrViewModel updated = new(race, mmr);
+            RaceMmrViewModel updated = new(race, mmr, SessionStartMmrFor(race));
             int index = 0;
             while (index < CurrentMmrs.Count && CurrentMmrs[index].Race < race)
                 index++;
             CurrentMmrs.Insert(index, updated);
         }
+
+        private long? SessionStartMmrFor(LadderRace race) =>
+            _sessionStartMmrs.TryGetValue(race, out long start) ? start : null;
 
         private async Task LoadCurrentMmrs(Sc2Profile profile)
         {
@@ -207,9 +217,15 @@ namespace StatCraft.ViewModels
                     if (ActiveProfile?.Id != profile.Id)
                         return;
 
+                    // This first successful lookup *is* the session baseline — every later change shown
+                    // in the header is measured against it.
+                    _sessionStartMmrs.Clear();
+                    foreach ((LadderRace race, long mmr) in byRace)
+                        _sessionStartMmrs[race] = mmr;
+
                     CurrentMmrs.Clear();
                     foreach ((LadderRace race, long mmr) in byRace.OrderBy(kv => kv.Key))
-                        CurrentMmrs.Add(new RaceMmrViewModel(race, mmr));
+                        CurrentMmrs.Add(new RaceMmrViewModel(race, mmr, mmr));
                 });
             }
             catch (Exception)
