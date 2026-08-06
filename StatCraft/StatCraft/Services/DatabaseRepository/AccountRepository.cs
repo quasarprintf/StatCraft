@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -8,23 +7,15 @@ using StatCraft.Models.Battlenet;
 
 namespace StatCraft.Services.DatabaseRepository
 {
-    public class AccountRepository
+    public class AccountRepository : SqliteRepository
     {
-        private readonly string _dbPath;
-        private readonly string _connectionString;
-
-        public AccountRepository(string dbPath)
+        public AccountRepository(string dbPath) : base(dbPath)
         {
-            DapperTypeHandlers.EnsureRegistered();
-            _dbPath = dbPath;
-            _connectionString = $"Data Source={dbPath}";
         }
 
         public void Initialize()
         {
-            string? dir = Path.GetDirectoryName(_dbPath);
-            if (!string.IsNullOrEmpty(dir))
-                Directory.CreateDirectory(dir);
+            EnsureDatabaseFolderExists();
 
             using SqliteConnection conn = OpenConnection();
             conn.Execute(@"
@@ -143,14 +134,6 @@ namespace StatCraft.Services.DatabaseRepository
             for (int i = 0; i < names.Length; i++)
                 names[i] = $"{alias}.{names[i]}";
             return string.Join(", ", names);
-        }
-
-        private SqliteConnection OpenConnection()
-        {
-            SqliteConnection conn = new SqliteConnection(_connectionString);
-            conn.Open();
-            conn.Execute("PRAGMA foreign_keys = ON");
-            return conn;
         }
     }
 }

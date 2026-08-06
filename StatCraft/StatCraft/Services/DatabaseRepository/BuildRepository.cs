@@ -1,7 +1,6 @@
 using StatCraft.Models.GameData.Attributes;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -11,27 +10,19 @@ using StatCraft.ViewModels;
 
 namespace StatCraft.Services.DatabaseRepository
 {
-    public class BuildRepository
+    public class BuildRepository : SqliteRepository
     {
-        private readonly string _dbPath;
-        private readonly string _connectionString;
-
         // Raised after any build/attribute/value-option is inserted, updated, or deleted, so other
         // parts of the app (e.g. BuildPathPicker's menu) can refresh their view of the build tree.
         public event Action? BuildsChanged;
 
-        public BuildRepository(string dbPath)
+        public BuildRepository(string dbPath) : base(dbPath)
         {
-            DapperTypeHandlers.EnsureRegistered();
-            _dbPath = dbPath;
-            _connectionString = $"Data Source={dbPath}";
         }
 
         public void Initialize()
         {
-            string? dir = Path.GetDirectoryName(_dbPath);
-            if (!string.IsNullOrEmpty(dir))
-                Directory.CreateDirectory(dir);
+            EnsureDatabaseFolderExists();
 
             using SqliteConnection conn = OpenConnection();
             conn.Execute(@"
@@ -267,14 +258,6 @@ namespace StatCraft.Services.DatabaseRepository
             conn.Execute("DELETE FROM AttributeValueOptions WHERE BuildAttributeId = @attrId AND Value = @value",
                 new { attrId = attributeId, value });
             BuildsChanged?.Invoke();
-        }
-
-        private SqliteConnection OpenConnection()
-        {
-            SqliteConnection conn = new SqliteConnection(_connectionString);
-            conn.Open();
-            conn.Execute("PRAGMA foreign_keys = ON");
-            return conn;
         }
     }
 }

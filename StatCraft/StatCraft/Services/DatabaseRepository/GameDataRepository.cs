@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -9,16 +8,10 @@ using StatCraft.Models.GameData.Maps;
 
 namespace StatCraft.Services.DatabaseRepository
 {
-    public class GameDataRepository
+    public class GameDataRepository : SqliteRepository
     {
-        private readonly string _dbPath;
-        private readonly string _connectionString;
-
-        public GameDataRepository(string dbPath)
+        public GameDataRepository(string dbPath) : base(dbPath)
         {
-            DapperTypeHandlers.EnsureRegistered();
-            _dbPath = dbPath;
-            _connectionString = $"Data Source={dbPath}";
         }
 
         // Each migration below guards itself with the sentinel-first-statement idiom: its opening
@@ -29,9 +22,7 @@ namespace StatCraft.Services.DatabaseRepository
         // (noted on each), so the order itself is load-bearing.
         public void Initialize()
         {
-            string? dir = Path.GetDirectoryName(_dbPath);
-            if (!string.IsNullOrEmpty(dir))
-                Directory.CreateDirectory(dir);
+            EnsureDatabaseFolderExists();
 
             using SqliteConnection conn = OpenConnection();
             CreateTables(conn);
@@ -613,14 +604,6 @@ namespace StatCraft.Services.DatabaseRepository
             using SqliteConnection conn = OpenConnection();
             long count = conn.ExecuteScalar<long>("SELECT COUNT(*) FROM Games WHERE MapId = @mapId", new { mapId });
             return count > 0;
-        }
-
-        private SqliteConnection OpenConnection()
-        {
-            SqliteConnection conn = new SqliteConnection(_connectionString);
-            conn.Open();
-            conn.Execute("PRAGMA foreign_keys = ON");
-            return conn;
         }
     }
 }

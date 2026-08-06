@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using Dapper;
 using Microsoft.Data.Sqlite;
@@ -12,26 +11,18 @@ namespace StatCraft.Services.DatabaseRepository
     // Owns maps and their globally-defined attributes. Mirrors BuildRepository's conventions, with one
     // structural difference: MapAttributes has no owning-entity foreign key, which is exactly what makes
     // an attribute apply to every map at once.
-    public class MapRepository
+    public class MapRepository : SqliteRepository
     {
-        private readonly string _dbPath;
-        private readonly string _connectionString;
-
         // Raised after any map/attribute/value change, so other parts of the app can refresh.
         public event Action? MapsChanged;
 
-        public MapRepository(string dbPath)
+        public MapRepository(string dbPath) : base(dbPath)
         {
-            DapperTypeHandlers.EnsureRegistered();
-            _dbPath = dbPath;
-            _connectionString = $"Data Source={dbPath}";
         }
 
         public void Initialize()
         {
-            string? dir = Path.GetDirectoryName(_dbPath);
-            if (!string.IsNullOrEmpty(dir))
-                Directory.CreateDirectory(dir);
+            EnsureDatabaseFolderExists();
 
             using SqliteConnection conn = OpenConnection();
             conn.Execute(@"
@@ -258,14 +249,6 @@ namespace StatCraft.Services.DatabaseRepository
         {
             public long MapAttributeId { get; set; }
             public string Value { get; set; } = "";
-        }
-
-        private SqliteConnection OpenConnection()
-        {
-            SqliteConnection conn = new SqliteConnection(_connectionString);
-            conn.Open();
-            conn.Execute("PRAGMA foreign_keys = ON");
-            return conn;
         }
     }
 }
