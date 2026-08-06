@@ -173,7 +173,7 @@ namespace StatCraft.Services.DatabaseRepository
                 foreach (BuildAttributeRow row in attrRows)
                 {
                     BuildAttribute attr = new BuildAttribute { Id = (int)row.Id, Name = row.Name, Type = row.Type };
-                    ApplyDefaultValue(attr, row.DefaultValue);
+                    attr.ApplyValue(row.DefaultValue);
                     attrDict[row.Id] = attr;
                     nodeDict[row.BuildNodeId].Attributes.Add(attr);
                 }
@@ -234,7 +234,7 @@ namespace StatCraft.Services.DatabaseRepository
                 INSERT INTO BuildAttributes (BuildNodeId, Name, Type, DefaultValue, SortOrder)
                 VALUES (@buildNodeId, @name, @type, @defaultValue, @sortOrder);
                 SELECT last_insert_rowid();",
-                new { buildNodeId, name = attr.Name, type = attr.Type, defaultValue = SerializeDefaultValue(attr), sortOrder });
+                new { buildNodeId, name = attr.Name, type = attr.Type, defaultValue = attr.SerializeValue(), sortOrder });
             BuildsChanged?.Invoke();
         }
 
@@ -242,31 +242,8 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
             conn.Execute("UPDATE BuildAttributes SET Name = @name, Type = @type, DefaultValue = @defaultValue WHERE Id = @id",
-                new { name = attr.Name, type = attr.Type, defaultValue = SerializeDefaultValue(attr), id = attr.Id });
+                new { name = attr.Name, type = attr.Type, defaultValue = attr.SerializeValue(), id = attr.Id });
             BuildsChanged?.Invoke();
-        }
-
-        private static string SerializeDefaultValue(BuildAttribute attr) =>
-            AttributeValueSerializer.Serialize(attr.Type, attr.NumericValue, attr.BoolValue, attr.PercentValue, attr.SelectedValue);
-
-        private static void ApplyDefaultValue(BuildAttribute attr, string defaultValue)
-        {
-            AttributeValueSerializer.ParsedValue parsed = AttributeValueSerializer.Parse(attr.Type, defaultValue);
-            switch (attr.Type)
-            {
-                case AttributeType.Numeric:
-                    attr.NumericValue = parsed.NumericValue;
-                    break;
-                case AttributeType.Bool:
-                    attr.BoolValue = parsed.BoolValue;
-                    break;
-                case AttributeType.Percent:
-                    attr.PercentValue = parsed.PercentValue;
-                    break;
-                case AttributeType.Values:
-                    attr.SelectedValue = parsed.SelectedValue;
-                    break;
-            }
         }
 
         public void DeleteAttribute(int id)
