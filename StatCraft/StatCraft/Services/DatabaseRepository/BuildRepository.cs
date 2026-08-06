@@ -50,6 +50,17 @@ namespace StatCraft.Services.DatabaseRepository
                     SortOrder        INTEGER NOT NULL DEFAULT 0
                 );");
 
+            RunMigrations(conn, nameof(BuildRepository), Migrations);
+        }
+
+        private static readonly Action<SqliteConnection>[] Migrations =
+        [
+            AddDefaultValueColumn,
+            MigrateMatchupToPlayerRaceAndMatchups,
+        ];
+
+        private static void AddDefaultValueColumn(SqliteConnection conn)
+        {
             try
             {
                 conn.Execute("ALTER TABLE BuildAttributes ADD COLUMN DefaultValue TEXT NOT NULL DEFAULT ''");
@@ -58,13 +69,16 @@ namespace StatCraft.Services.DatabaseRepository
             {
                 // Column already exists.
             }
+        }
 
-            // Upgrades a pre-existing DB from the old single-value Matchup column (one of 9 values
-            // encoding PlayerRace*3 + OpponentRace) to PlayerRace + a Matchups bitmask. On a fresh DB
-            // (created by the CREATE TABLE above, which already has the new columns) the first ADD
-            // COLUMN fails immediately, so the whole batch aborts before ever reaching DROP COLUMN —
-            // that's also why this never re-runs the backfill against a DB where a user has since
-            // legitimately toggled every matchup flag off for some build.
+        // Upgrades a pre-existing DB from the old single-value Matchup column (one of 9 values
+        // encoding PlayerRace*3 + OpponentRace) to PlayerRace + a Matchups bitmask. On a fresh DB
+        // (created by the CREATE TABLE above, which already has the new columns) the first ADD
+        // COLUMN fails immediately, so the whole batch aborts before ever reaching DROP COLUMN —
+        // that's also why this never re-runs the backfill against a DB where a user has since
+        // legitimately toggled every matchup flag off for some build.
+        private static void MigrateMatchupToPlayerRaceAndMatchups(SqliteConnection conn)
+        {
             try
             {
                 conn.Execute(@"
