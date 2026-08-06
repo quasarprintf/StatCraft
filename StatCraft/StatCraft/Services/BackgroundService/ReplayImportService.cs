@@ -41,7 +41,38 @@ namespace StatCraft.Services.BackgroundService
         internal event Action<GameData>? GameMmrUpdated;
 
         // Returns null on success, or a user-facing message describing why the replay was rejected.
+        //
+        // Never throws. A replay is untrusted external input handed to a third-party decoder, and the
+        // folder watcher calls this from an async void handler — an exception escaping to there would
+        // tear down the process rather than surfacing anywhere the user could act on it.
         public async Task<string?> ImportReplay(string filePath, Sc2Profile profile)
+        {
+            try
+            {
+                return await ImportReplayCore(filePath, profile);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                // Expected rather than exceptional: the watcher reports a file the moment it appears in
+                // the folder, which can be while StarCraft II is still writing it.
+                logger.LogWarning($"Replay file could not be read: {filePath} ({ex.Message})", profile);
+                return $"\"{Path.GetFileName(filePath)}\" couldn't be read — it may still be in use. Try again in a moment.";
+            }
+            catch (DecodeException ex)
+            {
+                // How the decoder actually reports "this isn't a replay" — it throws rather than
+                // returning null, so this, not the null check in ImportReplayCore, is the live path.
+                logger.LogWarning($"Failed to decode replay: {filePath} ({ex.Message})", profile);
+                return $"Could not read \"{Path.GetFileName(filePath)}\" — it doesn't look like a valid StarCraft II replay.";
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"Unexpected failure importing replay: {filePath} ({ex})", profile);
+                return $"Something went wrong importing \"{Path.GetFileName(filePath)}\". See the log for details.";
+            }
+        }
+
+        private async Task<string?> ImportReplayCore(string filePath, Sc2Profile profile)
         {
             logger.LogInfo($"Processing replay: {filePath}", profile);
 
