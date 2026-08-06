@@ -53,47 +53,10 @@ namespace StatCraft.Services.DatabaseRepository
             RunMigrations(conn, nameof(BuildRepository), Migrations);
         }
 
-        private static readonly Action<SqliteConnection>[] Migrations =
-        [
-            AddDefaultValueColumn,
-            MigrateMatchupToPlayerRaceAndMatchups,
-        ];
-
-        private static void AddDefaultValueColumn(SqliteConnection conn)
-        {
-            try
-            {
-                conn.Execute("ALTER TABLE BuildAttributes ADD COLUMN DefaultValue TEXT NOT NULL DEFAULT ''");
-            }
-            catch (SqliteException)
-            {
-                // Column already exists.
-            }
-        }
-
-        // Upgrades a pre-existing DB from the old single-value Matchup column (one of 9 values
-        // encoding PlayerRace*3 + OpponentRace) to PlayerRace + a Matchups bitmask. On a fresh DB
-        // (created by the CREATE TABLE above, which already has the new columns) the first ADD
-        // COLUMN fails immediately, so the whole batch aborts before ever reaching DROP COLUMN —
-        // that's also why this never re-runs the backfill against a DB where a user has since
-        // legitimately toggled every matchup flag off for some build.
-        private static void MigrateMatchupToPlayerRaceAndMatchups(SqliteConnection conn)
-        {
-            try
-            {
-                conn.Execute(@"
-                    ALTER TABLE BuildNodes ADD COLUMN PlayerRace INTEGER NOT NULL DEFAULT 0;
-                    ALTER TABLE BuildNodes ADD COLUMN Matchups INTEGER NOT NULL DEFAULT 0;
-                    UPDATE BuildNodes SET
-                        PlayerRace = Matchup / 3,
-                        Matchups = CASE Matchup % 3 WHEN 0 THEN 1 WHEN 1 THEN 2 WHEN 2 THEN 4 END;
-                    ALTER TABLE BuildNodes DROP COLUMN Matchup;");
-            }
-            catch (SqliteException)
-            {
-                // Already migrated, or a fresh DB already created with the new schema.
-            }
-        }
+        // No migrations exist yet — CreateTables above already reflects the current schema in full.
+        // Append future schema changes here as named methods, in order; RunMigrations tracks how many
+        // of them a given database has already applied.
+        private static readonly Action<SqliteConnection>[] Migrations = [];
 
         // All builds for a player race, regardless of which opponent races they support — used by the
         // Builds tab, which needs to show/edit every build, not just ones matching the current filter.

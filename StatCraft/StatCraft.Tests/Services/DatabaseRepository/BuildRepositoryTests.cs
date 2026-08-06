@@ -1,5 +1,4 @@
 using StatCraft.Models.GameData.Attributes;
-using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
@@ -182,55 +181,6 @@ public class BuildRepositoryTests : IDisposable
         _repository.UpdateAttribute(attr);
 
         Assert.Equal(1, raisedCount);
-    }
-
-    [Fact]
-    public void Initialize_ExistingOldSchemaWithMatchupColumn_BackfillsPlayerRaceAndMatchups()
-    {
-        string dbPath = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid() + ".db");
-        try
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
-            using (SqliteConnection conn = new SqliteConnection($"Data Source={dbPath}"))
-            {
-                conn.Open();
-                using SqliteCommand createCmd = conn.CreateCommand();
-                createCmd.CommandText = @"
-                    CREATE TABLE BuildNodes (
-                        Id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                        Matchup     INTEGER NOT NULL,
-                        ParentId    INTEGER REFERENCES BuildNodes(Id) ON DELETE CASCADE,
-                        Name        TEXT    NOT NULL DEFAULT '',
-                        Description TEXT    NOT NULL DEFAULT '',
-                        SortOrder   INTEGER NOT NULL DEFAULT 0
-                    );";
-                createCmd.ExecuteNonQuery();
-
-                using SqliteCommand insertCmd = conn.CreateCommand();
-                // Old Matchup enum order was ZvZ=0,ZvT=1,ZvP=2,TvZ=3,... — 3 is TvZ (PlayerRace=T, vs Z).
-                insertCmd.CommandText = "INSERT INTO BuildNodes (Matchup, Name) VALUES (3, 'Legacy Build')";
-                insertCmd.ExecuteNonQuery();
-            }
-
-            BuildRepository repository = new BuildRepository(dbPath);
-            repository.Initialize();
-
-            BuildNode build = Assert.Single(repository.GetBuildsForPlayerRace(Race.T));
-            Assert.Equal("Legacy Build", build.Name);
-            Assert.Equal(Matchups.VsZ, build.Matchups);
-        }
-        finally
-        {
-            try
-            {
-                if (File.Exists(dbPath))
-                    File.Delete(dbPath);
-            }
-            catch (IOException)
-            {
-                // Best-effort cleanup.
-            }
-        }
     }
 
     public void Dispose()
