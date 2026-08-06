@@ -21,6 +21,12 @@ namespace StatCraft.Services.DatabaseRepository
             _connectionString = $"Data Source={dbPath}";
         }
 
+        // Each migration below guards itself with the sentinel-first-statement idiom: its opening
+        // statement only succeeds against a database that still has the old shape, so on a fresh DB (or
+        // one already migrated) it fails immediately and the rest of that migration's batch never runs.
+        // That self-guarding is what makes running all of them unconditionally, in this fixed order,
+        // safe to do on every Initialize() call — several depend on an earlier one having already run
+        // (noted on each), so the order itself is load-bearing.
         public void Initialize()
         {
             string? dir = Path.GetDirectoryName(_dbPath);
@@ -28,6 +34,19 @@ namespace StatCraft.Services.DatabaseRepository
                 Directory.CreateDirectory(dir);
 
             using SqliteConnection conn = OpenConnection();
+            CreateTables(conn);
+
+            MigrateReplayTimestampColumn(conn);
+            MigrateMmrAfterColumn(conn);
+            MigrateGameTypeColumn(conn);
+            BackfillSelfGamePlayers(conn);
+            MigrateBuildTrackingToGamePlayerId(conn);
+            MigrateGamesBuildIdToGameBuilds(conn);
+            MigrateGamesMapNameToMapId(conn);
+        }
+
+        private static void CreateTables(SqliteConnection conn)
+        {
             conn.Execute(@"
                 CREATE TABLE IF NOT EXISTS Games (
                     Id                INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,12 +91,15 @@ namespace StatCraft.Services.DatabaseRepository
                     Value            TEXT    NOT NULL DEFAULT '',
                     UNIQUE(GamePlayerId, BuildAttributeId)
                 );");
+        }
 
-            // Upgrades a pre-existing DB that predates ReplayTimestamp. Backfills it from CreatedAtUtc
-            // (the closest thing that existed before — when we recorded the game, not when the replay
-            // file itself was last written, but a reasonable stand-in for old rows) rather than leaving it
-            // blank. On a fresh DB the CREATE TABLE above already has the column, so ADD COLUMN fails
-            // immediately and the whole batch aborts before ever reaching the backfill.
+        // Upgrades a pre-existing DB that predates ReplayTimestamp. Backfills it from CreatedAtUtc
+        // (the closest thing that existed before — when we recorded the game, not when the replay
+        // file itself was last written, but a reasonable stand-in for old rows) rather than leaving it
+        // blank. On a fresh DB CreateTables already added the column, so ADD COLUMN fails immediately
+        // and the whole batch aborts before ever reaching the backfill.
+        private static void MigrateReplayTimestampColumn(SqliteConnection conn)
+        {
             try
             {
                 conn.Execute(@"
@@ -88,11 +110,14 @@ namespace StatCraft.Services.DatabaseRepository
             {
                 // Already migrated, or a fresh DB already created with the new schema.
             }
+        }
 
-            // Upgrades a pre-existing DB that predates post-game MMR tracking. Deliberately left NULL
-            // rather than backfilled: MMR after a game can only be observed shortly after it's played, so
-            // historical rows genuinely have no value to recover, and NULL is already how "unknown" is
-            // represented everywhere downstream.
+        // Upgrades a pre-existing DB that predates post-game MMR tracking. Deliberately left NULL
+        // rather than backfilled: MMR after a game can only be observed shortly after it's played, so
+        // historical rows genuinely have no value to recover, and NULL is already how "unknown" is
+        // represented everywhere downstream.
+        private static void MigrateMmrAfterColumn(SqliteConnection conn)
+        {
             try
             {
                 conn.Execute("ALTER TABLE GamePlayers ADD COLUMN MmrAfter INTEGER;");
@@ -101,10 +126,13 @@ namespace StatCraft.Services.DatabaseRepository
             {
                 // Already migrated, or a fresh DB already created with the new schema.
             }
+        }
 
-            // Upgrades a pre-existing DB that predates game-type detection. Left NULL rather than
-            // guessed: the type is derived from replay flags that were never stored, so existing rows
-            // have nothing to reclassify from.
+        // Upgrades a pre-existing DB that predates game-type detection. Left NULL rather than
+        // guessed: the type is derived from replay flags that were never stored, so existing rows
+        // have nothing to reclassify from.
+        private static void MigrateGameTypeColumn(SqliteConnection conn)
+        {
             try
             {
                 conn.Execute("ALTER TABLE Games ADD COLUMN GameType INTEGER;");
@@ -113,29 +141,37 @@ namespace StatCraft.Services.DatabaseRepository
             {
                 // Already migrated, or a fresh DB already created with the new schema.
             }
+        }
 
-            // Every game must always have exactly one "Self" GamePlayers row (Side = SideSelf) representing
-            // the tracked user themselves, synthesized from the Player* columns already stored on Games —
-            // GameBuilds/GameAttributeValues reference it rather than Games.Id directly (see below). Safe
-            // to run unconditionally on every Initialize() call: the NOT EXISTS guard makes it a no-op for
-            // any game that already has one (a fresh DB has no Games rows at all yet either way).
+        // Every game must always have exactly one "Self" GamePlayers row (Side = SideSelf) representing
+        // the tracked user themselves, synthesized from the Player* columns already stored on Games —
+        // GameBuilds/GameAttributeValues reference it rather than Games.Id directly (see
+        // MigrateBuildTrackingToGamePlayerId, which requires this to have already run). Safe to run
+        // unconditionally on every Initialize() call: the NOT EXISTS guard makes it a no-op for any game
+        // that already has one (a fresh DB has no Games rows at all yet either way).
+        private static void BackfillSelfGamePlayers(SqliteConnection conn)
+        {
             conn.Execute($@"
                 INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random)
                     SELECT g.Id, {SideSelf}, 0, g.PlayerName, g.PlayerClan, g.PlayerMmr, g.PlayerRace, g.PlayerRandom
                     FROM Games g
                     WHERE NOT EXISTS (SELECT 1 FROM GamePlayers gp WHERE gp.GameId = g.Id AND gp.Side = {SideSelf});");
+        }
 
-            // Upgrades a pre-existing DB where GameBuilds/GameAttributeValues were tied directly to
-            // Games.Id. Build/attribute tracking is inherently about the tracked player's own performance
-            // in a game, not the game as a whole, so they're retargeted to that player's own GamePlayers
-            // row instead (backfilled just above). SQLite can't drop a column that's part of a UNIQUE
-            // constraint (GameId was part of UNIQUE(GameId, BuildId) etc.), so the two tables are rebuilt
-            // from scratch rather than altered in place; the whole rebuild runs in one transaction so a
-            // failure partway through can't leave the schema half-migrated. On a fresh DB (or one already
-            // migrated) GameBuilds already has a GamePlayerId column, so the first ADD COLUMN fails
-            // immediately and the whole batch — including the transaction — is rolled back and aborted
-            // before ever reaching the destructive table-recreation statements below. Must run before the
-            // Games.BuildId migration further down, which assumes GameBuilds is already GamePlayerId-keyed.
+        // Upgrades a pre-existing DB where GameBuilds/GameAttributeValues were tied directly to
+        // Games.Id. Build/attribute tracking is inherently about the tracked player's own performance
+        // in a game, not the game as a whole, so they're retargeted to that player's own GamePlayers
+        // row instead (backfilled by BackfillSelfGamePlayers, called just before this). SQLite can't
+        // drop a column that's part of a UNIQUE constraint (GameId was part of UNIQUE(GameId, BuildId)
+        // etc.), so the two tables are rebuilt from scratch rather than altered in place; the whole
+        // rebuild runs in one transaction so a failure partway through can't leave the schema
+        // half-migrated. On a fresh DB (or one already migrated) GameBuilds already has a GamePlayerId
+        // column, so the first ADD COLUMN fails immediately and the whole batch — including the
+        // transaction — is rolled back and aborted before ever reaching the destructive
+        // table-recreation statements below. Must run before MigrateGamesBuildIdToGameBuilds, which
+        // assumes GameBuilds is already GamePlayerId-keyed.
+        private static void MigrateBuildTrackingToGamePlayerId(SqliteConnection conn)
+        {
             try
             {
                 using SqliteTransaction tx = conn.BeginTransaction();
@@ -181,13 +217,16 @@ namespace StatCraft.Services.DatabaseRepository
             {
                 // Already migrated, or a fresh DB already created with the new schema.
             }
+        }
 
-            // Upgrades a pre-existing DB that predates GameBuilds entirely, moving its single Games.BuildId
-            // column into GameBuilds (already GamePlayerId-keyed by this point, whether freshly created
-            // above or migrated by the block just above) before dropping the column — resolving each
-            // game's GamePlayerId via the Self row backfilled earlier in this method. On a fresh DB (or one
-            // already migrated) Games never has a BuildId column, so the INSERT fails immediately and the
-            // batch aborts before ever reaching DROP COLUMN.
+        // Upgrades a pre-existing DB that predates GameBuilds entirely, moving its single Games.BuildId
+        // column into GameBuilds (already GamePlayerId-keyed by this point, whether freshly created
+        // above or migrated by MigrateBuildTrackingToGamePlayerId) before dropping the column —
+        // resolving each game's GamePlayerId via the Self row BackfillSelfGamePlayers already added. On
+        // a fresh DB (or one already migrated) Games never has a BuildId column, so the INSERT fails
+        // immediately and the batch aborts before ever reaching DROP COLUMN.
+        private static void MigrateGamesBuildIdToGameBuilds(SqliteConnection conn)
+        {
             try
             {
                 conn.Execute($@"
@@ -200,17 +239,20 @@ namespace StatCraft.Services.DatabaseRepository
             {
                 // Already migrated, or a fresh DB already created with the new schema.
             }
+        }
 
-            // Upgrades a pre-existing DB that stored the map as a bare name on Games, creating one Maps
-            // row per distinct historical name and repointing each game at it. Blank legacy names (the
-            // old column's DEFAULT '') are deliberately left as a NULL MapId rather than becoming a map
-            // called "". On a fresh DB (or one already migrated) Games already has a MapId column, so the
-            // ADD COLUMN fails immediately and the batch aborts before reaching DROP COLUMN. (Adding a
-            // column with a REFERENCES clause is only legal under PRAGMA foreign_keys because its default
-            // is NULL, which is exactly what an unmigrated row should have anyway.)
-            //
-            // Requires the Maps table to already exist — see MapRepository, which App.axaml.cs and the
-            // tests both initialize before this repository for exactly that reason.
+        // Upgrades a pre-existing DB that stored the map as a bare name on Games, creating one Maps
+        // row per distinct historical name and repointing each game at it. Blank legacy names (the
+        // old column's DEFAULT '') are deliberately left as a NULL MapId rather than becoming a map
+        // called "". On a fresh DB (or one already migrated) Games already has a MapId column, so the
+        // ADD COLUMN fails immediately and the batch aborts before reaching DROP COLUMN. (Adding a
+        // column with a REFERENCES clause is only legal under PRAGMA foreign_keys because its default
+        // is NULL, which is exactly what an unmigrated row should have anyway.)
+        //
+        // Requires the Maps table to already exist — see MapRepository, which App.axaml.cs and the
+        // tests both initialize before this repository for exactly that reason.
+        private static void MigrateGamesMapNameToMapId(SqliteConnection conn)
+        {
             try
             {
                 conn.Execute(@"
