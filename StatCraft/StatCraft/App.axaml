@@ -27,6 +27,20 @@
             <Setter Property="MinWidth" Value="1"/>
         </Style>
 
+        <!-- Shared by the Data and Maps tabs' filter bars: one filter's editor + its remove button. -->
+        <Style Selector="StackPanel.filterSlot">
+            <Setter Property="Orientation" Value="Horizontal"/>
+            <Setter Property="Spacing" Value="2"/>
+        </Style>
+        <Style Selector="Button.removeFilter">
+            <Setter Property="Content" Value="✕"/>
+            <Setter Property="Foreground" Value="Red"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
         <!-- Leaf TreeViewItems (no children, FluentTheme's own ":empty" pseudo-class) show a short line instead of a blank chevron slot. 
             Re-shows the theme's own chevron ToggleButton, hides its Path glyph, and reskins its Border into a thin line. -->
         <Style Selector="TreeViewItem:empty /template/ ToggleButton#PART_ExpandCollapseChevron">

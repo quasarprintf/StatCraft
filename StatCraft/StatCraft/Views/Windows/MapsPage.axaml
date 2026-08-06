@@ -5,21 +5,6 @@
              xmlns:local="using:StatCraft.Views"
              x:Class="StatCraft.Views.MapsPage"
              x:DataType="vm:MapsPageViewModel">
-    <UserControl.Styles>
-        <Style Selector="StackPanel.filterSlot">
-            <Setter Property="Orientation" Value="Horizontal"/>
-            <Setter Property="Spacing" Value="2"/>
-        </Style>
-        <Style Selector="Button.removeFilter">
-            <Setter Property="Content" Value="✕"/>
-            <Setter Property="Foreground" Value="Red"/>
-            <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="BorderThickness" Value="0"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-    </UserControl.Styles>
-
     <Grid ColumnDefinitions="240,4,*">
         <!-- Left: name filter + attribute filters, then the map list -->
         <DockPanel Grid.Column="0" Margin="4">
