@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Collections.Specialized;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -151,16 +150,7 @@ namespace StatCraft.ViewModels
                     _repository.UpdateAttribute(a);
             };
             attr.ValueOptions.CollectionChanged += (s, e) =>
-            {
-                if (e.NewItems != null)
-                    foreach (string? value in e.NewItems)
-                        if (value != null)
-                            _repository.InsertValueOption(attr.Id, value, attr.ValueOptions.IndexOf(value));
-                if (e.OldItems != null)
-                    foreach (string? value in e.OldItems)
-                        if (value != null)
-                            _repository.DeleteValueOption(attr.Id, value);
-            };
+                AttributeValueOptionSync.Apply(e, attr.Id, attr.ValueOptions, _repository.InsertValueOption, _repository.DeleteValueOption);
         }
 
         public void SelectFirstBuild() => SelectedBuild = Builds.FirstOrDefault(n => n.MatchesOpponentFilter);

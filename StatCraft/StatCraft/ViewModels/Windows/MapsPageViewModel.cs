@@ -221,12 +221,7 @@ namespace StatCraft.ViewModels
 
             attribute.ValueOptions.CollectionChanged += (s, e) =>
             {
-                if (e.NewItems != null)
-                    foreach (string value in e.NewItems.OfType<string>())
-                        _repository.InsertValueOption(attribute.Id, value, attribute.ValueOptions.IndexOf(value));
-                if (e.OldItems != null)
-                    foreach (string value in e.OldItems.OfType<string>())
-                        _repository.DeleteValueOption(attribute.Id, value);
+                AttributeValueOptionSync.Apply(e, attribute.Id, attribute.ValueOptions, _repository.InsertValueOption, _repository.DeleteValueOption);
 
                 // Patches the existing slot's option list in place, preserving whichever options are
                 // still checked, rather than recreating the slot and losing the whole selection.
