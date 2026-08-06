@@ -28,7 +28,7 @@ namespace StatCraft.ViewModels
         private readonly AccountRepository _accountRepository;
         private readonly BuildRepository _buildRepository;
         private readonly GameDataRepository _gameDataRepository;
-        private readonly Sc2LadderService _ladderService;
+        private readonly SessionMmrTracker _mmrTracker;
         private readonly Dictionary<(Race Player, Matchups Opponent), ObservableCollection<BuildNode>> _buildTreeCache = new();
         private bool _buildTreeCacheDirty;
 
@@ -48,7 +48,7 @@ namespace StatCraft.ViewModels
             _accountRepository = accountRepository;
             _buildRepository = buildRepository;
             _gameDataRepository = gameDataRepository;
-            _ladderService = ladderService;
+            _mmrTracker = new SessionMmrTracker(ladderService);
             _replayWatcherService.NewReplayFileFound += OnNewReplayFileFound;
             _replayImportService.GameParsed += OnGameParsed;
             _replayImportService.GameMmrUpdated += OnGameMmrUpdated;
@@ -78,14 +78,9 @@ namespace StatCraft.ViewModels
 
         public ObservableCollection<GameDataRowViewModel> Games { get; } = [];
 
-        // The active session profile's current ladder rating, one entry per race it has placed in. Empty
-        // until the lookup completes, and stays empty when there's nothing to show (no saved API
-        // credentials, or a profile with no current-season ladder).
-        public ObservableCollection<RaceMmrViewModel> CurrentMmrs { get; } = [];
-
-        // Each ladder's rating as of when this session started, so the header can show movement since
-        // then. Reset on every session start; a ladder absent here has no baseline to measure against.
-        private readonly Dictionary<LadderRace, long> _sessionStartMmrs = [];
+        // The active session profile's current ladder rating, one entry per race it has placed in — see
+        // SessionMmrTracker for how it's populated and kept current.
+        public ObservableCollection<RaceMmrViewModel> CurrentMmrs => _mmrTracker.CurrentMmrs;
 
         // Win/loss over exactly the games the table is currently showing, aggregated across every ladder
         // race and game mode. Recomputed by ApplyFilters, so narrowing to a matchup or map reports the
@@ -141,8 +136,7 @@ namespace StatCraft.ViewModels
                 _loadedGames = [];
                 Games.Clear();
                 WinRateLabel = "";
-                CurrentMmrs.Clear();
-                _sessionStartMmrs.Clear();
+                _mmrTracker.Reset();
                 await _replayWatcherService.Stop();
                 return;
             }
@@ -150,8 +144,7 @@ namespace StatCraft.ViewModels
             // Not awaited: a network round-trip shouldn't hold up the session starting or the games
             // table appearing. The header simply fills in whenever the lookup lands, which is also when
             // the session's MMR baseline gets captured.
-            CurrentMmrs.Clear();
-            _sessionStartMmrs.Clear();
+            _mmrTracker.Reset();
             _ = LoadCurrentMmrs(profile);
 
             // Every session start collapses the profile filter back to just this profile and the date
@@ -206,12 +199,9 @@ namespace StatCraft.ViewModels
             ApplyFilters();
         });
 
-        // The session-start lookup only covers ladders the profile had already placed in. Playing the
-        // first game of an unplaced race mid-session would otherwise leave that ladder with no baseline
-        // and so no visible change for the rest of the session. The replay records the rating going
-        // *into* the game, which is precisely where that ladder stood when the session's first game on
-        // it began — so it's the correct baseline. TryAdd, never overwrite: a ladder that already has a
-        // baseline must keep the one from session start, or the delta would silently reset each game.
+        // The replay records the rating going *into* the game, which is precisely where that ladder stood
+        // when the session's first game on it began — so it's a correct baseline for SessionMmrTracker to
+        // seed if the session-start lookup didn't already cover this race (see SeedBaselineIfAbsent).
         private void SeedSessionBaselineFrom(GameData game)
         {
             ParsedReplayData replay = game.ReplayData;
@@ -219,7 +209,7 @@ namespace StatCraft.ViewModels
                 return;
 
             if (LadderRaceExtensions.FromPlayer(replay.Player.Race, replay.Player.Random) is { } race)
-                _sessionStartMmrs.TryAdd(race, replay.Player.Mmr);
+                _mmrTracker.SeedBaselineIfAbsent(race, replay.Player.Mmr);
         }
 
         // Arrives minutes after the game was imported, on a background polling task. The row's underlying
@@ -233,52 +223,23 @@ namespace StatCraft.ViewModels
             // played, so the header can be updated straight from it rather than re-querying the API.
             GamePlayer self = game.ReplayData.Player;
             if (self.MmrAfter is { } mmrAfter && LadderRaceExtensions.FromPlayer(self.Race, self.Random) is { } race)
-                UpsertCurrentMmr(race, mmrAfter);
+                _mmrTracker.UpdateCurrent(race, mmrAfter);
         });
-
-        // Keeps CurrentMmrs sorted by race so entries don't jump around as they're replaced.
-        private void UpsertCurrentMmr(LadderRace race, long mmr)
-        {
-            RaceMmrViewModel? existing = CurrentMmrs.FirstOrDefault(m => m.Race == race);
-            if (existing != null)
-                CurrentMmrs.Remove(existing);
-
-            RaceMmrViewModel updated = new(race, mmr, SessionStartMmrFor(race));
-            int index = 0;
-            while (index < CurrentMmrs.Count && CurrentMmrs[index].Race < race)
-                index++;
-            CurrentMmrs.Insert(index, updated);
-        }
-
-        private long? SessionStartMmrFor(LadderRace race) =>
-            _sessionStartMmrs.TryGetValue(race, out long start) ? start : null;
 
         private async Task LoadCurrentMmrs(Sc2Profile profile)
         {
-            try
-            {
-                IReadOnlyDictionary<LadderRace, long> byRace = await _ladderService.GetCurrentMmrByRaceAsync(profile, CancellationToken.None);
-                Dispatcher.UIThread.Post(() =>
-                {
-                    // Guard against a slow lookup landing after the user already switched profiles.
-                    if (ActiveProfile?.Id != profile.Id)
-                        return;
+            IReadOnlyDictionary<LadderRace, long>? byRace = await _mmrTracker.FetchCurrentMmrs(profile, CancellationToken.None);
+            if (byRace == null)
+                return; // Best-effort: the header just stays empty if the rating can't be fetched.
 
-                    // This first successful lookup *is* the session baseline — every later change shown
-                    // in the header is measured against it.
-                    _sessionStartMmrs.Clear();
-                    foreach ((LadderRace race, long mmr) in byRace)
-                        _sessionStartMmrs[race] = mmr;
-
-                    CurrentMmrs.Clear();
-                    foreach ((LadderRace race, long mmr) in byRace.OrderBy(kv => kv.Key))
-                        CurrentMmrs.Add(new RaceMmrViewModel(race, mmr, mmr));
-                });
-            }
-            catch (Exception)
+            Dispatcher.UIThread.Post(() =>
             {
-                // Best-effort: the header just stays empty if the rating can't be fetched.
-            }
+                // Guard against a slow lookup landing after the user already switched profiles.
+                if (ActiveProfile?.Id != profile.Id)
+                    return;
+
+                _mmrTracker.SetBaseline(byRace);
+            });
         }
 
         // Don't reload immediately — builds can change many times in a row while editing on the Builds
