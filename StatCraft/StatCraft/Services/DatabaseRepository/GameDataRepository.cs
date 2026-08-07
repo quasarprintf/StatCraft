@@ -123,7 +123,7 @@ namespace StatCraft.Services.DatabaseRepository
             public char PlayerRace { get; set; }
             public bool PlayerRandom { get; set; }
             public string Notes { get; set; } = "";
-            public GameType? GameType { get; set; }
+            public GameType GameType { get; set; }
         }
 
         // Only the columns needed to identify a game's map. The full Map — including its attribute

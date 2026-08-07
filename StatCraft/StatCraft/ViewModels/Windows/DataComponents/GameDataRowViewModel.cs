@@ -34,9 +34,8 @@ namespace StatCraft.ViewModels
         public IBrush ResultColor { get; }
         public string GameLength { get; }
 
-        // User-overridable. Ranked vs Unranked is inferred rather than read from the replay, so it can be
-        // wrong; null for games imported before detection existed, which shows as blank until set.
-        [ObservableProperty] private GameType? _gameType;
+        // User-overridable. Ranked vs Unranked is inferred rather than read from the replay, so it can be wrong
+        [ObservableProperty] private GameType _gameType;
 
         public IReadOnlyList<GameType> GameTypeOptions => AllGameTypes;
 
@@ -124,7 +123,7 @@ namespace StatCraft.ViewModels
 
         partial void OnNotesChanged(string value) => _repository.UpdateGameNotes(_game.GameId!.Value, value);
 
-        partial void OnGameTypeChanged(GameType? value)
+        partial void OnGameTypeChanged(GameType value)
         {
             // Kept on the underlying GameData too, so anything re-reading it in this session (filters,
             // re-wrapped rows) sees the override rather than the original inference.
