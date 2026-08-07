@@ -6,8 +6,6 @@ using System.Threading.Tasks;
 
 namespace StatCraft.Services.BackgroundService
 {
-    // Solely responsible for noticing when a new file appears in a folder — decoding, parsing, and
-    // persisting a replay is ReplayImportService's job, not this class's.
     public class ReplayWatcherService(ILogger logger) : IAsyncDisposable
     {
         private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(5));
@@ -16,12 +14,8 @@ namespace StatCraft.Services.BackgroundService
         private CancellationTokenSource? _cts;
         private Task? _loopTask;
 
-        // Raised for each new file found in the watched folder. Callers decide what "new" means for
-        // their own purposes (e.g. whether it's actually a valid replay) — this event just reports files.
         internal event Action<string>? NewReplayFileFound;
 
-        // The folder currently being watched (null when not watching). Exposed so a manual "import a
-        // replay" UI can default its file picker here and validate the user's selection against it.
         public string? WatchedFolderPath => _folderPath;
 
         public async Task Start(string folderPath)
