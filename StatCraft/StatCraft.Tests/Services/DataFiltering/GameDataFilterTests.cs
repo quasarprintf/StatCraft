@@ -11,7 +11,8 @@ public class GameDataFilterTests
     [Fact]
     public void Matches_EmptyCriteria_MatchesEverything()
     {
-        GameData game = CreateGame();
+        Map altitude = new() { Name = "Altitude LE" };
+        GameData game = CreateGame(altitude);
         Assert.True(GameDataFilter.Matches(game, GameFilterCriteria.Empty));
     }
 
@@ -27,30 +28,36 @@ public class GameDataFilterTests
             ToDate = new DateOnly(2026, 1, 15),
         };
 
-        GameData game = CreateGame(replayTimestamp: new DateTimeOffset(year, month, day, 12, 0, 0, TimeSpan.Zero));
+        Map altitude = new() { Name = "Altitude LE" };
+        GameData game = CreateGame(altitude, replayTimestamp: new DateTimeOffset(year, month, day, 12, 0, 0, TimeSpan.Zero));
         Assert.Equal(expected, GameDataFilter.Matches(game, criteria));
     }
 
     [Fact]
     public void Matches_MapNotInSet_ReturnsFalse()
     {
-        GameData game = CreateGame(mapName: "Altitude");
-        GameFilterCriteria criteria = GameFilterCriteria.Empty with { Maps = new HashSet<string> { "Other Map" } };
+        Map altitude = new() { Name = "Altitude LE", Id = 1 };
+        Map deathaura = new() { Name = "Deathaura LE", Id = 2 };
+        GameData game = CreateGame(altitude);
+        GameFilterCriteria criteria = GameFilterCriteria.Empty with { Maps = new HashSet<Map> { deathaura } };
         Assert.False(GameDataFilter.Matches(game, criteria));
     }
 
     [Fact]
     public void Matches_MapInSet_ReturnsTrue()
     {
-        GameData game = CreateGame(mapName: "Altitude");
-        GameFilterCriteria criteria = GameFilterCriteria.Empty with { Maps = new HashSet<string> { "Altitude" } };
+        Map altitude = new() { Name = "Altitude LE", Id = 1 };
+        Map deathaura = new() { Name = "Deathaura LE", Id = 2 };
+        GameData game = CreateGame(altitude);
+        GameFilterCriteria criteria = GameFilterCriteria.Empty with { Maps = new HashSet<Map> { altitude } };
         Assert.True(GameDataFilter.Matches(game, criteria));
     }
 
     [Fact]
     public void Matches_OutcomeNotInSet_ReturnsFalse()
     {
-        GameData game = CreateGame(win: 1m);
+        Map altitude = new() { Name = "Altitude LE" };
+        GameData game = CreateGame(map: altitude, win: 1m);
         GameFilterCriteria criteria = GameFilterCriteria.Empty with { Outcomes = new HashSet<GameOutcome> { GameOutcome.Loss } };
         Assert.False(GameDataFilter.Matches(game, criteria));
     }
@@ -58,7 +65,8 @@ public class GameDataFilterTests
     [Fact]
     public void Matches_OutcomeInSet_ReturnsTrue()
     {
-        GameData game = CreateGame(win: 1m);
+        Map altitude = new() { Name = "Altitude LE" };
+        GameData game = CreateGame(map: altitude, win: 1m);
         GameFilterCriteria criteria = GameFilterCriteria.Empty with { Outcomes = new HashSet<GameOutcome> { GameOutcome.Win } };
         Assert.True(GameDataFilter.Matches(game, criteria));
     }
@@ -66,9 +74,10 @@ public class GameDataFilterTests
     [Fact]
     public void Matches_MatchupPairs_OrsAcrossOpponents()
     {
+        Map altitude = new() { Name = "Altitude LE" };
         GamePlayer opponentZ = new() { Name = "A", Clan = "", Mmr = 3000, Race = 'Z', Random = false };
         GamePlayer opponentP = new() { Name = "B", Clan = "", Mmr = 3000, Race = 'P', Random = false };
-        GameData game = CreateGame(selfRace: 'T', opponents: [opponentZ, opponentP]);
+        GameData game = CreateGame(map: altitude, selfRace: 'T', opponents: [opponentZ, opponentP]);
 
         // Only TvP is checked — should still match because one of the two opponents is Protoss.
         GameFilterCriteria criteria = GameFilterCriteria.Empty with
@@ -81,8 +90,9 @@ public class GameDataFilterTests
     [Fact]
     public void Matches_MatchupPairs_NoOpponentMatchesPlayerRacePair_ReturnsFalse()
     {
+        Map altitude = new() { Name = "Altitude LE" };
         GamePlayer opponentZ = new() { Name = "A", Clan = "", Mmr = 3000, Race = 'Z', Random = false };
-        GameData game = CreateGame(selfRace: 'T', opponents: [opponentZ]);
+        GameData game = CreateGame(map: altitude, selfRace: 'T', opponents: [opponentZ]);
 
         GameFilterCriteria criteria = GameFilterCriteria.Empty with
         {
@@ -94,9 +104,10 @@ public class GameDataFilterTests
     [Fact]
     public void Matches_OpponentMmrRange_OrsAcrossOpponents()
     {
+        Map altitude = new() { Name = "Altitude LE" };
         GamePlayer low = new() { Name = "A", Clan = "", Mmr = 2000, Race = 'Z', Random = false };
         GamePlayer high = new() { Name = "B", Clan = "", Mmr = 3500, Race = 'P', Random = false };
-        GameData game = CreateGame(opponents: [low, high]);
+        GameData game = CreateGame(map: altitude, opponents: [low, high]);
 
         GameFilterCriteria criteria = GameFilterCriteria.Empty with { MinOpponentMmr = 3000, MaxOpponentMmr = 4000 };
         Assert.True(GameDataFilter.Matches(game, criteria));
@@ -105,8 +116,9 @@ public class GameDataFilterTests
     [Fact]
     public void Matches_OpponentMmrRange_NoOpponentInRange_ReturnsFalse()
     {
+        Map altitude = new() { Name = "Altitude LE" };
         GamePlayer low = new() { Name = "A", Clan = "", Mmr = 2000, Race = 'Z', Random = false };
-        GameData game = CreateGame(opponents: [low]);
+        GameData game = CreateGame(map: altitude, opponents: [low]);
 
         GameFilterCriteria criteria = GameFilterCriteria.Empty with { MinOpponentMmr = 3000, MaxOpponentMmr = 4000 };
         Assert.False(GameDataFilter.Matches(game, criteria));
@@ -115,7 +127,8 @@ public class GameDataFilterTests
     [Fact]
     public void Matches_BuildIds_ExactIdMatches()
     {
-        GameData game = CreateGame(selfBuildIds: [5]);
+        Map altitude = new() { Name = "Altitude LE" };
+        GameData game = CreateGame(map: altitude, selfBuildIds: [5]);
         GameFilterCriteria criteria = GameFilterCriteria.Empty with { BuildIds = new HashSet<int> { 5 } };
         Assert.True(GameDataFilter.Matches(game, criteria));
     }
@@ -131,7 +144,8 @@ public class GameDataFilterTests
         // (mirrors DataPageFiltersViewModel.BuildCriteria), so build it via CollectSubtreeIds here.
         HashSet<int> expandedIds = GameDataFilter.CollectSubtreeIds(parent).ToHashSet();
 
-        GameData game = CreateGame(selfBuildIds: [child.Id]);
+        Map altitude = new() { Name = "Altitude LE" };
+        GameData game = CreateGame(map: altitude, selfBuildIds: [child.Id]);
         GameFilterCriteria criteria = GameFilterCriteria.Empty with { BuildIds = expandedIds };
         Assert.True(GameDataFilter.Matches(game, criteria));
     }
@@ -139,7 +153,8 @@ public class GameDataFilterTests
     [Fact]
     public void Matches_BuildIds_NotInSet_ReturnsFalse()
     {
-        GameData game = CreateGame(selfBuildIds: [99]);
+        Map altitude = new() { Name = "Altitude LE" };
+        GameData game = CreateGame(map: altitude, selfBuildIds: [99]);
         GameFilterCriteria criteria = GameFilterCriteria.Empty with { BuildIds = new HashSet<int> { 5 } };
         Assert.False(GameDataFilter.Matches(game, criteria));
     }
@@ -156,7 +171,7 @@ public class GameDataFilterTests
         Assert.Equal([1, 2, 3], GameDataFilter.CollectSubtreeIds(root).OrderBy(id => id));
     }
 
-    private static GameData CreateGame(string mapName = "Map", decimal win = 1m, char selfRace = 'T',
+    private static GameData CreateGame(Map map, decimal win = 1m, char selfRace = 'T',
         int[]? selfBuildIds = null, GamePlayer[]? opponents = null, DateTimeOffset? replayTimestamp = null)
     {
         ParsedReplayData replay = new()
@@ -173,6 +188,6 @@ public class GameDataFilterTests
             Allies = [],
             Opponents = opponents ?? [new GamePlayer { Name = "Foe", Clan = "", Mmr = 3100, Race = 'Z', Random = false }],
         };
-        return new GameData { Map = new Map { Id = 1, Name = mapName }, ReplayData = replay };
+        return new GameData { Map = map, ReplayData = replay };
     }
 }

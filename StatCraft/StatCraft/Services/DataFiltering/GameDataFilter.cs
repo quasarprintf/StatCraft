@@ -8,8 +8,7 @@ using StatCraft.Services.DataParsing;
 
 namespace StatCraft.Services.DataFiltering
 {
-    // Pure, Avalonia-free predicate over one game's data — the testable heart of the Data tab's filter
-    // bar. Every dimension is ANDed together; matchup/MMR/build each OR across the game's own
+    // Every dimension is ANDed together; matchup/MMR/build each OR across the game's own
     // opponents/build list, since a game can have more than one opponent (team games).
     internal static class GameDataFilter
     {
@@ -23,9 +22,7 @@ namespace StatCraft.Services.DataFiltering
             if (criteria.ToDate is { } to && played > to)
                 return false;
 
-            // Filtered by name rather than by Map identity: the options come from the loaded games as
-            // plain strings, and a game with no map (a legacy row) can never match a named selection.
-            if (HasAny(criteria.Maps) && !criteria.Maps!.Contains(game.Map?.Name ?? ""))
+            if (HasAny(criteria.Maps) && game.Map != null && !criteria.Maps!.Contains(game.Map))
                 return false;
 
             if (HasAny(criteria.Outcomes) && !criteria.Outcomes!.Contains(GameOutcomeExtensions.FromWin(replay.Win)))

@@ -8,6 +8,7 @@ using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
+using StatCraft.Models.GameData.Maps;
 
 namespace StatCraft.ViewModels
 {
@@ -29,7 +30,7 @@ namespace StatCraft.ViewModels
         [ObservableProperty] private DateTime? _fromDate;
         [ObservableProperty] private DateTime? _toDate;
 
-        public CheckboxFilterSlotViewModel<string> MapSlot { get; }
+        public CheckboxFilterSlotViewModel<Map> MapSlot { get; }
         public CheckboxFilterSlotViewModel<(Race, Race)> MatchupSlot { get; }
         // Internal, not public, because GameOutcome itself is internal — this stays consistent with the
         // same-assembly-only visibility of the type it filters on.
@@ -59,7 +60,7 @@ namespace StatCraft.ViewModels
                     ProfileSelectionChanged?.Invoke();
             };
 
-            MapSlot = new CheckboxFilterSlotViewModel<string>("Map", [], showSearch: true);
+            MapSlot = new CheckboxFilterSlotViewModel<Map>("Map", [], showSearch: true);
             MatchupSlot = new CheckboxFilterSlotViewModel<(Race, Race)>("Matchup", BuildMatchupOptions(), columns: 3);
             OutcomeSlot = new CheckboxFilterSlotViewModel<GameOutcome>("Outcome", BuildOutcomeOptions());
             MmrSlot = new NumericRangeFilterSlotViewModel("Opponent MMR");
@@ -110,13 +111,13 @@ namespace StatCraft.ViewModels
 
         // Rebuilds the map filter's option list from the currently-loaded games' distinct map names,
         // preserving checked state by map name across the rebuild.
-        internal void RefreshMapOptions(IEnumerable<string> distinctMapNames)
+        internal void RefreshMapOptions(IEnumerable<Map> distinctMapNames)
         {
-            HashSet<string> previouslyChecked = MapSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
+            HashSet<Map> previouslyChecked = MapSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
 
-            IEnumerable<CheckboxFilterOptionViewModel<string>> newOptions = distinctMapNames
-                .OrderBy(m => m)
-                .Select(m => new CheckboxFilterOptionViewModel<string>(m, m) { IsChecked = previouslyChecked.Contains(m) });
+            IEnumerable<CheckboxFilterOptionViewModel<Map>> newOptions = distinctMapNames
+                .OrderBy(m => m.Name)
+                .Select(m => new CheckboxFilterOptionViewModel<Map>(m, m.Name) { IsChecked = previouslyChecked.Contains(m) });
             MapSlot.ReplaceOptions(newOptions);
         }
 

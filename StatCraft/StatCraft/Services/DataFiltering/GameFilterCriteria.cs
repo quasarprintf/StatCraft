@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
 
 namespace StatCraft.Services.DataFiltering
@@ -11,7 +12,7 @@ namespace StatCraft.Services.DataFiltering
     internal record GameFilterCriteria(
         DateOnly? FromDate,
         DateOnly? ToDate,
-        IReadOnlySet<string>? Maps,
+        IReadOnlySet<Map>? Maps,
         IReadOnlySet<(Race Player, Race Opponent)>? MatchupPairs,
         IReadOnlySet<GameOutcome>? Outcomes,
         long? MinOpponentMmr,

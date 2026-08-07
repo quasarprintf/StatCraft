@@ -1,6 +1,7 @@
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
+using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
@@ -43,9 +44,11 @@ public class DataPageFiltersViewModelTests : IDisposable
     [Fact]
     public void RemoveCommand_HidesSlotAndClearsSelection()
     {
-        _filters.RefreshMapOptions(["Altitude", "Deathaura"]);
+        Map altitude = new() { Name = "Altitude LE" };
+        Map deathaura = new() { Name = "Deauthaura LE" };
+        _filters.RefreshMapOptions([altitude, deathaura]);
         _filters.MapSlot.AddCommand.Execute(null);
-        CheckboxFilterOptionViewModel<string> option = _filters.MapSlot.Options[0];
+        CheckboxFilterOptionViewModel<Map> option = _filters.MapSlot.Options[0];
         option.IsChecked = true;
 
         _filters.MapSlot.RemoveCommand.Execute(null);
@@ -84,10 +87,13 @@ public class DataPageFiltersViewModelTests : IDisposable
     [Fact]
     public void RefreshMapOptions_PreservesCheckedStateByName()
     {
-        _filters.RefreshMapOptions(["Altitude", "Deathaura"]);
+        Map altitude = new() { Name = "Altitude", Id = 1 };
+        Map deathaura = new() { Name = "Deauthaura", Id = 2 };
+        Map leylines = new() { Name = "Ley Lines", Id = 3 };
+        _filters.RefreshMapOptions([altitude, deathaura]);
         _filters.MapSlot.Options.Single(o => o.Label == "Altitude").IsChecked = true;
 
-        _filters.RefreshMapOptions(["Altitude", "Deathaura", "Ley Lines"]);
+        _filters.RefreshMapOptions([altitude, deathaura, leylines]);
 
         Assert.True(_filters.MapSlot.Options.Single(o => o.Label == "Altitude").IsChecked);
         Assert.False(_filters.MapSlot.Options.Single(o => o.Label == "Ley Lines").IsChecked);
@@ -127,7 +133,8 @@ public class DataPageFiltersViewModelTests : IDisposable
     [Fact]
     public void BuildCriteria_ReflectsCheckedOptions()
     {
-        _filters.RefreshMapOptions(["Altitude"]);
+        Map altitude = new() { Name = "Altitude" };
+        _filters.RefreshMapOptions([altitude]);
         _filters.MapSlot.Options[0].IsChecked = true;
         _filters.MmrSlot.Min = 1000;
         _filters.MmrSlot.Max = 2000;
@@ -140,7 +147,7 @@ public class DataPageFiltersViewModelTests : IDisposable
 
         GameFilterCriteria criteria = _filters.BuildCriteria();
 
-        Assert.True(criteria.Maps!.SetEquals(["Altitude"]));
+        Assert.True(criteria.Maps!.SetEquals([altitude]));
         Assert.Equal(1000, criteria.MinOpponentMmr);
         Assert.Equal(2000, criteria.MaxOpponentMmr);
         Assert.True(criteria.Outcomes!.SetEquals([GameOutcome.Win]));
