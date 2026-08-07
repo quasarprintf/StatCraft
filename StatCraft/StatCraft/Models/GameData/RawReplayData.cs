@@ -14,9 +14,7 @@ namespace StatCraft.Models.GameData
         public required ICollection<long?> PlayerMmrs { get; set; }
         public required ICollection<int> PlayerTeams { get; set; }
         public required ICollection<int> PlayerProfileIds { get; set; }
-        // GameOptions.Amm from the replay: false for anything not queued through matchmaking, i.e. a
-        // custom game. Verified against a broad sample of real replays.
-        public bool IsMatchmade { get; set; }
+        public bool IsMatchmade { get; set; } // GameOptions.Amm from the replay
         public bool IsDraw { get; set; }
         public required ICollection<int> WinningPlayerIndices { get; set; }
         public int GameLengthSeconds { get; set; }
