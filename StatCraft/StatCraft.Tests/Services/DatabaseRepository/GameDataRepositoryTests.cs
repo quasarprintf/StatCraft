@@ -5,6 +5,7 @@ using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.ViewModels;
+using StatCraft.Models.GameData.Attributes.DynamicAttribute;
 
 namespace StatCraft.Tests;
 
@@ -178,7 +179,7 @@ public class GameDataRepositoryTests : IDisposable
     {
         BuildNode build = new() { Name = "4 Gate" };
         _buildRepository.InsertBuild(build, null, 0);
-        BuildAttribute attr = InsertAttribute();
+        DynamicAttribute attr = InsertAttribute();
 
         GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = 2900, Race = 'T', Random = false };
         GameData game = CreateGame(allies: [ally]);
@@ -336,7 +337,7 @@ public class GameDataRepositoryTests : IDisposable
     [Fact]
     public void UpsertAttributeValue_ThenGetGamesForProfile_ReturnsValue()
     {
-        BuildAttribute attr = InsertAttribute();
+        DynamicAttribute attr = InsertAttribute();
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
 
@@ -351,7 +352,7 @@ public class GameDataRepositoryTests : IDisposable
     [Fact]
     public void UpsertAttributeValue_CalledTwice_OverwritesValue()
     {
-        BuildAttribute attr = InsertAttribute();
+        DynamicAttribute attr = InsertAttribute();
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
 
@@ -368,8 +369,8 @@ public class GameDataRepositoryTests : IDisposable
     {
         BuildNode build = new() { Name = "Build" };
         _buildRepository.InsertBuild(build, null, 0);
-        BuildAttribute attr1 = new() { Name = "A1", Type = AttributeType.Numeric };
-        BuildAttribute attr2 = new() { Name = "A2", Type = AttributeType.Numeric };
+        DynamicAttribute attr1 = new() { Name = "A1", Type = AttributeType.Numeric };
+        DynamicAttribute attr2 = new() { Name = "A2", Type = AttributeType.Numeric };
         _buildRepository.InsertAttribute(attr1, build.Id, 0);
         _buildRepository.InsertAttribute(attr2, build.Id, 1);
 
@@ -516,11 +517,11 @@ public class GameDataRepositoryTests : IDisposable
         return profile;
     }
 
-    private BuildAttribute InsertAttribute()
+    private DynamicAttribute InsertAttribute()
     {
         BuildNode build = new() { Name = "Build" };
         _buildRepository.InsertBuild(build, null, 0);
-        BuildAttribute attr = new() { Name = "Supply", Type = AttributeType.Numeric };
+        DynamicAttribute attr = new() { Name = "Supply", Type = AttributeType.Numeric };
         _buildRepository.InsertAttribute(attr, build.Id, 0);
         return attr;
     }

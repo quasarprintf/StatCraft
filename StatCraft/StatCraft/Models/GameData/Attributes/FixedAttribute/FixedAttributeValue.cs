@@ -1,8 +1,9 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData.Attributes;
+using StatCraft.Models.GameData.Attributes.FixedAttribute;
 
-namespace StatCraft.Models.GameData.Maps
+namespace StatCraft.Models.GameData.Attributes.FixedAttribute
 {
     // One map's value for one global MapAttribute.
     //
@@ -11,9 +12,9 @@ namespace StatCraft.Models.GameData.Maps
     // non-nullable and default to 0/false — AttributeValueSerializer has no encoding for "unset", so
     // null is represented by the *absence* of a stored row and the serializer is only ever consulted
     // when HasValue is true.
-    public partial class MapAttributeValue : ObservableObject
+    public partial class FixedAttributeValue : ObservableObject
     {
-        public MapAttribute Attribute { get; }
+        public FixedAttribute Attribute { get; }
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasValue))]
@@ -42,7 +43,7 @@ namespace StatCraft.Models.GameData.Maps
             _ => false,
         };
 
-        internal MapAttributeValue(MapAttribute attribute)
+        internal FixedAttributeValue(FixedAttribute attribute)
         {
             Attribute = attribute;
         }

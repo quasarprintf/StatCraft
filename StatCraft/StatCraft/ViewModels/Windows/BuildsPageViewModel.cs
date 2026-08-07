@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using StatCraft.Models.GameData.Attributes.DynamicAttribute;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
@@ -134,19 +135,19 @@ namespace StatCraft.ViewModels
                     || e.PropertyName == nameof(BuildNode.Matchups)))
                     _repository.UpdateBuild(n);
             };
-            foreach (BuildAttribute attr in node.Attributes)
+            foreach (DynamicAttribute attr in node.Attributes)
                 WireAttribute(attr);
             foreach (BuildNode child in node.Children)
                 WireNode(child);
         }
 
-        private void WireAttribute(BuildAttribute attr)
+        private void WireAttribute(DynamicAttribute attr)
         {
             attr.PropertyChanged += (s, e) =>
             {
-                if (s is BuildAttribute a &&  (e.PropertyName == nameof(BuildAttribute.Name) || e.PropertyName == nameof(BuildAttribute.Type)
-                    || e.PropertyName == nameof(BuildAttribute.NumericValue) || e.PropertyName == nameof(BuildAttribute.BoolValue)
-                    || e.PropertyName == nameof(BuildAttribute.PercentValue) || e.PropertyName == nameof(BuildAttribute.SelectedValue)))
+                if (s is DynamicAttribute a &&  (e.PropertyName == nameof(DynamicAttribute.Name) || e.PropertyName == nameof(DynamicAttribute.Type)
+                    || e.PropertyName == nameof(DynamicAttribute.NumericValue) || e.PropertyName == nameof(DynamicAttribute.BoolValue)
+                    || e.PropertyName == nameof(DynamicAttribute.PercentValue) || e.PropertyName == nameof(DynamicAttribute.SelectedValue)))
                     _repository.UpdateAttribute(a);
             };
             attr.ValueOptions.CollectionChanged += (s, e) =>
@@ -291,14 +292,14 @@ namespace StatCraft.ViewModels
         public void AddAttribute()
         {
             if (SelectedBuild == null) return;
-            BuildAttribute attr = new BuildAttribute();
+            DynamicAttribute attr = new DynamicAttribute();
             _repository.InsertAttribute(attr, SelectedBuild.Id, SelectedBuild.Attributes.Count);
             WireAttribute(attr);
             SelectedBuild.Attributes.Add(attr);
         }
 
         [RelayCommand]
-        public void RemoveAttribute(BuildAttribute attribute)
+        public void RemoveAttribute(DynamicAttribute attribute)
         {
             if (SelectedBuild == null) return;
             _repository.DeleteAttribute(attribute.Id);

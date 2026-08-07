@@ -1,4 +1,5 @@
 using StatCraft.Models.GameData.Attributes;
+using StatCraft.Models.GameData.Attributes.DynamicAttribute;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
@@ -103,7 +104,7 @@ public class BuildRepositoryTests : IDisposable
         BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.P, Matchups = Matchups.VsP };
         _repository.InsertBuild(node, null, 0);
 
-        BuildAttribute attr = new BuildAttribute { Name = "Supply", Type = type };
+        DynamicAttribute attr = new DynamicAttribute { Name = "Supply", Type = type };
         switch (type)
         {
             case AttributeType.Numeric: attr.NumericValue = 12; break;
@@ -115,7 +116,7 @@ public class BuildRepositoryTests : IDisposable
         _repository.InsertAttribute(attr, node.Id, 0);
 
         BuildNode loadedNode = Assert.Single(_repository.GetBuildsForPlayerRace(Race.P));
-        BuildAttribute loadedAttr = Assert.Single(loadedNode.Attributes);
+        DynamicAttribute loadedAttr = Assert.Single(loadedNode.Attributes);
 
         switch (type)
         {
@@ -132,12 +133,12 @@ public class BuildRepositoryTests : IDisposable
         BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.P, Matchups = Matchups.VsP };
         _repository.InsertBuild(node, null, 0);
 
-        BuildAttribute attr = new BuildAttribute { Name = "Opening", Type = AttributeType.Values };
+        DynamicAttribute attr = new DynamicAttribute { Name = "Opening", Type = AttributeType.Values };
         _repository.InsertAttribute(attr, node.Id, 0);
         _repository.InsertValueOption(attr.Id, "Zealot", 0);
 
         BuildNode loadedNode = Assert.Single(_repository.GetBuildsForPlayerRace(Race.P));
-        BuildAttribute loadedAttr = Assert.Single(loadedNode.Attributes);
+        DynamicAttribute loadedAttr = Assert.Single(loadedNode.Attributes);
         Assert.Equal(["Zealot"], loadedAttr.ValueOptions);
     }
 
@@ -171,7 +172,7 @@ public class BuildRepositoryTests : IDisposable
     {
         BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.P, Matchups = Matchups.VsP };
         _repository.InsertBuild(node, null, 0);
-        BuildAttribute attr = new BuildAttribute { Name = "Supply", Type = AttributeType.Numeric };
+        DynamicAttribute attr = new DynamicAttribute { Name = "Supply", Type = AttributeType.Numeric };
         _repository.InsertAttribute(attr, node.Id, 0);
 
         int raisedCount = 0;

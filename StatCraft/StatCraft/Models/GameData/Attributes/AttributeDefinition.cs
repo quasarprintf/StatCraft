@@ -5,11 +5,6 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace StatCraft.Models.GameData.Attributes
 {
-    // Shared shape between BuildAttribute (scoped to one build, carries its own default value) and
-    // MapAttribute (global across every map, carries no value of its own — a map's value lives in a
-    // separate MapAttributeValue). Everything about naming, typing, and the Values type's option list is
-    // identical between the two; only what a default/current value even means differs, and that's left
-    // to each subclass.
     public abstract partial class AttributeDefinition : ObservableObject
     {
         public static IReadOnlyList<AttributeType> AllTypes { get; } =

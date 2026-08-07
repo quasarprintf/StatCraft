@@ -1,11 +1,11 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Models.GameData.Attributes;
 
-namespace StatCraft.Models.GameData.Builds
+namespace StatCraft.Models.GameData.Attributes.DynamicAttribute
 {
     // Scoped to one build node, and — unlike MapAttribute — carries its own default value, which every
     // game recorded against the build starts from until overridden per game.
-    public partial class BuildAttribute : AttributeDefinition
+    public partial class DynamicAttribute : AttributeDefinition
     {
         [ObservableProperty] private decimal _numericValue;
         [ObservableProperty] private bool _boolValue;
@@ -35,9 +35,9 @@ namespace StatCraft.Models.GameData.Builds
             }
         }
 
-        public BuildAttribute Clone()
+        public DynamicAttribute Clone()
         {
-            return new BuildAttribute()
+            return new DynamicAttribute()
             {
                 Id = this.Id,
                 Name = this.Name,

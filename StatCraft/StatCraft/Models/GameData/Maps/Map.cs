@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using StatCraft.Models.GameData.Attributes.FixedAttribute;
 
 namespace StatCraft.Models.GameData.Maps
 {
@@ -17,6 +18,6 @@ namespace StatCraft.Models.GameData.Maps
         // One entry per globally defined MapAttribute, including ones this map has no value for —
         // MapsPageViewModel keeps this aligned with the definition list so the editor can always show
         // every attribute, set or not.
-        public ObservableCollection<MapAttributeValue> AttributeValues { get; } = [];
+        public ObservableCollection<FixedAttributeValue> AttributeValues { get; } = [];
     }
 }

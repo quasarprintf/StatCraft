@@ -4,6 +4,7 @@ using System.Linq;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Attributes.DynamicAttribute;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
@@ -30,7 +31,7 @@ namespace StatCraft.ViewModels
         // Slots are always [...persisted selections, one trailing blank] — selecting a build in the
         // trailing slot appends a new blank after it, and clearing a non-trailing slot removes it.
         public ObservableCollection<BuildSelectionSlotViewModel> BuildSlots { get; } = [];
-        public ObservableCollection<BuildAttribute> AttributeEditors { get; } = [];
+        public ObservableCollection<DynamicAttribute> AttributeEditors { get; } = [];
 
         internal PlayerBuildTrackerViewModel(GamePlayer player, GameDataRepository repository, ObservableCollection<BuildNode>? buildTree, IBrush? nameColor = null)
         {
@@ -170,7 +171,7 @@ namespace StatCraft.ViewModels
                     if (seen.Add(node.Id))
                         unionPath.Add(node);
             }
-            List<BuildAttribute> newPathAttrs = BuildPathHelper.FlattenAttributes(unionPath);
+            List<DynamicAttribute> newPathAttrs = BuildPathHelper.FlattenAttributes(unionPath);
             List<int> newIds = newPathAttrs.Select(a => a.Id).ToList();
 
             // Left every selected path: drop the stored value from the DB, but leave it in
@@ -179,9 +180,9 @@ namespace StatCraft.ViewModels
                 _repository.DeleteAttributeValue(_player.GamePlayerId!.Value, leftId);
 
             AttributeEditors.Clear();
-            foreach (BuildAttribute template in newPathAttrs)
+            foreach (DynamicAttribute template in newPathAttrs)
             {
-                BuildAttribute editor = template.Clone();
+                DynamicAttribute editor = template.Clone();
                 GameAttributeValue? cached = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Id);
                 if (cached != null)
                 {
@@ -197,10 +198,10 @@ namespace StatCraft.ViewModels
 
                 editor.PropertyChanged += (_, e) =>
                 {
-                    if (e.PropertyName is nameof(BuildAttribute.NumericValue)
-                        or nameof(BuildAttribute.BoolValue)
-                        or nameof(BuildAttribute.PercentValue)
-                        or nameof(BuildAttribute.SelectedValue))
+                    if (e.PropertyName is nameof(DynamicAttribute.NumericValue)
+                        or nameof(DynamicAttribute.BoolValue)
+                        or nameof(DynamicAttribute.PercentValue)
+                        or nameof(DynamicAttribute.SelectedValue))
                     {
                         string value = editor.SerializeValue();
                         GameAttributeValue? existing = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Id);

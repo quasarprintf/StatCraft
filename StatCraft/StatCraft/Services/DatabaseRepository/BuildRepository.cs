@@ -7,6 +7,7 @@ using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.ViewModels;
+using StatCraft.Models.GameData.Attributes.DynamicAttribute;
 
 namespace StatCraft.Services.DatabaseRepository
 {
@@ -133,14 +134,14 @@ namespace StatCraft.Services.DatabaseRepository
 
             if (nodeDict.Count > 0)
             {
-                Dictionary<long, BuildAttribute> attrDict = new();
+                Dictionary<long, DynamicAttribute> attrDict = new();
                 string nodeIds = string.Join(",", nodeDict.Keys);
 
                 List<BuildAttributeRow> attrRows = conn.Query<BuildAttributeRow>(
                     $"SELECT Id, BuildNodeId, Name, Type, DefaultValue FROM BuildAttributes WHERE BuildNodeId IN ({nodeIds}) ORDER BY SortOrder").ToList();
                 foreach (BuildAttributeRow row in attrRows)
                 {
-                    BuildAttribute attr = new BuildAttribute { Id = (int)row.Id, Name = row.Name, Type = row.Type };
+                    DynamicAttribute attr = new DynamicAttribute { Id = (int)row.Id, Name = row.Name, Type = row.Type };
                     attr.ApplyValue(row.DefaultValue);
                     attrDict[row.Id] = attr;
                     nodeDict[row.BuildNodeId].Attributes.Add(attr);
@@ -195,7 +196,7 @@ namespace StatCraft.Services.DatabaseRepository
             BuildsChanged?.Invoke();
         }
 
-        public void InsertAttribute(BuildAttribute attr, int buildNodeId, int sortOrder)
+        public void InsertAttribute(DynamicAttribute attr, int buildNodeId, int sortOrder)
         {
             using SqliteConnection conn = OpenConnection();
             attr.Id = (int)conn.ExecuteScalar<long>(@"
@@ -206,7 +207,7 @@ namespace StatCraft.Services.DatabaseRepository
             BuildsChanged?.Invoke();
         }
 
-        public void UpdateAttribute(BuildAttribute attr)
+        public void UpdateAttribute(DynamicAttribute attr)
         {
             using SqliteConnection conn = OpenConnection();
             conn.Execute("UPDATE BuildAttributes SET Name = @name, Type = @type, DefaultValue = @defaultValue WHERE Id = @id",

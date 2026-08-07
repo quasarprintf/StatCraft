@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData.Attributes;
+using StatCraft.Models.GameData.Attributes.FixedAttribute;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DatabaseRepository;
 
@@ -88,9 +89,9 @@ public class MapRepositoryTests : IDisposable
     {
         _repository.InsertMap(new Map { Name = "A" });
         _repository.InsertMap(new Map { Name = "B" });
-        _repository.InsertAttribute(new MapAttribute { Name = "Rush Distance", Type = AttributeType.Numeric }, 0);
+        _repository.InsertAttribute(new FixedAttribute { Name = "Rush Distance", Type = AttributeType.Numeric }, 0);
 
-        List<MapAttribute> attributes = _repository.GetAllAttributes();
+        List<FixedAttribute> attributes = _repository.GetAllAttributes();
         foreach (Map map in _repository.GetAllMaps(attributes))
             Assert.Equal("Rush Distance", Assert.Single(map.AttributeValues).Attribute.Name);
     }
@@ -98,14 +99,14 @@ public class MapRepositoryTests : IDisposable
     [Fact]
     public void UpdateAttribute_ThenReload_PersistsNameAndType()
     {
-        MapAttribute attribute = new() { Name = "Old", Type = AttributeType.Numeric };
+        FixedAttribute attribute = new() { Name = "Old", Type = AttributeType.Numeric };
         _repository.InsertAttribute(attribute, 0);
 
         attribute.Name = "New";
         attribute.Type = AttributeType.Percent;
         _repository.UpdateAttribute(attribute);
 
-        MapAttribute loaded = Assert.Single(_repository.GetAllAttributes());
+        FixedAttribute loaded = Assert.Single(_repository.GetAllAttributes());
         Assert.Equal("New", loaded.Name);
         Assert.Equal(AttributeType.Percent, loaded.Type);
     }
@@ -114,7 +115,7 @@ public class MapRepositoryTests : IDisposable
     public void DeleteAttribute_RemovesItFromEveryMap()
     {
         _repository.InsertMap(new Map { Name = "A" });
-        MapAttribute attribute = new() { Name = "Doomed" };
+        FixedAttribute attribute = new() { Name = "Doomed" };
         _repository.InsertAttribute(attribute, 0);
 
         _repository.DeleteAttribute(attribute.Id);
@@ -126,7 +127,7 @@ public class MapRepositoryTests : IDisposable
     [Fact]
     public void ValueOptions_RoundTripInSortOrder()
     {
-        MapAttribute attribute = new() { Name = "Style", Type = AttributeType.Values };
+        FixedAttribute attribute = new() { Name = "Style", Type = AttributeType.Values };
         _repository.InsertAttribute(attribute, 0);
         _repository.InsertValueOption(attribute.Id, "Macro", 0);
         _repository.InsertValueOption(attribute.Id, "Rush", 1);
@@ -148,9 +149,9 @@ public class MapRepositoryTests : IDisposable
     public void GetAllMaps_AttributeWithNoStoredValue_ReadsBackAsUnset(AttributeType type)
     {
         _repository.InsertMap(new Map { Name = "A" });
-        _repository.InsertAttribute(new MapAttribute { Name = "Attr", Type = type }, 0);
+        _repository.InsertAttribute(new FixedAttribute { Name = "Attr", Type = type }, 0);
 
-        MapAttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
+        FixedAttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
 
         Assert.False(value.HasValue);
         Assert.Null(value.NumericValue);
@@ -162,10 +163,10 @@ public class MapRepositoryTests : IDisposable
     [Fact]
     public void SaveValue_NumericThenReload_RoundTrips()
     {
-        (Map map, MapAttribute attribute) = SeedMapAndAttribute(AttributeType.Numeric);
+        (Map map, FixedAttribute attribute) = SeedMapAndAttribute(AttributeType.Numeric);
         _repository.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 12.5m));
 
-        MapAttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
+        FixedAttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
         Assert.True(value.HasValue);
         Assert.Equal(12.5m, value.NumericValue);
     }
@@ -173,10 +174,10 @@ public class MapRepositoryTests : IDisposable
     [Fact]
     public void SaveValue_BoolFalseThenReload_IsSetRatherThanUnset()
     {
-        (Map map, MapAttribute attribute) = SeedMapAndAttribute(AttributeType.Bool);
+        (Map map, FixedAttribute attribute) = SeedMapAndAttribute(AttributeType.Bool);
         _repository.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.BoolValue = false));
 
-        MapAttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
+        FixedAttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
         Assert.True(value.HasValue);
         Assert.False(value.BoolValue);
     }
@@ -184,12 +185,12 @@ public class MapRepositoryTests : IDisposable
     [Fact]
     public void SaveValue_Null_DeletesTheRowSoItReadsBackAsUnset()
     {
-        (Map map, MapAttribute attribute) = SeedMapAndAttribute(AttributeType.Numeric);
+        (Map map, FixedAttribute attribute) = SeedMapAndAttribute(AttributeType.Numeric);
         _repository.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 42m));
 
         _repository.SaveValue(map.Id, attribute.Id, null);
 
-        MapAttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
+        FixedAttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
         Assert.False(value.HasValue);
         Assert.Null(value.NumericValue);
     }
@@ -197,29 +198,29 @@ public class MapRepositoryTests : IDisposable
     [Fact]
     public void SaveValue_CalledTwice_UpdatesRatherThanDuplicating()
     {
-        (Map map, MapAttribute attribute) = SeedMapAndAttribute(AttributeType.Numeric);
+        (Map map, FixedAttribute attribute) = SeedMapAndAttribute(AttributeType.Numeric);
         _repository.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 1m));
         _repository.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 2m));
 
-        MapAttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
+        FixedAttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
         Assert.Equal(2m, value.NumericValue);
     }
 
     [Fact]
     public void GetAllMaps_ValueForADeletedAttribute_IsIgnored()
     {
-        (Map map, MapAttribute attribute) = SeedMapAndAttribute(AttributeType.Numeric);
+        (Map map, FixedAttribute attribute) = SeedMapAndAttribute(AttributeType.Numeric);
         _repository.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 7m));
 
         // Passing no definitions simulates the attribute having been deleted out from under the row.
         Assert.Empty(Assert.Single(_repository.GetAllMaps([])).AttributeValues);
     }
 
-    private (Map Map, MapAttribute Attribute) SeedMapAndAttribute(AttributeType type)
+    private (Map Map, FixedAttribute Attribute) SeedMapAndAttribute(AttributeType type)
     {
         Map map = new() { Name = "A" };
         _repository.InsertMap(map);
-        MapAttribute attribute = new() { Name = "Attr", Type = type };
+        FixedAttribute attribute = new() { Name = "Attr", Type = type };
         _repository.InsertAttribute(attribute, 0);
         return (map, attribute);
     }
@@ -228,9 +229,9 @@ public class MapRepositoryTests : IDisposable
 
     // Goes through MapAttributeValue rather than hand-writing the stored string, so these tests pin the
     // round trip the app actually performs.
-    private static string? SerializeVia(MapAttribute attribute, Action<MapAttributeValue> set)
+    private static string? SerializeVia(FixedAttribute attribute, Action<FixedAttributeValue> set)
     {
-        MapAttributeValue value = new(attribute);
+        FixedAttributeValue value = new(attribute);
         set(value);
         return value.Serialize();
     }
