@@ -4,7 +4,6 @@ using System.Linq;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData.Attributes;
-using StatCraft.Models.GameData.Attributes.FixedAttribute;
 using StatCraft.Models.GameData.Maps;
 
 namespace StatCraft.Services.DatabaseRepository
@@ -52,18 +51,18 @@ namespace StatCraft.Services.DatabaseRepository
                 );");
         }
 
-        public List<FixedAttribute> GetAllAttributes()
+        public List<AttributeDefinition> GetAllAttributes()
         {
             using SqliteConnection conn = OpenConnection();
 
             List<MapAttributeRow> rows = conn.Query<MapAttributeRow>(
                 "SELECT Id, Name, Type FROM MapAttributes ORDER BY SortOrder").ToList();
 
-            Dictionary<long, FixedAttribute> byId = new();
-            List<FixedAttribute> attributes = new();
+            Dictionary<long, AttributeDefinition> byId = new();
+            List<AttributeDefinition> attributes = new();
             foreach (MapAttributeRow row in rows)
             {
-                FixedAttribute attribute = new() { Id = (int)row.Id, Name = row.Name, Type = row.Type };
+                AttributeDefinition attribute = new() { Id = (int)row.Id, Name = row.Name, Type = row.Type };
                 byId[row.Id] = attribute;
                 attributes.Add(attribute);
             }
@@ -84,7 +83,7 @@ namespace StatCraft.Services.DatabaseRepository
         // has no stored value for, which stay null. Taking the definitions as a parameter keeps a single
         // source of truth for them and lets the caller reuse the same instances across every map, so the
         // editor and the filter bar agree on object identity.
-        public List<Map> GetAllMaps(IReadOnlyCollection<FixedAttribute> attributes)
+        public List<Map> GetAllMaps(IReadOnlyCollection<AttributeDefinition> attributes)
         {
             using SqliteConnection conn = OpenConnection();
 
@@ -95,8 +94,8 @@ namespace StatCraft.Services.DatabaseRepository
             foreach (MapRow row in mapRows)
             {
                 Map map = new() { Id = (int)row.Id, Name = row.Name };
-                foreach (FixedAttribute attribute in attributes)
-                    map.AttributeValues.Add(new FixedAttributeValue(attribute));
+                foreach (AttributeDefinition attribute in attributes)
+                    map.AttributeValues.Add(new AttributeValue(attribute));
                 mapsById[row.Id] = map;
                 maps.Add(map);
             }
@@ -109,7 +108,7 @@ namespace StatCraft.Services.DatabaseRepository
 
                 foreach (MapAttributeValueRow row in valueRows)
                 {
-                    FixedAttributeValue? value = mapsById[row.MapId].AttributeValues
+                    AttributeValue? value = mapsById[row.MapId].AttributeValues
                         .FirstOrDefault(v => v.Attribute.Id == row.MapAttributeId);
                     // A stored row for an attribute that's since been deleted is simply ignored.
                     value?.ApplyStoredValue(row.Value);
@@ -161,7 +160,7 @@ namespace StatCraft.Services.DatabaseRepository
             MapsChanged?.Invoke();
         }
 
-        public void InsertAttribute(FixedAttribute attribute, int sortOrder)
+        public void InsertAttribute(AttributeDefinition attribute, int sortOrder)
         {
             using SqliteConnection conn = OpenConnection();
             attribute.Id = (int)conn.ExecuteScalar<long>(@"
@@ -171,7 +170,7 @@ namespace StatCraft.Services.DatabaseRepository
             MapsChanged?.Invoke();
         }
 
-        public void UpdateAttribute(FixedAttribute attribute)
+        public void UpdateAttribute(AttributeDefinition attribute)
         {
             using SqliteConnection conn = OpenConnection();
             conn.Execute("UPDATE MapAttributes SET Name = @name, Type = @type WHERE Id = @id",

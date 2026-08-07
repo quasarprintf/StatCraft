@@ -1,13 +1,11 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using StatCraft.Models.GameData.Attributes;
-using StatCraft.Models.GameData.Attributes.FixedAttribute;
 
-namespace StatCraft.Models.GameData.Attributes.FixedAttribute
+namespace StatCraft.Models.GameData.Attributes
 {
-    public partial class FixedAttributeValue : ObservableObject
+    public partial class AttributeValue : ObservableObject
     {
-        public FixedAttribute Attribute { get; }
+        public AttributeDefinition Attribute { get; }
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasValue))]
@@ -36,7 +34,7 @@ namespace StatCraft.Models.GameData.Attributes.FixedAttribute
             _ => false,
         };
 
-        internal FixedAttributeValue(FixedAttribute attribute)
+        internal AttributeValue(AttributeDefinition attribute)
         {
             Attribute = attribute;
         }

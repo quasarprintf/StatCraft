@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using StatCraft.Models.GameData.Attributes;
-using StatCraft.Models.GameData.Attributes.FixedAttribute;
 using StatCraft.Models.GameData.Maps;
 
 namespace StatCraft.Services.DataFiltering
@@ -20,7 +19,7 @@ namespace StatCraft.Services.DataFiltering
             map.Name.Contains(nameFilter.Trim(), StringComparison.OrdinalIgnoreCase);
 
         // Numeric and Percent attributes. Bounds are inclusive, and either end may be left open.
-        public static bool MatchesRange(FixedAttributeValue value, decimal? min, decimal? max, bool includeUnset)
+        public static bool MatchesRange(AttributeValue value, decimal? min, decimal? max, bool includeUnset)
         {
             if (min == null && max == null)
                 return true;
@@ -49,7 +48,7 @@ namespace StatCraft.Services.DataFiltering
         // Bool attributes. A three-state checkbox rather than a checked-values set: null means no
         // constraint on this dimension (matches both true and false), otherwise the map's value must
         // equal it exactly.
-        public static bool MatchesBool(FixedAttributeValue value, bool? filterValue, bool includeUnset)
+        public static bool MatchesBool(AttributeValue value, bool? filterValue, bool includeUnset)
         {
             if (filterValue == null)
                 return true;

@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:StatCraft.ViewModels"
-             xmlns:fixedAttr="using:StatCraft.Models.GameData.Attributes.FixedAttribute"
+             xmlns:Attr="using:StatCraft.Models.GameData.Attributes"
              x:Class="StatCraft.Views.MapDetailsPanel"
              x:DataType="vm:MapsPageViewModel">
     <DockPanel Margin="12">
@@ -20,13 +20,13 @@
         <ScrollViewer>
             <ItemsControl ItemsSource="{Binding SelectedMap.AttributeValues}">
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="fixedAttr:FixedAttributeValue">
+                    <DataTemplate x:DataType="Attr:AttributeValue">
                         <StackPanel Margin="0,0,0,8">
                             <!-- Definition row: name, type, delete -->
                             <Grid ColumnDefinitions="*,120,Auto">
                                 <TextBox Grid.Column="0" Text="{Binding Attribute.Name}" PlaceholderText="Name" Margin="0,0,4,0"/>
                                 <ComboBox Grid.Column="1" SelectedItem="{Binding Attribute.Type}"
-                                          ItemsSource="{x:Static fixedAttr:FixedAttribute.AllTypes}"
+                                          ItemsSource="{x:Static Attr:AttributeDefinition.AllTypes}"
                                           HorizontalAlignment="Stretch" Margin="0,0,4,0"/>
                                 <Button Grid.Column="2" Content="✕"
                                         Command="{Binding $parent[UserControl].((vm:MapsPageViewModel)DataContext).RemoveAttributeCommand}"
@@ -59,7 +59,7 @@
                                             <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,2">
                                                 <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center"/>
                                                 <Button Grid.Column="1" Content="✕" Padding="4,1"
-                                                        Command="{Binding $parent[ItemsControl].((fixedAttr:FixedAttributeValue)DataContext).Attribute.RemoveOptionCommand}"
+                                                        Command="{Binding $parent[ItemsControl].((Attr:AttributeValue)DataContext).Attribute.RemoveOptionCommand}"
                                                         CommandParameter="{Binding}"/>
                                             </Grid>
                                         </DataTemplate>

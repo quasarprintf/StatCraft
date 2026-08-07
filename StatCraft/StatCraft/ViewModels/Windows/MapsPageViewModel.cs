@@ -5,7 +5,6 @@ using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData.Attributes;
-using StatCraft.Models.GameData.Attributes.FixedAttribute;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
@@ -29,14 +28,14 @@ namespace StatCraft.ViewModels
 
         // The filter slot for each attribute definition. A dictionary rather than a Map-aware slot
         // subclass, so the existing filter-slot types can be reused unchanged.
-        private readonly Dictionary<FixedAttribute, FilterSlotViewModel> _slotByAttribute = [];
+        private readonly Dictionary<AttributeDefinition, FilterSlotViewModel> _slotByAttribute = [];
 
         public MapsPageViewModel(MapRepository repository, GameDataRepository gameDataRepository)
         {
             _repository = repository;
             _gameDataRepository = gameDataRepository;
 
-            foreach (FixedAttribute attribute in _repository.GetAllAttributes())
+            foreach (AttributeDefinition attribute in _repository.GetAllAttributes())
             {
                 WireAttribute(attribute);
                 Attributes.Add(attribute);
@@ -48,7 +47,7 @@ namespace StatCraft.ViewModels
                 _allMaps.Add(map);
             }
 
-            foreach (FixedAttribute attribute in Attributes)
+            foreach (AttributeDefinition attribute in Attributes)
                 AddFilterSlot(attribute);
             ApplyFilters();
             SelectedMap = Maps.FirstOrDefault();
@@ -56,7 +55,7 @@ namespace StatCraft.ViewModels
 
         // The global attribute definitions, shared by every map — each Map holds one MapAttributeValue
         // per entry here, in the same order.
-        public ObservableCollection<FixedAttribute> Attributes { get; } = [];
+        public ObservableCollection<AttributeDefinition> Attributes { get; } = [];
 
         // The maps currently passing the name and attribute filters.
         public ObservableCollection<Map> Maps { get; } = [];
@@ -90,8 +89,8 @@ namespace StatCraft.ViewModels
             _repository.InsertMap(map);
 
             // Every existing attribute applies to it immediately, with no value.
-            foreach (FixedAttribute attribute in Attributes)
-                map.AttributeValues.Add(new FixedAttributeValue(attribute));
+            foreach (AttributeDefinition attribute in Attributes)
+                map.AttributeValues.Add(new AttributeValue(attribute));
 
             WireMap(map);
             _allMaps.Add(map);
@@ -124,28 +123,28 @@ namespace StatCraft.ViewModels
         [RelayCommand]
         public void AddAttribute()
         {
-            FixedAttribute attribute = new() { Name = "New Attribute" };
+            AttributeDefinition attribute = new() { Name = "New Attribute" };
             _repository.InsertAttribute(attribute, Attributes.Count);
             WireAttribute(attribute);
             Attributes.Add(attribute);
 
             // Defined for every map at once, and unset on all of them until someone fills it in.
             foreach (Map map in _allMaps)
-                map.AttributeValues.Add(new FixedAttributeValue(attribute));
+                map.AttributeValues.Add(new AttributeValue(attribute));
 
             AddFilterSlot(attribute);
             ApplyFilters();
         }
 
         [RelayCommand]
-        public void RemoveAttribute(FixedAttribute attribute)
+        public void RemoveAttribute(AttributeDefinition attribute)
         {
             _repository.DeleteAttribute(attribute.Id);
             Attributes.Remove(attribute);
 
             foreach (Map map in _allMaps)
             {
-                FixedAttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Attribute == attribute);
+                AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Attribute == attribute);
                 if (value != null)
                     map.AttributeValues.Remove(value);
             }
@@ -165,7 +164,7 @@ namespace StatCraft.ViewModels
                 }
             };
 
-            foreach (FixedAttributeValue value in map.AttributeValues)
+            foreach (AttributeValue value in map.AttributeValues)
                 WireValue(map, value);
 
             // Values are appended when a new attribute is defined and removed when one is deleted, so
@@ -173,16 +172,16 @@ namespace StatCraft.ViewModels
             map.AttributeValues.CollectionChanged += (s, e) =>
             {
                 if (e.NewItems == null) return;
-                foreach (FixedAttributeValue value in e.NewItems.OfType<FixedAttributeValue>())
+                foreach (AttributeValue value in e.NewItems.OfType<AttributeValue>())
                     WireValue(map, value);
             };
         }
 
-        private void WireValue(Map map, FixedAttributeValue value)
+        private void WireValue(Map map, AttributeValue value)
         {
             value.PropertyChanged += (s, e) =>
             {
-                if (e.PropertyName == nameof(FixedAttributeValue.HasValue))
+                if (e.PropertyName == nameof(AttributeValue.HasValue))
                     return;
 
                 // Serialize() returns null when unset, and SaveValue deletes the row for null — that
@@ -192,13 +191,13 @@ namespace StatCraft.ViewModels
             };
         }
 
-        private void WireAttribute(FixedAttribute attribute)
+        private void WireAttribute(AttributeDefinition attribute)
         {
             attribute.PropertyChanged += (s, e) =>
             {
-                if (s is not FixedAttribute a) return;
+                if (s is not AttributeDefinition a) return;
 
-                if (e.PropertyName == nameof(FixedAttribute.Name))
+                if (e.PropertyName == nameof(AttributeDefinition.Name))
                 {
                     _repository.UpdateAttribute(a);
                     // Title is mutable specifically so a rename — which fires on every keystroke, since
@@ -207,7 +206,7 @@ namespace StatCraft.ViewModels
                     if (_slotByAttribute.TryGetValue(a, out FilterSlotViewModel? slot))
                         slot.Title = a.Name;
                 }
-                else if (e.PropertyName == nameof(FixedAttribute.Type))
+                else if (e.PropertyName == nameof(AttributeDefinition.Type))
                 {
                     _repository.UpdateAttribute(a);
                     // Unlike a rename, a type change genuinely needs a new slot instance (Numeric/Percent
@@ -240,7 +239,7 @@ namespace StatCraft.ViewModels
 
         // Adds one new filter slot for this attribute, initially hidden unless told otherwise (used when
         // a type change replaces a slot that was already showing).
-        private void AddFilterSlot(FixedAttribute attribute, bool isVisible = false)
+        private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
         {
             FilterSlotViewModel slot = CreateSlot(attribute);
             slot.IsVisible = isVisible;
@@ -251,7 +250,7 @@ namespace StatCraft.ViewModels
             (isVisible ? VisibleFilterSlots : HiddenFilterSlots).Add(slot);
         }
 
-        private void RemoveFilterSlot(FixedAttribute attribute)
+        private void RemoveFilterSlot(AttributeDefinition attribute)
         {
             if (!_slotByAttribute.Remove(attribute, out FilterSlotViewModel? slot))
                 return;
@@ -279,7 +278,7 @@ namespace StatCraft.ViewModels
             }
         }
 
-        private static FilterSlotViewModel CreateSlot(FixedAttribute attribute) => attribute.Type switch
+        private static FilterSlotViewModel CreateSlot(AttributeDefinition attribute) => attribute.Type switch
         {
             AttributeType.Bool => new BoolFilterSlotViewModel(attribute.Name),
             AttributeType.Values => new CheckboxFilterSlotViewModel<string>(attribute.Name,
@@ -309,12 +308,12 @@ namespace StatCraft.ViewModels
             if (!MapFilter.MatchesName(map, NameFilter))
                 return false;
 
-            foreach ((FixedAttribute attribute, FilterSlotViewModel slot) in _slotByAttribute)
+            foreach ((AttributeDefinition attribute, FilterSlotViewModel slot) in _slotByAttribute)
             {
                 if (!slot.IsVisible)
                     continue;
 
-                FixedAttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Attribute == attribute);
+                AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Attribute == attribute);
                 if (value == null)
                     continue;
 
@@ -325,7 +324,7 @@ namespace StatCraft.ViewModels
             return true;
         }
 
-        private static bool MatchesSlot(FilterSlotViewModel slot, FixedAttributeValue value) => slot switch
+        private static bool MatchesSlot(FilterSlotViewModel slot, AttributeValue value) => slot switch
         {
             NumericRangeFilterSlotViewModel range =>
                 MapFilter.MatchesRange(value, range.Min, range.Max, range.IncludeUnset),

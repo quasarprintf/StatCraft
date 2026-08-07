@@ -5,7 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 
 namespace StatCraft.Models.GameData.Attributes
 {
-    public abstract partial class AttributeDefinition : ObservableObject
+    public partial class AttributeDefinition : ObservableObject
     {
         public static IReadOnlyList<AttributeType> AllTypes { get; } =
             [AttributeType.Numeric, AttributeType.Bool, AttributeType.Percent, AttributeType.Values];
