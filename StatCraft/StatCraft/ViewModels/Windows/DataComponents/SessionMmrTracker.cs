@@ -44,7 +44,7 @@ namespace StatCraft.ViewModels
         {
             try
             {
-                return await ladderService.GetCurrentMmrByRaceAsync(profile, cancellationToken);
+                return await ladderService.GetCurrentMmrAllRacesAsync(profile, cancellationToken);
             }
             catch (Exception)
             {

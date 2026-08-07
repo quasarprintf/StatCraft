@@ -137,8 +137,6 @@ namespace StatCraft.Services.BackgroundService
                     gameDataRepository.UpdateGamePlayerMmrAfter(gamePlayerId.Value, currentMmr.Value);
                     replay.Player.MmrAfter = currentMmr.Value;
 
-                    ladderService.RecordObservedMmr(profile, ladderRace.Value, currentMmr.Value);
-
                     logger.LogInfo($"MMR after game resolved: {replay.Player.Mmr} -> {currentMmr.Value} ({currentMmr.Value - replay.Player.Mmr:+#;-#;0})", profile);
                     GameMmrUpdated?.Invoke(game);
                     return;

@@ -34,9 +34,7 @@ namespace StatCraft.Services.BattlenetApi
         private string? _cachedToken;
         private DateTimeOffset _cachedTokenExpiresAtUtc;
 
-        // Returns null (rather than throwing) when credentials are missing or Battle.net is unreachable —
-        // callers treat MMR lookup as best-effort and must degrade gracefully.
-        // Virtual so tests can supply a token without real saved credentials.
+        // Returns null (rather than throwing) when credentials are missing or Battle.net is unreachable
         public virtual async Task<string?> GetTokenAsync(CancellationToken cancellationToken)
         {
             if (IsCachedTokenUsable())

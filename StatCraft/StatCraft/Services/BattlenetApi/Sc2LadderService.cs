@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel.Design;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
@@ -34,41 +36,42 @@ namespace StatCraft.Services.BattlenetApi
             _ => "https://us.api.blizzard.com",
         };
 
-        // The freshest ranked MMR seen for each ladder, from either an API lookup or a resolved post-game
-        // poll. Game-type detection leans on this: a ranked game's starting MMR should equal whatever
-        // ranked MMR we last knew for that ladder, so the value has to track *forward* through a session
-        // rather than stay pinned to its opening value.
-        private readonly Dictionary<(int ProfileId, LadderRace Race), long> _lastKnownMmr = new();
+        // The freshest ranked MMR seen for each ladder, from either an API lookup or a resolved post-game poll
+        private readonly Dictionary<int, Dictionary<LadderRace, long>> _lastKnownMmr = new();
         private readonly object _lastKnownMmrGate = new();
 
         public long? GetLastKnownMmr(Sc2Profile profile, LadderRace race)
         {
             lock (_lastKnownMmrGate)
-                return _lastKnownMmr.TryGetValue((profile.Id, race), out long mmr) ? mmr : null;
+                if (_lastKnownMmr.TryGetValue(profile.Id, out Dictionary<LadderRace, long>? raceDict))
+                    return raceDict.TryGetValue(race, out long mmr) ? mmr : null;
+                else
+                    return null;
         }
 
         // Called when a post-game poll observes a new ranked rating, so the next game is compared against
         // the value it should actually have started from.
-        public void RecordObservedMmr(Sc2Profile profile, LadderRace race, long mmr)
+        private void RecordObservedMmr(Sc2Profile profile, LadderRace race, long mmr)
         {
             lock (_lastKnownMmrGate)
-                _lastKnownMmr[(profile.Id, race)] = mmr;
+            {
+                if (!_lastKnownMmr.ContainsKey(profile.Id))
+                    _lastKnownMmr[profile.Id] = new Dictionary<LadderRace, long>();
+                _lastKnownMmr[profile.Id][race] = mmr;
+            }
         }
 
         // Every 1v1 rating this profile currently holds, keyed by the ladder it was earned on. SC2 rates
         // each race separately — and Random separately again — so a player who ladders as more than one
         // has more than one MMR and there is no single "current rating" to show. Empty whenever nothing
         // could be determined.
-        public async Task<IReadOnlyDictionary<LadderRace, long>> GetCurrentMmrByRaceAsync(Sc2Profile profile, CancellationToken cancellationToken)
+        public async Task<IReadOnlyDictionary<LadderRace, long>> GetCurrentMmrAllRacesAsync(Sc2Profile profile, CancellationToken cancellationToken)
         {
-            Dictionary<LadderRace, long> byRace = new();
-            foreach ((LadderRace? race, long mmr) in await GetOwn1v1TeamsAsync(profile, cancellationToken))
-            {
-                if (race.HasValue && byRace.TryAdd(race.Value, mmr))
-                    RecordObservedMmr(profile, race.Value, mmr);
-            }
-
-            return byRace;
+            await CacheAllRankedOneVsOne(profile, cancellationToken);
+            if (_lastKnownMmr.TryGetValue(profile.Id, out Dictionary<LadderRace, long>? raceDict))
+                return raceDict;
+            else
+                return new Dictionary<LadderRace, long>();
         }
 
         // Returns null whenever MMR can't be determined — no credentials, network failure, or (commonly)
@@ -76,32 +79,25 @@ namespace StatCraft.Services.BattlenetApi
         // interrupting a replay import over.
         public async Task<long?> GetCurrentMmrAsync(Sc2Profile profile, LadderRace ladderRace, CancellationToken cancellationToken)
         {
-            List<(LadderRace? Race, long Mmr)> teams = await GetOwn1v1TeamsAsync(profile, cancellationToken);
-
-            foreach ((LadderRace? teamRace, long mmr) in teams)
-                if (teamRace == ladderRace)
-                    return mmr;
-
-            // No exact ladder match — fall back to any rating this profile holds rather than reporting
-            // nothing, since a single-ladder player is overwhelmingly the common case.
-            return teams.Count > 0 ? teams[0].Mmr : null;
+            await CacheAllRankedOneVsOne(profile, cancellationToken);
+            return GetLastKnownMmr(profile, ladderRace);
         }
 
         // Shared fetch behind both public methods: resolves every 1v1 ladder this profile sits in and
         // pulls out the team row that is actually theirs.
-        private async Task<List<(LadderRace? Race, long Mmr)>> GetOwn1v1TeamsAsync(Sc2Profile profile, CancellationToken cancellationToken)
+        private async Task CacheAllRankedOneVsOne(Sc2Profile profile, CancellationToken cancellationToken)
         {
             List<(LadderRace? Race, long Mmr)> results = [];
 
             string? token = await tokenProvider.GetTokenAsync(cancellationToken);
             if (token == null)
-                return results;
+                return;
 
             string basePath = $"{HostFor(profile.RegionId)}/sc2/profile/{profile.RegionId}/{profile.RealmId}/{profile.ProfileId}";
 
             LadderSummaryResponse? summary = await GetJsonAsync<LadderSummaryResponse>($"{basePath}/ladder/summary", token, cancellationToken);
             if (summary?.AllLadderMemberships == null)
-                return results;
+                return;
 
             // 1v1 only: it's not obvious which team to load for 2v2/3v3/4v4 since it's separate for each teammate
             List<LadderMembership> candidates = summary.AllLadderMemberships
@@ -118,11 +114,9 @@ namespace StatCraft.Services.BattlenetApi
                 {
                     LadderTeamMember? self = team.TeamMembers?.FirstOrDefault(m => IsProfile(m, profile));
                     if (self != null && team.Mmr.HasValue)
-                        results.Add((ParseRace(self.FavoriteRace), team.Mmr.Value));
+                        RecordObservedMmr(profile, ParseRace(self.FavoriteRace)!.Value, team.Mmr.Value);
                 }
             }
-
-            return results;
         }
 
         private static bool IsProfile(LadderTeamMember member, Sc2Profile profile) =>
