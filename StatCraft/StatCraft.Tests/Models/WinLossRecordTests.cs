@@ -1,3 +1,4 @@
+using StatCraft.Models.Analytics;
 using StatCraft.Models.GameData;
 
 namespace StatCraft.Tests;

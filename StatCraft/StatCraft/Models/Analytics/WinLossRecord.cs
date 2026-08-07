@@ -1,7 +1,8 @@
+using StatCraft.Models.GameData;
 using System.Collections.Generic;
 using System.Globalization;
 
-namespace StatCraft.Models.GameData
+namespace StatCraft.Models.Analytics
 {
     // Win/loss/draw tally over an arbitrary set of games. Derived from whatever the Data tab is
     // currently showing rather than accumulated as games are played, so it answers whatever question

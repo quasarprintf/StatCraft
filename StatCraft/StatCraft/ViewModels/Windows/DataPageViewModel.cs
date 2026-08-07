@@ -19,6 +19,7 @@ using StatCraft.Services.BattlenetApi;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataParsing;
+using StatCraft.Models.Analytics;
 
 namespace StatCraft.ViewModels
 {
