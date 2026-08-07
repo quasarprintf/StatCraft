@@ -49,8 +49,6 @@ namespace StatCraft.Services.BattlenetApi
                     return null;
         }
 
-        // Called when a post-game poll observes a new ranked rating, so the next game is compared against
-        // the value it should actually have started from.
         private void RecordObservedMmr(Sc2Profile profile, LadderRace race, long mmr)
         {
             lock (_lastKnownMmrGate)
@@ -61,10 +59,6 @@ namespace StatCraft.Services.BattlenetApi
             }
         }
 
-        // Every 1v1 rating this profile currently holds, keyed by the ladder it was earned on. SC2 rates
-        // each race separately — and Random separately again — so a player who ladders as more than one
-        // has more than one MMR and there is no single "current rating" to show. Empty whenever nothing
-        // could be determined.
         public async Task<IReadOnlyDictionary<LadderRace, long>> GetCurrentMmrAllRacesAsync(Sc2Profile profile, CancellationToken cancellationToken)
         {
             await CacheAllRankedOneVsOne(profile, cancellationToken);
@@ -74,17 +68,12 @@ namespace StatCraft.Services.BattlenetApi
                 return new Dictionary<LadderRace, long>();
         }
 
-        // Returns null whenever MMR can't be determined — no credentials, network failure, or (commonly)
-        // the profile simply has no placed ladder for the current season. None of those are errors worth
-        // interrupting a replay import over.
         public async Task<long?> GetCurrentMmrAsync(Sc2Profile profile, LadderRace ladderRace, CancellationToken cancellationToken)
         {
             await CacheAllRankedOneVsOne(profile, cancellationToken);
             return GetLastKnownMmr(profile, ladderRace);
         }
 
-        // Shared fetch behind both public methods: resolves every 1v1 ladder this profile sits in and
-        // pulls out the team row that is actually theirs.
         private async Task CacheAllRankedOneVsOne(Sc2Profile profile, CancellationToken cancellationToken)
         {
             List<(LadderRace? Race, long Mmr)> results = [];
