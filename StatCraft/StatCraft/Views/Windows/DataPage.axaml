@@ -97,17 +97,6 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="vm:GameDataRowViewModel">
-                            <Button Content="▶" Background="Transparent" BorderThickness="0"
-                                    FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                    ToolTip.Tip="Open replay with the default program"
-                                    Command="{Binding $parent[DataGrid].((vm:DataPageViewModel)DataContext).LaunchReplayCommand}"
-                                    CommandParameter="{Binding}"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Profile" Binding="{Binding ProfileLabel}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Date/Time" Binding="{Binding PlayedAt}" IsReadOnly="True"/>
                 <!-- Always an editable dropdown rather than click-to-edit: Ranked vs Unranked is
@@ -149,6 +138,17 @@
                 <DataGridTextColumn Header="Opponent" Binding="{Binding OpponentName}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Build" Binding="{Binding SelfTracker.SelectedBuildsSummary}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*"/>
+                <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:GameDataRowViewModel">
+                            <Button Content="▶" Background="Transparent" BorderThickness="0"
+                                    FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    ToolTip.Tip="Watch Replay"
+                                    Command="{Binding $parent[DataGrid].((vm:DataPageViewModel)DataContext).LaunchReplayCommand}"
+                                    CommandParameter="{Binding}"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
             </DataGrid.Columns>
             <DataGrid.RowDetailsTemplate>
                 <DataTemplate x:DataType="vm:GameDataRowViewModel">
