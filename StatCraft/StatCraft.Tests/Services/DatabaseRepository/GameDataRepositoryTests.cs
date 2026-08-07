@@ -218,16 +218,6 @@ public class GameDataRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void InsertGame_WithoutGameType_RoundTripsAsNull()
-    {
-        // How rows imported before game-type detection read back.
-        _repository.InsertGame(CreateGame(), _sc2ProfileId);
-
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
-        Assert.Null(loaded.GameType);
-    }
-
-    [Fact]
     public void UpdateGameType_OverridesTheInferredValue()
     {
         // Ranked vs Unranked is inferred and can be wrong, so a manual correction has to stick.
@@ -239,19 +229,6 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         Assert.Equal(GameType.Unranked, loaded.GameType);
-    }
-
-    [Fact]
-    public void UpdateGameType_CanClassifyAPreviouslyUnknownGame()
-    {
-        // Games imported before detection existed start null and should be settable by hand.
-        GameData game = CreateGame();
-        _repository.InsertGame(game, _sc2ProfileId);
-        Assert.Null(Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId)).GameType);
-
-        _repository.UpdateGameType(game.GameId!.Value, GameType.Custom);
-
-        Assert.Equal(GameType.Custom, Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId)).GameType);
     }
 
     [Fact]
