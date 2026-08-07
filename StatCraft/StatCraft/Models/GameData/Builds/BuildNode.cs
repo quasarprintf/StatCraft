@@ -6,7 +6,7 @@ using System.Linq;
 using StatCraft.Models.GameData.Race;
 using System.Text;
 using StatCraft.ViewModels;
-using StatCraft.Models.GameData.Attributes.DynamicAttribute;
+using StatCraft.Models.GameData.Attributes;
 
 namespace StatCraft.Models.GameData.Builds
 {
@@ -31,7 +31,7 @@ namespace StatCraft.Models.GameData.Builds
         // Transient UI-only flag driving the Builds tab's opponent-race filter; never persisted.
         [ObservableProperty] private bool _matchesOpponentFilter = true;
 
-        public ObservableCollection<DynamicAttribute> Attributes { get; } = [];
+        public ObservableCollection<AttributeValue> Attributes { get; } = [];
 
         [NotifyPropertyChangedFor(nameof(HasChildren))]
         [ObservableProperty] private ObservableCollection<BuildNode> _children = [];

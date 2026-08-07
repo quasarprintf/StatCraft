@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
-using StatCraft.Models.GameData.Attributes.DynamicAttribute;
+using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 
 namespace StatCraft.Services.DataParsing
@@ -37,7 +37,7 @@ namespace StatCraft.Services.DataParsing
             return null;
         }
 
-        internal static List<DynamicAttribute> FlattenAttributes(IEnumerable<BuildNode> path) =>
+        internal static List<AttributeValue> FlattenAttributes(IEnumerable<BuildNode> path) =>
             path.SelectMany(n => n.Attributes).ToList();
     }
 }

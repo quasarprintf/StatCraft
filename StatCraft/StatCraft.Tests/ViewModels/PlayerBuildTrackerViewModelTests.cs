@@ -6,7 +6,6 @@ using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.ViewModels;
-using StatCraft.Models.GameData.Attributes.DynamicAttribute;
 
 namespace StatCraft.Tests;
 
@@ -51,7 +50,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     {
         BuildNode build = new() { Name = "4 Gate", PlayerRace = Race.Z };
         _buildRepository.InsertBuild(build, null, 0);
-        DynamicAttribute attr = new() { Name = "Supply", Type = AttributeType.Numeric, NumericValue = 10 };
+        AttributeValue attr = new(new AttributeDefinition { Name = "Supply", Type = AttributeType.Numeric }) { NumericValue = 10 };
         _buildRepository.InsertAttribute(attr, build.Id, 0);
 
         GameData game = CreateGame();
@@ -83,7 +82,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     {
         BuildNode build = new() { Name = "4 Gate", PlayerRace = Race.Z };
         _buildRepository.InsertBuild(build, null, 0);
-        DynamicAttribute attr = new() { Name = "Supply", Type = AttributeType.Numeric, NumericValue = 10 };
+        AttributeValue attr = new(new AttributeDefinition { Name = "Supply", Type = AttributeType.Numeric }) { NumericValue = 10 };
         _buildRepository.InsertAttribute(attr, build.Id, 0);
 
         // Edit the default before anyone ever selects the build.

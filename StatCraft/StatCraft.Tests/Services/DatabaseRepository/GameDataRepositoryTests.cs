@@ -5,7 +5,6 @@ using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.ViewModels;
-using StatCraft.Models.GameData.Attributes.DynamicAttribute;
 
 namespace StatCraft.Tests;
 
@@ -179,13 +178,13 @@ public class GameDataRepositoryTests : IDisposable
     {
         BuildNode build = new() { Name = "4 Gate" };
         _buildRepository.InsertBuild(build, null, 0);
-        DynamicAttribute attr = InsertAttribute();
+        AttributeValue attr = InsertAttribute();
 
         GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = 2900, Race = 'T', Random = false };
         GameData game = CreateGame(allies: [ally]);
         _repository.InsertGame(game, _sc2ProfileId);
         _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [build.Id]);
-        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Id, "14");
+        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Attribute.Id, "14");
 
         _repository.DeleteGame(game.GameId!.Value);
 
@@ -337,27 +336,27 @@ public class GameDataRepositoryTests : IDisposable
     [Fact]
     public void UpsertAttributeValue_ThenGetGamesForProfile_ReturnsValue()
     {
-        DynamicAttribute attr = InsertAttribute();
+        AttributeValue attr = InsertAttribute();
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
 
-        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Id, "14");
+        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Attribute.Id, "14");
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         GameAttributeValue value = Assert.Single(loaded.ReplayData.Player.AttributeValues);
-        Assert.Equal(attr.Id, value.BuildAttributeId);
+        Assert.Equal(attr.Attribute.Id, value.BuildAttributeId);
         Assert.Equal("14", value.Value);
     }
 
     [Fact]
     public void UpsertAttributeValue_CalledTwice_OverwritesValue()
     {
-        DynamicAttribute attr = InsertAttribute();
+        AttributeValue attr = InsertAttribute();
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
 
-        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Id, "14");
-        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Id, "16");
+        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Attribute.Id, "14");
+        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Attribute.Id, "16");
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         GameAttributeValue value = Assert.Single(loaded.ReplayData.Player.AttributeValues);
@@ -369,21 +368,21 @@ public class GameDataRepositoryTests : IDisposable
     {
         BuildNode build = new() { Name = "Build" };
         _buildRepository.InsertBuild(build, null, 0);
-        DynamicAttribute attr1 = new() { Name = "A1", Type = AttributeType.Numeric };
-        DynamicAttribute attr2 = new() { Name = "A2", Type = AttributeType.Numeric };
+        AttributeValue attr1 = new(new AttributeDefinition { Name = "A1", Type = AttributeType.Numeric });
+        AttributeValue attr2 = new(new AttributeDefinition { Name = "A2", Type = AttributeType.Numeric });
         _buildRepository.InsertAttribute(attr1, build.Id, 0);
         _buildRepository.InsertAttribute(attr2, build.Id, 1);
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr1.Id, "1");
-        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr2.Id, "2");
+        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr1.Attribute.Id, "1");
+        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr2.Attribute.Id, "2");
 
-        _repository.DeleteAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr1.Id);
+        _repository.DeleteAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr1.Attribute.Id);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         GameAttributeValue remaining = Assert.Single(loaded.ReplayData.Player.AttributeValues);
-        Assert.Equal(attr2.Id, remaining.BuildAttributeId);
+        Assert.Equal(attr2.Attribute.Id, remaining.BuildAttributeId);
     }
 
     [Fact]
@@ -517,11 +516,11 @@ public class GameDataRepositoryTests : IDisposable
         return profile;
     }
 
-    private DynamicAttribute InsertAttribute()
+    private AttributeValue InsertAttribute()
     {
         BuildNode build = new() { Name = "Build" };
         _buildRepository.InsertBuild(build, null, 0);
-        DynamicAttribute attr = new() { Name = "Supply", Type = AttributeType.Numeric };
+        AttributeValue attr = new(new AttributeDefinition { Name = "Supply", Type = AttributeType.Numeric });
         _buildRepository.InsertAttribute(attr, build.Id, 0);
         return attr;
     }

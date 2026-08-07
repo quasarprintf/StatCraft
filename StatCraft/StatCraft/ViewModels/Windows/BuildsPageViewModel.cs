@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using StatCraft.Models.GameData.Attributes.DynamicAttribute;
+using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
@@ -135,23 +135,27 @@ namespace StatCraft.ViewModels
                     || e.PropertyName == nameof(BuildNode.Matchups)))
                     _repository.UpdateBuild(n);
             };
-            foreach (DynamicAttribute attr in node.Attributes)
+            foreach (AttributeValue attr in node.Attributes)
                 WireAttribute(attr);
             foreach (BuildNode child in node.Children)
                 WireNode(child);
         }
 
-        private void WireAttribute(DynamicAttribute attr)
+        private void WireAttribute(AttributeValue attr)
         {
+            attr.Attribute.PropertyChanged += (s, e) =>
+            {
+                if (e.PropertyName == nameof(AttributeDefinition.Name) || e.PropertyName == nameof(AttributeDefinition.Type))
+                    _repository.UpdateAttribute(attr);
+            };
             attr.PropertyChanged += (s, e) =>
             {
-                if (s is DynamicAttribute a &&  (e.PropertyName == nameof(DynamicAttribute.Name) || e.PropertyName == nameof(DynamicAttribute.Type)
-                    || e.PropertyName == nameof(DynamicAttribute.NumericValue) || e.PropertyName == nameof(DynamicAttribute.BoolValue)
-                    || e.PropertyName == nameof(DynamicAttribute.PercentValue) || e.PropertyName == nameof(DynamicAttribute.SelectedValue)))
-                    _repository.UpdateAttribute(a);
+                if (e.PropertyName == nameof(AttributeValue.NumericValue) || e.PropertyName == nameof(AttributeValue.BoolValue)
+                    || e.PropertyName == nameof(AttributeValue.PercentValue) || e.PropertyName == nameof(AttributeValue.SelectedValue))
+                    _repository.UpdateAttribute(attr);
             };
-            attr.ValueOptions.CollectionChanged += (s, e) =>
-                AttributeValueOptionSync.Apply(e, attr.Id, attr.ValueOptions, _repository.InsertValueOption, _repository.DeleteValueOption);
+            attr.Attribute.ValueOptions.CollectionChanged += (s, e) =>
+                AttributeValueOptionSync.Apply(e, attr.Attribute.Id, attr.Attribute.ValueOptions, _repository.InsertValueOption, _repository.DeleteValueOption);
         }
 
         public void SelectFirstBuild() => SelectedBuild = Builds.FirstOrDefault(n => n.MatchesOpponentFilter);
@@ -292,17 +296,20 @@ namespace StatCraft.ViewModels
         public void AddAttribute()
         {
             if (SelectedBuild == null) return;
-            DynamicAttribute attr = new DynamicAttribute();
+            // Unlike a Map attribute value, a Build attribute's default is never meant to read as
+            // "unset" — seed it with the same concrete zero-values a fresh numeric/bool/percent field
+            // would have shown before the definition/value split.
+            AttributeValue attr = new(new AttributeDefinition()) { NumericValue = 0, BoolValue = false, PercentValue = 0 };
             _repository.InsertAttribute(attr, SelectedBuild.Id, SelectedBuild.Attributes.Count);
             WireAttribute(attr);
             SelectedBuild.Attributes.Add(attr);
         }
 
         [RelayCommand]
-        public void RemoveAttribute(DynamicAttribute attribute)
+        public void RemoveAttribute(AttributeValue attribute)
         {
             if (SelectedBuild == null) return;
-            _repository.DeleteAttribute(attribute.Id);
+            _repository.DeleteAttribute(attribute.Attribute.Id);
             SelectedBuild.Attributes.Remove(attribute);
         }
     }

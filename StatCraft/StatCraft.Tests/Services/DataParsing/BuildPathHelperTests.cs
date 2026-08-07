@@ -1,4 +1,4 @@
-using StatCraft.Models.GameData.Attributes.DynamicAttribute;
+using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.DataParsing;
 
@@ -68,9 +68,9 @@ public class BuildPathHelperTests
     [Fact]
     public void FlattenAttributes_PreservesRootToLeafOrder()
     {
-        DynamicAttribute rootAttr = new() { Id = 10, Name = "RootAttr" };
-        DynamicAttribute childAttr1 = new() { Id = 20, Name = "ChildAttr1" };
-        DynamicAttribute childAttr2 = new() { Id = 21, Name = "ChildAttr2" };
+        AttributeValue rootAttr = new(new AttributeDefinition { Id = 10, Name = "RootAttr" });
+        AttributeValue childAttr1 = new(new AttributeDefinition { Id = 20, Name = "ChildAttr1" });
+        AttributeValue childAttr2 = new(new AttributeDefinition { Id = 21, Name = "ChildAttr2" });
 
         BuildNode child = new() { Id = 2, Name = "Child" };
         child.Attributes.Add(childAttr1);
@@ -80,7 +80,7 @@ public class BuildPathHelperTests
         root.Attributes.Add(rootAttr);
         root.Children.Add(child);
 
-        List<DynamicAttribute> flattened = BuildPathHelper.FlattenAttributes([root, child]);
+        List<AttributeValue> flattened = BuildPathHelper.FlattenAttributes([root, child]);
 
         Assert.Equal([rootAttr, childAttr1, childAttr2], flattened);
     }

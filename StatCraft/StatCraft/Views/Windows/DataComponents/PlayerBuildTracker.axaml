@@ -1,5 +1,5 @@
 <UserControl xmlns="https://github.com/avaloniaui"
-             xmlns:dynAttr="using:StatCraft.Models.GameData.Attributes.DynamicAttribute"
+             xmlns:Attr="using:StatCraft.Models.GameData.Attributes"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vm="using:StatCraft.ViewModels"
              xmlns:local="using:StatCraft.Views"
@@ -15,21 +15,21 @@
         </ItemsControl>
         <ItemsControl ItemsSource="{Binding AttributeEditors}">
             <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="dynAttr:DynamicAttribute">
+                <DataTemplate x:DataType="Attr:AttributeValue">
                     <Grid ColumnDefinitions="140,*" Margin="0,0,0,4">
-                        <TextBlock Grid.Column="0" Text="{Binding Name}" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{Binding Attribute.Name}" VerticalAlignment="Center"/>
                         <NumericUpDown Grid.Column="1" Value="{Binding NumericValue}"
-                                       IsVisible="{Binding IsNumeric}"
+                                       IsVisible="{Binding Attribute.IsNumeric}"
                                        FormatString="0.##" HorizontalAlignment="Left"/>
                         <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}"
-                                  IsVisible="{Binding IsBool}"/>
+                                  IsVisible="{Binding Attribute.IsBool}"/>
                         <NumericUpDown Grid.Column="1" Value="{Binding PercentValue}"
-                                       IsVisible="{Binding IsPercent}"
+                                       IsVisible="{Binding Attribute.IsPercent}"
                                        Minimum="0" Maximum="100" FormatString="0.##'%'"
                                        HorizontalAlignment="Left"/>
-                        <ComboBox Grid.Column="1" ItemsSource="{Binding ValueOptions}"
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding Attribute.ValueOptions}"
                                   SelectedItem="{Binding SelectedValue}"
-                                  IsVisible="{Binding IsValues}"
+                                  IsVisible="{Binding Attribute.IsValues}"
                                   HorizontalAlignment="Left" MinWidth="150"/>
                     </Grid>
                 </DataTemplate>

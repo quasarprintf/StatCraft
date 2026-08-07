@@ -4,7 +4,7 @@ using System.Linq;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Models.GameData;
-using StatCraft.Models.GameData.Attributes.DynamicAttribute;
+using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
@@ -31,7 +31,7 @@ namespace StatCraft.ViewModels
         // Slots are always [...persisted selections, one trailing blank] — selecting a build in the
         // trailing slot appends a new blank after it, and clearing a non-trailing slot removes it.
         public ObservableCollection<BuildSelectionSlotViewModel> BuildSlots { get; } = [];
-        public ObservableCollection<DynamicAttribute> AttributeEditors { get; } = [];
+        public ObservableCollection<AttributeValue> AttributeEditors { get; } = [];
 
         internal PlayerBuildTrackerViewModel(GamePlayer player, GameDataRepository repository, ObservableCollection<BuildNode>? buildTree, IBrush? nameColor = null)
         {
@@ -158,7 +158,7 @@ namespace StatCraft.ViewModels
         // contributes its attributes exactly once no matter how many selected builds pass through it.
         private void RebuildAttributeEditors()
         {
-            List<int> oldIds = AttributeEditors.Select(e => e.Id).ToList();
+            List<int> oldIds = AttributeEditors.Select(e => e.Attribute.Id).ToList();
 
             List<BuildNode> unionPath = new();
             HashSet<int> seen = new();
@@ -171,8 +171,8 @@ namespace StatCraft.ViewModels
                     if (seen.Add(node.Id))
                         unionPath.Add(node);
             }
-            List<DynamicAttribute> newPathAttrs = BuildPathHelper.FlattenAttributes(unionPath);
-            List<int> newIds = newPathAttrs.Select(a => a.Id).ToList();
+            List<AttributeValue> newPathAttrs = BuildPathHelper.FlattenAttributes(unionPath);
+            List<int> newIds = newPathAttrs.Select(a => a.Attribute.Id).ToList();
 
             // Left every selected path: drop the stored value from the DB, but leave it in
             // _player.AttributeValues (in-memory) so re-selecting the build within this session restores it.
@@ -180,36 +180,46 @@ namespace StatCraft.ViewModels
                 _repository.DeleteAttributeValue(_player.GamePlayerId!.Value, leftId);
 
             AttributeEditors.Clear();
-            foreach (DynamicAttribute template in newPathAttrs)
+            foreach (AttributeValue template in newPathAttrs)
             {
-                DynamicAttribute editor = template.Clone();
-                GameAttributeValue? cached = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Id);
+                // A fresh value referencing the same shared AttributeDefinition as the build's own
+                // attribute, but with its own independently-mutable Numeric/Bool/Percent/SelectedValue —
+                // seeded from the build's current default, since editing this player's value must never
+                // write back into the build definition itself.
+                AttributeValue editor = new(template.Attribute)
+                {
+                    NumericValue = template.NumericValue,
+                    BoolValue = template.BoolValue,
+                    PercentValue = template.PercentValue,
+                    SelectedValue = template.SelectedValue,
+                };
+                GameAttributeValue? cached = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Attribute.Id);
                 if (cached != null)
                 {
-                    editor.ApplyValue(cached.Value);
-                    _repository.UpsertAttributeValue(_player.GamePlayerId!.Value, template.Id, cached.Value);
+                    editor.ApplyStoredValue(cached.Value);
+                    _repository.UpsertAttributeValue(_player.GamePlayerId!.Value, template.Attribute.Id, cached.Value);
                 }
                 else
                 {
-                    string defaultValue = editor.SerializeValue();
-                    _player.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Id, Value = defaultValue });
-                    _repository.UpsertAttributeValue(_player.GamePlayerId!.Value, template.Id, defaultValue);
+                    string defaultValue = editor.Serialize() ?? "";
+                    _player.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Attribute.Id, Value = defaultValue });
+                    _repository.UpsertAttributeValue(_player.GamePlayerId!.Value, template.Attribute.Id, defaultValue);
                 }
 
                 editor.PropertyChanged += (_, e) =>
                 {
-                    if (e.PropertyName is nameof(DynamicAttribute.NumericValue)
-                        or nameof(DynamicAttribute.BoolValue)
-                        or nameof(DynamicAttribute.PercentValue)
-                        or nameof(DynamicAttribute.SelectedValue))
+                    if (e.PropertyName is nameof(AttributeValue.NumericValue)
+                        or nameof(AttributeValue.BoolValue)
+                        or nameof(AttributeValue.PercentValue)
+                        or nameof(AttributeValue.SelectedValue))
                     {
-                        string value = editor.SerializeValue();
-                        GameAttributeValue? existing = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Id);
+                        string value = editor.Serialize() ?? "";
+                        GameAttributeValue? existing = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Attribute.Id);
                         if (existing != null)
                             existing.Value = value;
                         else
-                            _player.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Id, Value = value });
-                        _repository.UpsertAttributeValue(_player.GamePlayerId!.Value, template.Id, value);
+                            _player.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Attribute.Id, Value = value });
+                        _repository.UpsertAttributeValue(_player.GamePlayerId!.Value, template.Attribute.Id, value);
                     }
                 };
                 AttributeEditors.Add(editor);

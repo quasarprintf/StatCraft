@@ -7,7 +7,6 @@ using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.ViewModels;
-using StatCraft.Models.GameData.Attributes.DynamicAttribute;
 
 namespace StatCraft.Services.DatabaseRepository
 {
@@ -134,15 +133,16 @@ namespace StatCraft.Services.DatabaseRepository
 
             if (nodeDict.Count > 0)
             {
-                Dictionary<long, DynamicAttribute> attrDict = new();
+                Dictionary<long, AttributeValue> attrDict = new();
                 string nodeIds = string.Join(",", nodeDict.Keys);
 
                 List<BuildAttributeRow> attrRows = conn.Query<BuildAttributeRow>(
                     $"SELECT Id, BuildNodeId, Name, Type, DefaultValue FROM BuildAttributes WHERE BuildNodeId IN ({nodeIds}) ORDER BY SortOrder").ToList();
                 foreach (BuildAttributeRow row in attrRows)
                 {
-                    DynamicAttribute attr = new DynamicAttribute { Id = (int)row.Id, Name = row.Name, Type = row.Type };
-                    attr.ApplyValue(row.DefaultValue);
+                    AttributeDefinition definition = new() { Id = (int)row.Id, Name = row.Name, Type = row.Type };
+                    AttributeValue attr = new(definition);
+                    attr.ApplyStoredValue(row.DefaultValue);
                     attrDict[row.Id] = attr;
                     nodeDict[row.BuildNodeId].Attributes.Add(attr);
                 }
@@ -153,7 +153,7 @@ namespace StatCraft.Services.DatabaseRepository
                     List<ValueOptionRow> optionRows = conn.Query<ValueOptionRow>(
                         $"SELECT BuildAttributeId, Value FROM AttributeValueOptions WHERE BuildAttributeId IN ({attrIds}) ORDER BY SortOrder").ToList();
                     foreach (ValueOptionRow row in optionRows)
-                        attrDict[row.BuildAttributeId].ValueOptions.Add(row.Value);
+                        attrDict[row.BuildAttributeId].Attribute.ValueOptions.Add(row.Value);
                 }
             }
 
@@ -196,22 +196,22 @@ namespace StatCraft.Services.DatabaseRepository
             BuildsChanged?.Invoke();
         }
 
-        public void InsertAttribute(DynamicAttribute attr, int buildNodeId, int sortOrder)
+        public void InsertAttribute(AttributeValue attr, int buildNodeId, int sortOrder)
         {
             using SqliteConnection conn = OpenConnection();
-            attr.Id = (int)conn.ExecuteScalar<long>(@"
+            attr.Attribute.Id = (int)conn.ExecuteScalar<long>(@"
                 INSERT INTO BuildAttributes (BuildNodeId, Name, Type, DefaultValue, SortOrder)
                 VALUES (@buildNodeId, @name, @type, @defaultValue, @sortOrder);
                 SELECT last_insert_rowid();",
-                new { buildNodeId, name = attr.Name, type = attr.Type, defaultValue = attr.SerializeValue(), sortOrder });
+                new { buildNodeId, name = attr.Attribute.Name, type = attr.Attribute.Type, defaultValue = attr.Serialize() ?? "", sortOrder });
             BuildsChanged?.Invoke();
         }
 
-        public void UpdateAttribute(DynamicAttribute attr)
+        public void UpdateAttribute(AttributeValue attr)
         {
             using SqliteConnection conn = OpenConnection();
             conn.Execute("UPDATE BuildAttributes SET Name = @name, Type = @type, DefaultValue = @defaultValue WHERE Id = @id",
-                new { name = attr.Name, type = attr.Type, defaultValue = attr.SerializeValue(), id = attr.Id });
+                new { name = attr.Attribute.Name, type = attr.Attribute.Type, defaultValue = attr.Serialize() ?? "", id = attr.Attribute.Id });
             BuildsChanged?.Invoke();
         }
 
