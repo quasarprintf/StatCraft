@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -122,6 +124,24 @@ namespace StatCraft.ViewModels
             _gameDataRepository.DeleteGame(row.GameId);
             _loadedGames.RemoveAll(g => g.GameId == row.GameId);
             Games.Remove(row);
+        }
+
+        // Raised when the replay file can't be handed off to the OS (moved/deleted since import, or no
+        // program associated with .SC2Replay), so the view can surface it instead of the app just
+        // silently doing nothing.
+        public event Action<string>? LaunchReplayFailed;
+
+        [RelayCommand]
+        private void LaunchReplay(GameDataRowViewModel row)
+        {
+            try
+            {
+                Process.Start(new ProcessStartInfo(row.ReplayPath) { UseShellExecute = true });
+            }
+            catch (Exception ex) when (ex is Win32Exception or FileNotFoundException)
+            {
+                LaunchReplayFailed?.Invoke($"Could not open replay file:\n{row.ReplayPath}\n\n{ex.Message}");
+            }
         }
 
         // The filter bar is a display/query layer on top of session state, not a replacement for it —

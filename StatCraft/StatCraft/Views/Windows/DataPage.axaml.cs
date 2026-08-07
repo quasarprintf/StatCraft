@@ -27,6 +27,7 @@ namespace StatCraft.Views
             vm.SessionRequested += async () => await OnSessionRequestedAsync();
             vm.DeleteGameConfirmationRequested += async row => await OnDeleteGameConfirmationRequestedAsync(row);
             vm.ImportReplayRequested += async () => await OnImportReplayRequestedAsync();
+            vm.LaunchReplayFailed += async message => await OnLaunchReplayFailedAsync(message);
             DataContext = vm;
 
             // A single click on the Notes cell of a not-yet-selected row only selects the row by
@@ -151,6 +152,13 @@ namespace StatCraft.Views
             string? error = await ViewModel.ImportReplayFile(path);
             if (error != null)
                 await new MessageWindow("Import Failed", error).ShowDialog(owner);
+        }
+
+        private async Task OnLaunchReplayFailedAsync(string message)
+        {
+            if (!(TopLevel.GetTopLevel(this) is Window owner)) return;
+
+            await new MessageWindow("Launch Failed", message).ShowDialog(owner);
         }
 
         private static bool IsDirectlyInFolder(string filePath, string folderPath)

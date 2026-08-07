@@ -22,6 +22,8 @@ namespace StatCraft.ViewModels
 
         public int GameId => _game.GameId!.Value;
 
+        public string ReplayPath => _game.ReplayData.ReplayPath;
+
         // Which profile this game belongs to — meaningful once the Data tab's profile filter can merge
         // games from more than one profile into a single table.
         public string ProfileLabel { get; }
