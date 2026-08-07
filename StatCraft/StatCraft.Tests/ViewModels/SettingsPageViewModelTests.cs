@@ -20,7 +20,7 @@ public class SettingsPageViewModelTests : IDisposable
     {
         string replayFolder = Path.Combine(_tempRoot, "ValidReplayFolder");
         Directory.CreateDirectory(Path.Combine(replayFolder, "Accounts"));
-        _settingsRepository.Save(new StatCraft.Models.AppSettingsData { BaseReplayFolderPath = replayFolder });
+        _settingsRepository.Save(new Models.Util.AppSettingsData { BaseReplayFolderPath = replayFolder });
 
         SettingsPageViewModel vm = new(_settingsRepository);
 
@@ -32,7 +32,7 @@ public class SettingsPageViewModelTests : IDisposable
     {
         string original = Path.Combine(_tempRoot, "Original");
         Directory.CreateDirectory(Path.Combine(original, "Accounts"));
-        _settingsRepository.Save(new StatCraft.Models.AppSettingsData { BaseReplayFolderPath = original });
+        _settingsRepository.Save(new Models.Util.AppSettingsData { BaseReplayFolderPath = original });
 
         string replayFolder = Path.Combine(_tempRoot, "NoAccountsHere");
         Directory.CreateDirectory(replayFolder);

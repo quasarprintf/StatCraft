@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Text.Json;
-using StatCraft.Models;
+using StatCraft.Models.Util;
 
 namespace StatCraft.Services.DatabaseRepository
 {

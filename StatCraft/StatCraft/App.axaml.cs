@@ -8,7 +8,6 @@ using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
 using Microsoft.Extensions.DependencyInjection;
-using StatCraft.Models;
 using StatCraft.ViewModels;
 using StatCraft.Views;
 using System.Linq;
@@ -16,6 +15,7 @@ using StatCraft.Services.BattlenetApi;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DataParsing;
+using StatCraft.Models.Util;
 
 namespace StatCraft
 {

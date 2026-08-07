@@ -1,4 +1,4 @@
-﻿using StatCraft.Models;
+﻿using StatCraft.Models.Util;
 using StatCraft.Services.BackgroundService;
 using System;
 using System.Collections.Generic;

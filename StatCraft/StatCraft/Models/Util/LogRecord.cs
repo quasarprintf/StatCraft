@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 using System;
 using System.Collections.Generic;
 
-namespace StatCraft.Models
+namespace StatCraft.Models.Util
 {
 
     public class LogRecord

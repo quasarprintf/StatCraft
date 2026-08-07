@@ -1,4 +1,4 @@
-namespace StatCraft.Models
+namespace StatCraft.Models.Util
 {
     public class AppSettingsData
     {

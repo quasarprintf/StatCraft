@@ -1,4 +1,5 @@
 using StatCraft.Models;
+using StatCraft.Models.Util;
 using StatCraft.Services.DatabaseRepository;
 
 namespace StatCraft.Tests;
