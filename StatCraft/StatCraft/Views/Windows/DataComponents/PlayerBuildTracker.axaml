@@ -17,19 +17,19 @@
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="Attr:AttributeValue">
                     <Grid ColumnDefinitions="140,*" Margin="0,0,0,4">
-                        <TextBlock Grid.Column="0" Text="{Binding Attribute.Name}" VerticalAlignment="Center"/>
+                        <TextBlock Grid.Column="0" Text="{Binding Definition.Name}" VerticalAlignment="Center"/>
                         <NumericUpDown Grid.Column="1" Value="{Binding NumericValue}"
-                                       IsVisible="{Binding Attribute.IsNumeric}"
+                                       IsVisible="{Binding Definition.IsNumeric}"
                                        FormatString="0.##" HorizontalAlignment="Left"/>
                         <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}"
-                                  IsVisible="{Binding Attribute.IsBool}"/>
+                                  IsVisible="{Binding Definition.IsBool}"/>
                         <NumericUpDown Grid.Column="1" Value="{Binding PercentValue}"
-                                       IsVisible="{Binding Attribute.IsPercent}"
+                                       IsVisible="{Binding Definition.IsPercent}"
                                        Minimum="0" Maximum="100" FormatString="0.##'%'"
                                        HorizontalAlignment="Left"/>
-                        <ComboBox Grid.Column="1" ItemsSource="{Binding Attribute.ValueOptions}"
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding Definition.ValueOptions}"
                                   SelectedItem="{Binding SelectedValue}"
-                                  IsVisible="{Binding Attribute.IsValues}"
+                                  IsVisible="{Binding Definition.IsValues}"
                                   HorizontalAlignment="Left" MinWidth="150"/>
                     </Grid>
                 </DataTemplate>

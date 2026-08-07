@@ -134,11 +134,11 @@ public class BuildRepositoryTests : IDisposable
 
         AttributeValue attr = new(new AttributeDefinition { Name = "Opening", Type = AttributeType.Values });
         _repository.InsertAttribute(attr, node.Id, 0);
-        _repository.InsertValueOption(attr.Attribute.Id, "Zealot", 0);
+        _repository.InsertValueOption(attr.Definition.Id, "Zealot", 0);
 
         BuildNode loadedNode = Assert.Single(_repository.GetBuildsForPlayerRace(Race.P));
         AttributeValue loadedAttr = Assert.Single(loadedNode.Attributes);
-        Assert.Equal(["Zealot"], loadedAttr.Attribute.ValueOptions);
+        Assert.Equal(["Zealot"], loadedAttr.Definition.ValueOptions);
     }
 
     [Fact]

@@ -92,7 +92,7 @@ public class MapRepositoryTests : IDisposable
 
         List<AttributeDefinition> attributes = _repository.GetAllAttributes();
         foreach (Map map in _repository.GetAllMaps(attributes))
-            Assert.Equal("Rush Distance", Assert.Single(map.AttributeValues).Attribute.Name);
+            Assert.Equal("Rush Distance", Assert.Single(map.AttributeValues).Definition.Name);
     }
 
     [Fact]

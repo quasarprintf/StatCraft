@@ -26,7 +26,7 @@ namespace StatCraft.Services.DataFiltering
             if (!value.HasValue)
                 return includeUnset;
 
-            decimal actual = value.Attribute.Type == AttributeType.Percent
+            decimal actual = value.Definition.Type == AttributeType.Percent
                 ? value.PercentValue ?? 0m
                 : value.NumericValue ?? 0m;
             return (min == null || actual >= min) && (max == null || actual <= max);

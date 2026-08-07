@@ -109,7 +109,7 @@ namespace StatCraft.Services.DatabaseRepository
                 foreach (MapAttributeValueRow row in valueRows)
                 {
                     AttributeValue? value = mapsById[row.MapId].AttributeValues
-                        .FirstOrDefault(v => v.Attribute.Id == row.MapAttributeId);
+                        .FirstOrDefault(v => v.Definition.Id == row.MapAttributeId);
                     // A stored row for an attribute that's since been deleted is simply ignored.
                     value?.ApplyStoredValue(row.Value);
                 }

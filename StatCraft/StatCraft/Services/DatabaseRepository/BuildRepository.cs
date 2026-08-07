@@ -153,7 +153,7 @@ namespace StatCraft.Services.DatabaseRepository
                     List<ValueOptionRow> optionRows = conn.Query<ValueOptionRow>(
                         $"SELECT BuildAttributeId, Value FROM AttributeValueOptions WHERE BuildAttributeId IN ({attrIds}) ORDER BY SortOrder").ToList();
                     foreach (ValueOptionRow row in optionRows)
-                        attrDict[row.BuildAttributeId].Attribute.ValueOptions.Add(row.Value);
+                        attrDict[row.BuildAttributeId].Definition.ValueOptions.Add(row.Value);
                 }
             }
 
@@ -199,11 +199,11 @@ namespace StatCraft.Services.DatabaseRepository
         public void InsertAttribute(AttributeValue attr, int buildNodeId, int sortOrder)
         {
             using SqliteConnection conn = OpenConnection();
-            attr.Attribute.Id = (int)conn.ExecuteScalar<long>(@"
+            attr.Definition.Id = (int)conn.ExecuteScalar<long>(@"
                 INSERT INTO BuildAttributes (BuildNodeId, Name, Type, DefaultValue, SortOrder)
                 VALUES (@buildNodeId, @name, @type, @defaultValue, @sortOrder);
                 SELECT last_insert_rowid();",
-                new { buildNodeId, name = attr.Attribute.Name, type = attr.Attribute.Type, defaultValue = attr.Serialize() ?? "", sortOrder });
+                new { buildNodeId, name = attr.Definition.Name, type = attr.Definition.Type, defaultValue = attr.Serialize() ?? "", sortOrder });
             BuildsChanged?.Invoke();
         }
 
@@ -211,7 +211,7 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
             conn.Execute("UPDATE BuildAttributes SET Name = @name, Type = @type, DefaultValue = @defaultValue WHERE Id = @id",
-                new { name = attr.Attribute.Name, type = attr.Attribute.Type, defaultValue = attr.Serialize() ?? "", id = attr.Attribute.Id });
+                new { name = attr.Definition.Name, type = attr.Definition.Type, defaultValue = attr.Serialize() ?? "", id = attr.Definition.Id });
             BuildsChanged?.Invoke();
         }
 

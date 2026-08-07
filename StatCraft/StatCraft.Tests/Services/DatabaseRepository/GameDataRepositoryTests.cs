@@ -184,7 +184,7 @@ public class GameDataRepositoryTests : IDisposable
         GameData game = CreateGame(allies: [ally]);
         _repository.InsertGame(game, _sc2ProfileId);
         _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [build.Id]);
-        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Attribute.Id, "14");
+        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Definition.Id, "14");
 
         _repository.DeleteGame(game.GameId!.Value);
 
@@ -340,11 +340,11 @@ public class GameDataRepositoryTests : IDisposable
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
 
-        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Attribute.Id, "14");
+        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Definition.Id, "14");
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         GameAttributeValue value = Assert.Single(loaded.ReplayData.Player.AttributeValues);
-        Assert.Equal(attr.Attribute.Id, value.BuildAttributeId);
+        Assert.Equal(attr.Definition.Id, value.BuildAttributeId);
         Assert.Equal("14", value.Value);
     }
 
@@ -355,8 +355,8 @@ public class GameDataRepositoryTests : IDisposable
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
 
-        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Attribute.Id, "14");
-        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Attribute.Id, "16");
+        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Definition.Id, "14");
+        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Definition.Id, "16");
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         GameAttributeValue value = Assert.Single(loaded.ReplayData.Player.AttributeValues);
@@ -375,14 +375,14 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr1.Attribute.Id, "1");
-        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr2.Attribute.Id, "2");
+        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr1.Definition.Id, "1");
+        _repository.UpsertAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr2.Definition.Id, "2");
 
-        _repository.DeleteAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr1.Attribute.Id);
+        _repository.DeleteAttributeValue(game.ReplayData.Player.GamePlayerId!.Value, attr1.Definition.Id);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         GameAttributeValue remaining = Assert.Single(loaded.ReplayData.Player.AttributeValues);
-        Assert.Equal(attr2.Attribute.Id, remaining.BuildAttributeId);
+        Assert.Equal(attr2.Definition.Id, remaining.BuildAttributeId);
     }
 
     [Fact]

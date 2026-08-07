@@ -123,7 +123,7 @@ namespace StatCraft.ViewModels
         [RelayCommand]
         public void AddAttribute()
         {
-            AttributeDefinition attribute = new() { Name = "New Attribute" };
+            AttributeDefinition attribute = new() { Name = "New Definition" };
             _repository.InsertAttribute(attribute, Attributes.Count);
             WireAttribute(attribute);
             Attributes.Add(attribute);
@@ -144,7 +144,7 @@ namespace StatCraft.ViewModels
 
             foreach (Map map in _allMaps)
             {
-                AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Attribute == attribute);
+                AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Definition == attribute);
                 if (value != null)
                     map.AttributeValues.Remove(value);
             }
@@ -186,7 +186,7 @@ namespace StatCraft.ViewModels
 
                 // Serialize() returns null when unset, and SaveValue deletes the row for null — that
                 // absence is what "no value" actually is in the database.
-                _repository.SaveValue(map.Id, value.Attribute.Id, value.Serialize());
+                _repository.SaveValue(map.Id, value.Definition.Id, value.Serialize());
                 ApplyFilters();
             };
         }
@@ -313,7 +313,7 @@ namespace StatCraft.ViewModels
                 if (!slot.IsVisible)
                     continue;
 
-                AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Attribute == attribute);
+                AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Definition == attribute);
                 if (value == null)
                     continue;
 

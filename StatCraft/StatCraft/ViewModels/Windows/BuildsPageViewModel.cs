@@ -143,7 +143,7 @@ namespace StatCraft.ViewModels
 
         private void WireAttribute(AttributeValue attr)
         {
-            attr.Attribute.PropertyChanged += (s, e) =>
+            attr.Definition.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(AttributeDefinition.Name) || e.PropertyName == nameof(AttributeDefinition.Type))
                     _repository.UpdateAttribute(attr);
@@ -154,8 +154,8 @@ namespace StatCraft.ViewModels
                     || e.PropertyName == nameof(AttributeValue.PercentValue) || e.PropertyName == nameof(AttributeValue.SelectedValue))
                     _repository.UpdateAttribute(attr);
             };
-            attr.Attribute.ValueOptions.CollectionChanged += (s, e) =>
-                AttributeValueOptionSync.Apply(e, attr.Attribute.Id, attr.Attribute.ValueOptions, _repository.InsertValueOption, _repository.DeleteValueOption);
+            attr.Definition.ValueOptions.CollectionChanged += (s, e) =>
+                AttributeValueOptionSync.Apply(e, attr.Definition.Id, attr.Definition.ValueOptions, _repository.InsertValueOption, _repository.DeleteValueOption);
         }
 
         public void SelectFirstBuild() => SelectedBuild = Builds.FirstOrDefault(n => n.MatchesOpponentFilter);
@@ -309,7 +309,7 @@ namespace StatCraft.ViewModels
         public void RemoveAttribute(AttributeValue attribute)
         {
             if (SelectedBuild == null) return;
-            _repository.DeleteAttribute(attribute.Attribute.Id);
+            _repository.DeleteAttribute(attribute.Definition.Id);
             SelectedBuild.Attributes.Remove(attribute);
         }
     }
