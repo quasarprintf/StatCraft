@@ -10,19 +10,17 @@ namespace StatCraft.Services.BackgroundService
     {
         private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(5));
         private readonly HashSet<string> _knownFiles = new();
-        private string? _folderPath;
+        public string? WatchedFolderPath { get; private set; }
         private CancellationTokenSource? _cts;
         private Task? _loopTask;
 
         internal event Action<string>? NewReplayFileFound;
 
-        public string? WatchedFolderPath => _folderPath;
-
         public async Task Start(string folderPath)
         {
             await Stop();
 
-            _folderPath = folderPath;
+            WatchedFolderPath = folderPath;
             if (Directory.Exists(folderPath))
             {
                 foreach (string file in Directory.EnumerateFiles(folderPath))
@@ -39,7 +37,7 @@ namespace StatCraft.Services.BackgroundService
             _cts?.Dispose();
             _cts = null;
             _knownFiles.Clear();
-            _folderPath = null;
+            WatchedFolderPath = null;
             if (_loopTask != null)
                 await _loopTask;
         }
@@ -59,10 +57,10 @@ namespace StatCraft.Services.BackgroundService
 
         public void CheckNow()
         {
-            if (_folderPath == null || !Directory.Exists(_folderPath))
+            if (WatchedFolderPath == null || !Directory.Exists(WatchedFolderPath))
                 return;
 
-            foreach (string file in Directory.EnumerateFiles(_folderPath))
+            foreach (string file in Directory.EnumerateFiles(WatchedFolderPath))
             {
                 if (_knownFiles.Add(file))
                 {
