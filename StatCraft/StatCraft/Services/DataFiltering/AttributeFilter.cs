@@ -11,7 +11,7 @@ namespace StatCraft.Services.DataFiltering
     // adding a filter without filling it in must not hide anything, matching the Data tab. And a map with
     // no value for the attribute is excluded unless includeUnset says otherwise, since a freshly defined
     // attribute is unset on every map and would otherwise swallow the entire list.
-    internal static class MapFilter
+    internal static class AttributeFilter
     {
         // Numeric and Percent attributes. Bounds are inclusive, and either end may be left open.
         public static bool MatchesRange(AttributeValue value, decimal? min, decimal? max, bool includeUnset)

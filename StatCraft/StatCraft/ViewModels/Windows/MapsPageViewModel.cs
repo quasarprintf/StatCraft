@@ -332,11 +332,11 @@ namespace StatCraft.ViewModels
         private static bool MatchesSlot(FilterSlotViewModel slot, AttributeValue value) => slot switch
         {
             NumericRangeFilterSlotViewModel range =>
-                MapFilter.MatchesRange(value, range.Min, range.Max, range.IncludeUnset),
+                AttributeFilter.MatchesRange(value, range.Min, range.Max, range.IncludeUnset),
             BoolFilterSlotViewModel boolSlot =>
-                MapFilter.MatchesBool(value, boolSlot.Value, boolSlot.IncludeUnset),
+                AttributeFilter.MatchesBool(value, boolSlot.Value, boolSlot.IncludeUnset),
             CheckboxFilterSlotViewModel<string> strings =>
-                MapFilter.MatchesSelection(Checked(strings), value.HasValue, value.SelectedValue ?? "", strings.IncludeUnset),
+                AttributeFilter.MatchesSelection(Checked(strings), value.HasValue, value.SelectedValue ?? "", strings.IncludeUnset),
             _ => true,
         };
 

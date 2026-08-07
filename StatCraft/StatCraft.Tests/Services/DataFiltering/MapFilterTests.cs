@@ -24,7 +24,7 @@ public class MapFilterTests
     public void MatchesRange_NoBounds_MatchesEvenAnUnsetValue()
     {
         AttributeValue value = Value(AttributeType.Numeric);
-        Assert.True(MapFilter.MatchesRange(value, null, null, includeUnset: false));
+        Assert.True(AttributeFilter.MatchesRange(value, null, null, includeUnset: false));
     }
 
     [Theory]
@@ -39,7 +39,7 @@ public class MapFilterTests
         AttributeValue value = Value(AttributeType.Numeric);
         value.NumericValue = 15m;
 
-        Assert.Equal(expected, MapFilter.MatchesRange(value, min, max, includeUnset: false));
+        Assert.Equal(expected, AttributeFilter.MatchesRange(value, min, max, includeUnset: false));
     }
 
     [Fact]
@@ -48,8 +48,8 @@ public class MapFilterTests
         AttributeValue value = Value(AttributeType.Percent);
         value.PercentValue = 60m;
 
-        Assert.True(MapFilter.MatchesRange(value, 50, 70, includeUnset: false));
-        Assert.False(MapFilter.MatchesRange(value, 10, 50, includeUnset: false));
+        Assert.True(AttributeFilter.MatchesRange(value, 50, 70, includeUnset: false));
+        Assert.False(AttributeFilter.MatchesRange(value, 10, 50, includeUnset: false));
     }
 
     [Theory]
@@ -58,13 +58,13 @@ public class MapFilterTests
     public void MatchesRange_UnsetValueWithActiveBounds_FollowsIncludeUnset(bool includeUnset, bool expected)
     {
         AttributeValue value = Value(AttributeType.Numeric);
-        Assert.Equal(expected, MapFilter.MatchesRange(value, 10, 20, includeUnset));
+        Assert.Equal(expected, AttributeFilter.MatchesRange(value, 10, 20, includeUnset));
     }
 
     [Fact]
     public void MatchesSelection_NothingChecked_MatchesEvenAnUnsetValue()
     {
-        Assert.True(MapFilter.MatchesSelection(new HashSet<string>(), hasValue: false, "", includeUnset: false));
+        Assert.True(AttributeFilter.MatchesSelection(new HashSet<string>(), hasValue: false, "", includeUnset: false));
     }
 
     [Theory]
@@ -72,7 +72,7 @@ public class MapFilterTests
     [InlineData("Rush", false)]
     public void MatchesSelection_SetValue_MustBeAmongTheCheckedOptions(string actual, bool expected)
     {
-        Assert.Equal(expected, MapFilter.MatchesSelection(new HashSet<string> { "Macro" }, hasValue: true, actual, includeUnset: false));
+        Assert.Equal(expected, AttributeFilter.MatchesSelection(new HashSet<string> { "Macro" }, hasValue: true, actual, includeUnset: false));
     }
 
     [Theory]
@@ -80,14 +80,14 @@ public class MapFilterTests
     [InlineData(true, true)]
     public void MatchesSelection_UnsetValueWithCheckedOptions_FollowsIncludeUnset(bool includeUnset, bool expected)
     {
-        Assert.Equal(expected, MapFilter.MatchesSelection(new HashSet<string> { "Macro" }, hasValue: false, "", includeUnset));
+        Assert.Equal(expected, AttributeFilter.MatchesSelection(new HashSet<string> { "Macro" }, hasValue: false, "", includeUnset));
     }
 
     [Fact]
     public void MatchesBool_NoFilterValue_MatchesEvenAnUnsetValue()
     {
         AttributeValue value = Value(AttributeType.Bool);
-        Assert.True(MapFilter.MatchesBool(value, null, includeUnset: false));
+        Assert.True(AttributeFilter.MatchesBool(value, null, includeUnset: false));
     }
 
     // "false" is a real value, not an absence — a map explicitly set to No must be matched by a filter
@@ -101,7 +101,7 @@ public class MapFilterTests
     {
         AttributeValue value = Value(AttributeType.Bool);
         value.BoolValue = actual;
-        Assert.Equal(expected, MapFilter.MatchesBool(value, filterValue, includeUnset: false));
+        Assert.Equal(expected, AttributeFilter.MatchesBool(value, filterValue, includeUnset: false));
     }
 
     [Theory]
@@ -110,7 +110,7 @@ public class MapFilterTests
     public void MatchesBool_UnsetValueWithFilterSet_FollowsIncludeUnset(bool includeUnset, bool expected)
     {
         AttributeValue value = Value(AttributeType.Bool);
-        Assert.Equal(expected, MapFilter.MatchesBool(value, true, includeUnset));
+        Assert.Equal(expected, AttributeFilter.MatchesBool(value, true, includeUnset));
     }
 
     private static AttributeValue Value(AttributeType type) => new(new AttributeDefinition { Name = "Attr", Type = type });
