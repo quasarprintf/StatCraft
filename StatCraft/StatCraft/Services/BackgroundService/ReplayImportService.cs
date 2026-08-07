@@ -95,8 +95,7 @@ namespace StatCraft.Services.BackgroundService
             gameDataRepository.InsertGame(game, profile.Id);
             GameParsed?.Invoke(game);
 
-            // Deliberately not awaited: resolving the post-game rating can take minutes of polling, and
-            // the imported game should appear immediately regardless of whether that ever succeeds.
+            //TrackMmrChange never throws, it just logs and potentially raises an event, don't need to await it
             _ = TrackMmrChange(game, profile);
             return null;
         }
