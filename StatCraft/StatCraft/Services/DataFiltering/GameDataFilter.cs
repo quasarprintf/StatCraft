@@ -12,6 +12,7 @@ namespace StatCraft.Services.DataFiltering
     // opponents/build list, since a game can have more than one opponent (team games).
     internal static class GameDataFilter
     {
+        //TODO: refactor to use some kind of IFilter interface, instead of hardcoding all the filter logic here
         internal static bool Matches(GameData game, GameFilterCriteria criteria)
         {
             ParsedReplayData replay = game.ReplayData;

@@ -305,7 +305,7 @@ namespace StatCraft.ViewModels
 
         private bool Matches(Map map)
         {
-            if (!MapFilter.MatchesName(map, NameFilter))
+            if (!MatchesName(map, NameFilter))
                 return false;
 
             foreach ((AttributeDefinition attribute, FilterSlotViewModel slot) in _slotByAttribute)
@@ -324,6 +324,11 @@ namespace StatCraft.ViewModels
             return true;
         }
 
+        //temporarily public to facilitate testing. Should be indirectly tested via OnNameFilterChanged, then this can be made private again
+        public static bool MatchesName(Map map, string? nameFilter)
+        {
+            return string.IsNullOrWhiteSpace(nameFilter) || map.Name.Contains(nameFilter.Trim(), StringComparison.OrdinalIgnoreCase);
+        }
         private static bool MatchesSlot(FilterSlotViewModel slot, AttributeValue value) => slot switch
         {
             NumericRangeFilterSlotViewModel range =>

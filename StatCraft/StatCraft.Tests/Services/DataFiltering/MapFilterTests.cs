@@ -1,6 +1,7 @@
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DataFiltering;
+using StatCraft.ViewModels;
 
 namespace StatCraft.Tests;
 
@@ -16,7 +17,7 @@ public class MapFilterTests
     public void MatchesName_IsCaseInsensitiveSubstringMatch(string filter, bool expected)
     {
         Map map = new() { Name = "Altitude LE" };
-        Assert.Equal(expected, MapFilter.MatchesName(map, filter));
+        Assert.Equal(expected, MapsPageViewModel.MatchesName(map, filter));
     }
 
     [Fact]
