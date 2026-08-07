@@ -182,17 +182,7 @@ namespace StatCraft.ViewModels
             AttributeEditors.Clear();
             foreach (AttributeValue template in newPathAttrs)
             {
-                // A fresh value referencing the same shared AttributeDefinition as the build's own
-                // attribute, but with its own independently-mutable Numeric/Bool/Percent/SelectedValue —
-                // seeded from the build's current default, since editing this player's value must never
-                // write back into the build definition itself.
-                AttributeValue editor = new(template.Attribute)
-                {
-                    NumericValue = template.NumericValue,
-                    BoolValue = template.BoolValue,
-                    PercentValue = template.PercentValue,
-                    SelectedValue = template.SelectedValue,
-                };
+                AttributeValue editor = template.Clone();
                 GameAttributeValue? cached = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Attribute.Id);
                 if (cached != null)
                 {

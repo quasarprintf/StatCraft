@@ -1,3 +1,4 @@
+using Avalonia.Markup.Xaml.Templates;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -64,6 +65,17 @@ namespace StatCraft.Models.GameData.Attributes
             BoolValue = null;
             PercentValue = null;
             SelectedValue = null;
+        }
+
+        public AttributeValue Clone()
+        {
+            return new AttributeValue(Attribute)
+                {
+                    NumericValue = NumericValue,
+                    BoolValue = BoolValue,
+                    PercentValue = PercentValue,
+                    SelectedValue = SelectedValue,
+                };
         }
     }
 }
