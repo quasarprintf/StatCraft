@@ -5,13 +5,6 @@ using StatCraft.Models.GameData.Attributes.FixedAttribute;
 
 namespace StatCraft.Models.GameData.Attributes.FixedAttribute
 {
-    // One map's value for one global MapAttribute.
-    //
-    // Every slot is nullable and all four start null, because a newly defined attribute is genuinely
-    // unset on every map. That's the crucial difference from BuildAttribute, whose value slots are
-    // non-nullable and default to 0/false — AttributeValueSerializer has no encoding for "unset", so
-    // null is represented by the *absence* of a stored row and the serializer is only ever consulted
-    // when HasValue is true.
     public partial class FixedAttributeValue : ObservableObject
     {
         public FixedAttribute Attribute { get; }

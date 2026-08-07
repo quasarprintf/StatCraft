@@ -2,9 +2,7 @@ using System.Globalization;
 
 namespace StatCraft.Models.GameData.Attributes
 {
-    // Shared string round-trip convention for an attribute value: a BuildAttribute's template default
-    // (BuildRepository), a per-game value snapshot (GameDataRepository), and a map's per-attribute value
-    // (MapRepository) all store the same TEXT encoding.
+    // A single value is stored in sqlite as a text field, can be converted back/forth here
     //
     // Note this encoding has no representation of "unset" for Numeric/Bool/Percent — Parse degrades an
     // empty string to 0/false. Callers that need a null (map attribute values do) must track that
