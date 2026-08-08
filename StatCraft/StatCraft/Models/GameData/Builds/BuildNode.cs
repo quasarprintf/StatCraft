@@ -1,11 +1,8 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using StatCraft.Models.GameData.Race;
-using System.Text;
-using StatCraft.ViewModels;
 using StatCraft.Models.GameData.Attributes;
 
 namespace StatCraft.Models.GameData.Builds
