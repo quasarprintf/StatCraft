@@ -52,7 +52,7 @@ namespace StatCraft.Services.DatabaseRepository
                     playerName = replay.Player.Name,
                     playerClan = replay.Player.Clan,
                     playerMmr = replay.Player.Mmr,
-                    gameType = (int?)game.GameType,
+                    gameType = (int)game.GameType,
                     playerRace = replay.Player.Race,
                     playerRandom = replay.Player.Random ? 1 : 0,
                     notes = game.Notes,
@@ -296,10 +296,10 @@ namespace StatCraft.Services.DatabaseRepository
 
         // Ranked vs Unranked can only be inferred, never read directly off the replay, so the user is
         // allowed to correct it by hand — this persists that override.
-        public void UpdateGameType(int gameId, GameType? gameType)
+        public void UpdateGameType(int gameId, GameType gameType)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("UPDATE Games SET GameType = @gameType WHERE Id = @id", new { gameType = (int?)gameType, id = gameId });
+            conn.Execute("UPDATE Games SET GameType = @gameType WHERE Id = @id", new { gameType = (int)gameType, id = gameId });
         }
 
         // Records the tracked player's post-game ladder MMR, observed from the Battle.net API after the

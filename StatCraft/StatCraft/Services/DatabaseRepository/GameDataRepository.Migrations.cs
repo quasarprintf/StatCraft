@@ -39,7 +39,7 @@ namespace StatCraft.Services.DatabaseRepository
                     PlayerRandom      INTEGER NOT NULL DEFAULT 0,
                     Notes             TEXT    NOT NULL DEFAULT '',
                     CreatedAtUtc      TEXT    NOT NULL DEFAULT '',
-                    GameType          INTEGER
+                    GameType          INTEGER NOT NULL
                 );
                 CREATE TABLE IF NOT EXISTS GamePlayers (
                     Id        INTEGER PRIMARY KEY AUTOINCREMENT,
