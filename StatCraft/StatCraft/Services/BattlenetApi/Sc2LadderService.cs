@@ -102,8 +102,9 @@ namespace StatCraft.Services.BattlenetApi
                 foreach (LadderTeam team in ladder.LadderTeams)
                 {
                     LadderTeamMember? self = team.TeamMembers?.FirstOrDefault(m => IsProfile(m, profile));
-                    if (self != null && team.Mmr.HasValue)
-                        RecordObservedMmr(profile, ParseRace(self.FavoriteRace)!.Value, team.Mmr.Value);
+                    LadderRace? parsedRace = ParseRace(self?.FavoriteRace);
+                    if (self != null && team.Mmr.HasValue && parsedRace != null)
+                        RecordObservedMmr(profile, parsedRace.Value, team.Mmr.Value);
                 }
             }
         }
