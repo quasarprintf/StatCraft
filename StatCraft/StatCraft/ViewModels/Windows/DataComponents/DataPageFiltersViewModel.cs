@@ -113,11 +113,11 @@ namespace StatCraft.ViewModels
         // preserving checked state by map name across the rebuild.
         internal void RefreshMapOptions(IEnumerable<Map> distinctMapNames)
         {
-            HashSet<Map> previouslyChecked = MapSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
+            HashSet<int> previouslyChecked = MapSlot.Options.Where(o => o.IsChecked).Select(o => o.Value.Id).ToHashSet();
 
             IEnumerable<CheckboxFilterOptionViewModel<Map>> newOptions = distinctMapNames
                 .OrderBy(m => m.Name)
-                .Select(m => new CheckboxFilterOptionViewModel<Map>(m, m.Name) { IsChecked = previouslyChecked.Contains(m) });
+                .Select(m => new CheckboxFilterOptionViewModel<Map>(m, m.Name) { IsChecked = previouslyChecked.Contains(m.Id) });
             MapSlot.ReplaceOptions(newOptions);
         }
 
