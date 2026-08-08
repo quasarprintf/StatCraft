@@ -5,7 +5,7 @@ using StatCraft.ViewModels;
 
 namespace StatCraft.Tests;
 
-public class MapFilterTests
+public class AttributeFilterTests
 {
     [Theory]
     [InlineData("", true)]
