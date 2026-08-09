@@ -10,7 +10,6 @@ using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.Models.Battlenet;
 using StatCraft.Services.BackgroundService;
-using StatCraft.Styles;
 using StatCraft.ViewModels;
 using StatCraft.Views.Components;
 
@@ -39,10 +38,6 @@ namespace StatCraft.Views
             // Rows are recycled as the grid scrolls, so a newly realised row has to be told whether it
             // is the one currently showing its build details.
             GamesGrid.LoadingRow += (_, e) => ApplyBuildDetailsVisibility(e.Row);
-
-            // Column headers only exist once the grid's template has been applied, and TabControl
-            // detaching/reattaching this page's content means that can happen more than once.
-            GamesGrid.Loaded += (_, _) => ApplyNoSortHeaderClasses();
         }
 
         // The row whose build-selection details are currently open, or null when none are. Held as the
@@ -78,26 +73,6 @@ namespace StatCraft.Views
 
         private void ApplyBuildDetailsVisibility(DataGridRow row) =>
             row.AreDetailsVisible = _buildDetailsItem != null && ReferenceEquals(row.DataContext, _buildDetailsItem);
-
-        // DataGridColumn has no public link back to the DataGridColumnHeader it generates (that's
-        // internal to Avalonia.Controls.DataGrid), so columns marked with DataGridColumnBehaviors.NoSort
-        // are matched to their realised header by left-to-right position instead: both are ordered the
-        // same way a sighted user reads them, which holds regardless of column reordering.
-        private void ApplyNoSortHeaderClasses()
-        {
-            List<DataGridColumn> orderedColumns = GamesGrid.Columns.OrderBy(c => c.DisplayIndex).ToList();
-            List<DataGridColumnHeader> orderedHeaders = GamesGrid.GetVisualDescendants()
-                .OfType<DataGridColumnHeader>()
-                .Where(h => h.Name != "PART_TopLeftCornerHeader")
-                .OrderBy(h => h.Bounds.Left)
-                .ToList();
-
-            for (int i = 0; i < orderedColumns.Count && i < orderedHeaders.Count; i++)
-            {
-                if (DataGridColumnBehaviors.GetNoSort(orderedColumns[i]) && !orderedHeaders[i].Classes.Contains("noSort"))
-                    orderedHeaders[i].Classes.Add("noSort");
-            }
-        }
 
         // TabControl detaches an inactive tab's content from the visual tree rather than just hiding
         // it, so IsVisible never actually toggles on an existing instance when switching tabs.

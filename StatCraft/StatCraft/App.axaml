@@ -68,20 +68,6 @@
         <Style Selector="ComboBox.noCaret /template/ TextBox#PART_EditableTextBox">
             <Setter Property="Grid.ColumnSpan" Value="2"/>
         </Style>
-
-        <!-- Hides a DataGridColumnHeader's sort-arrow glyph and reclaims its reserved gutter, for columns
-            that can never be sorted (see StatCraft.Styles.DataGridColumnBehaviors.NoSort, since
-            DataGridColumn itself has no Classes property to put "noSort" on directly — a page's
-            code-behind copies the marker onto the realised header instead). Same shape as ComboBox's
-            noCaret above: Path#SortIcon sits in a fixed-MinWidth second column of an inner Grid the
-            FluentTheme template always allocates, so PART_ContentPresenter is spanned across both columns
-            to take back the space rather than leaving it blank. -->
-        <Style Selector="DataGridColumnHeader.noSort /template/ Path#SortIcon">
-            <Setter Property="IsVisible" Value="False"/>
-        </Style>
-        <Style Selector="DataGridColumnHeader.noSort /template/ ContentPresenter#PART_ContentPresenter">
-            <Setter Property="Grid.ColumnSpan" Value="2"/>
-        </Style>
     </Application.Styles>
     <Application.Resources>
         <x:Double x:Key="DataGridSortIconMinWidth">0</x:Double> 
