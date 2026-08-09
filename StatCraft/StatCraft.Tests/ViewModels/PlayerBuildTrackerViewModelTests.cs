@@ -121,6 +121,85 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         Assert.Empty(tracker.AttributeEditors);
     }
 
+    [Fact]
+    public void SelectedBuildsSummary_TwoBuildsShareCommonAncestor_CompactsTheSharedPrefix()
+    {
+        BuildNode parent = new() { Name = "A", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(parent, null, 0);
+        BuildNode childB = new() { Name = "B", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(childB, parent.Id, 0);
+        BuildNode childC = new() { Name = "C", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(childC, parent.Id, 1);
+
+        GameData game = CreateGame();
+        _gameDataRepository.InsertGame(game, _sc2ProfileId);
+
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+
+        BuildNode loadedParent = tree.Single();
+        tracker.BuildSlots[0].SelectedBuildNode = loadedParent.Children.Single(n => n.Name == "B");
+        tracker.BuildSlots[1].SelectedBuildNode = loadedParent.Children.Single(n => n.Name == "C");
+
+        Assert.Equal("A > B, C", tracker.SelectedBuildsSummary);
+    }
+
+    // A > B > C, A > X > Y, and A > X > Z: the shared "A" collapses once, and X's own two children
+    // collapse a second time one level deeper — the case a single top-level common-prefix check can't
+    // express, since only two of the three builds share anything past "A".
+    [Fact]
+    public void SelectedBuildsSummary_BranchesAtMultipleDepths_CompactsEachSharedPrefix()
+    {
+        BuildNode a = new() { Name = "A", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(a, null, 0);
+        BuildNode b = new() { Name = "B", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(b, a.Id, 0);
+        BuildNode c = new() { Name = "C", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(c, b.Id, 0);
+        BuildNode x = new() { Name = "X", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(x, a.Id, 1);
+        BuildNode y = new() { Name = "Y", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(y, x.Id, 0);
+        BuildNode z = new() { Name = "Z", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(z, x.Id, 1);
+
+        GameData game = CreateGame();
+        _gameDataRepository.InsertGame(game, _sc2ProfileId);
+
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+
+        BuildNode loadedA = tree.Single();
+        BuildNode loadedB = loadedA.Children.Single(n => n.Name == "B");
+        BuildNode loadedX = loadedA.Children.Single(n => n.Name == "X");
+
+        tracker.BuildSlots[0].SelectedBuildNode = loadedB.Children.Single(n => n.Name == "C");
+        tracker.BuildSlots[1].SelectedBuildNode = loadedX.Children.Single(n => n.Name == "Y");
+        tracker.BuildSlots[2].SelectedBuildNode = loadedX.Children.Single(n => n.Name == "Z");
+
+        Assert.Equal("A > B > C, X > Y, Z", tracker.SelectedBuildsSummary);
+    }
+
+    [Fact]
+    public void SelectedBuildsSummary_BuildsWithNoCommonAncestor_ShowsBothFullPaths()
+    {
+        BuildNode rootA = new() { Name = "A", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(rootA, null, 0);
+        BuildNode rootD = new() { Name = "D", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(rootD, null, 1);
+
+        GameData game = CreateGame();
+        _gameDataRepository.InsertGame(game, _sc2ProfileId);
+
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+
+        tracker.BuildSlots[0].SelectedBuildNode = tree.Single(n => n.Name == "A");
+        tracker.BuildSlots[1].SelectedBuildNode = tree.Single(n => n.Name == "D");
+
+        Assert.Equal("A; D", tracker.SelectedBuildsSummary);
+    }
+
     private static GameData CreateGame()
     {
         ParsedReplayData replay = new()

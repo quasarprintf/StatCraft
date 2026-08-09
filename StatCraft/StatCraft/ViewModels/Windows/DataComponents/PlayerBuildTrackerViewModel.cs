@@ -202,10 +202,60 @@ namespace StatCraft.ViewModels
             return [];
         }
 
-        private void UpdateSelectedBuildsSummary() =>
-            SelectedBuildsSummary = string.Join("; ", BuildSlots
-                .Where(s => s.SelectedBuildNode != null)
-                .Select(s => s.SelectedBuildLabel));
+        private void UpdateSelectedBuildsSummary()
+        {
+            List<List<BuildNode>> paths = BuildSlots
+                .Select(s => s.SelectedBuildNode)
+                .OfType<BuildNode>()
+                .Select(FindPathOrLog)
+                .Where(p => p.Count > 0)
+                .ToList();
+
+            SelectedBuildsSummary = FormatBuildsSummary(paths);
+        }
+
+        // Selected builds sharing a common ancestor (e.g. "A > B > C", "A > X > Y" and "A > X > Z" — two
+        // plans branching off the same early game, one of which branches again later) collapse every
+        // shared prefix, at every depth, to "A > B > C, X > Y, Z" instead of repeating each one — this is
+        // what keeps the Data tab's Build column from growing with every extra build tried off a shared
+        // opening. Done by merging the paths into a prefix tree and rendering each branch point: a node
+        // with one child just continues the chain, one with several lists them comma-separated.
+        private static string FormatBuildsSummary(List<List<BuildNode>> paths)
+        {
+            TrieNode root = new(null);
+            foreach (List<BuildNode> path in paths)
+            {
+                TrieNode current = root;
+                foreach (BuildNode node in path)
+                {
+                    TrieNode? child = current.Children.FirstOrDefault(c => c.Build!.Id == node.Id);
+                    if (child == null)
+                    {
+                        child = new TrieNode(node);
+                        current.Children.Add(child);
+                    }
+                    current = child;
+                }
+            }
+
+            // Top-level entries with no shared ancestor at all read as distinct build choices, so they're
+            // separated by "; " rather than ", " — that's reserved for branches that do share a history.
+            return string.Join("; ", root.Children.Select(RenderBuildSubtree));
+        }
+
+        private static string RenderBuildSubtree(TrieNode node)
+        {
+            if (node.Children.Count == 0)
+                return node.Build!.Name;
+            return $"{node.Build!.Name} > {string.Join(", ", node.Children.Select(RenderBuildSubtree))}";
+        }
+
+        // Build is null only for the synthetic root every selected path's own root node is attached under.
+        private sealed class TrieNode(BuildNode? build)
+        {
+            public BuildNode? Build { get; } = build;
+            public List<TrieNode> Children { get; } = [];
+        }
 
         // Re-derives the attribute editors for the currently selected builds without changing any
         // selection — called after DataPageViewModel reloads the cached build tree, so an attribute
