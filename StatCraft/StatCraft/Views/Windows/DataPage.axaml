@@ -3,6 +3,7 @@
              xmlns:vm="using:StatCraft.ViewModels"
              xmlns:local="using:StatCraft.Views"
              xmlns:component="using:StatCraft.Views.Components"
+             xmlns:styles="using:StatCraft.Styles"
               x:Class="StatCraft.Views.DataPage"
              x:DataType="vm:DataPageViewModel">
     <DockPanel>
@@ -87,7 +88,7 @@
         <DataGrid x:Name="GamesGrid" ItemsSource="{Binding Games}" AutoGenerateColumns="False"
                   RowDetailsVisibilityMode="Collapsed" GridLinesVisibility="Horizontal">
             <DataGrid.Columns>
-                <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False">
+                <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False" styles:DataGridColumnBehaviors.NoSort="True">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vm:GameDataRowViewModel">
                             <Button Content="✕" Foreground="Red" Background="Transparent" BorderThickness="0"
@@ -138,7 +139,7 @@
                 <DataGridTextColumn Header="Opponent" Binding="{Binding OpponentName}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Build" Binding="{Binding SelfTracker.SelectedBuildsSummary}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*"/>
-                <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False">
+                <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False" styles:DataGridColumnBehaviors.NoSort="True">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vm:GameDataRowViewModel">
                             <Button Content="▶" Background="Transparent" BorderThickness="0"
