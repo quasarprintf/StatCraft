@@ -105,7 +105,7 @@
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vm:GameDataRowViewModel">
                             <ComboBox ItemsSource="{Binding GameTypeOptions}" SelectedItem="{Binding GameType}"
-                                      MinWidth="104" Margin="2,0" VerticalAlignment="Center"/>
+                                      Classes="noCaret" Width="30" Margin="2,0" VerticalAlignment="Center" Padding="0"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
