@@ -50,5 +50,11 @@
             <Setter Property="Background" Value="Gray"/>
             <Setter Property="Height" Value="1"/>
         </Style>
+
+        <!-- Hides the FluentTheme ComboBox's dropdown chevron (its template part is a PathIcon named
+            DropDownGlyph), for ComboBoxes styled to look like plain inline text rather than a form field. -->
+        <Style Selector="ComboBox.noCaret /template/ PathIcon#DropDownGlyph">
+            <Setter Property="IsVisible" Value="False"/>
+        </Style>
     </Application.Styles>
 </Application>
