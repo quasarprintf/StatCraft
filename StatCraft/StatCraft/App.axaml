@@ -69,15 +69,14 @@
             <Setter Property="Grid.ColumnSpan" Value="2"/>
         </Style>
 
-        <!-- The DataGridSortIconMinWidth override above only reclaims the header's right-side sort-icon
-            gutter. Its remaining left inset comes from a separate, literal Padding="12,0,0,0" Setter in
-            the FluentTheme DataGridColumnHeader ControlTheme (not resource-bound, so it can't be
-            overridden via Application.Resources like the sort icon width was) — zeroed here instead. -->
+        <!-- Removes the left margin from DataGrid column headers -->
         <Style Selector="DataGridColumnHeader">
             <Setter Property="Padding" Value="0"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
     </Application.Styles>
     <Application.Resources>
+        <!--Removes the right margin from DataGrid column headers-->
         <x:Double x:Key="DataGridSortIconMinWidth">0</x:Double>
     </Application.Resources>
 </Application>
