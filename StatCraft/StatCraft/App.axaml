@@ -83,4 +83,7 @@
             <Setter Property="Grid.ColumnSpan" Value="2"/>
         </Style>
     </Application.Styles>
+    <Application.Resources>
+        <x:Double x:Key="DataGridSortIconMinWidth">0</x:Double> 
+    </Application.Resources>
 </Application>
