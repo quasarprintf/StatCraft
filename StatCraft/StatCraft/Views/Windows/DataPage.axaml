@@ -85,7 +85,7 @@
         <!-- Details are driven per-row from code-behind (see DataPage.axaml.cs) rather than by selection,
              so the build panel only opens from the Build column. -->
         <DataGrid x:Name="GamesGrid" ItemsSource="{Binding Games}" AutoGenerateColumns="False"
-                  RowDetailsVisibilityMode="Collapsed" GridLinesVisibility="Horizontal">
+                  RowDetailsVisibilityMode="Collapsed" GridLinesVisibility="All">
             <DataGrid.Columns>
                 <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False">
                     <DataGridTemplateColumn.CellTemplate>
