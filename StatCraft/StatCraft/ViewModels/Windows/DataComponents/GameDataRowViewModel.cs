@@ -122,7 +122,16 @@ namespace StatCraft.ViewModels
                 OtherPlayers.Add(new PlayerBuildTrackerViewModel(opponent, repository, getBuildTree(opponent.Race.AsRace(), opponentSideMatchups), logger, Styles.Colors.OpponentRed));
         }
 
-        partial void OnNotesChanged(string value) => _repository.UpdateGameNotes(_game.GameId!.Value, value);
+        partial void OnNotesChanged(string value)
+        {
+            // Kept on the underlying GameData too, so anything re-reading it in this session (filters,
+            // re-wrapped rows) sees the edit rather than the value the game was first loaded with — same
+            // reason as OnGameTypeChanged below. Without this, a filter change after typing notes rebuilds
+            // this row from the still-stale _game.Notes and the edit looks like it silently vanished, even
+            // though it was correctly persisted to the DB the whole time.
+            _game.Notes = value;
+            _repository.UpdateGameNotes(_game.GameId!.Value, value);
+        }
 
         partial void OnGameTypeChanged(GameType value)
         {
