@@ -101,7 +101,7 @@
                 <DataGridTextColumn Header="Date/Time" Binding="{Binding PlayedAt}" IsReadOnly="True"/>
                 <!-- Always an editable dropdown rather than click-to-edit: Ranked vs Unranked is
                      inferred and can be wrong, so correcting it should be obvious and one click. -->
-                <DataGridTemplateColumn Header="Type">
+                <DataGridTemplateColumn Header="Mode">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vm:GameDataRowViewModel">
                             <ComboBox ItemsSource="{Binding GameTypeOptions}" SelectedItem="{Binding GameType}"
