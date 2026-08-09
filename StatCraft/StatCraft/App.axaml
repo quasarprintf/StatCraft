@@ -71,20 +71,20 @@
 
         <!-- Removes the left margin from DataGrid column headers -->
         <Style Selector="DataGridColumnHeader">
-            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Padding" Value="1"/>
             <Setter Property="HorizontalContentAlignment" Value="Center" />
         </Style>
     </Application.Styles>
     <Application.Resources>
         <!--Removes the right margin from DataGrid column headers-->
-        <x:Double x:Key="DataGridSortIconMinWidth">0</x:Double>
+        <x:Double x:Key="DataGridSortIconMinWidth">1</x:Double>
 
         <!-- Removes the horizontal margin DataGridTextColumn puts on its auto-generated cell TextBlock
             (Margin="12,0,12,0" in the DataGrid FluentTheme). DataGridTextColumn looks this ControlTheme
             up by name via OwningGrid.TryFindResource rather than through a Style selector, so it has to
             be replaced here rather than overridden with a Style like the column header padding was. -->
         <ControlTheme x:Key="DataGridCellTextBlockTheme" TargetType="TextBlock">
-            <Setter Property="Margin" Value="0"/>
+            <Setter Property="Margin" Value="1"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </ControlTheme>
     </Application.Resources>
