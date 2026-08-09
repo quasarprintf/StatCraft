@@ -245,8 +245,13 @@ namespace StatCraft.ViewModels
                 GameAttributeValue? cached = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Definition.Id);
                 if (cached != null)
                 {
+                    // No DB write here: cached.Value already came from this same row (GetGamesForProfiles
+                    // populated _player.AttributeValues from GameAttributeValues in the first place), so
+                    // this is purely re-hydrating the editor's display, not a change worth persisting.
+                    // RebuildAttributeEditors runs on every row reconstruction (every Data tab filter
+                    // change re-wraps every visible game), so a write here was a full DB round trip per
+                    // attribute per row on every filter tweak — the actual cause of the reported lag.
                     editor.ApplyStoredValue(cached.Value);
-                    TryUpsertAttributeValue(template.Definition.Id, cached.Value);
                 }
                 else
                 {
