@@ -40,11 +40,9 @@ namespace StatCraft.Views
             // is the one currently showing its build details.
             GamesGrid.LoadingRow += (_, e) => ApplyBuildDetailsVisibility(e.Row);
 
-            // GamesGrid.Loaded never actually fires here (DataPage's UserControl host under a TabControl
-            // doesn't raise it the way a top-level Window's content does), so column headers are tagged
-            // from LayoutUpdated instead — it only starts firing once the grid has a real layout pass,
-            // which covers both first show and TabControl detaching/reattaching this page's content.
-            GamesGrid.LayoutUpdated += OnGamesGridLayoutUpdated;
+            // Column headers only exist once the grid's template has been applied, and TabControl
+            // detaching/reattaching this page's content means that can happen more than once.
+            GamesGrid.Loaded += (_, _) => ApplyNoSortHeaderClasses();
         }
 
         // The row whose build-selection details are currently open, or null when none are. Held as the
@@ -84,29 +82,20 @@ namespace StatCraft.Views
         // DataGridColumn has no public link back to the DataGridColumnHeader it generates (that's
         // internal to Avalonia.Controls.DataGrid), so columns marked with DataGridColumnBehaviors.NoSort
         // are matched to their realised header by left-to-right position instead: both are ordered the
-        // same way a sighted user reads them, which holds regardless of column reordering. Never
-        // unsubscribed — LayoutUpdated fires on every layout pass for the grid's lifetime, and reapplying
-        // is cheap and idempotent (Classes.Contains guard), which sidesteps having to know in advance
-        // which firing is the first one where every header actually has a real arranged width.
-        private void OnGamesGridLayoutUpdated(object? sender, EventArgs e)
+        // same way a sighted user reads them, which holds regardless of column reordering.
+        private void ApplyNoSortHeaderClasses()
         {
-            List<DataGridColumnHeader> headers = GamesGrid.GetVisualDescendants()
+            List<DataGridColumn> orderedColumns = GamesGrid.Columns.OrderBy(c => c.DisplayIndex).ToList();
+            List<DataGridColumnHeader> orderedHeaders = GamesGrid.GetVisualDescendants()
                 .OfType<DataGridColumnHeader>()
-                .Where(h => h.Name != "PART_TopLeftCornerHeader" && h.Bounds.Width > 0)
+                .Where(h => h.Name != "PART_TopLeftCornerHeader")
                 .OrderBy(h => h.Bounds.Left)
                 .ToList();
-            List<DataGridColumn> orderedColumns = GamesGrid.Columns.OrderBy(c => c.DisplayIndex).ToList();
 
-            // A one-to-one count match is required, not just "enough headers": on an early firing only
-            // some headers may have been arranged yet, and matching that partial, misaligned set by
-            // position would tag the wrong header — a mistake nothing here ever undoes.
-            if (headers.Count != orderedColumns.Count)
-                return;
-
-            for (int i = 0; i < orderedColumns.Count && i < headers.Count; i++)
+            for (int i = 0; i < orderedColumns.Count && i < orderedHeaders.Count; i++)
             {
-                if (DataGridColumnBehaviors.GetNoSort(orderedColumns[i]) && !headers[i].Classes.Contains("noSort"))
-                    headers[i].Classes.Add("noSort");
+                if (DataGridColumnBehaviors.GetNoSort(orderedColumns[i]) && !orderedHeaders[i].Classes.Contains("noSort"))
+                    orderedHeaders[i].Classes.Add("noSort");
             }
         }
 
