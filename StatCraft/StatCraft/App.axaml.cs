@@ -7,6 +7,7 @@ using Avalonia.Controls.Platform;
 using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.ViewModels;
 using StatCraft.Views;
@@ -37,6 +38,18 @@ namespace StatCraft
 
             Services = BuildServiceProvider();
 
+            // Last-resort safety net: without this, an exception that escapes a binding, command, or
+            // property-changed handler (i.e. almost everything the UI thread runs) takes the whole
+            // process down silently — nothing here logs on its own. Handled = true keeps the app running
+            // rather than crashing the user's whole session over what's usually one isolated bad action.
+            Dispatcher.UIThread.UnhandledException += OnUiThreadUnhandledException;
+
+            // Catches whatever the dispatcher hook above doesn't — e.g. an exception on a background
+            // thread that isn't awaited anywhere. Purely informational: by the time this fires the
+            // runtime is already terminating the process, so all it can do is get the exception logged
+            // before that happens.
+            AppDomain.CurrentDomain.UnhandledException += OnDomainUnhandledException;
+
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
                 SettingsRepository settingsRepository = Services.GetRequiredService<SettingsRepository>();
@@ -56,6 +69,24 @@ namespace StatCraft
             }
 
             base.OnFrameworkInitializationCompleted();
+        }
+
+        private static void OnUiThreadUnhandledException(object? sender, DispatcherUnhandledExceptionEventArgs e)
+        {
+            ILogger logger = Services.GetRequiredService<ILogger>();
+            logger.LogError($"Unhandled exception on UI thread: {e.Exception}");
+            logger.Flush();
+            e.Handled = true;
+        }
+
+        private static void OnDomainUnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            if (e.ExceptionObject is not Exception ex)
+                return;
+
+            ILogger logger = Services.GetRequiredService<ILogger>();
+            logger.LogError($"Unhandled exception (process is terminating, IsTerminating={e.IsTerminating}): {ex}");
+            logger.Flush();
         }
 
         private static void OnSettingsPromptClosed(IClassicDesktopStyleApplicationLifetime desktop, SettingsRepository settingsRepository)

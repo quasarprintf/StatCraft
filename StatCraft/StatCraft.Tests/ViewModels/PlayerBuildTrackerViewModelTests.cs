@@ -5,6 +5,7 @@ using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
+using StatCraft.Tests.Mocks;
 using StatCraft.ViewModels;
 
 namespace StatCraft.Tests;
@@ -15,6 +16,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     private readonly GameDataRepository _gameDataRepository;
     private readonly BuildRepository _buildRepository;
     private readonly AccountRepository _accountRepository;
+    private readonly MockLogger _logger = new();
     private readonly int _sc2ProfileId;
 
     public PlayerBuildTrackerViewModelTests()
@@ -57,7 +59,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
         ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
-        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree);
+        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
 
         // Select the build — this locks in the attribute's current default (10) as this player's own value.
         BuildNode loadedBuild = tree.Single();
@@ -93,11 +95,30 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
         ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
-        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree);
+        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
 
         tracker.BuildSlots[0].SelectedBuildNode = tree.Single();
 
         Assert.Equal(20, Assert.Single(tracker.AttributeEditors).NumericValue);
+    }
+
+    // Reproduces the crash a real session hit: a build selected in a slot whose own BuildTree doesn't
+    // (or no longer) contains it — e.g. a stale menu click racing a tree refresh. FindPath legitimately
+    // returns null here; the slot must degrade to a blank label instead of throwing.
+    [Fact]
+    public void SelectingABuild_NotPresentInTheTree_DoesNotThrow()
+    {
+        GameData game = CreateGame();
+        _gameDataRepository.InsertGame(game, _sc2ProfileId);
+
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+
+        BuildNode offTreeBuild = new() { Id = 9999, Name = "Not In Tree" };
+        tracker.BuildSlots[0].SelectedBuildNode = offTreeBuild;
+
+        Assert.Equal("", tracker.BuildSlots[0].SelectedBuildLabel);
+        Assert.Empty(tracker.AttributeEditors);
     }
 
     private static GameData CreateGame()

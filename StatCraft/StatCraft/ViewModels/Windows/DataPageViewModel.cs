@@ -32,6 +32,7 @@ namespace StatCraft.ViewModels
         private readonly BuildRepository _buildRepository;
         private readonly GameDataRepository _gameDataRepository;
         private readonly SessionMmrTracker _mmrTracker;
+        private readonly ILogger _logger;
         private readonly Dictionary<(Race Player, Matchups Opponent), ObservableCollection<BuildNode>> _buildTreeCache = new();
         private bool _buildTreeCacheDirty;
 
@@ -43,7 +44,7 @@ namespace StatCraft.ViewModels
 
         public DataPageViewModel(SettingsRepository settingsRepository, ReplayWatcherService replayWatcherService,
             ReplayImportService replayImportService, AccountRepository accountRepository, BuildRepository buildRepository,
-            GameDataRepository gameDataRepository, Sc2LadderService ladderService)
+            GameDataRepository gameDataRepository, Sc2LadderService ladderService, ILogger logger)
         {
             _settingsRepository = settingsRepository;
             _replayWatcherService = replayWatcherService;
@@ -51,6 +52,7 @@ namespace StatCraft.ViewModels
             _accountRepository = accountRepository;
             _buildRepository = buildRepository;
             _gameDataRepository = gameDataRepository;
+            _logger = logger;
             _mmrTracker = new SessionMmrTracker(ladderService);
             _replayWatcherService.NewReplayFileFound += OnNewReplayFileFound;
             _replayImportService.GameParsed += OnGameParsed;
@@ -329,7 +331,7 @@ namespace StatCraft.ViewModels
         }
 
         private GameDataRowViewModel WrapGame(GameData game) =>
-            new GameDataRowViewModel(game, _gameDataRepository, ResolveProfileLabel(game.Sc2ProfileId), GetBuildTree);
+            new GameDataRowViewModel(game, _gameDataRepository, ResolveProfileLabel(game.Sc2ProfileId), GetBuildTree, _logger);
 
         private string ResolveProfileLabel(int sc2ProfileId) =>
             Filters.ProfileSlot.Options.FirstOrDefault(o => o.Value.Id == sc2ProfileId)?.Value.DisplayName ?? sc2ProfileId.ToString();

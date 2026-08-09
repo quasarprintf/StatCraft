@@ -1,10 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData.Builds;
+using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DataParsing;
 
 namespace StatCraft.ViewModels
@@ -36,10 +38,13 @@ namespace StatCraft.ViewModels
         // selection (e.g. a duplicate) without needing to track prior state itself.
         public event Action<BuildSelectionSlotViewModel, BuildNode?>? SelectionChanged;
 
-        internal BuildSelectionSlotViewModel(ObservableCollection<BuildNode>? buildTree)
+        private readonly ILogger _logger;
+
+        internal BuildSelectionSlotViewModel(ObservableCollection<BuildNode>? buildTree, ILogger logger)
         {
             BuildTree = buildTree ?? [];
             IsBuildPickerEnabled = buildTree != null;
+            _logger = logger;
 
             RebuildMenuOptions();
             BuildTree.CollectionChanged += OnBuildTreeChanged;
@@ -61,9 +66,15 @@ namespace StatCraft.ViewModels
 
         partial void OnSelectedBuildNodeChanged(BuildNode? oldValue, BuildNode? newValue)
         {
-            SelectedBuildLabel = newValue == null
-                ? DEFAULT_BUILD_TEXT
-                : string.Join(" > ", BuildPathHelper.FindPath(BuildTree, newValue.Id)!.Select(n => n.Name));
+            List<BuildNode>? path = newValue == null ? null : BuildPathHelper.FindPath(BuildTree, newValue.Id);
+
+            // Shouldn't happen — newValue always comes from this same BuildTree, whether from the menu
+            // (MenuOptions mirrors BuildTree) or from hydrating a saved selection (also looked up in
+            // BuildTree). Logged rather than crashing the whole app over a label that just stays blank.
+            if (newValue != null && path == null)
+                _logger.LogError($"Selected build \"{newValue.Name}\" (Id={newValue.Id}) was not found in its own BuildTree.");
+
+            SelectedBuildLabel = path == null ? DEFAULT_BUILD_TEXT : string.Join(" > ", path.Select(n => n.Name));
             SelectionChanged?.Invoke(this, oldValue);
         }
     }

@@ -7,6 +7,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
+using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
 using StatCraft.Styles;
@@ -81,7 +82,7 @@ namespace StatCraft.ViewModels
         private readonly GameDataRepository _repository;
 
         internal GameDataRowViewModel(GameData game, GameDataRepository repository, string profileLabel,
-            Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree)
+            Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree, ILogger logger)
         {
             _game = game;
             _repository = repository;
@@ -113,12 +114,12 @@ namespace StatCraft.ViewModels
             Matchups selfSideMatchups = MatchupResolver.FromOpponents(replay.Opponents);
             Matchups opponentSideMatchups = MatchupResolver.FromOpponents([replay.Player, .. replay.Allies]);
 
-            SelfTracker = new PlayerBuildTrackerViewModel(replay.Player, repository, getBuildTree(replay.Player.Race.AsRace(), selfSideMatchups));
+            SelfTracker = new PlayerBuildTrackerViewModel(replay.Player, repository, getBuildTree(replay.Player.Race.AsRace(), selfSideMatchups), logger);
 
             foreach (GamePlayer ally in replay.Allies)
-                OtherPlayers.Add(new PlayerBuildTrackerViewModel(ally, repository, getBuildTree(ally.Race.AsRace(), selfSideMatchups), Styles.Colors.AllyYellow));
+                OtherPlayers.Add(new PlayerBuildTrackerViewModel(ally, repository, getBuildTree(ally.Race.AsRace(), selfSideMatchups), logger, Styles.Colors.AllyYellow));
             foreach (GamePlayer opponent in replay.Opponents)
-                OtherPlayers.Add(new PlayerBuildTrackerViewModel(opponent, repository, getBuildTree(opponent.Race.AsRace(), opponentSideMatchups), Styles.Colors.OpponentRed));
+                OtherPlayers.Add(new PlayerBuildTrackerViewModel(opponent, repository, getBuildTree(opponent.Race.AsRace(), opponentSideMatchups), logger, Styles.Colors.OpponentRed));
         }
 
         partial void OnNotesChanged(string value) => _repository.UpdateGameNotes(_game.GameId!.Value, value);
