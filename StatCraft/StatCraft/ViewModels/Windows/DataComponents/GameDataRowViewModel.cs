@@ -105,7 +105,7 @@ namespace StatCraft.ViewModels
             _gameType = game.GameType;
             Matchup = $"{replay.Player.Race}{string.Concat(replay.Allies.Select(a => a.Race))}v{string.Concat(replay.Opponents.Select(o => o.Race))}";
             MatchupCharacters = BuildMatchupCharacters(replay);
-            OpponentName = string.Join(", ", replay.Opponents.Select(o => $"({o.Mmr}){o.FormattedClan} {o.Name}"));
+            OpponentName = string.Join(", ", replay.Opponents.Select(o => $"({o.Mmr}) {o.FormattedClan}{o.Name}"));
             _notes = game.Notes;
 
             // Allies share the self player's own opponents (same enemy team), so their build tree uses
