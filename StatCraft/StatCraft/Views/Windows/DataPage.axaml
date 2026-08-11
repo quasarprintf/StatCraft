@@ -144,7 +144,7 @@
                 <DataGridTemplateColumn Header="Notes" Width="*">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
-                            <TextBox Text="{Binding Notes}" ToolTip.Tip="{Binding Notes}" />
+                            <TextBox Text="{Binding Notes}" ToolTip.Tip="{Binding Notes}" BorderThickness="0" />
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
