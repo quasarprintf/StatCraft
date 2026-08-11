@@ -162,6 +162,8 @@
                             <local:PlayerBuildTracker DataContext="{Binding SelfTracker}"/>
                         </StackPanel>
 
+                        <GridSplitter Grid.Column="1" ResizeDirection="Columns" Width="3" />
+
                         <StackPanel Grid.Column="2" Spacing="8">
                             <TabControl ItemsSource="{Binding OtherPlayers}">
                                 <TabControl.Styles>
