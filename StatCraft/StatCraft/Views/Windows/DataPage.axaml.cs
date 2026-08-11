@@ -44,7 +44,6 @@ namespace StatCraft.Views
         // row's view model rather than a DataGridRow because the containers are recycled.
         private object? _buildDetailsItem;
 
-        private static bool IsNotesColumn(DataGridColumn column) => column.Header as string == "Notes";
         private static bool IsBuildColumn(DataGridColumn column) => column.Header as string == "Build";
 
         private void OnGamesGridCellPointerPressed(object? sender, DataGridCellPointerPressedEventArgs e)
@@ -53,12 +52,6 @@ namespace StatCraft.Views
             // clicked. Clicking inside the details themselves never reaches here — those controls sit
             // outside the cells presenter — so interacting with them leaves the panel open.
             SetBuildDetailsItem(IsBuildColumn(e.Column) ? e.Row.DataContext : null);
-
-            if (!IsNotesColumn(e.Column)) return;
-
-            GamesGrid.SelectedItem = e.Row.DataContext;
-            GamesGrid.CurrentColumn = e.Column;
-            GamesGrid.BeginEdit();
         }
 
         private void SetBuildDetailsItem(object? item)
