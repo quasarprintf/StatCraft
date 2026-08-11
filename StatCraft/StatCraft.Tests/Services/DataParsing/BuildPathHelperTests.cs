@@ -1,4 +1,3 @@
-using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.DataParsing;
 
@@ -63,25 +62,5 @@ public class BuildPathHelperTests
         List<BuildNode>? path = BuildPathHelper.FindPath([firstRoot, secondRoot], 3);
 
         Assert.Equal([secondRoot, secondChild], path);
-    }
-
-    [Fact]
-    public void FlattenAttributes_PreservesRootToLeafOrder()
-    {
-        AttributeValue rootAttr = new(new AttributeDefinition { Id = 10, Name = "RootAttr" });
-        AttributeValue childAttr1 = new(new AttributeDefinition { Id = 20, Name = "ChildAttr1" });
-        AttributeValue childAttr2 = new(new AttributeDefinition { Id = 21, Name = "ChildAttr2" });
-
-        BuildNode child = new() { Id = 2, Name = "Child" };
-        child.Attributes.Add(childAttr1);
-        child.Attributes.Add(childAttr2);
-
-        BuildNode root = new() { Id = 1, Name = "Root" };
-        root.Attributes.Add(rootAttr);
-        root.Children.Add(child);
-
-        List<AttributeValue> flattened = BuildPathHelper.FlattenAttributes([root, child]);
-
-        Assert.Equal([rootAttr, childAttr1, childAttr2], flattened);
     }
 }

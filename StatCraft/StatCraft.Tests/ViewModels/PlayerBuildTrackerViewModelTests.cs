@@ -65,7 +65,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         // Select the build — this locks in the attribute's current default (10) as this player's own value.
         BuildNode loadedBuild = tree.Single();
         tracker.BuildSlots[0].SelectedBuildNode = loadedBuild;
-        Assert.Equal(10, Assert.Single(tracker.AttributeEditors).NumericValue);
+        Assert.Equal(10, Assert.Single(tracker.AttributeGroups.SelectMany(g => g.Attributes)).NumericValue);
 
         // Simulate editing the attribute's default on the Builds tab, then DataPageViewModel's
         // RefreshBuildTreeCache pattern of mutating the same tree collection in place.
@@ -77,7 +77,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
 
         tracker.RefreshAttributeEditors();
 
-        Assert.Equal(10, Assert.Single(tracker.AttributeEditors).NumericValue);
+        Assert.Equal(10, Assert.Single(tracker.AttributeGroups.SelectMany(g => g.Attributes)).NumericValue);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
 
         tracker.BuildSlots[0].SelectedBuildNode = tree.Single();
 
-        Assert.Equal(20, Assert.Single(tracker.AttributeEditors).NumericValue);
+        Assert.Equal(20, Assert.Single(tracker.AttributeGroups.SelectMany(g => g.Attributes)).NumericValue);
     }
 
     // Reproduces the crash a real session hit: a build selected in a slot whose own BuildTree doesn't
@@ -119,7 +119,93 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         tracker.BuildSlots[0].SelectedBuildNode = offTreeBuild;
 
         Assert.Equal("", tracker.BuildSlots[0].SelectedBuildLabel);
-        Assert.Empty(tracker.AttributeEditors);
+        Assert.Empty(tracker.AttributeGroups);
+    }
+
+    [Fact]
+    public void AttributeGroups_MultiNodePath_OneGroupPerAttributeOwningNodeAtIncreasingDepth()
+    {
+        BuildNode root = new() { Name = "Cannon Rush", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(root, null, 0);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "Chrono At Start", Type = AttributeType.Numeric }), root.Id, 0);
+
+        BuildNode child = new() { Name = "Low Ground Start", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(child, root.Id, 0);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "Contested Ramp", Type = AttributeType.Bool }), child.Id, 0);
+
+        BuildNode grandchild = new() { Name = "Proxy Gate", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(grandchild, child.Id, 0);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "Gate Count", Type = AttributeType.Numeric }), grandchild.Id, 0);
+
+        GameData game = CreateGame();
+        _gameDataRepository.InsertGame(game, _sc2ProfileId);
+
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+
+        BuildNode loadedRoot = tree.Single();
+        BuildNode loadedChild = loadedRoot.Children.Single();
+        BuildNode loadedGrandchild = loadedChild.Children.Single();
+        tracker.BuildSlots[0].SelectedBuildNode = loadedGrandchild;
+
+        Assert.Equal(3, tracker.AttributeGroups.Count);
+        Assert.Equal(("Cannon Rush", 0), (tracker.AttributeGroups[0].BuildName, (int)(tracker.AttributeGroups[0].Margin.Left / 16)));
+        Assert.Equal(("Low Ground Start", 1), (tracker.AttributeGroups[1].BuildName, (int)(tracker.AttributeGroups[1].Margin.Left / 16)));
+        Assert.Equal(("Proxy Gate", 2), (tracker.AttributeGroups[2].BuildName, (int)(tracker.AttributeGroups[2].Margin.Left / 16)));
+    }
+
+    [Fact]
+    public void AttributeGroups_NodeWithNoAttributes_ProducesNoGroupForThatNode()
+    {
+        BuildNode root = new() { Name = "Cannon Rush", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(root, null, 0);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "Chrono At Start", Type = AttributeType.Numeric }), root.Id, 0);
+
+        BuildNode childWithNoAttributes = new() { Name = "Proxy Forge", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(childWithNoAttributes, root.Id, 0);
+
+        BuildNode grandchild = new() { Name = "Low Ground Start", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(grandchild, childWithNoAttributes.Id, 0);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "Contested Ramp", Type = AttributeType.Bool }), grandchild.Id, 0);
+
+        GameData game = CreateGame();
+        _gameDataRepository.InsertGame(game, _sc2ProfileId);
+
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+
+        BuildNode loadedRoot = tree.Single();
+        BuildNode loadedChild = loadedRoot.Children.Single();
+        BuildNode loadedGrandchild = loadedChild.Children.Single();
+        tracker.BuildSlots[0].SelectedBuildNode = loadedGrandchild;
+
+        Assert.Equal(["Cannon Rush", "Low Ground Start"], tracker.AttributeGroups.Select(g => g.BuildName));
+    }
+
+    [Fact]
+    public void AttributeGroups_TwoSlotsShareAnAncestor_ProducesOnlyOneGroupForIt()
+    {
+        BuildNode parent = new() { Name = "A", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(parent, null, 0);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "SharedAttr", Type = AttributeType.Numeric }), parent.Id, 0);
+        BuildNode childB = new() { Name = "B", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(childB, parent.Id, 0);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "BAttr", Type = AttributeType.Numeric }), childB.Id, 0);
+        BuildNode childC = new() { Name = "C", PlayerRace = Race.Z };
+        _buildRepository.InsertBuild(childC, parent.Id, 1);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "CAttr", Type = AttributeType.Numeric }), childC.Id, 0);
+
+        GameData game = CreateGame();
+        _gameDataRepository.InsertGame(game, _sc2ProfileId);
+
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+
+        BuildNode loadedParent = tree.Single();
+        tracker.BuildSlots[0].SelectedBuildNode = loadedParent.Children.Single(n => n.Name == "B");
+        tracker.BuildSlots[1].SelectedBuildNode = loadedParent.Children.Single(n => n.Name == "C");
+
+        Assert.Equal(["A", "B", "C"], tracker.AttributeGroups.Select(g => g.BuildName));
     }
 
     [Fact]

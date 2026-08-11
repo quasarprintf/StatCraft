@@ -13,25 +13,38 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <ItemsControl ItemsSource="{Binding AttributeEditors}">
+        <ItemsControl ItemsSource="{Binding AttributeGroups}">
             <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="Attr:AttributeValue">
-                    <Grid ColumnDefinitions="140,*" Margin="0,0,0,4">
-                        <TextBlock Grid.Column="0" Text="{Binding Definition.Name}" VerticalAlignment="Center"/>
-                        <NumericUpDown Grid.Column="1" Value="{Binding NumericValue}"
-                                       IsVisible="{Binding Definition.IsNumeric}"
-                                       FormatString="0.##" HorizontalAlignment="Left"/>
-                        <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}"
-                                  IsVisible="{Binding Definition.IsBool}"/>
-                        <NumericUpDown Grid.Column="1" Value="{Binding PercentValue}"
-                                       IsVisible="{Binding Definition.IsPercent}"
-                                       Minimum="0" Maximum="100" FormatString="0.##'%'"
-                                       HorizontalAlignment="Left"/>
-                        <ComboBox Grid.Column="1" ItemsSource="{Binding Definition.ValueOptions}"
-                                  SelectedItem="{Binding SelectedValue}"
-                                  IsVisible="{Binding Definition.IsValues}"
-                                  HorizontalAlignment="Left" MinWidth="150"/>
-                    </Grid>
+                <DataTemplate x:DataType="vm:AttributeGroupViewModel">
+                    <StackPanel Margin="{Binding Margin}" Spacing="4">
+                        <Border BorderBrush="Gray" BorderThickness="0,0,0,1" Padding="0,0,0,2">
+                            <TextBlock Text="{Binding BuildName}" FontWeight="Bold"/>
+                        </Border>
+                        <Border BorderBrush="Gray" BorderThickness="1,0,0,0" Padding="8,0,0,0">
+                            <ItemsControl ItemsSource="{Binding Attributes}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="Attr:AttributeValue">
+                                        <Grid ColumnDefinitions="140,*" Margin="0,0,0,4">
+                                            <TextBlock Grid.Column="0" Text="{Binding Definition.Name}" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Column="1" Value="{Binding NumericValue}"
+                                                           IsVisible="{Binding Definition.IsNumeric}"
+                                                           FormatString="0.##" HorizontalAlignment="Left"/>
+                                            <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}"
+                                                      IsVisible="{Binding Definition.IsBool}"/>
+                                            <NumericUpDown Grid.Column="1" Value="{Binding PercentValue}"
+                                                           IsVisible="{Binding Definition.IsPercent}"
+                                                           Minimum="0" Maximum="100" FormatString="0.##'%'"
+                                                           HorizontalAlignment="Left"/>
+                                            <ComboBox Grid.Column="1" ItemsSource="{Binding Definition.ValueOptions}"
+                                                      SelectedItem="{Binding SelectedValue}"
+                                                      IsVisible="{Binding Definition.IsValues}"
+                                                      HorizontalAlignment="Left" MinWidth="150"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </Border>
+                    </StackPanel>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>

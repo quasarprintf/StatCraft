@@ -38,7 +38,7 @@ namespace StatCraft.ViewModels
         // Slots are always [...persisted selections, one trailing blank] — selecting a build in the
         // trailing slot appends a new blank after it, and clearing a non-trailing slot removes it.
         public ObservableCollection<BuildSelectionSlotViewModel> BuildSlots { get; } = [];
-        public ObservableCollection<AttributeValue> AttributeEditors { get; } = [];
+        public ObservableCollection<AttributeGroupViewModel> AttributeGroups { get; } = [];
 
         // replayDataExtractor/replayPath are only needed for allies/opponents (nothing reads NameColor
         // for the session user's own tracker) and only actually used when player.ColorArgb is null — an
@@ -296,62 +296,74 @@ namespace StatCraft.ViewModels
 
         // Deduplicated union of every selected build's root-to-leaf path, so a shared ancestor
         // contributes its attributes exactly once no matter how many selected builds pass through it.
+        // Grouped by owning build (rather than flattened into one list) so the Data tab can show which
+        // build each attribute came from — Depth is each node's position within whichever selected
+        // path first reached it, root being 0, which is what lets the view indent a nested build's
+        // group further than its ancestor's.
         private void RebuildAttributeEditors()
         {
-            List<int> oldIds = AttributeEditors.Select(e => e.Definition.Id).ToList();
+            List<int> oldIds = AttributeGroups.SelectMany(g => g.Attributes).Select(a => a.Definition.Id).ToList();
 
-            List<BuildNode> unionPath = new();
+            List<(BuildNode Node, int Depth)> unionPath = new();
             HashSet<int> seen = new();
             foreach (BuildNode leaf in BuildSlots.Select(s => s.SelectedBuildNode).OfType<BuildNode>())
             {
                 List<BuildNode>? path = BuildPathHelper.FindPath(_buildTree, leaf.Id);
                 if (path == null)
                     continue;
-                foreach (BuildNode node in path)
-                    if (seen.Add(node.Id))
-                        unionPath.Add(node);
+                for (int depth = 0; depth < path.Count; depth++)
+                    if (seen.Add(path[depth].Id))
+                        unionPath.Add((path[depth], depth));
             }
-            List<AttributeValue> newPathAttrs = BuildPathHelper.FlattenAttributes(unionPath);
-            List<int> newIds = newPathAttrs.Select(a => a.Definition.Id).ToList();
+            List<int> newIds = unionPath.SelectMany(p => p.Node.Attributes).Select(a => a.Definition.Id).ToList();
 
             // Left every selected path: drop the stored value from the DB, but leave it in
             // _player.AttributeValues (in-memory) so re-selecting the build within this session restores it.
             foreach (int leftId in oldIds.Except(newIds))
                 TryDeleteAttributeValue(leftId);
 
-            AttributeEditors.Clear();
-            foreach (AttributeValue template in newPathAttrs)
+            AttributeGroups.Clear();
+            foreach ((BuildNode node, int depth) in unionPath)
             {
-                AttributeValue editor = template.Clone();
-                GameAttributeValue? cached = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Definition.Id);
-                if (cached != null)
+                if (node.Attributes.Count == 0)
+                    continue; // nothing to show for this build — no group at all, rather than an empty one
+
+                ObservableCollection<AttributeValue> groupEditors = [];
+                foreach (AttributeValue template in node.Attributes)
                 {
-                    editor.ApplyStoredValue(cached.Value);
-                }
-                else
-                {
-                    string defaultValue = editor.Serialize() ?? "";
-                    _player.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Definition.Id, Value = defaultValue });
-                    TryUpsertAttributeValue(template.Definition.Id, defaultValue);
+                    AttributeValue editor = template.Clone();
+                    GameAttributeValue? cached = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Definition.Id);
+                    if (cached != null)
+                    {
+                        editor.ApplyStoredValue(cached.Value);
+                    }
+                    else
+                    {
+                        string defaultValue = editor.Serialize() ?? "";
+                        _player.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Definition.Id, Value = defaultValue });
+                        TryUpsertAttributeValue(template.Definition.Id, defaultValue);
+                    }
+
+                    editor.PropertyChanged += (_, e) =>
+                    {
+                        if (e.PropertyName is nameof(AttributeValue.NumericValue)
+                            or nameof(AttributeValue.BoolValue)
+                            or nameof(AttributeValue.PercentValue)
+                            or nameof(AttributeValue.SelectedValue))
+                        {
+                            string value = editor.Serialize() ?? "";
+                            GameAttributeValue? existing = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Definition.Id);
+                            if (existing != null)
+                                existing.Value = value;
+                            else
+                                _player.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Definition.Id, Value = value });
+                            TryUpsertAttributeValue(template.Definition.Id, value);
+                        }
+                    };
+                    groupEditors.Add(editor);
                 }
 
-                editor.PropertyChanged += (_, e) =>
-                {
-                    if (e.PropertyName is nameof(AttributeValue.NumericValue)
-                        or nameof(AttributeValue.BoolValue)
-                        or nameof(AttributeValue.PercentValue)
-                        or nameof(AttributeValue.SelectedValue))
-                    {
-                        string value = editor.Serialize() ?? "";
-                        GameAttributeValue? existing = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Definition.Id);
-                        if (existing != null)
-                            existing.Value = value;
-                        else
-                            _player.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Definition.Id, Value = value });
-                        TryUpsertAttributeValue(template.Definition.Id, value);
-                    }
-                };
-                AttributeEditors.Add(editor);
+                AttributeGroups.Add(new AttributeGroupViewModel(node.Name, depth, groupEditors));
             }
         }
     }
