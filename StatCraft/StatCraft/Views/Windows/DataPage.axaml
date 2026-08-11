@@ -141,7 +141,13 @@
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Opponent" Binding="{Binding OpponentName}" IsReadOnly="True"/>
                 <DataGridTextColumn Header="Build" Binding="{Binding SelfTracker.SelectedBuildsSummary}" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Notes" Binding="{Binding Notes}" Width="*"/>
+                <DataGridTemplateColumn Header="Notes" Width="*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <TextBox Text="{Binding Notes}" ToolTip.Tip="{Binding Notes}" />
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vm:GameDataRowViewModel">
