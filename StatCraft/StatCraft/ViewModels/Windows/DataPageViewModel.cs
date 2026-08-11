@@ -322,12 +322,46 @@ namespace StatCraft.ViewModels
                 .OrderBy(g => g.ReplayData.ReplayTimestamp)
                 .ToList();
 
-            Games.Clear();
-            foreach (GameData game in matching)
-                Games.Add(WrapGame(game));
+            SyncGames(matching);
 
             // Derived from the same set the table shows, so the two can never disagree.
             WinRateLabel = WinLossRecord.From(matching.Select(g => GameOutcomeExtensions.FromWin(g.ReplayData.Win))).Label;
+        }
+
+        // Reconciles Games to exactly the rows in newOrder using targeted Remove/Insert/Move operations
+        // instead of Clear()-ing and rebuilding every row. A Clear() raises a collection Reset, which
+        // the DataGrid responds to by snapping its scroll position back to the top — with ApplyFilters
+        // running on every background replay import (see OnGameParsed), that meant the table could jump
+        // to the top on its own while the user was mid-scroll, for reasons that had nothing to do with
+        // anything they'd touched.
+        private void SyncGames(List<GameData> newOrder)
+        {
+            HashSet<int> keptIds = newOrder.Select(g => g.GameId!.Value).ToHashSet();
+            for (int i = Games.Count - 1; i >= 0; i--)
+            {
+                if (!keptIds.Contains(Games[i].GameId))
+                    Games.RemoveAt(i);
+            }
+
+            for (int targetIndex = 0; targetIndex < newOrder.Count; targetIndex++)
+            {
+                int gameId = newOrder[targetIndex].GameId!.Value;
+
+                int currentIndex = -1;
+                for (int i = targetIndex; i < Games.Count; i++)
+                {
+                    if (Games[i].GameId == gameId)
+                    {
+                        currentIndex = i;
+                        break;
+                    }
+                }
+
+                if (currentIndex == -1)
+                    Games.Insert(targetIndex, WrapGame(newOrder[targetIndex]));
+                else if (currentIndex != targetIndex)
+                    Games.Move(currentIndex, targetIndex);
+            }
         }
 
         private GameDataRowViewModel WrapGame(GameData game) =>
