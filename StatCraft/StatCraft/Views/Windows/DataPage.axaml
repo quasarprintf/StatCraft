@@ -140,7 +140,7 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Opponent" Binding="{Binding OpponentName}" IsReadOnly="True"/>
-                <DataGridTextColumn Header="Build" Binding="{Binding SelfTracker.SelectedBuildsSummary}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Build" Binding="{Binding SelfTracker.SelectedBuildsSummary}" IsReadOnly="True" Width="*"/>
                 <DataGridTemplateColumn Header="Notes" Width="*">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
