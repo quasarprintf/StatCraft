@@ -84,6 +84,10 @@
 
         <!-- Details are driven per-row from code-behind (see DataPage.axaml.cs) rather than by selection,
              so the build panel only opens from the Build column. -->
+        <!-- Known limitation: scrolling near the bottom of a long list can occasionally snap back to the
+             top. That's an open, unfixed bug in Avalonia.Controls.DataGrid's own virtualization/scroll-
+             offset handling (see AvaloniaUI/Avalonia.Controls.DataGrid#70 and #148 — no fix or workaround
+             from upstream as of 12.1.0), not something in StatCraft's own code — nothing to chase here. -->
         <DataGrid x:Name="GamesGrid" ItemsSource="{Binding Games}" AutoGenerateColumns="False"
                   RowDetailsVisibilityMode="Collapsed" GridLinesVisibility="All">
             <DataGrid.Columns>
