@@ -25,6 +25,12 @@ namespace StatCraft.Models.GameData
         public required char Race { get; set; }
         public required bool Random { get; set; }
 
+        // The player's actual in-game color (packed 0xAARRGGBB, matching Avalonia's Color.FromUInt32),
+        // as assigned by the replay itself — not derivable from anything else about the player. Null for
+        // rows recorded before this was captured; ReplayDataExtractor.TryResolvePlayerColorAsync backfills
+        // those on demand by re-reading the replay file at GameData.ReplayData.ReplayPath.
+        public int? ColorArgb { get; set; }
+
         public List<int> BuildIds { get; set; } = [];
         public List<GameAttributeValue> AttributeValues { get; set; } = [];
     }

@@ -11,6 +11,8 @@ namespace StatCraft.Models.GameData
         public required ICollection<string?> PlayerClans { get; set; }
         public required ICollection<char> PlayerRaces { get; set; }
         public required ICollection<bool> PlayerRandomRace { get; set; }
+        // Each player's in-game color, packed 0xAARRGGBB (matching Avalonia's Color.FromUInt32).
+        public required ICollection<int> PlayerColorsArgb { get; set; }
         public required ICollection<long?> PlayerMmrs { get; set; }
         public required ICollection<int> PlayerTeams { get; set; }
         public required ICollection<int> PlayerProfileIds { get; set; }

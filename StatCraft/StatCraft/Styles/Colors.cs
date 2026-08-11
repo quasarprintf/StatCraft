@@ -12,7 +12,7 @@ namespace StatCraft.Styles
         public static readonly IBrush LossRed = Brushes.DarkRed;
         public static readonly IBrush DrawBlue = Brushes.DarkBlue;
 
-        public static readonly IBrush AllyYellow = new SolidColorBrush(Color.Parse("#E0C82C"));
-        public static readonly IBrush OpponentRed = Brushes.OrangeRed;
+        // For a player's actual in-game color, packed 0xAARRGGBB — see GamePlayer.ColorArgb.
+        public static IBrush FromArgb(int argb) => new SolidColorBrush(Color.FromUInt32(unchecked((uint)argb)));
     }
 }

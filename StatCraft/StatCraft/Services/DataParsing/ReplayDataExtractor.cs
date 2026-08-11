@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using s2protocol.NET;
 using s2protocol.NET.Models;
 using StatCraft.Models.Battlenet;
@@ -19,6 +20,7 @@ namespace StatCraft.Services.DataParsing
             List<string?> clans = new();
             List<char> races = new();
             List<bool> randomRace = new();
+            List<int> colorsArgb = new();
             List<int> teamIds = new();
             List<int> winningIndices = new();
             List<int> profileIds = new();
@@ -37,6 +39,9 @@ namespace StatCraft.Services.DataParsing
 
                 randomRace.Add(string.Equals(metadataPlayer?.SelectedRace, "random", StringComparison.OrdinalIgnoreCase));
 
+                PlayerColor color = detailsPlayer.Color;
+                colorsArgb.Add((color.A << 24) | (color.R << 16) | (color.G << 8) | color.B);
+
                 teamIds.Add(detailsPlayer.TeamId);
                 profileIds.Add(detailsPlayer.Toon.Id);
 
@@ -53,6 +58,7 @@ namespace StatCraft.Services.DataParsing
                 PlayerClans = clans,
                 PlayerRaces = races,
                 PlayerRandomRace = randomRace,
+                PlayerColorsArgb = colorsArgb,
                 PlayerMmrs = replay.Initdata!.UserInitialData.Select(d => d.ScaledRating).ToArray(),
                 PlayerProfileIds = profileIds,
                 PlayerTeams = teamIds,
@@ -65,6 +71,31 @@ namespace StatCraft.Services.DataParsing
             };
         }
 
+        // Backfills GamePlayer.ColorArgb for rows recorded before it was captured, by re-reading the
+        // replay file rather than re-importing the game — the file itself is the only remaining source
+        // for data that was never persisted the first time around. Matched by player name, the only
+        // stable identifier already stored on a GamePlayer; returns null (never throws) for anything
+        // that stops the file being read (moved, deleted, corrupt), since this always runs as a
+        // best-effort UI backfill — logging a failure is the caller's call, not this method's.
+        internal async Task<int?> TryResolvePlayerColorAsync(string replayPath, string playerName)
+        {
+            try
+            {
+                using ReplayDecoder decoder = new();
+                Sc2Replay? replay = await decoder.DecodeAsync(replayPath);
+                if (replay == null)
+                    return null;
+
+                RawReplayData raw = Extract(replay, DateTimeOffset.MinValue);
+                int index = raw.PlayerNames.ToList().FindIndex(n => n == playerName);
+                return index < 0 ? null : raw.PlayerColorsArgb.ElementAt(index);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
         // Reframes the raw, index-parallel replay data around a specific player: who they are, whether
         // they won, and which other players were on their side vs. the other side.
         internal ParsedReplayData Parse(RawReplayData rawReplayData, Sc2Profile profile)
@@ -73,6 +104,7 @@ namespace StatCraft.Services.DataParsing
             List<string?> clans = new(rawReplayData.PlayerClans);
             List<char> races = new(rawReplayData.PlayerRaces);
             List<bool> randomRace = new(rawReplayData.PlayerRandomRace);
+            List<int> colorsArgb = new(rawReplayData.PlayerColorsArgb);
             List<long?> mmrs = new(rawReplayData.PlayerMmrs);
             List<int> teams = new(rawReplayData.PlayerTeams);
             HashSet<int> winners = new(rawReplayData.WinningPlayerIndices);
@@ -88,6 +120,7 @@ namespace StatCraft.Services.DataParsing
                 Mmr = mmrs[i].HasValue ? mmrs[i]!.Value : 0,
                 Race = races[i],
                 Random = randomRace[i],
+                ColorArgb = colorsArgb[i],
             };
 
             decimal win = rawReplayData.IsDraw ? 0.5m : winners.Contains(playerIndex) ? 1m : 0m;

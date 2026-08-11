@@ -16,10 +16,24 @@ namespace StatCraft.Services.DatabaseRepository
             RunMigrations(conn, nameof(GameDataRepository), Migrations);
         }
 
-        // No migrations exist yet — CreateTables below already reflects the current schema in full.
         // Append future schema changes here as named methods, in order; RunMigrations tracks how many
         // of them a given database has already applied.
-        private static readonly Action<SqliteConnection>[] Migrations = [];
+        private static readonly Action<SqliteConnection>[] Migrations =
+        [
+            // Placeholder for a migration that briefly existed here during development and was removed
+            // again before ever shipping — but not before it ran against at least one real database,
+            // which recorded "1 migration applied" in SchemaVersion. Without this slot, that database's
+            // ledger would already read >= the length of this array and skip every real migration below
+            // forever; a fresh database just runs this no-op once and moves on.
+            _ => { },
+
+            // Captures each player's actual in-game color (from the replay's own Details record) so the
+            // Data tab's per-player build tabs can be colored by who they really are rather than just
+            // ally/opponent side. Existing rows get NULL and are backfilled lazily — see
+            // ReplayDataExtractor.TryResolvePlayerColorAsync — rather than needing every past replay
+            // re-imported.
+            conn => conn.Execute("ALTER TABLE GamePlayers ADD COLUMN Color INTEGER"),
+        ];
 
         private static void CreateTables(SqliteConnection conn)
         {

@@ -82,7 +82,7 @@ namespace StatCraft.ViewModels
         private readonly GameDataRepository _repository;
 
         internal GameDataRowViewModel(GameData game, GameDataRepository repository, string profileLabel,
-            Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree, ILogger logger)
+            Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree, ILogger logger, ReplayDataExtractor replayDataExtractor)
         {
             _game = game;
             _repository = repository;
@@ -117,9 +117,9 @@ namespace StatCraft.ViewModels
             SelfTracker = new PlayerBuildTrackerViewModel(replay.Player, repository, getBuildTree(replay.Player.Race.AsRace(), selfSideMatchups), logger);
 
             foreach (GamePlayer ally in replay.Allies)
-                OtherPlayers.Add(new PlayerBuildTrackerViewModel(ally, repository, getBuildTree(ally.Race.AsRace(), selfSideMatchups), logger, Styles.Colors.AllyYellow));
+                OtherPlayers.Add(new PlayerBuildTrackerViewModel(ally, repository, getBuildTree(ally.Race.AsRace(), selfSideMatchups), logger, replayDataExtractor, replay.ReplayPath));
             foreach (GamePlayer opponent in replay.Opponents)
-                OtherPlayers.Add(new PlayerBuildTrackerViewModel(opponent, repository, getBuildTree(opponent.Race.AsRace(), opponentSideMatchups), logger, Styles.Colors.OpponentRed));
+                OtherPlayers.Add(new PlayerBuildTrackerViewModel(opponent, repository, getBuildTree(opponent.Race.AsRace(), opponentSideMatchups), logger, replayDataExtractor, replay.ReplayPath));
         }
 
         partial void OnNotesChanged(string value)

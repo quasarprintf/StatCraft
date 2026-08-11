@@ -2,7 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Threading.Tasks;
 using Avalonia.Media;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Attributes;
@@ -20,9 +22,11 @@ namespace StatCraft.ViewModels
     {
         public string TabHeader => _player.Name;
 
-        // Null for the session user's own tracker (no tab, so nothing reads this); set by
-        // GameDataRowViewModel for allies/opponents so their tab header can be colored by side.
-        public IBrush? NameColor { get; }
+        // Null for the session user's own tracker (no tab, so nothing reads this) and while an old
+        // replay's color is still being resolved — set from the player's own in-game color (see
+        // GamePlayer.ColorArgb) for allies/opponents, so their tab header matches how they actually
+        // appeared in the game rather than just which side they were on.
+        [ObservableProperty] private IBrush? _nameColor;
 
         private readonly GamePlayer _player;
         private readonly GameDataRepository _repository;
@@ -36,13 +40,22 @@ namespace StatCraft.ViewModels
         public ObservableCollection<BuildSelectionSlotViewModel> BuildSlots { get; } = [];
         public ObservableCollection<AttributeValue> AttributeEditors { get; } = [];
 
-        internal PlayerBuildTrackerViewModel(GamePlayer player, GameDataRepository repository, ObservableCollection<BuildNode>? buildTree, ILogger logger, IBrush? nameColor = null)
+        // replayDataExtractor/replayPath are only needed for allies/opponents (nothing reads NameColor
+        // for the session user's own tracker) and only actually used when player.ColorArgb is null — an
+        // old replay recorded before colors were captured, backfilled here rather than needing every
+        // past replay re-imported.
+        internal PlayerBuildTrackerViewModel(GamePlayer player, GameDataRepository repository, ObservableCollection<BuildNode>? buildTree, ILogger logger,
+            ReplayDataExtractor? replayDataExtractor = null, string? replayPath = null)
         {
             _player = player;
             _repository = repository;
             _buildTree = buildTree ?? [];
             _logger = logger;
-            NameColor = nameColor;
+
+            if (player.ColorArgb.HasValue)
+                NameColor = Styles.Colors.FromArgb(player.ColorArgb.Value);
+            else if (replayDataExtractor != null && replayPath != null)
+                _ = ResolveNameColorFromReplayAsync(replayDataExtractor, replayPath);
 
             if (buildTree == null)
             {
@@ -69,6 +82,24 @@ namespace StatCraft.ViewModels
 
             UpdateSelectedBuildsSummary();
             RebuildAttributeEditors();
+        }
+
+        // Best-effort: an old replay that's since been moved or deleted just leaves NameColor null
+        // (falls back to the default tab foreground) rather than failing anything else about the row.
+        private async Task ResolveNameColorFromReplayAsync(ReplayDataExtractor replayDataExtractor, string replayPath)
+        {
+            int? colorArgb = await replayDataExtractor.TryResolvePlayerColorAsync(replayPath, _player.Name);
+            if (colorArgb == null)
+            {
+                _logger.LogWarning($"Could not resolve in-game color for \"{_player.Name}\" from replay: {replayPath}");
+                return;
+            }
+
+            _player.ColorArgb = colorArgb;
+            if (_player.GamePlayerId.HasValue)
+                _repository.UpdateGamePlayerColor(_player.GamePlayerId.Value, colorArgb.Value);
+
+            Dispatcher.UIThread.Post(() => NameColor = Styles.Colors.FromArgb(colorArgb.Value));
         }
 
         private void AppendBlankSlot()

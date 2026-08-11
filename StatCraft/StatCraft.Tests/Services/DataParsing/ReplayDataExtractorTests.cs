@@ -166,6 +166,36 @@ public class ReplayDataExtractorTests
         Assert.Equal(3500, result.Player.Mmr);
     }
 
+    // Each player's in-game color (see GamePlayer.ColorArgb) is what the Data tab's build tabs are
+    // colored by, so it has to survive the same index-parallel-to-per-player reframing every other
+    // field here does.
+    [Fact]
+    public void Parse_ThreadsEachPlayersColorArgbThrough()
+    {
+        RawReplayData raw = CreateRawReplayData(
+            profileIds: [100, 200],
+            teams: [0, 1],
+            winningIndices: [0],
+            colorsArgb: [unchecked((int)0xFFFF0000), unchecked((int)0xFF0000FF)]);
+
+        ParsedReplayData result = _extractor.Parse(raw, CreateProfile(100));
+
+        Assert.Equal(unchecked((int)0xFFFF0000), result.Player.ColorArgb);
+        Assert.Equal(unchecked((int)0xFF0000FF), Assert.Single(result.Opponents).ColorArgb);
+    }
+
+    // A moved, deleted, or otherwise unreadable replay file is exactly the case this exists for — an
+    // old row whose color was never captured, backfilled by re-reading a file that may no longer be
+    // where the game's ReplayPath says it is. It has to degrade to "no color" rather than throw, since
+    // it always runs as a best-effort UI backfill (see PlayerBuildTrackerViewModel).
+    [Fact]
+    public async Task TryResolvePlayerColorAsync_FileDoesNotExist_ReturnsNull()
+    {
+        int? color = await _extractor.TryResolvePlayerColorAsync("does-not-exist.SC2Replay", "AnyPlayer");
+
+        Assert.Null(color);
+    }
+
     private static Sc2Profile CreateProfile(int profileId, string name = "Me") => new()
     {
         ProfileId = profileId,
@@ -181,6 +211,7 @@ public class ReplayDataExtractorTests
         IReadOnlyList<string?>? clans = null,
         IReadOnlyList<char>? races = null,
         IReadOnlyList<bool>? randomRace = null,
+        IReadOnlyList<int>? colorsArgb = null,
         IReadOnlyList<long?>? mmrs = null,
         string mapName = "Map",
         int gameLengthSeconds = 600,
@@ -196,6 +227,7 @@ public class ReplayDataExtractorTests
             PlayerClans = (clans ?? Enumerable.Repeat<string?>(null, count)).ToList(),
             PlayerRaces = (races ?? Enumerable.Repeat('T', count)).ToList(),
             PlayerRandomRace = (randomRace ?? Enumerable.Repeat(false, count)).ToList(),
+            PlayerColorsArgb = (colorsArgb ?? Enumerable.Repeat(0, count)).ToList(),
             PlayerMmrs = (mmrs ?? Enumerable.Repeat<long?>(1000, count)).ToList(),
             PlayerTeams = teams.ToList(),
             PlayerProfileIds = profileIds.ToList(),

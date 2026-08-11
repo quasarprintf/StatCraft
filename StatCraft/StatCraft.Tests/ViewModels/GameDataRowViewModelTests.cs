@@ -3,6 +3,7 @@ using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
+using StatCraft.Services.DataParsing;
 using StatCraft.Tests.Mocks;
 using StatCraft.ViewModels;
 using System.Collections.ObjectModel;
@@ -14,6 +15,7 @@ public class GameDataRowViewModelTests : IDisposable
     private readonly string _dbPath;
     private readonly GameDataRepository _gameDataRepository;
     private readonly MockLogger _logger = new();
+    private readonly ReplayDataExtractor _replayDataExtractor = new();
     private readonly int _sc2ProfileId;
 
     public GameDataRowViewModelTests()
@@ -48,12 +50,12 @@ public class GameDataRowViewModelTests : IDisposable
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
-        GameDataRowViewModel firstRow = new(game, _gameDataRepository, "Player", (_, _) => null, _logger);
+        GameDataRowViewModel firstRow = new(game, _gameDataRepository, "Player", (_, _) => null, _logger, _replayDataExtractor);
         firstRow.Notes = "Lost to a cheese rush";
 
         // Simulates DataPageViewModel.WrapGame reconstructing every visible row from the same
         // underlying GameData after a filter change — the row instance is new, but the GameData isn't.
-        GameDataRowViewModel secondRow = new(game, _gameDataRepository, "Player", (_, _) => null, _logger);
+        GameDataRowViewModel secondRow = new(game, _gameDataRepository, "Player", (_, _) => null, _logger, _replayDataExtractor);
 
         Assert.Equal("Lost to a cheese rush", secondRow.Notes);
     }

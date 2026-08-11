@@ -1,5 +1,6 @@
 using StatCraft.Models.GameData.Attributes;
 using System.Collections.ObjectModel;
+using Avalonia.Media;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
@@ -198,6 +199,34 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         tracker.BuildSlots[1].SelectedBuildNode = tree.Single(n => n.Name == "D");
 
         Assert.Equal("A; D", tracker.SelectedBuildsSummary);
+    }
+
+    // The Data tab's build tabs are colored by each player's actual in-game color (see
+    // GamePlayer.ColorArgb) rather than just ally/opponent side — when the color is already known
+    // (a replay parsed since this was added), NameColor is set from it synchronously, no replay
+    // re-read needed.
+    [Fact]
+    public void Construction_WithColorArgbAlreadySet_SetsNameColorFromIt()
+    {
+        GamePlayer player = new() { Name = "Ally", Clan = "", Mmr = 3000, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) };
+
+        PlayerBuildTrackerViewModel tracker = new(player, _gameDataRepository, null, _logger);
+
+        SolidColorBrush brush = Assert.IsType<SolidColorBrush>(tracker.NameColor);
+        Assert.Equal(Color.FromUInt32(unchecked((uint)0xFFFF0000)), brush.Color);
+    }
+
+    // No stored color and no way to look one up (no replayDataExtractor/replayPath given, as for the
+    // session user's own tracker, which never shows a colored tab) — NameColor just stays unset rather
+    // than throwing or leaving anything half-initialized.
+    [Fact]
+    public void Construction_WithNoColorArgbAndNoReplayToResolveFrom_LeavesNameColorNull()
+    {
+        GamePlayer player = new() { Name = "Ally", Clan = "", Mmr = 3000, Race = 'Z', Random = false };
+
+        PlayerBuildTrackerViewModel tracker = new(player, _gameDataRepository, null, _logger);
+
+        Assert.Null(tracker.NameColor);
     }
 
     private static GameData CreateGame()

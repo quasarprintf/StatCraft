@@ -60,8 +60,8 @@ namespace StatCraft.Services.DatabaseRepository
                 });
 
             replay.Player.GamePlayerId = (int)conn.ExecuteScalar<long>(@"
-                INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random)
-                VALUES (@gameId, @side, 0, @name, @clan, @mmr, @race, @random);
+                INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random, Color)
+                VALUES (@gameId, @side, 0, @name, @clan, @mmr, @race, @random, @color);
                 SELECT last_insert_rowid();",
                 new
                 {
@@ -72,6 +72,7 @@ namespace StatCraft.Services.DatabaseRepository
                     mmr = replay.Player.Mmr,
                     race = replay.Player.Race,
                     random = replay.Player.Random ? 1 : 0,
+                    color = replay.Player.ColorArgb,
                 });
 
             InsertGamePlayers(conn, game.GameId.Value, SideAlly, replay.Allies);
@@ -87,8 +88,8 @@ namespace StatCraft.Services.DatabaseRepository
             {
                 GamePlayer player = players[i];
                 player.GamePlayerId = (int)conn.ExecuteScalar<long>(@"
-                    INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random)
-                    VALUES (@gameId, @side, @sortOrder, @name, @clan, @mmr, @race, @random);
+                    INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random, Color)
+                    VALUES (@gameId, @side, @sortOrder, @name, @clan, @mmr, @race, @random, @color);
                     SELECT last_insert_rowid();",
                     new
                     {
@@ -100,6 +101,7 @@ namespace StatCraft.Services.DatabaseRepository
                         mmr = player.Mmr,
                         race = player.Race,
                         random = player.Random ? 1 : 0,
+                        color = player.ColorArgb,
                     });
             }
         }
@@ -145,6 +147,7 @@ namespace StatCraft.Services.DatabaseRepository
             public long? MmrAfter { get; set; }
             public char Race { get; set; }
             public bool Random { get; set; }
+            public int? Color { get; set; }
         }
 
         private class GameBuildRow
@@ -200,10 +203,10 @@ namespace StatCraft.Services.DatabaseRepository
             Dictionary<long, GamePlayer> selfPlayers = new(); // Games.Id -> self GamePlayer
             Dictionary<long, GamePlayer> playersById = new(); // GamePlayers.Id -> GamePlayer, every side
             IEnumerable<GamePlayerRow> playerRows = conn.Query<GamePlayerRow>(
-                $"SELECT Id, GameId, Side, Name, Clan, Mmr, MmrAfter, Race, Random FROM GamePlayers WHERE GameId IN ({idList}) ORDER BY GameId, Side, SortOrder");
+                $"SELECT Id, GameId, Side, Name, Clan, Mmr, MmrAfter, Race, Random, Color FROM GamePlayers WHERE GameId IN ({idList}) ORDER BY GameId, Side, SortOrder");
             foreach (GamePlayerRow row in playerRows)
             {
-                GamePlayer player = new() { GamePlayerId = (int)row.Id, Name = row.Name, Clan = row.Clan, Mmr = row.Mmr, MmrAfter = row.MmrAfter, Race = row.Race, Random = row.Random };
+                GamePlayer player = new() { GamePlayerId = (int)row.Id, Name = row.Name, Clan = row.Clan, Mmr = row.Mmr, MmrAfter = row.MmrAfter, Race = row.Race, Random = row.Random, ColorArgb = row.Color };
                 playersById[row.Id] = player;
 
                 if (row.Side == SideSelf)
@@ -308,6 +311,15 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
             conn.Execute("UPDATE GamePlayers SET MmrAfter = @mmrAfter WHERE Id = @id", new { mmrAfter, id = gamePlayerId });
+        }
+
+        // Backfills a player's in-game color once ReplayDataExtractor.TryResolvePlayerColorAsync has
+        // re-read it from the replay file, so the next load of this game finds it already in the
+        // database instead of needing to re-parse the file again.
+        public void UpdateGamePlayerColor(int gamePlayerId, int colorArgb)
+        {
+            using SqliteConnection conn = OpenConnection();
+            conn.Execute("UPDATE GamePlayers SET Color = @color WHERE Id = @id", new { color = colorArgb, id = gamePlayerId });
         }
 
         // Cascades to GamePlayers (ON DELETE CASCADE), which in turn cascades to that game's

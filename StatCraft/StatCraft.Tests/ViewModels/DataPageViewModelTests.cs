@@ -57,11 +57,12 @@ public class DataPageViewModelTests : IAsyncDisposable
         SettingsRepository settingsRepository = new(settingsPath);
         _replayWatcherService = new ReplayWatcherService(new MockLogger());
         Sc2LadderService ladderService = new(new HttpClient(), new StubTokenProvider(), new MockLogger());
-        ReplayImportService replayImportService = new(new MockLogger(), new ReplayDataExtractor(), _gameDataRepository,
+        ReplayDataExtractor replayDataExtractor = new();
+        ReplayImportService replayImportService = new(new MockLogger(), replayDataExtractor, _gameDataRepository,
             mapRepository, ladderService);
 
         _viewModel = new DataPageViewModel(settingsRepository, _replayWatcherService, replayImportService,
-            accountRepository, buildRepository, _gameDataRepository, ladderService, new MockLogger());
+            accountRepository, buildRepository, _gameDataRepository, ladderService, new MockLogger(), replayDataExtractor);
     }
 
     [Fact]
