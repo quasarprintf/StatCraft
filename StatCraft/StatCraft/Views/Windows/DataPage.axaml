@@ -89,7 +89,7 @@
              offset handling (see AvaloniaUI/Avalonia.Controls.DataGrid#70 and #148 — no fix or workaround
              from upstream as of 12.1.0), not something in StatCraft's own code — nothing to chase here. -->
         <DataGrid x:Name="GamesGrid" ItemsSource="{Binding Games}" AutoGenerateColumns="False"
-                  RowDetailsVisibilityMode="Collapsed" GridLinesVisibility="All">
+                  CanUserResizeColumns="True" CanUserReorderColumns="True" RowDetailsVisibilityMode="Collapsed" GridLinesVisibility="All">
             <DataGrid.Columns>
                 <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False">
                     <DataGridTemplateColumn.CellTemplate>
