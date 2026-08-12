@@ -88,7 +88,7 @@
              top. That's an open, unfixed bug in Avalonia.Controls.DataGrid's own virtualization/scroll-
              offset handling (see AvaloniaUI/Avalonia.Controls.DataGrid#70 and #148 — no fix or workaround
              from upstream as of 12.1.0), not something in StatCraft's own code — nothing to chase here. -->
-        <DataGrid x:Name="GamesGrid" ItemsSource="{Binding Games}" AutoGenerateColumns="False"
+        <DataGrid x:Name="GamesGrid" ItemsSource="{Binding Games}" AutoGenerateColumns="False" Margin="0,0,0,40" BorderThickness="0,0,0,1" BorderBrush="Black"
                   CanUserResizeColumns="True" CanUserReorderColumns="True" RowDetailsVisibilityMode="Collapsed" GridLinesVisibility="All">
             <DataGrid.Styles>
                 <Style Selector="DataGridRow:nth-child(2n)">
