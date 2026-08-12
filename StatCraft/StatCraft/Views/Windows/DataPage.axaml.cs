@@ -38,6 +38,23 @@ namespace StatCraft.Views
             // Rows are recycled as the grid scrolls, so a newly realised row has to be told whether it
             // is the one currently showing its build details.
             GamesGrid.LoadingRow += (_, e) => ApplyBuildDetailsVisibility(e.Row);
+
+            // Avalonia.Controls.DataGrid's virtualization/scroll-offset handling breaks down on variable
+            // row height, which an expanded details row is the only source of (see the comment above
+            // GamesGrid in DataPage.axaml) — worst right as that row's container gets recycled for reuse.
+            // UnloadingRow fires at that exact moment, which is what actually needs to be caught. Two
+            // earlier attempts (polling the row's on-screen position after each scrollbar change, then
+            // trying to track scroll direction to only react to a top-exit) both lagged behind the real
+            // recycle point — UnloadingRow fires mid-layout-pass, before either of those signals had
+            // caught up — and still let the bug through. No direction check is needed, though: a row only
+            // unloads once it has genuinely left the realised range, not merely while it's still partly
+            // visible (e.g. clipped at the bottom with its top still on-screen), so reacting unconditionally
+            // here already only fires for a real "this row is gone" exit.
+            GamesGrid.UnloadingRow += (_, e) =>
+            {
+                if (ReferenceEquals(e.Row.DataContext, _buildDetailsItem))
+                    SetBuildDetailsItem(null);
+            };
         }
 
         // The row whose build-selection details are currently open, or null when none are. Held as the

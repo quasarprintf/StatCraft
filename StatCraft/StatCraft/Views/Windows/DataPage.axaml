@@ -84,10 +84,15 @@
 
         <!-- Details are driven per-row from code-behind (see DataPage.axaml.cs) rather than by selection,
              so the build panel only opens from the Build column. -->
-        <!-- Known limitation: scrolling near the bottom of a long list can occasionally snap back to the
-             top. That's an open, unfixed bug in Avalonia.Controls.DataGrid's own virtualization/scroll-
-             offset handling (see AvaloniaUI/Avalonia.Controls.DataGrid#70 and #148 — no fix or workaround
-             from upstream as of 12.1.0), not something in StatCraft's own code — nothing to chase here. -->
+        <!-- Known limitation: scrolling while a row's build details are expanded can occasionally snap back
+             to the top. Root cause: Avalonia.Controls.DataGrid's virtualization/scroll-offset handling
+             breaks down on variable row height (AvaloniaUI/Avalonia.Controls.DataGrid#70) and especially
+             when a row's height nears the viewport's (#148) — exactly what an expanded details row does,
+             since it's the only row that isn't a uniform height. No fix/workaround from upstream as of
+             12.1.0. The RowDetailsTemplate's ScrollViewer MaxHeight below caps how tall that one row can
+             get, shrinking how often the expanded row triggers this — it doesn't eliminate the trigger
+             (mere height variability, short of the viewport, can still cause it per #70), so this may
+             still be seen occasionally. -->
         <DataGrid x:Name="GamesGrid" ItemsSource="{Binding Games}" AutoGenerateColumns="False" Margin="0,0,0,40" BorderThickness="0,0,0,1" BorderBrush="Black"
                   CanUserResizeColumns="True" CanUserReorderColumns="True" RowDetailsVisibilityMode="Collapsed" GridLinesVisibility="All">
             <DataGrid.Styles>
@@ -167,41 +172,47 @@
             </DataGrid.Columns>
             <DataGrid.RowDetailsTemplate>
                 <DataTemplate x:DataType="vm:GameDataRowViewModel">
-                    <Grid Margin="24,8" ColumnDefinitions="*,24,*">
-                        <StackPanel Grid.Column="0" Spacing="8" MinWidth="320">
-                            <TextBlock Text="{Binding SelfTracker.TabHeader}" FontWeight="Bold"/>
-                            <local:PlayerBuildTracker DataContext="{Binding SelfTracker}"/>
-                        </StackPanel>
+                    <!-- Capped so one row's rendered height can't grow anywhere near the DataGrid's own
+                         viewport height — that's what triggers Avalonia.Controls.DataGrid's virtualization
+                         scroll-offset bug (see the comment above the DataGrid). This shrinks the problem;
+                         it doesn't eliminate the variable-row-height trigger entirely. -->
+                    <ScrollViewer MaxHeight="400" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <Grid Margin="24,8" ColumnDefinitions="*,24,*">
+                            <StackPanel Grid.Column="0" Spacing="8" MinWidth="320">
+                                <TextBlock Text="{Binding SelfTracker.TabHeader}" FontWeight="Bold"/>
+                                <local:PlayerBuildTracker DataContext="{Binding SelfTracker}"/>
+                            </StackPanel>
 
-                        <GridSplitter Grid.Column="1" ResizeDirection="Columns" Width="3" />
+                            <GridSplitter Grid.Column="1" ResizeDirection="Columns" Width="3" />
 
-                        <StackPanel Grid.Column="2" Spacing="8">
-                            <TabControl ItemsSource="{Binding OtherPlayers}">
-                                <TabControl.Styles>
-                                    <Style Selector="TabItem">
-                                        <Setter Property="MinHeight" Value="16" />
-                                        <Setter Property="Padding" Value="4,0" />
-                                        <Setter Property="FontSize" Value="14" />
-                                        <Setter Property="FontWeight" Value="Bold" />
-                                        <Setter Property="Margin" Value="7, -2, 0, -5" />
-                                    </Style>
-                                    <Style Selector="TabItem:selected /template/ Border#PART_SelectedPipe">
-                                        <Setter Property="Margin" Value="0, 20, 0, 0" />
-                                    </Style>
-                                </TabControl.Styles>
-                                <TabControl.ItemTemplate>
-                                    <DataTemplate x:DataType="vm:PlayerBuildTrackerViewModel">
-                                        <TextBlock Text="{Binding TabHeader}" Foreground="{Binding NameColor}"/>
-                                    </DataTemplate>
-                                </TabControl.ItemTemplate>
-                                <TabControl.ContentTemplate>
-                                    <DataTemplate x:DataType="vm:PlayerBuildTrackerViewModel">
-                                        <local:PlayerBuildTracker Margin="0,8,0,0"/>
-                                    </DataTemplate>
-                                </TabControl.ContentTemplate>
-                            </TabControl>
-                        </StackPanel>
-                    </Grid>
+                            <StackPanel Grid.Column="2" Spacing="8">
+                                <TabControl ItemsSource="{Binding OtherPlayers}">
+                                    <TabControl.Styles>
+                                        <Style Selector="TabItem">
+                                            <Setter Property="MinHeight" Value="16" />
+                                            <Setter Property="Padding" Value="4,0" />
+                                            <Setter Property="FontSize" Value="14" />
+                                            <Setter Property="FontWeight" Value="Bold" />
+                                            <Setter Property="Margin" Value="7, -2, 0, -5" />
+                                        </Style>
+                                        <Style Selector="TabItem:selected /template/ Border#PART_SelectedPipe">
+                                            <Setter Property="Margin" Value="0, 20, 0, 0" />
+                                        </Style>
+                                    </TabControl.Styles>
+                                    <TabControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:PlayerBuildTrackerViewModel">
+                                            <TextBlock Text="{Binding TabHeader}" Foreground="{Binding NameColor}"/>
+                                        </DataTemplate>
+                                    </TabControl.ItemTemplate>
+                                    <TabControl.ContentTemplate>
+                                        <DataTemplate x:DataType="vm:PlayerBuildTrackerViewModel">
+                                            <local:PlayerBuildTracker Margin="0,8,0,0"/>
+                                        </DataTemplate>
+                                    </TabControl.ContentTemplate>
+                                </TabControl>
+                            </StackPanel>
+                        </Grid>
+                    </ScrollViewer>
                 </DataTemplate>
             </DataGrid.RowDetailsTemplate>
         </DataGrid>
