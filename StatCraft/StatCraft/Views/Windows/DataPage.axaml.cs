@@ -130,6 +130,8 @@ namespace StatCraft.Views
         private double? _lastMeasuredScrollBarMaximum;
         private int _consecutiveStalledReadings;
         private int _consecutiveGrowingScrollBarMaximum;
+        private int _walkStepIndex;
+        private double? _walkStepSizeEstimate;
 
         // ScrollIntoView runs synchronously, right when details are opened — but AreDetailsVisible=true
         // (set just before it) only *invalidates* layout; the row doesn't actually grow taller until the
@@ -216,24 +218,89 @@ namespace StatCraft.Views
 
             if (atTop || stalled || runaway || ++_scrollToTopAttempts >= MaxScrollToTopAttempts)
             {
-                _scrollToTopPending = false;
-
-                // Giving up without the row actually at the top means the details panel — up to 600px tall
-                // — is left extending past the bottom of the window, with the main table still locked. The
-                // lock only earns its keep by getting the row genuinely out of DataGrid's buggy variable-
-                // height-scroll territory; if it hasn't done that, keeping it locked leaves the user with no
-                // way to reach the rest of the panel at all — the details' own internal ScrollViewer can't
-                // help either, since its bottom edge is off-screen regardless of its own scroll position.
-                // Unlocking accepts the pre-existing risk of DataGrid's scroll corruption over leaving the
-                // content completely unreachable.
-                if (!atTop)
-                    SetMainTableScrollLocked(false);
-
+                SettleScrollToTopAttempt(atTop);
                 return;
             }
 
             ScrollDetailsRowToTop();
             Dispatcher.UIThread.Post(AdvanceScrollToTopIfPending, DispatcherPriority.Background);
+        }
+
+        // A row with few or no rows below it (the very short list this exists for is only 18 rows deep, so
+        // it doesn't take much to run out) may never build up enough of a step-size estimate before the
+        // walk exhausts its steps — that's a genuine "ran out of list" limit, not a bug, and is handled the
+        // same way as every other case that can't reach top=0: settle wherever the row landed.
+        //
+        // Walking one row at a time — instead of jumping straight to a distant anchor — lets DataGrid
+        // actually measure each intervening row's real height as it goes, rather than having to estimate a
+        // block of unmeasured rows all at once from a single distant jump (the extent-corrupting behavior
+        // documented on ScrollAnchorRowsBelowTarget and _useSmallAnchor above). Confirmed via a headless
+        // probe: this reliably lands rows that the single-adjacent-anchor approach left frozen at their
+        // original position within a few pixels of the top, across every previously-broken row tested.
+        //
+        // The one danger is overshooting: once the walk passes the point where the target would align to
+        // the top, continuing to walk further pushes it up out of view entirely — and that isn't
+        // recoverable by walking back to an earlier row, confirmed via the same probe: re-scrolling to a
+        // row already visited does not reproduce its earlier reading, since DataGrid's own state has moved
+        // on. So instead of detecting an overshoot after the fact, each step is skipped in advance whenever
+        // the remaining distance is already smaller than what the last step actually moved — that step
+        // would clearly cross zero, so it's better not to take it at all.
+        private void AdvanceIterativeWalk()
+        {
+            if (!_scrollToTopPending) return;
+
+            (double Top, double Height, double? ScrollBarMaximum)? metrics = GetBuildDetailsRowMetrics();
+            bool atTop = metrics.HasValue && Math.Abs(metrics.Value.Top) < 1;
+
+            if (metrics.HasValue && _lastMeasuredScrollToTopValue.HasValue)
+                _walkStepSizeEstimate = _lastMeasuredScrollToTopValue.Value - metrics.Value.Top;
+            _lastMeasuredScrollToTopValue = metrics?.Top;
+
+            bool wouldOvershoot = !atTop && metrics.HasValue && metrics.Value.Top > 0 &&
+                _walkStepSizeEstimate.HasValue && metrics.Value.Top < _walkStepSizeEstimate.Value;
+
+            IList? items = GamesGrid.ItemsSource as IList;
+            bool haveNextRow = items != null && _walkStepIndex <= items.Count - 1;
+
+            if (atTop || wouldOvershoot || !haveNextRow || ++_scrollToTopAttempts >= MaxScrollToTopAttempts)
+            {
+                // No row below to walk to yet at all (the target is the list's own last row, or close
+                // enough that this is the very first check) means the walk never got a chance to move
+                // anything — unlike an overshoot, nothing has been touched yet, so a single direct
+                // ScrollIntoView on the target itself is still safe to try here, and is what the degenerate
+                // "target is the last row" case relies on (there's no anchor to walk to below it at all).
+                if (!atTop && !haveNextRow && _buildDetailsItem != null && _scrollToTopAttempts == 0)
+                {
+                    GamesGrid.UpdateLayout();
+                    GamesGrid.ScrollIntoView(_buildDetailsItem, null);
+                    metrics = GetBuildDetailsRowMetrics();
+                    atTop = metrics.HasValue && Math.Abs(metrics.Value.Top) < 1;
+                }
+
+                SettleScrollToTopAttempt(atTop);
+                return;
+            }
+
+            GamesGrid.UpdateLayout();
+            GamesGrid.ScrollIntoView(items![_walkStepIndex]!, null);
+            _walkStepIndex++;
+            Dispatcher.UIThread.Post(AdvanceIterativeWalk, DispatcherPriority.Background);
+        }
+
+        private void SettleScrollToTopAttempt(bool atTop)
+        {
+            _scrollToTopPending = false;
+
+            // Giving up without the row actually at the top means the details panel — up to 600px tall —
+            // is left extending past the bottom of the window, with the main table still locked. The lock
+            // only earns its keep by getting the row genuinely out of DataGrid's buggy variable-height-
+            // scroll territory; if it hasn't done that, keeping it locked leaves the user with no way to
+            // reach the rest of the panel at all — the details' own internal ScrollViewer can't help
+            // either, since its bottom edge is off-screen regardless of its own scroll position. Unlocking
+            // accepts the pre-existing risk of DataGrid's scroll corruption over leaving the content
+            // completely unreachable.
+            if (!atTop)
+                SetMainTableScrollLocked(false);
         }
 
         private (double Top, double Height, double? ScrollBarMaximum)? GetBuildDetailsRowMetrics()
@@ -255,21 +322,20 @@ namespace StatCraft.Views
 
         // Comfortably more rows than the details panel could ever push past (it's capped at 600px, well
         // under 25 rows' worth), so this is still guaranteed to land the anchor below the whole expanded
-        // row — it just doesn't need to be the literal last row in the list to do that. Only used when
-        // the list DIDN'T already fit the viewport before this row expanded — see _useSmallAnchor.
+        // row — it just doesn't need to be the literal last row in the list to do that.
         private const int ScrollAnchorRowsBelowTarget = 25;
 
         // When the whole list already fits the viewport before any row expands (a short, filtered game
-        // history), a distant anchor is what corrupts DataGrid's own extent bookkeeping — confirmed via a
-        // headless probe: forcing the anchor down to the immediately-next row instead of a distant one
-        // turned an unbounded runaway (scrollbar Maximum climbing into the tens of thousands, never
-        // settling) into either a clean top=0 or a small, stable residual — both bounded, neither
-        // corrupting. The same probe confirmed a distant anchor is still needed for a genuinely-long list
-        // (a list already too tall for the viewport before this row's own expansion): forcing distance=1
-        // there left a legitimately-reachable row stuck partway, since a single adjacent row often isn't
-        // enough distance to force DataGrid to treat the target as approached "from below". So this is
-        // decided once, at the moment details are opened, from whether the list already filled the
-        // viewport BEFORE this specific row grew — see the capture in SetBuildDetailsItem.
+        // history), jumping straight to a distant anchor is what corrupts DataGrid's own extent
+        // bookkeeping — confirmed via a headless probe: an unbounded runaway (scrollbar Maximum climbing
+        // into the tens of thousands, never settling) for rows near the end of such a list, and rows near
+        // its start simply frozen at their original position, never moving at all. AdvanceIterativeWalk
+        // above is used instead for that case, walking one row at a time rather than jumping — this
+        // single-jump anchor approach remains for the ordinary case (a list already too tall for the
+        // viewport before this row's own expansion), where it's always worked reliably and a one-row-at-a-
+        // time walk would just be needless overhead across however long the list has grown. Which path
+        // runs is decided once, at the moment details are opened — see _useSmallAnchor's capture in
+        // SetBuildDetailsItem.
         private bool _useSmallAnchor;
 
         // DataGrid.ScrollIntoView aligns minimally — bringing an item into view from *above* the current
@@ -299,8 +365,7 @@ namespace StatCraft.Views
             // that particular staleness before each attempt.
             GamesGrid.UpdateLayout();
 
-            int anchorDistance = _useSmallAnchor ? 1 : ScrollAnchorRowsBelowTarget;
-            int anchorIndex = Math.Min(targetIndex + anchorDistance, items.Count - 1);
+            int anchorIndex = Math.Min(targetIndex + ScrollAnchorRowsBelowTarget, items.Count - 1);
             if (anchorIndex > targetIndex)
                 GamesGrid.ScrollIntoView(items[anchorIndex]!, null);
 
@@ -353,6 +418,7 @@ namespace StatCraft.Views
             _lastMeasuredScrollBarMaximum = null;
             _consecutiveStalledReadings = 0;
             _consecutiveGrowingScrollBarMaximum = 0;
+            _walkStepSizeEstimate = null;
 
             // Deliberately not calling ScrollDetailsRowToTop() synchronously here: this method runs inside
             // the click handler, before Avalonia has had any chance to render the row's now-taller,
@@ -360,8 +426,17 @@ namespace StatCraft.Views
             // here would hold up that very first render, so the first step is posted at Background priority
             // instead — see AdvanceScrollToTopIfPending below for why that specific priority matters — which
             // lets the details appear first, with the scroll-into-place following a moment later.
-            if (item != null)
+            if (item == null) return;
+
+            if (_useSmallAnchor)
+            {
+                _walkStepIndex = GamesGrid.ItemsSource is IList items ? items.IndexOf(item) + 1 : 0;
+                Dispatcher.UIThread.Post(AdvanceIterativeWalk, DispatcherPriority.Background);
+            }
+            else
+            {
                 Dispatcher.UIThread.Post(AdvanceScrollToTopIfPending, DispatcherPriority.Background);
+            }
         }
 
         private void ApplyBuildDetailsVisibility(DataGridRow row) =>
