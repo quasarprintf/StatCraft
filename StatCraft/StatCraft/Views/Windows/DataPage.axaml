@@ -162,15 +162,15 @@
             </DataGrid.Columns>
             <DataGrid.RowDetailsTemplate>
                 <DataTemplate x:DataType="vm:GameDataRowViewModel">
-                    <Grid Margin="24,8" ColumnDefinitions="auto,*,24,auto,*">
+                    <Grid Margin="24,8" ColumnDefinitions="*,24,*">
                         <StackPanel Grid.Column="0" Spacing="8" MinWidth="320">
                             <TextBlock Text="{Binding SelfTracker.TabHeader}" FontWeight="Bold"/>
                             <local:PlayerBuildTracker DataContext="{Binding SelfTracker}"/>
                         </StackPanel>
 
-                        <GridSplitter Grid.Column="2" ResizeDirection="Columns" Width="3" />
+                        <GridSplitter Grid.Column="1" ResizeDirection="Columns" Width="3" />
 
-                        <StackPanel Grid.Column="3" Spacing="8">
+                        <StackPanel Grid.Column="2" Spacing="8">
                             <TabControl ItemsSource="{Binding OtherPlayers}">
                                 <TabControl.Styles>
                                     <Style Selector="TabItem">
