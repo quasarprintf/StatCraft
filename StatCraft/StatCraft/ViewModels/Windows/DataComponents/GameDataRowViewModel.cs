@@ -67,7 +67,6 @@ namespace StatCraft.ViewModels
             }
         }
 
-        public string Matchup { get; }
         public IReadOnlyList<ColoredCharacter> MatchupCharacters { get; }
         public string OpponentName { get; }
 
@@ -103,7 +102,6 @@ namespace StatCraft.ViewModels
             // Assigned to the backing field, not the property, so hydrating a row doesn't look like a
             // user edit and write straight back to the database (same reason as _notes below).
             _gameType = game.GameType;
-            Matchup = $"{replay.Player.Race}{string.Concat(replay.Allies.Select(a => a.Race))}v{string.Concat(replay.Opponents.Select(o => o.Race))}";
             MatchupCharacters = BuildMatchupCharacters(replay);
             OpponentName = string.Join(", ", replay.Opponents.Select(o => $"({o.Mmr}) {o.FormattedClan}{o.Name}"));
             _notes = game.Notes;
