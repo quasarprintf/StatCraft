@@ -59,6 +59,7 @@ namespace StatCraft.Views
             GamesGrid.LayoutUpdated += (_, _) => CollapseBuildDetailsIfScrolledOffTop();
         }
 
+        //this is not a simple QoL feature, this is a necessary workaround for an avalonia bug that jumps the scroll position back to the top
         private void CollapseBuildDetailsIfScrolledOffTop()
         {
             if (_buildDetailsItem == null) return;
