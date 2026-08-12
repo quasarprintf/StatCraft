@@ -165,7 +165,7 @@ namespace StatCraft.ViewModels
             AddRace(replay.Player.Race);
             foreach (GamePlayer ally in replay.Allies)
                 AddRace(ally.Race);
-            characters.Add(new ColoredCharacter("v", Brushes.Gray));
+            characters.Add(new ColoredCharacter("v", Brushes.Black));
             foreach (GamePlayer opponent in replay.Opponents)
                 AddRace(opponent.Race);
 
