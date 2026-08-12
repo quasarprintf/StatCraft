@@ -59,6 +59,10 @@ namespace StatCraft.Views
             GamesGrid.LayoutUpdated += (_, _) => CollapseBuildDetailsIfScrolledOffTop();
         }
 
+        // Last position (relative to the rows viewport, see below) the details row was actually found
+        // at. Reset whenever the open details item changes — see SetBuildDetailsItem.
+        private double? _lastKnownDetailsRowTop;
+
         //this is not a simple QoL feature, this is a necessary workaround for an avalonia bug that jumps the scroll position back to the top
         private void CollapseBuildDetailsIfScrolledOffTop()
         {
@@ -67,10 +71,16 @@ namespace StatCraft.Views
             DataGridRow? detailsRow = GamesGrid.GetVisualDescendants().OfType<DataGridRow>()
                 .FirstOrDefault(r => ReferenceEquals(r.DataContext, _buildDetailsItem));
 
-            // Recycled out of the realised range entirely — definitely gone, not just partly clipped.
             if (detailsRow == null)
             {
-                SetBuildDetailsItem(null);
+                // Containers get reassigned to different rows as part of ordinary virtualization even
+                // when nothing has scrolled off screen — e.g. opening details on the last currently-
+                // loaded row can transiently unassign its container while the next one loads in. Only
+                // treat "gone" as a real top-exit if it was already near the top edge the last time it
+                // was actually observed; otherwise this is that kind of unrelated churn (or a bottom-
+                // exit, which was never the trigger to begin with) and shouldn't close anything.
+                if (_lastKnownDetailsRowTop is { } lastTop && lastTop < 50)
+                    SetBuildDetailsItem(null);
                 return;
             }
 
@@ -80,8 +90,9 @@ namespace StatCraft.Views
             DataGridRowsPresenter? rowsPresenter = GamesGrid.GetVisualDescendants().OfType<DataGridRowsPresenter>().FirstOrDefault();
             if (rowsPresenter == null) return;
 
-            Point topLeft = detailsRow.TranslatePoint(new Point(0, 0), rowsPresenter) ?? default;
-            if (topLeft.Y < 0)
+            double top = (detailsRow.TranslatePoint(new Point(0, 0), rowsPresenter) ?? default).Y;
+            _lastKnownDetailsRowTop = top;
+            if (top < 0)
                 SetBuildDetailsItem(null);
         }
 
@@ -112,6 +123,7 @@ namespace StatCraft.Views
                 return;
 
             _buildDetailsItem = item;
+            _lastKnownDetailsRowTop = null;
             foreach (DataGridRow row in GamesGrid.GetVisualDescendants().OfType<DataGridRow>())
                 ApplyBuildDetailsVisibility(row);
         }
