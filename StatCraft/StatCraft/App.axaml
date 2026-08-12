@@ -87,5 +87,8 @@
             <Setter Property="Margin" Value="1"/>
             <Setter Property="VerticalAlignment" Value="Center"/>
         </ControlTheme>
+
+        <SolidColorBrush x:Key="DataGridRowSelectedUnfocusedBackgroundBrush" Color="#CCCCCC"/>
+        <SolidColorBrush x:Key="DataGridRowSelectedHoveredUnfocusedBackgroundBrush" Color="#AAAAAA"/>
     </Application.Resources>
 </Application>
