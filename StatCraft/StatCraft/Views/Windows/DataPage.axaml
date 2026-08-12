@@ -163,12 +163,12 @@
             </DataGrid.Columns>
             <DataGrid.RowDetailsTemplate>
                 <DataTemplate x:DataType="vm:GameDataRowViewModel">
-                    <!-- Capped so one row's rendered height can't grow anywhere near the DataGrid's own
-                         viewport height — that's what triggers Avalonia.Controls.DataGrid's virtualization
-                         scroll-offset bug (see the comment above the DataGrid). This shrinks the problem;
-                         it doesn't eliminate the variable-row-height trigger entirely. -->
-                    <ScrollViewer MaxHeight="600" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                                  IsScrollChainingEnabled="False">
+                    <!-- Capped so a single expanded row can't grow arbitrarily tall — GamesGrid locks its
+                         own scrolling while details are open (see DataPage.axaml.cs), so this ScrollViewer
+                         is what lets a tall details panel still scroll internally. Wheel-scroll isolation
+                         (keeping that internal scrolling from being swallowed by GamesGrid's lock) is wired
+                         up in code-behind too — see GamesGrid.LoadingRowDetails in DataPage.axaml.cs. -->
+                    <ScrollViewer MaxHeight="600" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                         <Grid Margin="24,8" ColumnDefinitions="*,24,*">
                             <StackPanel Grid.Column="0" Spacing="8" MinWidth="320">
                                 <TextBlock Text="{Binding SelfTracker.TabHeader}" FontWeight="Bold"/>

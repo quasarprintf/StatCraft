@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -6,6 +7,8 @@ using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Input;
+using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
@@ -42,58 +45,163 @@ namespace StatCraft.Views
 
             // Avalonia.Controls.DataGrid's virtualization/scroll-offset handling breaks down on variable
             // row height, which an expanded details row is the only source of (see the comment above
-            // GamesGrid in DataPage.axaml). Three earlier attempts at closing the details before that can
-            // bite: (1) polling the row's position after each scrollbar Value change — too coarse, the
-            // scrollbar doesn't fire on every scroll increment (especially with smooth/inertial scrolling),
-            // so the row could travel well past the trigger point between checks; (2) reacting to
-            // UnloadingRow (the row container actually being recycled) — DataGridRowsPresenter keeps an
-            // off-screen realised buffer that isn't sized for a row this tall, so recycling lagged well
-            // behind the row visually leaving the viewport; (3) DataGridRow.EffectiveViewportChanged never
-            // fires at all — DataGridRowsPresenter is a fully custom virtualizer, not built on the
-            // ScrollViewer/ScrollContentPresenter infrastructure that event depends on. LayoutUpdated fires
-            // after every layout pass regardless of what caused it, so checking the details row's actual
-            // position there catches the exact frame its top crosses the viewport edge, confirmed against
-            // a headless render tracking the row's position tick-by-tick during a scroll — measured against
-            // the rows area rather than the DataGrid control itself, so it also collapses as soon as the
-            // row starts disappearing behind the column header, not only once it's fully gone.
-            GamesGrid.LayoutUpdated += (_, _) => CollapseBuildDetailsIfScrolledOffTop();
+            // GamesGrid in DataPage.axaml) — and not just the bookkeeping: how far a single wheel notch
+            // scrolls gets corrupted too, unpredictably (observed jumps from small up to 400+px on one
+            // tick). Several reactive and pre-emptive "close before it goes too far" approaches were tried
+            // and all eventually lost to a jump bigger than whatever margin was picked, since the jump
+            // size itself is the thing that's broken and out of this code's control. Instead: whenever
+            // details open, the owning row is scrolled to the very top of the viewport and the main
+            // table's own scrolling (wheel + scrollbar) is locked entirely until details close again. With
+            // the row pinned at the top and the table unable to scroll at all, the buggy virtualization
+            // math never gets a scroll to act on in the first place — the details' own content can still
+            // scroll internally (see GamesGrid.LoadingRowDetails below).
+            // DataGrid re-enables its own scrollbar on layout passes whenever there's scrollable content,
+            // fighting a one-time IsEnabled=false — reasserting it here each pass while locked is what
+            // actually keeps it disabled.
+            GamesGrid.LayoutUpdated += (_, _) =>
+            {
+                if (_mainTableScrollLocked)
+                    SetMainTableScrollLocked(true);
+                AdvanceScrollToTopIfPending();
+            };
+            GamesGrid.AddHandler(InputElement.PointerWheelChangedEvent, OnGamesGridWheelChangedWhileLocked, RoutingStrategies.Tunnel);
+
+            // Lets the details' own ScrollViewer handle its own scrolling internally, rather than the
+            // wheel input reaching GamesGrid's own handling above at all (which would otherwise swallow
+            // it outright while locked). ScrollViewer.IsScrollChainingEnabled does not achieve this on its
+            // own — confirmed via a headless probe that DataGrid still receives and acts on the same wheel
+            // input regardless of that flag, because the details section sits outside the normal cells-
+            // presenter hit-test region a ScrollViewer would otherwise chain through. Handling the event
+            // here at the Tunnel stage — on the details element itself, further down the tunnel than
+            // GamesGrid's own handler above — and unconditionally marking it Handled does work.
+            GamesGrid.LoadingRowDetails += (_, e) =>
+            {
+                if (e.DetailsElement is ScrollViewer detailsScrollViewer)
+                {
+                    detailsScrollViewer.RemoveHandler(InputElement.PointerWheelChangedEvent, OnRowDetailsScrollViewerWheelChanged);
+                    detailsScrollViewer.AddHandler(InputElement.PointerWheelChangedEvent, OnRowDetailsScrollViewerWheelChanged,
+                        RoutingStrategies.Tunnel, handledEventsToo: true);
+                }
+            };
         }
 
-        // Last position (relative to the rows viewport, see below) the details row was actually found
-        // at. Reset whenever the open details item changes — see SetBuildDetailsItem.
-        private double? _lastKnownDetailsRowTop;
-
-        //this is not a simple QoL feature, this is a necessary workaround for an avalonia bug that jumps the scroll position back to the top
-        private void CollapseBuildDetailsIfScrolledOffTop()
+        private static void OnRowDetailsScrollViewerWheelChanged(object? sender, PointerWheelEventArgs e)
         {
-            if (_buildDetailsItem == null) return;
+            var scrollViewer = (ScrollViewer)sender!;
+            double maxY = Math.Max(0, scrollViewer.Extent.Height - scrollViewer.Viewport.Height);
+            double newY = Math.Clamp(scrollViewer.Offset.Y - e.Delta.Y * 50, 0, maxY);
+            scrollViewer.Offset = scrollViewer.Offset.WithY(newY);
+            e.Handled = true;
+        }
 
-            DataGridRow? detailsRow = GamesGrid.GetVisualDescendants().OfType<DataGridRow>()
-                .FirstOrDefault(r => ReferenceEquals(r.DataContext, _buildDetailsItem));
+        private bool _mainTableScrollLocked;
 
-            if (detailsRow == null)
+        private void SetMainTableScrollLocked(bool locked)
+        {
+            _mainTableScrollLocked = locked;
+
+            ScrollBar? verticalScrollBar = GamesGrid.GetVisualDescendants().OfType<ScrollBar>()
+                .FirstOrDefault(s => s.Name == "PART_VerticalScrollbar");
+            if (verticalScrollBar != null)
+                verticalScrollBar.IsEnabled = !locked;
+        }
+
+        private void OnGamesGridWheelChangedWhileLocked(object? sender, PointerWheelEventArgs e)
+        {
+            if (!_mainTableScrollLocked) return;
+
+            // Only swallow wheel input over the plain rows — over the details area itself, this must fall
+            // through so the details' own ScrollViewer (its handler is registered further down the tunnel,
+            // on the details element itself) still gets a chance to scroll normally.
+            bool overCells = (e.Source as Visual)?.GetVisualAncestors().OfType<DataGridCell>().Any() == true;
+            if (overCells)
+                e.Handled = true;
+        }
+
+        private bool _scrollToTopPending;
+        private int _scrollToTopAttempts;
+        private const int MaxScrollToTopAttempts = 20;
+        private double? _lastMeasuredScrollToTopValue;
+
+        // ScrollIntoView runs synchronously, right when details are opened — but AreDetailsVisible=true
+        // (set just before it) only *invalidates* layout; the row doesn't actually grow taller until the
+        // next measure/arrange pass, which happens after this call returns. So the one-shot call aligns
+        // the row correctly for its *old*, un-expanded height, and the subsequent expansion can knock it
+        // back out of place — worst for a row near the end of the list, where there isn't much content
+        // below it to absorb the newly-added height, so the panel pulls the scroll position back down to
+        // avoid showing empty space past the last item, leaving the row not at the top after all. Retrying
+        // across however many LayoutUpdated passes it takes, re-checking the row's actual position each
+        // time rather than trusting the first attempt, is what actually lands it and keeps it at the top.
+        //
+        // A row near the end of the list can never reach top=0 at all (there's a hard floor: the list
+        // can't scroll past its own last item), so its position stabilizes at some nonzero residual and
+        // then never changes again. Against real row content each attempt costs real layout/render time,
+        // so blindly running all MaxScrollToTopAttempts in that case turned a single click into a multi-
+        // second stall (measured ~1.6s in the app) — comparing each attempt's measurement against the
+        // previous one and stopping as soon as it stops moving avoids paying for retries that can't help.
+        private void AdvanceScrollToTopIfPending()
+        {
+            if (!_scrollToTopPending) return;
+
+            double? top = GetBuildDetailsRowTop();
+            bool atTop = top.HasValue && Math.Abs(top.Value) < 1;
+            bool stalled = top.HasValue && _lastMeasuredScrollToTopValue.HasValue &&
+                Math.Abs(top.Value - _lastMeasuredScrollToTopValue.Value) < 0.5;
+            _lastMeasuredScrollToTopValue = top;
+
+            if (atTop || stalled || ++_scrollToTopAttempts >= MaxScrollToTopAttempts)
             {
-                // Containers get reassigned to different rows as part of ordinary virtualization even
-                // when nothing has scrolled off screen — e.g. opening details on the last currently-
-                // loaded row can transiently unassign its container while the next one loads in. Only
-                // treat "gone" as a real top-exit if it was already near the top edge the last time it
-                // was actually observed; otherwise this is that kind of unrelated churn (or a bottom-
-                // exit, which was never the trigger to begin with) and shouldn't close anything.
-                if (_lastKnownDetailsRowTop is { } lastTop && lastTop < 50)
-                    SetBuildDetailsItem(null);
+                _scrollToTopPending = false;
                 return;
             }
 
-            // Measured against the rows area specifically, not the DataGrid control as a whole — the
-            // column header sits above it and isn't part of the scrollable viewport, so a row can already
-            // be hidden behind the header while still reading as on-screen relative to the grid itself.
-            DataGridRowsPresenter? rowsPresenter = GamesGrid.GetVisualDescendants().OfType<DataGridRowsPresenter>().FirstOrDefault();
-            if (rowsPresenter == null) return;
+            ScrollDetailsRowToTop();
+        }
 
-            double top = (detailsRow.TranslatePoint(new Point(0, 0), rowsPresenter) ?? default).Y;
-            _lastKnownDetailsRowTop = top;
-            if (top < 0)
-                SetBuildDetailsItem(null);
+        private double? GetBuildDetailsRowTop()
+        {
+            if (_buildDetailsItem == null) return 0;
+
+            DataGridRow? detailsRow = GamesGrid.GetVisualDescendants().OfType<DataGridRow>()
+                .FirstOrDefault(r => ReferenceEquals(r.DataContext, _buildDetailsItem));
+            if (detailsRow == null) return null;
+
+            DataGridRowsPresenter? rowsPresenter = GamesGrid.GetVisualDescendants().OfType<DataGridRowsPresenter>().FirstOrDefault();
+            if (rowsPresenter == null) return null;
+
+            return (detailsRow.TranslatePoint(new Point(0, 0), rowsPresenter) ?? default).Y;
+        }
+
+        // Comfortably more rows than the details panel could ever push past (it's capped at 600px, well
+        // under 25 rows' worth), so this is still guaranteed to land the anchor below the whole expanded
+        // row — it just doesn't need to be the literal last row in the list to do that.
+        private const int ScrollAnchorRowsBelowTarget = 25;
+
+        // DataGrid.ScrollIntoView aligns minimally — bringing an item into view from *above* the current
+        // viewport aligns it to the bottom edge, and from *below* aligns it to the top edge. Scrolling an
+        // item comfortably below the target into view first, then scrolling the target itself into view,
+        // means it's always approached from below, landing it at the top. This uses DataGrid's own real
+        // scroll mechanism; poking PART_VerticalScrollbar's Value directly does not actually reposition
+        // content at all (confirmed via a headless probe — only genuine scroll input does that), which is
+        // why an earlier version of this that tried exactly that never worked. An even earlier version
+        // used the literal last row in the list as that anchor rather than a nearby one — correct, but a
+        // visibly multi-second delay opening details on anything not already near the end of a long game
+        // history, since ScrollIntoView-ing across a huge distance (and doing it again on every retry
+        // attempt below) is itself expensive, unlike a small bounded jump that costs the same regardless
+        // of how long the list has grown.
+        private void ScrollDetailsRowToTop()
+        {
+            if (_buildDetailsItem == null) return;
+            if (GamesGrid.ItemsSource is not IList items) return;
+
+            int targetIndex = items.IndexOf(_buildDetailsItem);
+            if (targetIndex < 0) return;
+
+            int anchorIndex = Math.Min(targetIndex + ScrollAnchorRowsBelowTarget, items.Count - 1);
+            if (anchorIndex > targetIndex)
+                GamesGrid.ScrollIntoView(items[anchorIndex]!, null);
+
+            GamesGrid.ScrollIntoView(_buildDetailsItem, null);
         }
 
         // The row whose build-selection details are currently open, or null when none are. Held as the
@@ -123,9 +231,16 @@ namespace StatCraft.Views
                 return;
 
             _buildDetailsItem = item;
-            _lastKnownDetailsRowTop = null;
             foreach (DataGridRow row in GamesGrid.GetVisualDescendants().OfType<DataGridRow>())
                 ApplyBuildDetailsVisibility(row);
+
+            SetMainTableScrollLocked(item != null);
+
+            _scrollToTopPending = item != null;
+            _scrollToTopAttempts = 0;
+            _lastMeasuredScrollToTopValue = null;
+            if (item != null)
+                ScrollDetailsRowToTop();
         }
 
         private void ApplyBuildDetailsVisibility(DataGridRow row) =>
