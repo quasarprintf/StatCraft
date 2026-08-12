@@ -90,6 +90,11 @@
              from upstream as of 12.1.0), not something in StatCraft's own code — nothing to chase here. -->
         <DataGrid x:Name="GamesGrid" ItemsSource="{Binding Games}" AutoGenerateColumns="False"
                   CanUserResizeColumns="True" CanUserReorderColumns="True" RowDetailsVisibilityMode="Collapsed" GridLinesVisibility="All">
+            <DataGrid.Styles>
+                <Style Selector="DataGridRow:nth-child(2n)">
+                    <Setter Property="Background" Value="#EEEEEE"/>
+                </Style>
+            </DataGrid.Styles>
             <DataGrid.Columns>
                 <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False">
                     <DataGridTemplateColumn.CellTemplate>
