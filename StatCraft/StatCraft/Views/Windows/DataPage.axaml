@@ -167,7 +167,8 @@
                          viewport height — that's what triggers Avalonia.Controls.DataGrid's virtualization
                          scroll-offset bug (see the comment above the DataGrid). This shrinks the problem;
                          it doesn't eliminate the variable-row-height trigger entirely. -->
-                    <ScrollViewer MaxHeight="600" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <ScrollViewer MaxHeight="600" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                                  IsScrollChainingEnabled="False">
                         <Grid Margin="24,8" ColumnDefinitions="*,24,*">
                             <StackPanel Grid.Column="0" Spacing="8" MinWidth="320">
                                 <TextBlock Text="{Binding SelfTracker.TabHeader}" FontWeight="Bold"/>
