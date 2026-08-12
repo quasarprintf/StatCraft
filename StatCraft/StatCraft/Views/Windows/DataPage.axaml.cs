@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Controls.Primitives;
 using Avalonia.Platform.Storage;
 using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
@@ -41,20 +42,46 @@ namespace StatCraft.Views
 
             // Avalonia.Controls.DataGrid's virtualization/scroll-offset handling breaks down on variable
             // row height, which an expanded details row is the only source of (see the comment above
-            // GamesGrid in DataPage.axaml) — worst right as that row's container gets recycled for reuse.
-            // UnloadingRow fires at that exact moment, which is what actually needs to be caught. Two
-            // earlier attempts (polling the row's on-screen position after each scrollbar change, then
-            // trying to track scroll direction to only react to a top-exit) both lagged behind the real
-            // recycle point — UnloadingRow fires mid-layout-pass, before either of those signals had
-            // caught up — and still let the bug through. No direction check is needed, though: a row only
-            // unloads once it has genuinely left the realised range, not merely while it's still partly
-            // visible (e.g. clipped at the bottom with its top still on-screen), so reacting unconditionally
-            // here already only fires for a real "this row is gone" exit.
-            GamesGrid.UnloadingRow += (_, e) =>
+            // GamesGrid in DataPage.axaml). Three earlier attempts at closing the details before that can
+            // bite: (1) polling the row's position after each scrollbar Value change — too coarse, the
+            // scrollbar doesn't fire on every scroll increment (especially with smooth/inertial scrolling),
+            // so the row could travel well past the trigger point between checks; (2) reacting to
+            // UnloadingRow (the row container actually being recycled) — DataGridRowsPresenter keeps an
+            // off-screen realised buffer that isn't sized for a row this tall, so recycling lagged well
+            // behind the row visually leaving the viewport; (3) DataGridRow.EffectiveViewportChanged never
+            // fires at all — DataGridRowsPresenter is a fully custom virtualizer, not built on the
+            // ScrollViewer/ScrollContentPresenter infrastructure that event depends on. LayoutUpdated fires
+            // after every layout pass regardless of what caused it, so checking the details row's actual
+            // position there catches the exact frame its top crosses the viewport edge, confirmed against
+            // a headless render tracking the row's position tick-by-tick during a scroll — measured against
+            // the rows area rather than the DataGrid control itself, so it also collapses as soon as the
+            // row starts disappearing behind the column header, not only once it's fully gone.
+            GamesGrid.LayoutUpdated += (_, _) => CollapseBuildDetailsIfScrolledOffTop();
+        }
+
+        private void CollapseBuildDetailsIfScrolledOffTop()
+        {
+            if (_buildDetailsItem == null) return;
+
+            DataGridRow? detailsRow = GamesGrid.GetVisualDescendants().OfType<DataGridRow>()
+                .FirstOrDefault(r => ReferenceEquals(r.DataContext, _buildDetailsItem));
+
+            // Recycled out of the realised range entirely — definitely gone, not just partly clipped.
+            if (detailsRow == null)
             {
-                if (ReferenceEquals(e.Row.DataContext, _buildDetailsItem))
-                    SetBuildDetailsItem(null);
-            };
+                SetBuildDetailsItem(null);
+                return;
+            }
+
+            // Measured against the rows area specifically, not the DataGrid control as a whole — the
+            // column header sits above it and isn't part of the scrollable viewport, so a row can already
+            // be hidden behind the header while still reading as on-screen relative to the grid itself.
+            DataGridRowsPresenter? rowsPresenter = GamesGrid.GetVisualDescendants().OfType<DataGridRowsPresenter>().FirstOrDefault();
+            if (rowsPresenter == null) return;
+
+            Point topLeft = detailsRow.TranslatePoint(new Point(0, 0), rowsPresenter) ?? default;
+            if (topLeft.Y < 0)
+                SetBuildDetailsItem(null);
         }
 
         // The row whose build-selection details are currently open, or null when none are. Held as the
