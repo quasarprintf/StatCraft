@@ -64,6 +64,23 @@ namespace StatCraft.Views
             };
         }
 
+        #region Avalonia DataGrid scrolling workaround
+
+        private bool _mainTableScrollLocked;
+        private bool _scrollToTopPending;
+        private int _scrollToTopAttempts;
+        private const int MaxScrollToTopAttempts = 20;
+        private double? _lastMeasuredScrollToTopValue;
+        private double? _lastMeasuredRowHeight;
+        private double? _lastMeasuredScrollBarMaximum;
+        private int _consecutiveStalledReadings;
+        private int _consecutiveGrowingScrollBarMaximum;
+        private int _walkStepIndex;
+        private double? _walkStepSizeEstimate;
+        private const int RunawayConsecutiveGrowingReadings = 5;
+        private const int ScrollAnchorRowsBelowTarget = 25; //should be more than one screen's worth of rows
+        private bool _useSmallAnchor; //step one row at a time instead of jumping to destination
+
         private static void OnRowDetailsScrollViewerWheelChanged(object? sender, PointerWheelEventArgs e)
         {
             var scrollViewer = (ScrollViewer)sender!;
@@ -72,8 +89,6 @@ namespace StatCraft.Views
             scrollViewer.Offset = scrollViewer.Offset.WithY(newY);
             e.Handled = true;
         }
-
-        private bool _mainTableScrollLocked;
 
         private void SetMainTableScrollLocked(bool locked)
         {
@@ -94,19 +109,7 @@ namespace StatCraft.Views
             if (targetingDataGrid ?? false)
                 e.Handled = true;
         }
-
-        private bool _scrollToTopPending;
-        private int _scrollToTopAttempts;
-        private const int MaxScrollToTopAttempts = 20;
-        private double? _lastMeasuredScrollToTopValue;
-        private double? _lastMeasuredRowHeight;
-        private double? _lastMeasuredScrollBarMaximum;
-        private int _consecutiveStalledReadings;
-        private int _consecutiveGrowingScrollBarMaximum;
-        private int _walkStepIndex;
-        private double? _walkStepSizeEstimate;
-        private const int RunawayConsecutiveGrowingReadings = 5;
-
+        
         private void AdvanceScrollToTopIfPending()
         {
             if (!_scrollToTopPending) return;
@@ -209,9 +212,6 @@ namespace StatCraft.Views
             return (top, detailsRow.Bounds.Height, verticalScrollBar?.Maximum);
         }
 
-        private const int ScrollAnchorRowsBelowTarget = 25; //should be more than one screen's worth of rows
-        private bool _useSmallAnchor; //step one row at a time instead of jumping to destination
-
         private void ScrollDetailsRowToTop()
         {
             if (_buildDetailsItem == null) return;
@@ -228,6 +228,8 @@ namespace StatCraft.Views
 
             GamesGrid.ScrollIntoView(_buildDetailsItem, null);
         }
+
+        #endregion
 
         // The row whose build-selection details are currently open, or null when none are. Held as the
         // row's view model rather than a DataGridRow because the containers are recycled.
