@@ -89,7 +89,8 @@ namespace StatCraft.Views
             {
                 //block scrolling on the main DataGrid. Allow it on the build details ScrollViewer
                 bool? targetingDataGrid = (e.Source as Visual)?.GetVisualAncestors().OfType<DataGridCell>().Any();
-                if (targetingDataGrid ?? false)
+                bool? targetingColumnHeader = (e.Source as Visual)?.GetVisualAncestors().OfType<DataGridColumnHeader>().Any();
+                if (targetingDataGrid == true || targetingColumnHeader == true)
                     e.Handled = true;
             }
         }
