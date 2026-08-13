@@ -81,8 +81,11 @@ namespace StatCraft.Views
         private const int ScrollAnchorRowsBelowTarget = 25; //should be more than one screen's worth of rows
         private bool _useSmallAnchor; //step one row at a time instead of jumping to destination
 
+        #region scroll lock
         private static void OnRowDetailsScrollViewerWheelChanged(object? sender, PointerWheelEventArgs e)
         {
+            //this event will be killed by the DataGrid handler, so default scrolling won't occur
+            //so need to scroll manually
             var scrollViewer = (ScrollViewer)sender!;
             double maxY = Math.Max(0, scrollViewer.Extent.Height - scrollViewer.Viewport.Height);
             double newY = Math.Clamp(scrollViewer.Offset.Y - e.Delta.Y * 50, 0, maxY);
@@ -90,40 +93,47 @@ namespace StatCraft.Views
             e.Handled = true;
         }
 
+        private void OnGamesGridWheelChangedWhileLocked(object? sender, PointerWheelEventArgs e)
+        {
+            if (_mainTableScrollLocked)
+            {
+                //block scrolling on the main DataGrid. Allow it on the build details ScrollViewer
+                bool? targetingDataGrid = (e.Source as Visual)?.GetVisualAncestors().OfType<DataGridCell>().Any();
+                if (targetingDataGrid ?? false)
+                    e.Handled = true;
+            }
+        }
+
         private void SetMainTableScrollLocked(bool locked)
         {
             _mainTableScrollLocked = locked;
 
-            ScrollBar? verticalScrollBar = GamesGrid.GetVisualDescendants().OfType<ScrollBar>()
-                .FirstOrDefault(s => s.Name == "PART_VerticalScrollbar");
+            ScrollBar? verticalScrollBar = GamesGrid.GetVisualDescendants().OfType<ScrollBar>().FirstOrDefault(s => s.Name == "PART_VerticalScrollbar");
             if (verticalScrollBar != null)
                 verticalScrollBar.IsEnabled = !locked;
         }
+        #endregion
 
-        private void OnGamesGridWheelChangedWhileLocked(object? sender, PointerWheelEventArgs e)
-        {
-            if (!_mainTableScrollLocked) return;
-
-            //block scrolling on the main DataGrid. Allow it on the build details ScrollViewer
-            bool? targetingDataGrid = (e.Source as Visual)?.GetVisualAncestors().OfType<DataGridCell>().Any();
-            if (targetingDataGrid ?? false)
-                e.Handled = true;
-        }
-        
         private void AdvanceScrollToTopIfPending()
         {
             if (!_scrollToTopPending) return;
 
             (double Top, double Height, double? ScrollBarMaximum)? metrics = GetBuildDetailsRowMetrics();
             bool atTop = metrics.HasValue && Math.Abs(metrics.Value.Top) < 1;
-            bool unchanged = metrics.HasValue &&
-                _lastMeasuredScrollToTopValue.HasValue && _lastMeasuredRowHeight.HasValue && _lastMeasuredScrollBarMaximum.HasValue &&
-                Math.Abs(metrics.Value.Top - _lastMeasuredScrollToTopValue.Value) < 0.5 &&
-                Math.Abs(metrics.Value.Height - _lastMeasuredRowHeight.Value) < 0.5 &&
-                Math.Abs((metrics.Value.ScrollBarMaximum ?? 0) - _lastMeasuredScrollBarMaximum.Value) < 0.5;
+            bool unchanged = false;
+            if (metrics.HasValue && _lastMeasuredScrollToTopValue.HasValue && _lastMeasuredRowHeight.HasValue && _lastMeasuredScrollBarMaximum.HasValue)
+            {
+                bool scrollFinished = Math.Abs(metrics.Value.Top - _lastMeasuredScrollToTopValue.Value) < 0.5;
+                bool rowHeightFinished = Math.Abs(metrics.Value.Top - _lastMeasuredScrollToTopValue.Value) < 0.5;
+                bool scrollBarFinished = Math.Abs((metrics.Value.ScrollBarMaximum ?? 0) - _lastMeasuredScrollBarMaximum.Value) < 0.5;
+                unchanged = scrollFinished && rowHeightFinished && scrollBarFinished;
+            }
             _consecutiveStalledReadings = unchanged ? _consecutiveStalledReadings + 1 : 0;
-            bool growing = metrics?.ScrollBarMaximum is { } curMax && _lastMeasuredScrollBarMaximum is { } prevMax &&
-                prevMax > 0 && curMax > prevMax * 1.1;
+
+            bool growing = false;
+            if (metrics?.ScrollBarMaximum != null && _lastMeasuredScrollBarMaximum != null)
+                growing = _lastMeasuredScrollBarMaximum > 0 && metrics?.ScrollBarMaximum > _lastMeasuredScrollBarMaximum * 1.1;
+
             _consecutiveGrowingScrollBarMaximum = growing ? _consecutiveGrowingScrollBarMaximum + 1 : 0;
             _lastMeasuredScrollToTopValue = metrics?.Top;
             _lastMeasuredRowHeight = metrics?.Height;
@@ -154,12 +164,12 @@ namespace StatCraft.Views
                 _walkStepSizeEstimate = _lastMeasuredScrollToTopValue.Value - metrics.Value.Top;
             _lastMeasuredScrollToTopValue = metrics?.Top;
 
-            bool wouldOvershoot = !atTop && metrics.HasValue && metrics.Value.Top > 0 &&
-                _walkStepSizeEstimate.HasValue && metrics.Value.Top < _walkStepSizeEstimate.Value;
+            bool wouldOvershoot = !atTop && metrics?.Top > 0 && metrics?.Top < _walkStepSizeEstimate;
 
             IList? items = GamesGrid.ItemsSource as IList;
             bool haveNextRow = items != null && _walkStepIndex <= items.Count - 1;
 
+            //TODO: review if short circuiting is being used here intentionally to avoid incrementing _scrollToTopAttempts
             if (atTop || wouldOvershoot || !haveNextRow || ++_scrollToTopAttempts >= MaxScrollToTopAttempts)
             {
                 // No row below to walk to yet at all (the target is the list's own last row, or close
@@ -199,16 +209,14 @@ namespace StatCraft.Views
         {
             if (_buildDetailsItem == null) return (0, 0, 0);
 
-            DataGridRow? detailsRow = GamesGrid.GetVisualDescendants().OfType<DataGridRow>()
-                .FirstOrDefault(r => ReferenceEquals(r.DataContext, _buildDetailsItem));
+            DataGridRow? detailsRow = GamesGrid.GetVisualDescendants().OfType<DataGridRow>().FirstOrDefault(r => ReferenceEquals(r.DataContext, _buildDetailsItem));
             if (detailsRow == null) return null;
 
             DataGridRowsPresenter? rowsPresenter = GamesGrid.GetVisualDescendants().OfType<DataGridRowsPresenter>().FirstOrDefault();
             if (rowsPresenter == null) return null;
 
             double top = (detailsRow.TranslatePoint(new Point(0, 0), rowsPresenter) ?? default).Y;
-            ScrollBar? verticalScrollBar = GamesGrid.GetVisualDescendants().OfType<ScrollBar>()
-                .FirstOrDefault(s => s.Name == "PART_VerticalScrollbar");
+            ScrollBar? verticalScrollBar = GamesGrid.GetVisualDescendants().OfType<ScrollBar>().FirstOrDefault(s => s.Name == "PART_VerticalScrollbar");
             return (top, detailsRow.Bounds.Height, verticalScrollBar?.Maximum);
         }
 
