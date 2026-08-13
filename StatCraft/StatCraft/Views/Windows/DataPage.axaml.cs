@@ -71,7 +71,6 @@ namespace StatCraft.Views
         private int _scrollToTopAttempts;
         private const int MaxScrollToTopAttempts = 20;
         private int _walkStepIndex;
-        private const double _walkStepSizeEstimate = 33;
 
         #region scroll lock
         private static void OnRowDetailsScrollViewerWheelChanged(object? sender, PointerWheelEventArgs e)
@@ -114,12 +113,11 @@ namespace StatCraft.Views
 
             double? top = GetTopOfExpandedRow();
             bool atTop = top < 1;
-            bool wouldOvershoot = !atTop && top > 0 && top < _walkStepSizeEstimate;
 
             IList? items = GamesGrid.ItemsSource as IList;
             bool haveNextRow = items != null && _walkStepIndex <= items.Count - 1;
 
-            if (atTop || wouldOvershoot || !haveNextRow || ++_scrollToTopAttempts >= MaxScrollToTopAttempts)
+            if (atTop || !haveNextRow || ++_scrollToTopAttempts >= MaxScrollToTopAttempts)
             {
                 GamesGrid.UpdateLayout();
                 GamesGrid.ScrollIntoView(_buildDetailsItem, null);
