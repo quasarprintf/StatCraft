@@ -46,7 +46,7 @@ namespace StatCraft.Views
             //when build details are opened, snap that row to the top of the screen and lock scrolling.
             GamesGrid.LayoutUpdated += (_, _) =>
             {
-                if (_mainTableScrollLocked && !_scrollToTopPending)
+                if (_mainTableScrollLocked)
                     SetMainTableScrollLocked(true);
             };
 
@@ -67,7 +67,6 @@ namespace StatCraft.Views
         #region Avalonia DataGrid scrolling workaround
 
         private bool _mainTableScrollLocked;
-        private bool _scrollToTopPending;
         private int _scrollToTopAttempts;
         private const int MaxScrollToTopAttempts = 20;
         private int _walkStepIndex;
@@ -109,8 +108,6 @@ namespace StatCraft.Views
         //so iteratively scroll one row at a time instead of jumping straight to our destination
         private void AdvanceIterativeWalk()
         {
-            if (!_scrollToTopPending) return;
-
             double? top = GetTopOfExpandedRow();
             bool atTop = top < 1;
 
@@ -123,8 +120,6 @@ namespace StatCraft.Views
                 GamesGrid.ScrollIntoView(_buildDetailsItem, null);
                 top = GetTopOfExpandedRow();
                 atTop = top < 1;
-
-                _scrollToTopPending = false;
 
                 //failed to scroll the target row to top of screen.
                 //fallback to unlocking scroll to avoid being trapped in a broken state.
@@ -187,8 +182,6 @@ namespace StatCraft.Views
                 ApplyBuildDetailsVisibility(row);
 
             SetMainTableScrollLocked(item != null);
-
-            _scrollToTopPending = item != null;
             _scrollToTopAttempts = 0;
 
             if (item == null) return;
