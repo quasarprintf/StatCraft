@@ -70,9 +70,8 @@ namespace StatCraft.Views
         private bool _scrollToTopPending;
         private int _scrollToTopAttempts;
         private const int MaxScrollToTopAttempts = 20;
-        private double? _lastMeasuredScrollToTopValue;
         private int _walkStepIndex;
-        private double? _walkStepSizeEstimate;
+        private const double _walkStepSizeEstimate = 33;
 
         #region scroll lock
         private static void OnRowDetailsScrollViewerWheelChanged(object? sender, PointerWheelEventArgs e)
@@ -115,17 +114,11 @@ namespace StatCraft.Views
 
             (double Top, double Height, double? ScrollBarMaximum)? metrics = GetBuildDetailsRowMetrics();
             bool atTop = metrics?.Top < 1;
-
-            if (metrics.HasValue && _lastMeasuredScrollToTopValue.HasValue)
-                _walkStepSizeEstimate = _lastMeasuredScrollToTopValue.Value - metrics.Value.Top;
-            _lastMeasuredScrollToTopValue = metrics?.Top;
-
             bool wouldOvershoot = !atTop && metrics?.Top > 0 && metrics?.Top < _walkStepSizeEstimate;
 
             IList? items = GamesGrid.ItemsSource as IList;
             bool haveNextRow = items != null && _walkStepIndex <= items.Count - 1;
 
-            //TODO: review if short circuiting is being used here intentionally to avoid incrementing _scrollToTopAttempts
             if (atTop || wouldOvershoot || !haveNextRow || ++_scrollToTopAttempts >= MaxScrollToTopAttempts)
             {
                 GamesGrid.UpdateLayout();
@@ -200,8 +193,6 @@ namespace StatCraft.Views
 
             _scrollToTopPending = item != null;
             _scrollToTopAttempts = 0;
-            _lastMeasuredScrollToTopValue = null;
-            _walkStepSizeEstimate = null;
 
             if (item == null) return;
 
