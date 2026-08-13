@@ -123,13 +123,14 @@ namespace StatCraft.Views
                 //fallback to unlocking scroll to avoid being trapped in a broken state.
                 if (_scrollToTopAttempts >= MaxScrollToTopAttempts)
                     SetMainTableScrollLocked(false);
-                return;
             }
-
-            GamesGrid.UpdateLayout();
-            GamesGrid.ScrollIntoView(items![_scrollStepIndex]!, null);
-            _scrollStepIndex++;
-            Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
+            else
+            {
+                GamesGrid.UpdateLayout();
+                GamesGrid.ScrollIntoView(items![_scrollStepIndex]!, null);
+                _scrollStepIndex++;
+                Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
+            }
         }
 
         private double? GetTopOfExpandedRow()
