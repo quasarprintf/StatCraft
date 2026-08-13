@@ -69,7 +69,7 @@ namespace StatCraft.Views
         private bool _mainTableScrollLocked;
         private int _scrollToTopAttempts;
         private const int MaxScrollToTopAttempts = 20;
-        private int _walkStepIndex;
+        private int _scrollStepIndex;
 
         #region scroll lock
         private static void OnRowDetailsScrollViewerWheelChanged(object? sender, PointerWheelEventArgs e)
@@ -106,13 +106,13 @@ namespace StatCraft.Views
 
         //DataGrid has a seizure sometimes if you try to scroll too far
         //so iteratively scroll one row at a time instead of jumping straight to our destination
-        private void AdvanceIterativeWalk()
+        private void AdvanceIterativeScroll()
         {
             double? top = GetTopOfExpandedRow();
             bool atTop = top < 1;
 
             IList? items = GamesGrid.ItemsSource as IList;
-            bool haveNextRow = items != null && _walkStepIndex <= items.Count - 1;
+            bool haveNextRow = items != null && _scrollStepIndex <= items.Count - 1;
 
             if (atTop || !haveNextRow || ++_scrollToTopAttempts >= MaxScrollToTopAttempts)
             {
@@ -129,9 +129,9 @@ namespace StatCraft.Views
             }
 
             GamesGrid.UpdateLayout();
-            GamesGrid.ScrollIntoView(items![_walkStepIndex]!, null);
-            _walkStepIndex++;
-            Dispatcher.UIThread.Post(AdvanceIterativeWalk, DispatcherPriority.Background);
+            GamesGrid.ScrollIntoView(items![_scrollStepIndex]!, null);
+            _scrollStepIndex++;
+            Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
         }
 
         private double? GetTopOfExpandedRow()
@@ -188,8 +188,8 @@ namespace StatCraft.Views
 
             //dispatch scrolling so the build details section renders immediately.
             //scrolling has to be done iteratively and can take a few hundred milliseconds, which is a noticeable delay
-            _walkStepIndex = GamesGrid.ItemsSource is IList items ? items.IndexOf(item) + 1 : 0;
-            Dispatcher.UIThread.Post(AdvanceIterativeWalk, DispatcherPriority.Background);
+            _scrollStepIndex = GamesGrid.ItemsSource is IList items ? items.IndexOf(item) + 1 : 0;
+            Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
         }
 
         private void ApplyBuildDetailsVisibility(DataGridRow row) =>
