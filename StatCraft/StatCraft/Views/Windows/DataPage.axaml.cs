@@ -102,6 +102,9 @@ namespace StatCraft.Views
             ScrollBar? verticalScrollBar = GamesGrid.GetVisualDescendants().OfType<ScrollBar>().FirstOrDefault(s => s.Name == "PART_VerticalScrollbar");
             if (verticalScrollBar != null)
                 verticalScrollBar.IsEnabled = !locked;
+
+            //re-sorting while a row's details are open would re-shuffle its position, breaking the alignment
+            GamesGrid.CanUserSortColumns = !locked;
         }
         #endregion
 
