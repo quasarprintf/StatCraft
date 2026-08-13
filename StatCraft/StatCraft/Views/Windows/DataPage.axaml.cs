@@ -104,7 +104,7 @@ namespace StatCraft.Views
         }
         #endregion
 
-        //DataGrid has a seizure sometimes if you try to scroll too far
+        //DataGrid has a seizure sometimes if you try to scroll too far at once
         //so iteratively scroll one row at a time instead of jumping straight to our destination
         private void AdvanceIterativeScroll()
         {
@@ -118,12 +118,10 @@ namespace StatCraft.Views
             {
                 GamesGrid.UpdateLayout();
                 GamesGrid.ScrollIntoView(_buildDetailsItem, null);
-                top = GetTopOfExpandedRow();
-                atTop = top < 1;
 
                 //failed to scroll the target row to top of screen.
                 //fallback to unlocking scroll to avoid being trapped in a broken state.
-                if (!atTop)
+                if (_scrollToTopAttempts >= MaxScrollToTopAttempts)
                     SetMainTableScrollLocked(false);
                 return;
             }
