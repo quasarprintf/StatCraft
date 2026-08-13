@@ -112,9 +112,9 @@ namespace StatCraft.Views
         {
             if (!_scrollToTopPending) return;
 
-            (double Top, double Height, double? ScrollBarMaximum)? metrics = GetBuildDetailsRowMetrics();
-            bool atTop = metrics?.Top < 1;
-            bool wouldOvershoot = !atTop && metrics?.Top > 0 && metrics?.Top < _walkStepSizeEstimate;
+            double? top = GetTopOfExpandedRow();
+            bool atTop = top < 1;
+            bool wouldOvershoot = !atTop && top > 0 && top < _walkStepSizeEstimate;
 
             IList? items = GamesGrid.ItemsSource as IList;
             bool haveNextRow = items != null && _walkStepIndex <= items.Count - 1;
@@ -123,8 +123,8 @@ namespace StatCraft.Views
             {
                 GamesGrid.UpdateLayout();
                 GamesGrid.ScrollIntoView(_buildDetailsItem, null);
-                metrics = GetBuildDetailsRowMetrics();
-                atTop = metrics.HasValue && Math.Abs(metrics.Value.Top) < 1;
+                top = GetTopOfExpandedRow();
+                atTop = top < 1;
 
                 _scrollToTopPending = false;
 
@@ -141,9 +141,9 @@ namespace StatCraft.Views
             Dispatcher.UIThread.Post(AdvanceIterativeWalk, DispatcherPriority.Background);
         }
 
-        private (double Top, double Height, double? ScrollBarMaximum)? GetBuildDetailsRowMetrics()
+        private double? GetTopOfExpandedRow()
         {
-            if (_buildDetailsItem == null) return (0, 0, 0);
+            if (_buildDetailsItem == null) return 0;
 
             DataGridRow? detailsRow = GamesGrid.GetVisualDescendants().OfType<DataGridRow>().FirstOrDefault(r => ReferenceEquals(r.DataContext, _buildDetailsItem));
             if (detailsRow == null) return null;
@@ -152,8 +152,7 @@ namespace StatCraft.Views
             if (rowsPresenter == null) return null;
 
             double top = (detailsRow.TranslatePoint(new Point(0, 0), rowsPresenter) ?? default).Y;
-            ScrollBar? verticalScrollBar = GamesGrid.GetVisualDescendants().OfType<ScrollBar>().FirstOrDefault(s => s.Name == "PART_VerticalScrollbar");
-            return (top, detailsRow.Bounds.Height, verticalScrollBar?.Maximum);
+            return top;
         }
 
         #endregion
