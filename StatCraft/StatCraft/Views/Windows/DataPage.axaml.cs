@@ -71,15 +71,8 @@ namespace StatCraft.Views
         private int _scrollToTopAttempts;
         private const int MaxScrollToTopAttempts = 20;
         private double? _lastMeasuredScrollToTopValue;
-        private double? _lastMeasuredRowHeight;
-        private double? _lastMeasuredScrollBarMaximum;
-        private int _consecutiveStalledReadings;
-        private int _consecutiveGrowingScrollBarMaximum;
         private int _walkStepIndex;
         private double? _walkStepSizeEstimate;
-        private const int RunawayConsecutiveGrowingReadings = 5;
-        private const int ScrollAnchorRowsBelowTarget = 25; //should be more than one screen's worth of rows
-        private bool _useSmallAnchor; //step one row at a time instead of jumping to destination
 
         #region scroll lock
         private static void OnRowDetailsScrollViewerWheelChanged(object? sender, PointerWheelEventArgs e)
@@ -114,43 +107,6 @@ namespace StatCraft.Views
         }
         #endregion
 
-        private void AdvanceScrollToTopIfPending()
-        {
-            if (!_scrollToTopPending) return;
-
-            (double Top, double Height, double? ScrollBarMaximum)? metrics = GetBuildDetailsRowMetrics();
-            bool atTop = metrics.HasValue && Math.Abs(metrics.Value.Top) < 1;
-            bool unchanged = false;
-            if (metrics.HasValue && _lastMeasuredScrollToTopValue.HasValue && _lastMeasuredRowHeight.HasValue && _lastMeasuredScrollBarMaximum.HasValue)
-            {
-                bool scrollFinished = Math.Abs(metrics.Value.Top - _lastMeasuredScrollToTopValue.Value) < 0.5;
-                bool rowHeightFinished = Math.Abs(metrics.Value.Top - _lastMeasuredScrollToTopValue.Value) < 0.5;
-                bool scrollBarFinished = Math.Abs((metrics.Value.ScrollBarMaximum ?? 0) - _lastMeasuredScrollBarMaximum.Value) < 0.5;
-                unchanged = scrollFinished && rowHeightFinished && scrollBarFinished;
-            }
-            _consecutiveStalledReadings = unchanged ? _consecutiveStalledReadings + 1 : 0;
-
-            bool growing = false;
-            if (metrics?.ScrollBarMaximum != null && _lastMeasuredScrollBarMaximum != null)
-                growing = _lastMeasuredScrollBarMaximum > 0 && metrics?.ScrollBarMaximum > _lastMeasuredScrollBarMaximum * 1.1;
-
-            _consecutiveGrowingScrollBarMaximum = growing ? _consecutiveGrowingScrollBarMaximum + 1 : 0;
-            _lastMeasuredScrollToTopValue = metrics?.Top;
-            _lastMeasuredRowHeight = metrics?.Height;
-            _lastMeasuredScrollBarMaximum = metrics?.ScrollBarMaximum ?? 0;
-            bool stalled = _consecutiveStalledReadings >= 2;
-            bool runaway = _consecutiveGrowingScrollBarMaximum >= RunawayConsecutiveGrowingReadings;
-
-            if (atTop || stalled || runaway || ++_scrollToTopAttempts >= MaxScrollToTopAttempts)
-            {
-                SettleScrollToTopAttempt(atTop);
-                return;
-            }
-
-            ScrollDetailsRowToTop();
-            Dispatcher.UIThread.Post(AdvanceScrollToTopIfPending, DispatcherPriority.Background);
-        }
-
         //DataGrid has a seizure sometimes if you try to scroll too far
         //so iteratively scroll one row at a time instead of jumping straight to our destination
         private void AdvanceIterativeWalk()
@@ -158,7 +114,7 @@ namespace StatCraft.Views
             if (!_scrollToTopPending) return;
 
             (double Top, double Height, double? ScrollBarMaximum)? metrics = GetBuildDetailsRowMetrics();
-            bool atTop = metrics.HasValue && Math.Abs(metrics.Value.Top) < 1;
+            bool atTop = metrics?.Top < 1;
 
             if (metrics.HasValue && _lastMeasuredScrollToTopValue.HasValue)
                 _walkStepSizeEstimate = _lastMeasuredScrollToTopValue.Value - metrics.Value.Top;
@@ -172,20 +128,17 @@ namespace StatCraft.Views
             //TODO: review if short circuiting is being used here intentionally to avoid incrementing _scrollToTopAttempts
             if (atTop || wouldOvershoot || !haveNextRow || ++_scrollToTopAttempts >= MaxScrollToTopAttempts)
             {
-                // No row below to walk to yet at all (the target is the list's own last row, or close
-                // enough that this is the very first check) means the walk never got a chance to move
-                // anything — unlike an overshoot, nothing has been touched yet, so a single direct
-                // ScrollIntoView on the target itself is still safe to try here, and is what the degenerate
-                // "target is the last row" case relies on (there's no anchor to walk to below it at all).
-                if (!atTop && !haveNextRow && _buildDetailsItem != null && _scrollToTopAttempts == 0)
-                {
-                    GamesGrid.UpdateLayout();
-                    GamesGrid.ScrollIntoView(_buildDetailsItem, null);
-                    metrics = GetBuildDetailsRowMetrics();
-                    atTop = metrics.HasValue && Math.Abs(metrics.Value.Top) < 1;
-                }
+                GamesGrid.UpdateLayout();
+                GamesGrid.ScrollIntoView(_buildDetailsItem, null);
+                metrics = GetBuildDetailsRowMetrics();
+                atTop = metrics.HasValue && Math.Abs(metrics.Value.Top) < 1;
 
-                SettleScrollToTopAttempt(atTop);
+                _scrollToTopPending = false;
+
+                //failed to scroll the target row to top of screen.
+                //fallback to unlocking scroll to avoid being trapped in a broken state.
+                if (!atTop)
+                    SetMainTableScrollLocked(false);
                 return;
             }
 
@@ -193,16 +146,6 @@ namespace StatCraft.Views
             GamesGrid.ScrollIntoView(items![_walkStepIndex]!, null);
             _walkStepIndex++;
             Dispatcher.UIThread.Post(AdvanceIterativeWalk, DispatcherPriority.Background);
-        }
-
-        private void SettleScrollToTopAttempt(bool atTop)
-        {
-            _scrollToTopPending = false;
-
-            //failed to scroll the target row to top of screen.
-            //fallback to unlocking scroll to avoid being trapped in a broken state.
-            if (!atTop)
-                SetMainTableScrollLocked(false);
         }
 
         private (double Top, double Height, double? ScrollBarMaximum)? GetBuildDetailsRowMetrics()
@@ -218,23 +161,6 @@ namespace StatCraft.Views
             double top = (detailsRow.TranslatePoint(new Point(0, 0), rowsPresenter) ?? default).Y;
             ScrollBar? verticalScrollBar = GamesGrid.GetVisualDescendants().OfType<ScrollBar>().FirstOrDefault(s => s.Name == "PART_VerticalScrollbar");
             return (top, detailsRow.Bounds.Height, verticalScrollBar?.Maximum);
-        }
-
-        private void ScrollDetailsRowToTop()
-        {
-            if (_buildDetailsItem == null) return;
-            if (GamesGrid.ItemsSource is not IList items) return;
-
-            int targetIndex = items.IndexOf(_buildDetailsItem);
-            if (targetIndex < 0) return;
-
-            GamesGrid.UpdateLayout(); //refresh internal state so ScrollIntoView works
-
-            int anchorIndex = Math.Min(targetIndex + ScrollAnchorRowsBelowTarget, items.Count - 1);
-            if (anchorIndex > targetIndex)
-                GamesGrid.ScrollIntoView(items[anchorIndex]!, null);
-
-            GamesGrid.ScrollIntoView(_buildDetailsItem, null);
         }
 
         #endregion
@@ -266,13 +192,6 @@ namespace StatCraft.Views
             if (ReferenceEquals(_buildDetailsItem, item))
                 return;
 
-            // Captured before this row's own AreDetailsVisible flip below, so it reflects the list's
-            // scrollable range as it stood BEFORE this row grew at all — the only reliable way to tell
-            // whether the whole list already filled the viewport unexpanded (see _useSmallAnchor).
-            ScrollBar? scrollBarBeforeExpanding = GamesGrid.GetVisualDescendants().OfType<ScrollBar>()
-                .FirstOrDefault(s => s.Name == "PART_VerticalScrollbar");
-            _useSmallAnchor = item != null && (scrollBarBeforeExpanding == null || scrollBarBeforeExpanding.Maximum < 50);
-
             _buildDetailsItem = item;
             foreach (DataGridRow row in GamesGrid.GetVisualDescendants().OfType<DataGridRow>())
                 ApplyBuildDetailsVisibility(row);
@@ -282,25 +201,14 @@ namespace StatCraft.Views
             _scrollToTopPending = item != null;
             _scrollToTopAttempts = 0;
             _lastMeasuredScrollToTopValue = null;
-            _lastMeasuredRowHeight = null;
-            _lastMeasuredScrollBarMaximum = null;
-            _consecutiveStalledReadings = 0;
-            _consecutiveGrowingScrollBarMaximum = 0;
             _walkStepSizeEstimate = null;
 
             if (item == null) return;
 
             //dispatch scrolling so the build details section renders immediately.
             //scrolling has to be done iteratively and can take a few hundred milliseconds, which is a noticeable delay
-            if (_useSmallAnchor)
-            {
-                _walkStepIndex = GamesGrid.ItemsSource is IList items ? items.IndexOf(item) + 1 : 0;
-                Dispatcher.UIThread.Post(AdvanceIterativeWalk, DispatcherPriority.Background);
-            }
-            else
-            {
-                Dispatcher.UIThread.Post(AdvanceScrollToTopIfPending, DispatcherPriority.Background);
-            }
+            _walkStepIndex = GamesGrid.ItemsSource is IList items ? items.IndexOf(item) + 1 : 0;
+            Dispatcher.UIThread.Post(AdvanceIterativeWalk, DispatcherPriority.Background);
         }
 
         private void ApplyBuildDetailsVisibility(DataGridRow row) =>
