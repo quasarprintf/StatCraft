@@ -28,9 +28,6 @@ namespace StatCraft.ViewModels
         [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
         private string _baseReplayFolderPath = "";
 
-        // Unlike BaseReplayFolderPath, this saves itself immediately on change rather than waiting for
-        // the Save button — that button's CanExecute is gated on a non-empty folder path, which has
-        // nothing to do with this checkbox.
         [ObservableProperty] private bool _useTeamColors;
 
         partial void OnUseTeamColorsChanged(bool value) =>

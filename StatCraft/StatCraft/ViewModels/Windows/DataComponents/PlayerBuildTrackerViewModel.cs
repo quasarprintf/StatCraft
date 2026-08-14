@@ -1,8 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
-using System.Threading.Tasks;
 using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -12,6 +7,12 @@ using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
+using System.Numerics;
+using System.Threading.Tasks;
 
 namespace StatCraft.ViewModels
 {
@@ -22,11 +23,7 @@ namespace StatCraft.ViewModels
     {
         public string TabHeader => _player.Name;
 
-        // Null for the session user's own tracker (no tab, so nothing reads this) and while an old
-        // replay's color is still being resolved — set from the player's own in-game color (see
-        // GamePlayer.ColorArgb) for allies/opponents, so their tab header matches how they actually
-        // appeared in the game, unless the "Use Team Colors" setting is on, in which case it's colored
-        // by side instead (see UpdateNameColor).
+        // Null for self player, since only allies/opponents are tabulated
         [ObservableProperty] private IBrush? _nameColor;
 
         private readonly GamePlayer _player;
@@ -39,7 +36,7 @@ namespace StatCraft.ViewModels
         // The color NameColor falls back to when team colors are off — kept even while team colors are
         // on, resolving in the background same as always, so toggling the setting back off has an
         // up-to-date color ready immediately instead of needing a fresh replay re-read.
-        private IBrush? _replayNameColor;
+        private IBrush? _replayNameColor => _player?.ColorArgb == null ? null : Styles.Colors.FromArgb(_player.ColorArgb.Value);
 
         [ObservableProperty] private string _selectedBuildsSummary = "";
 
@@ -48,10 +45,6 @@ namespace StatCraft.ViewModels
         public ObservableCollection<BuildSelectionSlotViewModel> BuildSlots { get; } = [];
         public ObservableCollection<AttributeGroupViewModel> AttributeGroups { get; } = [];
 
-        // replayDataExtractor/replayPath are only needed for allies/opponents (nothing reads NameColor
-        // for the session user's own tracker) and only actually used when player.ColorArgb is null — an
-        // old replay recorded before colors were captured, backfilled here rather than needing every
-        // past replay re-imported. isAlly is meaningless (and unused) unless useTeamColors is true.
         internal PlayerBuildTrackerViewModel(GamePlayer player, GameDataRepository repository, ObservableCollection<BuildNode>? buildTree, ILogger logger,
             ReplayDataExtractor? replayDataExtractor = null, string? replayPath = null, bool useTeamColors = false, bool isAlly = false)
         {
@@ -62,9 +55,7 @@ namespace StatCraft.ViewModels
             _useTeamColors = useTeamColors;
             _isAlly = isAlly;
 
-            if (player.ColorArgb.HasValue)
-                _replayNameColor = Styles.Colors.FromArgb(player.ColorArgb.Value);
-            else if (replayDataExtractor != null && replayPath != null)
+            if (!player.ColorArgb.HasValue && replayDataExtractor != null && replayPath != null)
                 _ = ResolveNameColorFromReplayAsync(replayDataExtractor, replayPath);
             UpdateNameColor();
 
@@ -112,7 +103,6 @@ namespace StatCraft.ViewModels
 
             Dispatcher.UIThread.Post(() =>
             {
-                _replayNameColor = Styles.Colors.FromArgb(colorArgb.Value);
                 UpdateNameColor();
             });
         }
