@@ -116,8 +116,11 @@ namespace StatCraft.Views
             bool atTop = top < 1;
 
             IList? items = GamesGrid.ItemsSource as IList;
-            _scrollStepIndex++;
-            bool haveNextRow = items != null && _scrollStepIndex <= items.Count - 1;
+            int nextScrollIndex = _scrollStepIndex + 1;
+            if (nextScrollIndex >= items?.Count)
+                nextScrollIndex = items.Count - 1;
+            bool haveNextRow = items != null && nextScrollIndex > _scrollStepIndex;
+            _scrollStepIndex = nextScrollIndex;
 
             if (atTop || !haveNextRow || ++_scrollToTopAttempts >= MaxScrollToTopAttempts)
             {
@@ -132,7 +135,7 @@ namespace StatCraft.Views
             else
             {
                 GamesGrid.UpdateLayout();
-                GamesGrid.ScrollIntoView(items![_scrollStepIndex]!, null);
+                GamesGrid.ScrollIntoView(items![nextScrollIndex]!, null);
                 Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
             }
         }
