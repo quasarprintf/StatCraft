@@ -118,7 +118,7 @@ namespace StatCraft.ViewModels
         }
 
         private void UpdateNameColor() =>
-            NameColor = _useTeamColors ? (_isAlly ? Styles.Colors.AllyColor : Styles.Colors.OpponentColor) : _replayNameColor;
+            NameColor = _useTeamColors ? (_isAlly ? Styles.Colors.AllyYellow : Styles.Colors.OpponentRed) : _replayNameColor;
 
         // Called by GameDataRowViewModel when the "Use Team Colors" setting changes, so an already-open
         // row's tabs update immediately instead of waiting for the row to be rebuilt.

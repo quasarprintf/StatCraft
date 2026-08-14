@@ -327,8 +327,8 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         PlayerBuildTrackerViewModel allyTracker = new(ally, _gameDataRepository, null, _logger, useTeamColors: true, isAlly: true);
         PlayerBuildTrackerViewModel opponentTracker = new(opponent, _gameDataRepository, null, _logger, useTeamColors: true, isAlly: false);
 
-        Assert.Same(AppColors.AllyColor, allyTracker.NameColor);
-        Assert.Same(AppColors.OpponentColor, opponentTracker.NameColor);
+        Assert.Same(AppColors.AllyYellow, allyTracker.NameColor);
+        Assert.Same(AppColors.OpponentRed, opponentTracker.NameColor);
     }
 
     // Toggling the setting back off (as DataPageViewModel does live via SetUseTeamColors when the
@@ -339,7 +339,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     {
         GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = 3000, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) };
         PlayerBuildTrackerViewModel tracker = new(ally, _gameDataRepository, null, _logger, useTeamColors: true, isAlly: true);
-        Assert.Same(AppColors.AllyColor, tracker.NameColor);
+        Assert.Same(AppColors.AllyYellow, tracker.NameColor);
 
         tracker.SetUseTeamColors(false);
 

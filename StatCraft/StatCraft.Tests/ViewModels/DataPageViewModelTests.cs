@@ -82,7 +82,7 @@ public class DataPageViewModelTests : IAsyncDisposable
 
         _settingsRepository.Save(new AppSettingsData { UseTeamColors = true });
 
-        Assert.Same(Colors.OpponentColor, opponentTracker.NameColor);
+        Assert.Same(Colors.OpponentRed, opponentTracker.NameColor);
     }
 
     [Fact]
