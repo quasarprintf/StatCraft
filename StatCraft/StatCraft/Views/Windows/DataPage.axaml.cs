@@ -116,6 +116,7 @@ namespace StatCraft.Views
             bool atTop = top < 1;
 
             IList? items = GamesGrid.ItemsSource as IList;
+            _scrollStepIndex++;
             bool haveNextRow = items != null && _scrollStepIndex <= items.Count - 1;
 
             if (atTop || !haveNextRow || ++_scrollToTopAttempts >= MaxScrollToTopAttempts)
@@ -132,7 +133,6 @@ namespace StatCraft.Views
             {
                 GamesGrid.UpdateLayout();
                 GamesGrid.ScrollIntoView(items![_scrollStepIndex]!, null);
-                _scrollStepIndex++;
                 Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
             }
         }
@@ -191,7 +191,7 @@ namespace StatCraft.Views
 
             //dispatch scrolling so the build details section renders immediately.
             //scrolling has to be done iteratively and can take a few hundred milliseconds, which is a noticeable delay
-            _scrollStepIndex = GamesGrid.ItemsSource is IList items ? items.IndexOf(item) + 1 : 0;
+            _scrollStepIndex = GamesGrid.ItemsSource is IList items ? items.IndexOf(item) : 0;
             Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
         }
 
