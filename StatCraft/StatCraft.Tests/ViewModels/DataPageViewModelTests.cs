@@ -2,10 +2,12 @@ using System.Net.Http;
 using System.Threading;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
+using StatCraft.Models.Util;
 using StatCraft.Services.BackgroundService;
 using StatCraft.Services.BattlenetApi;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
+using StatCraft.Styles;
 using StatCraft.Tests.Mocks;
 using StatCraft.ViewModels;
 
@@ -23,6 +25,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     private readonly string _dbPath;
     private readonly GameDataRepository _gameDataRepository;
     private readonly ReplayWatcherService _replayWatcherService;
+    private readonly SettingsRepository _settingsRepository;
     private readonly DataPageViewModel _viewModel;
     private readonly int _sc2ProfileId;
     private readonly Sc2Profile _profile;
@@ -54,15 +57,32 @@ public class DataPageViewModelTests : IAsyncDisposable
         accountRepository.UpsertProfile(_profile);
         _sc2ProfileId = _profile.Id;
 
-        SettingsRepository settingsRepository = new(settingsPath);
+        _settingsRepository = new SettingsRepository(settingsPath);
         _replayWatcherService = new ReplayWatcherService(new MockLogger());
         Sc2LadderService ladderService = new(new HttpClient(), new StubTokenProvider(), new MockLogger());
         ReplayDataExtractor replayDataExtractor = new();
         ReplayImportService replayImportService = new(new MockLogger(), replayDataExtractor, _gameDataRepository,
             mapRepository, ladderService);
 
-        _viewModel = new DataPageViewModel(settingsRepository, _replayWatcherService, replayImportService,
+        _viewModel = new DataPageViewModel(_settingsRepository, _replayWatcherService, replayImportService,
             accountRepository, buildRepository, _gameDataRepository, ladderService, new MockLogger(), replayDataExtractor);
+    }
+
+    // The "Use Team Colors" setting can be toggled mid-session — already-visible rows must pick it up
+    // immediately (via DataPageViewModel.OnSettingsChanged -> GameDataRowViewModel.RefreshTeamColors)
+    // rather than only the next time a row happens to get rebuilt.
+    [Fact]
+    public async Task TogglingUseTeamColors_AfterRowsAreAlreadyVisible_UpdatesTheirTabColorsImmediately()
+    {
+        InsertGame();
+        await _viewModel.SetActiveProfile(_profile);
+
+        GameDataRowViewModel row = Assert.Single(_viewModel.Games);
+        PlayerBuildTrackerViewModel opponentTracker = Assert.Single(row.OtherPlayers);
+
+        _settingsRepository.Save(new AppSettingsData { UseTeamColors = true });
+
+        Assert.Same(Colors.OpponentColor, opponentTracker.NameColor);
     }
 
     [Fact]

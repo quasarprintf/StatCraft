@@ -17,12 +17,24 @@ namespace StatCraft.ViewModels
         public SettingsPageViewModel(SettingsRepository settingsRepository)
         {
             _settingsRepository = settingsRepository;
-            BaseReplayFolderPath = _settingsRepository.Load().BaseReplayFolderPath ?? "";
+            AppSettingsData settings = _settingsRepository.Load();
+            BaseReplayFolderPath = settings.BaseReplayFolderPath ?? "";
+            // Assigned to the backing field, not the property, so hydrating this from disk doesn't
+            // immediately trigger OnUseTeamColorsChanged and re-save the file it was just read from.
+            _useTeamColors = settings.UseTeamColors;
         }
 
         [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
         private string _baseReplayFolderPath = "";
+
+        // Unlike BaseReplayFolderPath, this saves itself immediately on change rather than waiting for
+        // the Save button — that button's CanExecute is gated on a non-empty folder path, which has
+        // nothing to do with this checkbox.
+        [ObservableProperty] private bool _useTeamColors;
+
+        partial void OnUseTeamColorsChanged(bool value) =>
+            _settingsRepository.Save(new AppSettingsData { BaseReplayFolderPath = BaseReplayFolderPath, UseTeamColors = value });
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasError))]

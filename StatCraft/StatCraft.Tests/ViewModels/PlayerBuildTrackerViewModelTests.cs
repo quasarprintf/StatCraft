@@ -8,6 +8,7 @@ using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Tests.Mocks;
 using StatCraft.ViewModels;
+using AppColors = StatCraft.Styles.Colors;
 
 namespace StatCraft.Tests;
 
@@ -313,6 +314,37 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         PlayerBuildTrackerViewModel tracker = new(player, _gameDataRepository, null, _logger);
 
         Assert.Null(tracker.NameColor);
+    }
+
+    // "Use Team Colors" overrides the replay-derived color entirely while on, regardless of whether
+    // ColorArgb was already known.
+    [Fact]
+    public void Construction_WithUseTeamColorsOn_ColorsByAllyOpponentSideNotReplayColor()
+    {
+        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = 3000, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) };
+        GamePlayer opponent = new() { Name = "Foe", Clan = "", Mmr = 3000, Race = 'T', Random = false, ColorArgb = unchecked((int)0xFF00FF00) };
+
+        PlayerBuildTrackerViewModel allyTracker = new(ally, _gameDataRepository, null, _logger, useTeamColors: true, isAlly: true);
+        PlayerBuildTrackerViewModel opponentTracker = new(opponent, _gameDataRepository, null, _logger, useTeamColors: true, isAlly: false);
+
+        Assert.Same(AppColors.AllyColor, allyTracker.NameColor);
+        Assert.Same(AppColors.OpponentColor, opponentTracker.NameColor);
+    }
+
+    // Toggling the setting back off (as DataPageViewModel does live via SetUseTeamColors when the
+    // Settings tab checkbox changes) must restore the player's actual in-game color, not leave the team
+    // color or go blank.
+    [Fact]
+    public void SetUseTeamColors_ToggledOffAfterOn_RestoresReplayColor()
+    {
+        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = 3000, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) };
+        PlayerBuildTrackerViewModel tracker = new(ally, _gameDataRepository, null, _logger, useTeamColors: true, isAlly: true);
+        Assert.Same(AppColors.AllyColor, tracker.NameColor);
+
+        tracker.SetUseTeamColors(false);
+
+        SolidColorBrush brush = Assert.IsType<SolidColorBrush>(tracker.NameColor);
+        Assert.Equal(Color.FromUInt32(unchecked((uint)0xFFFF0000)), brush.Color);
     }
 
     private static GameData CreateGame()

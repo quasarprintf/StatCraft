@@ -193,9 +193,15 @@ namespace StatCraft.ViewModels
 
         // The base folder can be changed from the Settings tab at any time, including mid-session. A
         // session with no active profile has no watcher to redirect, so there's nothing to do until the
-        // next Begin Session — which reads the setting fresh via StartWatcherFor anyway.
+        // next Begin Session — which reads the setting fresh via StartWatcherFor anyway. Team colors,
+        // unlike the folder path, do have something visible to update immediately: every already-open
+        // row's ally/opponent tabs.
         private async void OnSettingsChanged()
         {
+            bool useTeamColors = _settingsRepository.Load().UseTeamColors;
+            foreach (GameDataRowViewModel row in Games)
+                row.RefreshTeamColors(useTeamColors);
+
             if (ActiveProfile != null)
                 await StartWatcherFor(ActiveProfile);
         }
@@ -367,7 +373,8 @@ namespace StatCraft.ViewModels
         }
 
         private GameDataRowViewModel WrapGame(GameData game) =>
-            new GameDataRowViewModel(game, _gameDataRepository, ResolveProfileLabel(game.Sc2ProfileId), GetBuildTree, _logger, _replayDataExtractor);
+            new GameDataRowViewModel(game, _gameDataRepository, ResolveProfileLabel(game.Sc2ProfileId), GetBuildTree, _logger, _replayDataExtractor,
+                _settingsRepository.Load().UseTeamColors);
 
         private string ResolveProfileLabel(int sc2ProfileId) =>
             Filters.ProfileSlot.Options.FirstOrDefault(o => o.Value.Id == sc2ProfileId)?.Value.DisplayName ?? sc2ProfileId.ToString();

@@ -22,5 +22,7 @@
         <TextBlock Text="Saved." Foreground="Green" IsVisible="{Binding JustSaved}"/>
 
         <Button Content="Save" Command="{Binding SaveCommand}" Margin="0,8,0,0"/>
+
+        <CheckBox Content="Use Team Colors" IsChecked="{Binding UseTeamColors}" Margin="0,16,0,0"/>
     </StackPanel>
 </UserControl>

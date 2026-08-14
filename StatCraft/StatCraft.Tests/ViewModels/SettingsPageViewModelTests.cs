@@ -84,6 +84,34 @@ public class SettingsPageViewModelTests : IDisposable
         Assert.False(vm.SaveCommand.CanExecute(null));
     }
 
+    // Unlike the folder path, this checkbox has no Save button of its own — it must persist as soon as
+    // it's toggled.
+    [Fact]
+    public void TogglingUseTeamColors_PersistsImmediatelyWithoutSaveCommand()
+    {
+        SettingsPageViewModel vm = new(_settingsRepository);
+        Assert.False(vm.UseTeamColors);
+
+        vm.UseTeamColors = true;
+
+        Assert.True(_settingsRepository.Load().UseTeamColors);
+    }
+
+    // Toggling the checkbox must not clobber a folder path that was already saved separately (or vice
+    // versa) — Save() always writes a full AppSettingsData, so both fields have to round-trip together.
+    [Fact]
+    public void TogglingUseTeamColors_DoesNotClobberAnAlreadySavedFolderPath()
+    {
+        string replayFolder = Path.Combine(_tempRoot, "ValidReplayFolder");
+        Directory.CreateDirectory(Path.Combine(replayFolder, "Accounts"));
+        SettingsPageViewModel vm = new(_settingsRepository) { BaseReplayFolderPath = replayFolder };
+        vm.SaveCommand.Execute(null);
+
+        vm.UseTeamColors = true;
+
+        Assert.Equal(replayFolder, _settingsRepository.Load().BaseReplayFolderPath);
+    }
+
     public void Dispose()
     {
         try

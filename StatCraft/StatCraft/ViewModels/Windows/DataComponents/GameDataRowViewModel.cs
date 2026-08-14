@@ -81,7 +81,8 @@ namespace StatCraft.ViewModels
         private readonly GameDataRepository _repository;
 
         internal GameDataRowViewModel(GameData game, GameDataRepository repository, string profileLabel,
-            Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree, ILogger logger, ReplayDataExtractor replayDataExtractor)
+            Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree, ILogger logger, ReplayDataExtractor replayDataExtractor,
+            bool useTeamColors = false)
         {
             _game = game;
             _repository = repository;
@@ -112,12 +113,15 @@ namespace StatCraft.ViewModels
             Matchups selfSideMatchups = MatchupResolver.FromOpponents(replay.Opponents);
             Matchups opponentSideMatchups = MatchupResolver.FromOpponents([replay.Player, .. replay.Allies]);
 
-            SelfTracker = new PlayerBuildTrackerViewModel(replay.Player, repository, getBuildTree(replay.Player.Race.AsRace(), selfSideMatchups), logger);
+            SelfTracker = new PlayerBuildTrackerViewModel(replay.Player, repository, getBuildTree(replay.Player.Race.AsRace(), selfSideMatchups), logger,
+                useTeamColors: useTeamColors);
 
             foreach (GamePlayer ally in replay.Allies)
-                OtherPlayers.Add(new PlayerBuildTrackerViewModel(ally, repository, getBuildTree(ally.Race.AsRace(), selfSideMatchups), logger, replayDataExtractor, replay.ReplayPath));
+                OtherPlayers.Add(new PlayerBuildTrackerViewModel(ally, repository, getBuildTree(ally.Race.AsRace(), selfSideMatchups), logger,
+                    replayDataExtractor, replay.ReplayPath, useTeamColors, isAlly: true));
             foreach (GamePlayer opponent in replay.Opponents)
-                OtherPlayers.Add(new PlayerBuildTrackerViewModel(opponent, repository, getBuildTree(opponent.Race.AsRace(), opponentSideMatchups), logger, replayDataExtractor, replay.ReplayPath));
+                OtherPlayers.Add(new PlayerBuildTrackerViewModel(opponent, repository, getBuildTree(opponent.Race.AsRace(), opponentSideMatchups), logger,
+                    replayDataExtractor, replay.ReplayPath, useTeamColors, isAlly: false));
         }
 
         partial void OnNotesChanged(string value)
@@ -153,6 +157,15 @@ namespace StatCraft.ViewModels
         // Called once the post-game MMR poll resolves, since the underlying GamePlayer is mutated
         // directly rather than replaced and so raises no change notification of its own.
         public void RefreshMmrChange() => OnPropertyChanged(nameof(MmrText));
+
+        // Called by DataPageViewModel when the "Use Team Colors" setting changes, so already-visible
+        // rows' tabs update immediately instead of only the next time a row is rebuilt. SelfTracker is
+        // skipped — nothing reads its NameColor (no tab of its own).
+        public void RefreshTeamColors(bool useTeamColors)
+        {
+            foreach (PlayerBuildTrackerViewModel other in OtherPlayers)
+                other.SetUseTeamColors(useTeamColors);
+        }
 
         private static List<ColoredCharacter> BuildMatchupCharacters(ParsedReplayData replay)
         {
