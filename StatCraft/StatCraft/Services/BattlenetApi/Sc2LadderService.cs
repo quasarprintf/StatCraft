@@ -116,10 +116,10 @@ namespace StatCraft.Services.BattlenetApi
         {
             switch (favoriteRace?.ToLowerInvariant())
             {
-                case "zerg": return LadderRace.Z;
-                case "terran": return LadderRace.T;
-                case "protoss": return LadderRace.P;
-                case "random": return LadderRace.R;
+                case "zerg": return LadderRace.Zerg;
+                case "terran": return LadderRace.Terran;
+                case "protoss": return LadderRace.Protoss;
+                case "random": return LadderRace.Random;
                 case null or "": return null;
                 default:
                     // Logged rather than silently dropped: an unrecognised value here means Blizzard uses

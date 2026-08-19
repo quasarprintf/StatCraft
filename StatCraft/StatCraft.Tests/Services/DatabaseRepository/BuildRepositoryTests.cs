@@ -62,11 +62,11 @@ public class BuildRepositoryTests : IDisposable
     [Fact]
     public void GetBuildsForMatchup_FiltersByOpponentRaceFlag()
     {
-        BuildNode node = new BuildNode { Name = "Only vs Z", PlayerRace = Race.T, Matchups = Matchups.VsZ };
+        BuildNode node = new BuildNode { Name = "Only vs Zerg", PlayerRace = Race.T, Matchups = Matchups.VsZ };
         _repository.InsertBuild(node, null, 0);
 
         BuildNode matched = Assert.Single(_repository.GetBuildsForMatchup(Race.T, Matchups.VsZ));
-        Assert.Equal("Only vs Z", matched.Name);
+        Assert.Equal("Only vs Zerg", matched.Name);
 
         Assert.Empty(_repository.GetBuildsForMatchup(Race.T, Matchups.VsT));
     }
@@ -74,11 +74,11 @@ public class BuildRepositoryTests : IDisposable
     [Fact]
     public void GetBuildsForMatchup_CombinedFlags_MatchesAnyOfThem()
     {
-        BuildNode node = new BuildNode { Name = "Only vs Z", PlayerRace = Race.T, Matchups = Matchups.VsZ };
+        BuildNode node = new BuildNode { Name = "Only vs Zerg", PlayerRace = Race.T, Matchups = Matchups.VsZ };
         _repository.InsertBuild(node, null, 0);
 
         BuildNode matched = Assert.Single(_repository.GetBuildsForMatchup(Race.T, Matchups.VsZ | Matchups.VsP));
-        Assert.Equal("Only vs Z", matched.Name);
+        Assert.Equal("Only vs Zerg", matched.Name);
 
         Assert.Empty(_repository.GetBuildsForMatchup(Race.T, Matchups.VsT | Matchups.VsP));
     }
@@ -86,7 +86,7 @@ public class BuildRepositoryTests : IDisposable
     [Fact]
     public void GetBuildsForPlayerRace_ReturnsBuildRegardlessOfMatchupFlags()
     {
-        BuildNode node = new BuildNode { Name = "Only vs Z", PlayerRace = Race.T, Matchups = Matchups.VsZ };
+        BuildNode node = new BuildNode { Name = "Only vs Zerg", PlayerRace = Race.T, Matchups = Matchups.VsZ };
         _repository.InsertBuild(node, null, 0);
 
         BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.T));

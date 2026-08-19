@@ -19,9 +19,9 @@ public class SessionMmrTrackerTests
 
         // Given out of enum order (Z, T, P, R) on purpose, to prove SetBaseline sorts rather than just
         // reflecting dictionary enumeration order.
-        tracker.SetBaseline(new Dictionary<LadderRace, long> { [LadderRace.R] = 3900, [LadderRace.P] = 5239, [LadderRace.Z] = 4100 });
+        tracker.SetBaseline(new Dictionary<LadderRace, long> { [LadderRace.Random] = 3900, [LadderRace.Protoss] = 5239, [LadderRace.Zerg] = 4100 });
 
-        Assert.Equal([LadderRace.Z, LadderRace.P, LadderRace.R], tracker.CurrentMmrs.Select(m => m.Race));
+        Assert.Equal([LadderRace.Zerg, LadderRace.Protoss, LadderRace.Random], tracker.CurrentMmrs.Select(m => m.Race));
     }
 
     [Fact]
@@ -29,7 +29,7 @@ public class SessionMmrTrackerTests
     {
         SessionMmrTracker tracker = CreateTracker();
 
-        tracker.SetBaseline(new Dictionary<LadderRace, long> { [LadderRace.P] = 5239 });
+        tracker.SetBaseline(new Dictionary<LadderRace, long> { [LadderRace.Protoss] = 5239 });
 
         RaceMmrViewModel entry = Assert.Single(tracker.CurrentMmrs);
         Assert.Equal(5239, entry.Mmr);
@@ -45,11 +45,11 @@ public class SessionMmrTrackerTests
     {
         SessionMmrTracker tracker = CreateTracker();
 
-        tracker.SetBaseline(new Dictionary<LadderRace, long> { [LadderRace.P] = 5000, [LadderRace.Z] = 4000 });
-        tracker.SetBaseline(new Dictionary<LadderRace, long> { [LadderRace.T] = 4500 });
+        tracker.SetBaseline(new Dictionary<LadderRace, long> { [LadderRace.Protoss] = 5000, [LadderRace.Zerg] = 4000 });
+        tracker.SetBaseline(new Dictionary<LadderRace, long> { [LadderRace.Terran] = 4500 });
 
         RaceMmrViewModel entry = Assert.Single(tracker.CurrentMmrs);
-        Assert.Equal(LadderRace.T, entry.Race);
+        Assert.Equal(LadderRace.Terran, entry.Race);
     }
 
     [Fact]
@@ -57,8 +57,8 @@ public class SessionMmrTrackerTests
     {
         SessionMmrTracker tracker = CreateTracker();
 
-        tracker.SeedBaselineIfAbsent(LadderRace.Z, 4100);
-        tracker.UpdateCurrent(LadderRace.Z, 4124);
+        tracker.SeedBaselineIfAbsent(LadderRace.Zerg, 4100);
+        tracker.UpdateCurrent(LadderRace.Zerg, 4124);
 
         RaceMmrViewModel entry = Assert.Single(tracker.CurrentMmrs);
         Assert.Equal(4100, entry.SessionStartMmr);
@@ -72,10 +72,10 @@ public class SessionMmrTrackerTests
     public void SeedBaselineIfAbsent_BaselineAlreadySet_DoesNotOverwriteIt()
     {
         SessionMmrTracker tracker = CreateTracker();
-        tracker.SetBaseline(new Dictionary<LadderRace, long> { [LadderRace.P] = 5239 });
+        tracker.SetBaseline(new Dictionary<LadderRace, long> { [LadderRace.Protoss] = 5239 });
 
-        tracker.SeedBaselineIfAbsent(LadderRace.P, 4900);
-        tracker.UpdateCurrent(LadderRace.P, 5263);
+        tracker.SeedBaselineIfAbsent(LadderRace.Protoss, 4900);
+        tracker.UpdateCurrent(LadderRace.Protoss, 5263);
 
         RaceMmrViewModel entry = Assert.Single(tracker.CurrentMmrs);
         Assert.Equal(5239, entry.SessionStartMmr);
@@ -86,7 +86,7 @@ public class SessionMmrTrackerTests
     {
         SessionMmrTracker tracker = CreateTracker();
 
-        tracker.UpdateCurrent(LadderRace.P, 5239);
+        tracker.UpdateCurrent(LadderRace.Protoss, 5239);
 
         RaceMmrViewModel entry = Assert.Single(tracker.CurrentMmrs);
         Assert.Null(entry.SessionStartMmr);
@@ -98,8 +98,8 @@ public class SessionMmrTrackerTests
     {
         SessionMmrTracker tracker = CreateTracker();
 
-        tracker.UpdateCurrent(LadderRace.P, 5239);
-        tracker.UpdateCurrent(LadderRace.P, 5263);
+        tracker.UpdateCurrent(LadderRace.Protoss, 5239);
+        tracker.UpdateCurrent(LadderRace.Protoss, 5263);
 
         RaceMmrViewModel entry = Assert.Single(tracker.CurrentMmrs);
         Assert.Equal(5263, entry.Mmr);
@@ -111,12 +111,12 @@ public class SessionMmrTrackerTests
         SessionMmrTracker tracker = CreateTracker();
 
         // Applied out of enum order (Z, T, P, R) on purpose.
-        tracker.UpdateCurrent(LadderRace.Z, 4100);
-        tracker.UpdateCurrent(LadderRace.T, 4500);
-        tracker.UpdateCurrent(LadderRace.P, 5239);
-        tracker.UpdateCurrent(LadderRace.R, 3900);
+        tracker.UpdateCurrent(LadderRace.Zerg, 4100);
+        tracker.UpdateCurrent(LadderRace.Terran, 4500);
+        tracker.UpdateCurrent(LadderRace.Protoss, 5239);
+        tracker.UpdateCurrent(LadderRace.Random, 3900);
 
-        Assert.Equal([LadderRace.Z, LadderRace.T, LadderRace.P, LadderRace.R], tracker.CurrentMmrs.Select(m => m.Race));
+        Assert.Equal([LadderRace.Zerg, LadderRace.Terran, LadderRace.Protoss, LadderRace.Random], tracker.CurrentMmrs.Select(m => m.Race));
     }
 
     // Updating one race's rating must not disturb another's already-established baseline.
@@ -124,11 +124,11 @@ public class SessionMmrTrackerTests
     public void UpdateCurrent_DoesNotAffectOtherRacesBaselines()
     {
         SessionMmrTracker tracker = CreateTracker();
-        tracker.SetBaseline(new Dictionary<LadderRace, long> { [LadderRace.P] = 5239, [LadderRace.Z] = 4100 });
+        tracker.SetBaseline(new Dictionary<LadderRace, long> { [LadderRace.Protoss] = 5239, [LadderRace.Zerg] = 4100 });
 
-        tracker.UpdateCurrent(LadderRace.P, 5263);
+        tracker.UpdateCurrent(LadderRace.Protoss, 5263);
 
-        RaceMmrViewModel zergEntry = tracker.CurrentMmrs.Single(m => m.Race == LadderRace.Z);
+        RaceMmrViewModel zergEntry = tracker.CurrentMmrs.Single(m => m.Race == LadderRace.Zerg);
         Assert.Equal(4100, zergEntry.SessionStartMmr);
     }
 
@@ -136,7 +136,7 @@ public class SessionMmrTrackerTests
     public void Reset_ClearsCurrentMmrsAndBaseline()
     {
         SessionMmrTracker tracker = CreateTracker();
-        tracker.SetBaseline(new Dictionary<LadderRace, long> { [LadderRace.P] = 5239 });
+        tracker.SetBaseline(new Dictionary<LadderRace, long> { [LadderRace.Protoss] = 5239 });
 
         tracker.Reset();
 
@@ -144,7 +144,7 @@ public class SessionMmrTrackerTests
 
         // Proves the baseline itself was cleared too, not just the display list — otherwise this would
         // pick up the stale 5239 baseline from before Reset.
-        tracker.UpdateCurrent(LadderRace.P, 4000);
+        tracker.UpdateCurrent(LadderRace.Protoss, 4000);
         Assert.Null(Assert.Single(tracker.CurrentMmrs).SessionStartMmr);
     }
 
@@ -170,7 +170,7 @@ public class SessionMmrTrackerTests
         IReadOnlyDictionary<LadderRace, long>? byRace = await tracker.FetchCurrentMmrs(Profile, CancellationToken.None);
 
         Assert.NotNull(byRace);
-        Assert.Equal(5239, byRace[LadderRace.P]);
+        Assert.Equal(5239, byRace[LadderRace.Protoss]);
     }
 
     [Fact]

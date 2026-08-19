@@ -43,9 +43,9 @@ namespace StatCraft.ViewModels
         // Random has no race colour of its own, so it stays neutral.
         private static IBrush RaceColor(LadderRace race) => race switch
         {
-            LadderRace.P => Styles.Colors.ProtossGreen,
-            LadderRace.T => Styles.Colors.TerranBlue,
-            LadderRace.Z => Styles.Colors.ZergRed,
+            LadderRace.Protoss => Styles.Colors.ProtossGreen,
+            LadderRace.Terran => Styles.Colors.TerranBlue,
+            LadderRace.Zerg => Styles.Colors.ZergRed,
             _ => Brushes.Gray,
         };
     }

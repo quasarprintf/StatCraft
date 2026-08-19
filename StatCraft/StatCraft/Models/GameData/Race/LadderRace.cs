@@ -5,19 +5,19 @@ namespace StatCraft.Models.GameData.Race
     // replay records the race that actually spawned, with Random tracked as a flag alongside it. Folding
     // Random into Race would turn the Builds tab's per-race buckets and the 3x3 matchup grid into
     // something they aren't.
-    public enum LadderRace { Z, T, P, R }
+    public enum LadderRace { Zerg, Terran, Protoss, Random }
 
     public static class LadderRaceExtensions
     {
         // Which ladder a game was actually played on. Queueing as Random earns Random MMR regardless of
         // which race the player then spawned as, so the flag wins over the replay's recorded race.
         public static LadderRace? FromPlayer(char spawnedRace, bool random) => random
-            ? LadderRace.R
+            ? LadderRace.Random
             : spawnedRace switch
             {
-                'Z' => LadderRace.Z,
-                'T' => LadderRace.T,
-                'P' => LadderRace.P,
+                'Z' => LadderRace.Zerg,
+                'T' => LadderRace.Terran,
+                'P' => LadderRace.Protoss,
                 _ => null,
             };
     }

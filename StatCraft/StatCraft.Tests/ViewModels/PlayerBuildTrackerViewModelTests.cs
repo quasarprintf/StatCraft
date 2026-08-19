@@ -248,7 +248,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         _buildRepository.InsertBuild(x, a.Id, 1);
         BuildNode y = new() { Name = "Y", PlayerRace = Race.Z };
         _buildRepository.InsertBuild(y, x.Id, 0);
-        BuildNode z = new() { Name = "Z", PlayerRace = Race.Z };
+        BuildNode z = new() { Name = "Zerg", PlayerRace = Race.Z };
         _buildRepository.InsertBuild(z, x.Id, 1);
 
         GameData game = CreateGame();
@@ -263,9 +263,9 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
 
         tracker.BuildSlots[0].SelectedBuildNode = loadedB.Children.Single(n => n.Name == "C");
         tracker.BuildSlots[1].SelectedBuildNode = loadedX.Children.Single(n => n.Name == "Y");
-        tracker.BuildSlots[2].SelectedBuildNode = loadedX.Children.Single(n => n.Name == "Z");
+        tracker.BuildSlots[2].SelectedBuildNode = loadedX.Children.Single(n => n.Name == "Zerg");
 
-        Assert.Equal("A > B > C, X > Y, Z", tracker.SelectedBuildsSummary);
+        Assert.Equal("A > B > C, X > Y, Zerg", tracker.SelectedBuildsSummary);
     }
 
     [Fact]
