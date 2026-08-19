@@ -179,7 +179,7 @@ namespace StatCraft.ViewModels
             List<CheckboxFilterOptionViewModel<(Race, Race)>> options = new();
             foreach (Race opponentRace in Enum.GetValues<Race>())
                 foreach (Race playerRace in Enum.GetValues<Race>())
-                    options.Add(new CheckboxFilterOptionViewModel<(Race, Race)>((playerRace, opponentRace), $"{playerRace}v{opponentRace}"));
+                    options.Add(new CheckboxFilterOptionViewModel<(Race, Race)>((playerRace, opponentRace), $"{playerRace.Display()}v{opponentRace.Display()}"));
             return options;
         }
 
@@ -202,7 +202,7 @@ namespace StatCraft.ViewModels
 
         private static void AddBuildOption(BuildNode node, int depth, List<CheckboxFilterOptionViewModel<BuildNode>> options)
         {
-            string label = depth == 0 ? $"{node.PlayerRace} — {node.Name}" : new string(' ', depth * 2) + node.Name;
+            string label = depth == 0 ? $"{node.PlayerRace.Display()} — {node.Name}" : new string(' ', depth * 2) + node.Name;
             options.Add(new CheckboxFilterOptionViewModel<BuildNode>(node, label));
             foreach (BuildNode child in node.Children)
                 AddBuildOption(child, depth + 1, options);
