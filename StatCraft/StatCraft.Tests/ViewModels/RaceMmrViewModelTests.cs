@@ -14,7 +14,7 @@ public class RaceMmrViewModelTests
 
         Assert.Null(vm.SessionChange);
         ColoredCharacter only = Assert.Single(vm.Characters);
-        Assert.Equal("Protoss: 5239", only.Text);
+        Assert.Equal("P: 5239", only.Text);
     }
 
     [Fact]
@@ -33,7 +33,7 @@ public class RaceMmrViewModelTests
 
         Assert.Equal(24, vm.SessionChange);
         Assert.Equal(2, vm.Characters.Count);
-        Assert.Equal("Protoss: 5263", vm.Characters[0].Text);
+        Assert.Equal("P: 5263", vm.Characters[0].Text);
         Assert.Equal("(+24)", vm.Characters[1].Text);
         Assert.Equal(Colors.WinGreen, vm.Characters[1].Color);
     }

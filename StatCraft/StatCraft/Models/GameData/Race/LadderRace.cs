@@ -11,14 +11,38 @@ namespace StatCraft.Models.GameData.Race
     {
         // Which ladder a game was actually played on. Queueing as Random earns Random MMR regardless of
         // which race the player then spawned as, so the flag wins over the replay's recorded race.
-        public static LadderRace? FromPlayer(char spawnedRace, bool random) => random
-            ? LadderRace.Random
-            : spawnedRace switch
+        public static LadderRace? FromPlayer(char spawnedRace, bool random)
+        {
+            if (random)
+                return LadderRace.Random;
+            switch (spawnedRace)
             {
-                'Z' => LadderRace.Zerg,
-                'T' => LadderRace.Terran,
-                'P' => LadderRace.Protoss,
-                _ => null,
+                case 'Z':
+                    return LadderRace.Zerg;
+                case 'T':
+                    return LadderRace.Terran;
+                case 'P':
+                    return LadderRace.Protoss;
+                default:
+                    return null;
             };
+        }
+
+        public static string Display(this LadderRace race)
+        {
+            switch (race)
+            {
+                case LadderRace.Zerg:
+                    return "Z";
+                case LadderRace.Terran:
+                    return "T";
+                case LadderRace.Protoss:
+                    return "P";
+                case LadderRace.Random:
+                    return "R";
+                default:
+                    return " ";
+            }
+        }
     }
 }

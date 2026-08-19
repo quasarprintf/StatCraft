@@ -30,7 +30,7 @@ namespace StatCraft.ViewModels
             Mmr = mmr;
             SessionStartMmr = sessionStartMmr;
 
-            List<ColoredCharacter> characters = [new ColoredCharacter($"{race}: {mmr}", RaceColor(race))];
+            List<ColoredCharacter> characters = [new ColoredCharacter($"{race.Display()}: {mmr}", RaceColor(race))];
 
             // Suppressed while the rating hasn't actually moved — "(+0)" on every ladder for the whole
             // start of a session is noise, not information.
