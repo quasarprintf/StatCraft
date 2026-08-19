@@ -69,9 +69,9 @@ public class MatchupResolverTests
     }
 
     [Theory]
-    [InlineData('Z', Race.Z)]
-    [InlineData('T', Race.T)]
-    [InlineData('P', Race.P)]
+    [InlineData('Z', Race.Zerg)]
+    [InlineData('T', Race.Terran)]
+    [InlineData('P', Race.Protoss)]
     public void AsRace_KnownChar_ReturnsMatchingRace(char raw, Race expected)
     {
         Race? result = raw.AsRace();

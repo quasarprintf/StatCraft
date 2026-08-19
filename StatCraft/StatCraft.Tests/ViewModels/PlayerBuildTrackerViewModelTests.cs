@@ -52,7 +52,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void RefreshAttributeEditors_AfterTemplateDefaultChanges_DoesNotChangeAlreadyLockedInValue()
     {
-        BuildNode build = new() { Name = "4 Gate", PlayerRace = Race.Z };
+        BuildNode build = new() { Name = "4 Gate", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(build, null, 0);
         AttributeValue attr = new(new AttributeDefinition { Name = "Supply", Type = AttributeType.Numeric }) { NumericValue = 10 };
         _buildRepository.InsertAttribute(attr, build.Id, 0);
@@ -60,7 +60,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
-        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
         PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
 
         // Select the build — this locks in the attribute's current default (10) as this player's own value.
@@ -73,7 +73,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         attr.NumericValue = 20;
         _buildRepository.UpdateAttribute(attr);
         tree.Clear();
-        foreach (BuildNode node in _buildRepository.GetBuildsForPlayerRace(Race.Z))
+        foreach (BuildNode node in _buildRepository.GetBuildsForPlayerRace(Race.Zerg))
             tree.Add(node);
 
         tracker.RefreshAttributeEditors();
@@ -84,7 +84,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void SelectingABuild_ForTheFirstTime_UsesTemplatesCurrentDefault()
     {
-        BuildNode build = new() { Name = "4 Gate", PlayerRace = Race.Z };
+        BuildNode build = new() { Name = "4 Gate", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(build, null, 0);
         AttributeValue attr = new(new AttributeDefinition { Name = "Supply", Type = AttributeType.Numeric }) { NumericValue = 10 };
         _buildRepository.InsertAttribute(attr, build.Id, 0);
@@ -96,7 +96,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
-        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
         PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
 
         tracker.BuildSlots[0].SelectedBuildNode = tree.Single();
@@ -113,7 +113,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
-        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
         PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
 
         BuildNode offTreeBuild = new() { Id = 9999, Name = "Not In Tree" };
@@ -126,22 +126,22 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void AttributeGroups_MultiNodePath_OneGroupPerAttributeOwningNodeAtIncreasingDepth()
     {
-        BuildNode root = new() { Name = "Cannon Rush", PlayerRace = Race.Z };
+        BuildNode root = new() { Name = "Cannon Rush", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(root, null, 0);
         _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "Chrono At Start", Type = AttributeType.Numeric }), root.Id, 0);
 
-        BuildNode child = new() { Name = "Low Ground Start", PlayerRace = Race.Z };
+        BuildNode child = new() { Name = "Low Ground Start", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(child, root.Id, 0);
         _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "Contested Ramp", Type = AttributeType.Bool }), child.Id, 0);
 
-        BuildNode grandchild = new() { Name = "Proxy Gate", PlayerRace = Race.Z };
+        BuildNode grandchild = new() { Name = "Proxy Gate", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(grandchild, child.Id, 0);
         _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "Gate Count", Type = AttributeType.Numeric }), grandchild.Id, 0);
 
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
-        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
         PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
 
         BuildNode loadedRoot = tree.Single();
@@ -158,21 +158,21 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void AttributeGroups_NodeWithNoAttributes_ProducesNoGroupForThatNode()
     {
-        BuildNode root = new() { Name = "Cannon Rush", PlayerRace = Race.Z };
+        BuildNode root = new() { Name = "Cannon Rush", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(root, null, 0);
         _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "Chrono At Start", Type = AttributeType.Numeric }), root.Id, 0);
 
-        BuildNode childWithNoAttributes = new() { Name = "Proxy Forge", PlayerRace = Race.Z };
+        BuildNode childWithNoAttributes = new() { Name = "Proxy Forge", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(childWithNoAttributes, root.Id, 0);
 
-        BuildNode grandchild = new() { Name = "Low Ground Start", PlayerRace = Race.Z };
+        BuildNode grandchild = new() { Name = "Low Ground Start", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(grandchild, childWithNoAttributes.Id, 0);
         _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "Contested Ramp", Type = AttributeType.Bool }), grandchild.Id, 0);
 
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
-        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
         PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
 
         BuildNode loadedRoot = tree.Single();
@@ -186,20 +186,20 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void AttributeGroups_TwoSlotsShareAnAncestor_ProducesOnlyOneGroupForIt()
     {
-        BuildNode parent = new() { Name = "A", PlayerRace = Race.Z };
+        BuildNode parent = new() { Name = "A", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(parent, null, 0);
         _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "SharedAttr", Type = AttributeType.Numeric }), parent.Id, 0);
-        BuildNode childB = new() { Name = "B", PlayerRace = Race.Z };
+        BuildNode childB = new() { Name = "B", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(childB, parent.Id, 0);
         _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "BAttr", Type = AttributeType.Numeric }), childB.Id, 0);
-        BuildNode childC = new() { Name = "C", PlayerRace = Race.Z };
+        BuildNode childC = new() { Name = "C", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(childC, parent.Id, 1);
         _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "CAttr", Type = AttributeType.Numeric }), childC.Id, 0);
 
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
-        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
         PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
 
         BuildNode loadedParent = tree.Single();
@@ -212,17 +212,17 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void SelectedBuildsSummary_TwoBuildsShareCommonAncestor_CompactsTheSharedPrefix()
     {
-        BuildNode parent = new() { Name = "A", PlayerRace = Race.Z };
+        BuildNode parent = new() { Name = "A", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(parent, null, 0);
-        BuildNode childB = new() { Name = "B", PlayerRace = Race.Z };
+        BuildNode childB = new() { Name = "B", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(childB, parent.Id, 0);
-        BuildNode childC = new() { Name = "C", PlayerRace = Race.Z };
+        BuildNode childC = new() { Name = "C", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(childC, parent.Id, 1);
 
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
-        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
         PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
 
         BuildNode loadedParent = tree.Single();
@@ -238,23 +238,23 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void SelectedBuildsSummary_BranchesAtMultipleDepths_CompactsEachSharedPrefix()
     {
-        BuildNode a = new() { Name = "A", PlayerRace = Race.Z };
+        BuildNode a = new() { Name = "A", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(a, null, 0);
-        BuildNode b = new() { Name = "B", PlayerRace = Race.Z };
+        BuildNode b = new() { Name = "B", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(b, a.Id, 0);
-        BuildNode c = new() { Name = "C", PlayerRace = Race.Z };
+        BuildNode c = new() { Name = "C", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(c, b.Id, 0);
-        BuildNode x = new() { Name = "X", PlayerRace = Race.Z };
+        BuildNode x = new() { Name = "X", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(x, a.Id, 1);
-        BuildNode y = new() { Name = "Y", PlayerRace = Race.Z };
+        BuildNode y = new() { Name = "Y", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(y, x.Id, 0);
-        BuildNode z = new() { Name = "Zerg", PlayerRace = Race.Z };
+        BuildNode z = new() { Name = "Zerg", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(z, x.Id, 1);
 
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
-        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
         PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
 
         BuildNode loadedA = tree.Single();
@@ -271,15 +271,15 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void SelectedBuildsSummary_BuildsWithNoCommonAncestor_ShowsBothFullPaths()
     {
-        BuildNode rootA = new() { Name = "A", PlayerRace = Race.Z };
+        BuildNode rootA = new() { Name = "A", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(rootA, null, 0);
-        BuildNode rootD = new() { Name = "D", PlayerRace = Race.Z };
+        BuildNode rootD = new() { Name = "D", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(rootD, null, 1);
 
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
-        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Z));
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
         PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
 
         tracker.BuildSlots[0].SelectedBuildNode = tree.Single(n => n.Name == "A");

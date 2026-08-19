@@ -13,6 +13,7 @@ namespace StatCraft.ViewModels
 {
     public partial class RaceOption(Race value) : ObservableObject
     {
+        public string Display => Value.Display();
         public Race Value { get; } = value;
 
         [ObservableProperty] private bool _isSelected;
@@ -40,7 +41,7 @@ namespace StatCraft.ViewModels
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(Builds))]
-        private Race _playerRace = Race.Z;
+        private Race _playerRace = Race.Zerg;
 
         [ObservableProperty] private BuildNode? _selectedBuild;
 
@@ -111,9 +112,9 @@ namespace StatCraft.ViewModels
 
         private static Matchups ToMatchupFlag(Race race) => race switch
         {
-            Race.Z => Matchups.VsZ,
-            Race.T => Matchups.VsT,
-            Race.P => Matchups.VsP,
+            Race.Zerg => Matchups.VsZ,
+            Race.Terran => Matchups.VsT,
+            Race.Protoss => Matchups.VsP,
             _ => Matchups.None,
         };
 

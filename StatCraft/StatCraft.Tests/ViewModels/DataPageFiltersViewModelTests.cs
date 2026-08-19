@@ -142,7 +142,7 @@ public class DataPageFiltersViewModelTests : IDisposable
         CheckboxFilterOptionViewModel<GameOutcome> winOption = _filters.OutcomeSlot.Options.Single(o => o.Label == "Win");
         winOption.IsChecked = true;
 
-        CheckboxFilterOptionViewModel<(Race, Race)> tvzOption = _filters.MatchupSlot.Options.Single(o => o.Value == (Race.T, Race.Z));
+        CheckboxFilterOptionViewModel<(Race, Race)> tvzOption = _filters.MatchupSlot.Options.Single(o => o.Value == (Race.Terran, Race.Zerg));
         tvzOption.IsChecked = true;
 
         GameFilterCriteria criteria = _filters.BuildCriteria();
@@ -151,15 +151,15 @@ public class DataPageFiltersViewModelTests : IDisposable
         Assert.Equal(1000, criteria.MinOpponentMmr);
         Assert.Equal(2000, criteria.MaxOpponentMmr);
         Assert.True(criteria.Outcomes!.SetEquals([GameOutcome.Win]));
-        Assert.True(criteria.MatchupPairs!.SetEquals([(Race.T, Race.Z)]));
+        Assert.True(criteria.MatchupPairs!.SetEquals([(Race.Terran, Race.Zerg)]));
     }
 
     [Fact]
     public void BuildCriteria_BuildFilter_ExpandsCheckedBuildToItsSubtree()
     {
-        BuildNode parent = new() { Name = "Parent", PlayerRace = Race.T };
+        BuildNode parent = new() { Name = "Parent", PlayerRace = Race.Terran };
         _buildRepository.InsertBuild(parent, null, 0);
-        BuildNode child = new() { Name = "Child", PlayerRace = Race.T };
+        BuildNode child = new() { Name = "Child", PlayerRace = Race.Terran };
         _buildRepository.InsertBuild(child, parent.Id, 0);
 
         DataPageFiltersViewModel filters = new(_buildRepository);

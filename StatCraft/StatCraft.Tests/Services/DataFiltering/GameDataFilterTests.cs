@@ -82,7 +82,7 @@ public class GameDataFilterTests
         // Only TvP is checked — should still match because one of the two opponents is Protoss.
         GameFilterCriteria criteria = GameFilterCriteria.Empty with
         {
-            MatchupPairs = new HashSet<(Race, Race)> { (Race.T, Race.P) },
+            MatchupPairs = new HashSet<(Race, Race)> { (Race.Terran, Race.Protoss) },
         };
         Assert.True(GameDataFilter.Matches(game, criteria));
     }
@@ -96,7 +96,7 @@ public class GameDataFilterTests
 
         GameFilterCriteria criteria = GameFilterCriteria.Empty with
         {
-            MatchupPairs = new HashSet<(Race, Race)> { (Race.T, Race.P) },
+            MatchupPairs = new HashSet<(Race, Race)> { (Race.Terran, Race.Protoss) },
         };
         Assert.False(GameDataFilter.Matches(game, criteria));
     }

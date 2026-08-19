@@ -20,9 +20,9 @@ namespace StatCraft.Services.DataParsing
 
         public static Race? AsRace(this char raw) => raw switch
         {
-            'Z' => Race.Z,
-            'T' => Race.T,
-            'P' => Race.P,
+            'Z' => Race.Zerg,
+            'T' => Race.Terran,
+            'P' => Race.Protoss,
             _ => null
         };
         private static Matchups ParseMatchup(char race) => race switch

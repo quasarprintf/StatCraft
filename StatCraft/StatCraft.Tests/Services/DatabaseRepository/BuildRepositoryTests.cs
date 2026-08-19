@@ -27,23 +27,23 @@ public class BuildRepositoryTests : IDisposable
     [Fact]
     public void InsertBuild_ThenGetBuildsForPlayerRace_ReturnsRootBuild()
     {
-        BuildNode node = new BuildNode { Name = "4 Gate", PlayerRace = Race.P, Matchups = Matchups.VsP };
+        BuildNode node = new BuildNode { Name = "4 Gate", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
         _repository.InsertBuild(node, null, 0);
 
-        BuildNode build = Assert.Single(_repository.GetBuildsForPlayerRace(Race.P));
+        BuildNode build = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss));
         Assert.Equal("4 Gate", build.Name);
     }
 
     [Fact]
     public void InsertBuild_ChildBuild_NestsUnderParent()
     {
-        BuildNode parent = new BuildNode { Name = "Parent", PlayerRace = Race.T, Matchups = Matchups.VsT };
+        BuildNode parent = new BuildNode { Name = "Parent", PlayerRace = Race.Terran, Matchups = Matchups.VsT };
         _repository.InsertBuild(parent, null, 0);
 
-        BuildNode child = new BuildNode { Name = "Child", PlayerRace = Race.T, Matchups = Matchups.VsT };
+        BuildNode child = new BuildNode { Name = "Child", PlayerRace = Race.Terran, Matchups = Matchups.VsT };
         _repository.InsertBuild(child, parent.Id, 0);
 
-        BuildNode loadedParent = Assert.Single(_repository.GetBuildsForPlayerRace(Race.T));
+        BuildNode loadedParent = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Terran));
         BuildNode loadedChild = Assert.Single(loadedParent.Children);
         Assert.Equal("Child", loadedChild.Name);
     }
@@ -51,45 +51,45 @@ public class BuildRepositoryTests : IDisposable
     [Fact]
     public void DeleteBuild_RemovesItFromPlayerRace()
     {
-        BuildNode node = new BuildNode { Name = "To Delete", PlayerRace = Race.Z, Matchups = Matchups.VsZ };
+        BuildNode node = new BuildNode { Name = "To Delete", PlayerRace = Race.Zerg, Matchups = Matchups.VsZ };
         _repository.InsertBuild(node, null, 0);
 
         _repository.DeleteBuild(node.Id);
 
-        Assert.Empty(_repository.GetBuildsForPlayerRace(Race.Z));
+        Assert.Empty(_repository.GetBuildsForPlayerRace(Race.Zerg));
     }
 
     [Fact]
     public void GetBuildsForMatchup_FiltersByOpponentRaceFlag()
     {
-        BuildNode node = new BuildNode { Name = "Only vs Zerg", PlayerRace = Race.T, Matchups = Matchups.VsZ };
+        BuildNode node = new BuildNode { Name = "Only vs Zerg", PlayerRace = Race.Terran, Matchups = Matchups.VsZ };
         _repository.InsertBuild(node, null, 0);
 
-        BuildNode matched = Assert.Single(_repository.GetBuildsForMatchup(Race.T, Matchups.VsZ));
+        BuildNode matched = Assert.Single(_repository.GetBuildsForMatchup(Race.Terran, Matchups.VsZ));
         Assert.Equal("Only vs Zerg", matched.Name);
 
-        Assert.Empty(_repository.GetBuildsForMatchup(Race.T, Matchups.VsT));
+        Assert.Empty(_repository.GetBuildsForMatchup(Race.Terran, Matchups.VsT));
     }
 
     [Fact]
     public void GetBuildsForMatchup_CombinedFlags_MatchesAnyOfThem()
     {
-        BuildNode node = new BuildNode { Name = "Only vs Zerg", PlayerRace = Race.T, Matchups = Matchups.VsZ };
+        BuildNode node = new BuildNode { Name = "Only vs Zerg", PlayerRace = Race.Terran, Matchups = Matchups.VsZ };
         _repository.InsertBuild(node, null, 0);
 
-        BuildNode matched = Assert.Single(_repository.GetBuildsForMatchup(Race.T, Matchups.VsZ | Matchups.VsP));
+        BuildNode matched = Assert.Single(_repository.GetBuildsForMatchup(Race.Terran, Matchups.VsZ | Matchups.VsP));
         Assert.Equal("Only vs Zerg", matched.Name);
 
-        Assert.Empty(_repository.GetBuildsForMatchup(Race.T, Matchups.VsT | Matchups.VsP));
+        Assert.Empty(_repository.GetBuildsForMatchup(Race.Terran, Matchups.VsT | Matchups.VsP));
     }
 
     [Fact]
     public void GetBuildsForPlayerRace_ReturnsBuildRegardlessOfMatchupFlags()
     {
-        BuildNode node = new BuildNode { Name = "Only vs Zerg", PlayerRace = Race.T, Matchups = Matchups.VsZ };
+        BuildNode node = new BuildNode { Name = "Only vs Zerg", PlayerRace = Race.Terran, Matchups = Matchups.VsZ };
         _repository.InsertBuild(node, null, 0);
 
-        BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.T));
+        BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Terran));
         Assert.Equal(Matchups.VsZ, loaded.Matchups);
     }
 
@@ -100,7 +100,7 @@ public class BuildRepositoryTests : IDisposable
     [InlineData(AttributeType.Values)]
     public void InsertAttribute_DefaultValueRoundTripsForEachType(AttributeType type)
     {
-        BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.P, Matchups = Matchups.VsP };
+        BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
         _repository.InsertBuild(node, null, 0);
 
         AttributeValue attr = new(new AttributeDefinition { Name = "Supply", Type = type });
@@ -114,7 +114,7 @@ public class BuildRepositoryTests : IDisposable
 
         _repository.InsertAttribute(attr, node.Id, 0);
 
-        BuildNode loadedNode = Assert.Single(_repository.GetBuildsForPlayerRace(Race.P));
+        BuildNode loadedNode = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss));
         AttributeValue loadedAttr = Assert.Single(loadedNode.Attributes);
 
         switch (type)
@@ -129,14 +129,14 @@ public class BuildRepositoryTests : IDisposable
     [Fact]
     public void InsertValueOption_ThenGetBuildsForPlayerRace_IncludesOption()
     {
-        BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.P, Matchups = Matchups.VsP };
+        BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
         _repository.InsertBuild(node, null, 0);
 
         AttributeValue attr = new(new AttributeDefinition { Name = "Opening", Type = AttributeType.Values });
         _repository.InsertAttribute(attr, node.Id, 0);
         _repository.InsertValueOption(attr.Definition.Id, "Zealot", 0);
 
-        BuildNode loadedNode = Assert.Single(_repository.GetBuildsForPlayerRace(Race.P));
+        BuildNode loadedNode = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss));
         AttributeValue loadedAttr = Assert.Single(loadedNode.Attributes);
         Assert.Equal(["Zealot"], loadedAttr.Definition.ValueOptions);
     }
@@ -147,7 +147,7 @@ public class BuildRepositoryTests : IDisposable
         int raisedCount = 0;
         _repository.BuildsChanged += () => raisedCount++;
 
-        _repository.InsertBuild(new BuildNode { Name = "Build", PlayerRace = Race.P, Matchups = Matchups.VsP }, null, 0);
+        _repository.InsertBuild(new BuildNode { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP }, null, 0);
 
         Assert.Equal(1, raisedCount);
     }
@@ -155,7 +155,7 @@ public class BuildRepositoryTests : IDisposable
     [Fact]
     public void DeleteBuild_RaisesBuildsChanged()
     {
-        BuildNode node = new BuildNode { Name = "To Delete", PlayerRace = Race.P, Matchups = Matchups.VsP };
+        BuildNode node = new BuildNode { Name = "To Delete", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
         _repository.InsertBuild(node, null, 0);
 
         int raisedCount = 0;
@@ -169,7 +169,7 @@ public class BuildRepositoryTests : IDisposable
     [Fact]
     public void UpdateAttribute_RaisesBuildsChanged()
     {
-        BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.P, Matchups = Matchups.VsP };
+        BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
         _repository.InsertBuild(node, null, 0);
         AttributeValue attr = new(new AttributeDefinition { Name = "Supply", Type = AttributeType.Numeric });
         _repository.InsertAttribute(attr, node.Id, 0);

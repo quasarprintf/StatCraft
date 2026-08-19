@@ -15,11 +15,11 @@
                 <TextBlock Text="Matchups" FontWeight="SemiBold" Margin="0,8,0,0"/>
                 <StackPanel Orientation="Horizontal" Spacing="4">
                     <Button Content="vs Z" Command="{Binding ToggleMatchupCommand}"
-                            CommandParameter="{x:Static race:Race.Z}" Classes.active="{Binding SelectedBuild.VsZ}"/>
+                            CommandParameter="{x:Static race:Race.Zerg}" Classes.active="{Binding SelectedBuild.VsZ}"/>
                     <Button Content="vs T" Command="{Binding ToggleMatchupCommand}"
-                            CommandParameter="{x:Static race:Race.T}" Classes.active="{Binding SelectedBuild.VsT}"/>
+                            CommandParameter="{x:Static race:Race.Terran}" Classes.active="{Binding SelectedBuild.VsT}"/>
                     <Button Content="vs P" Command="{Binding ToggleMatchupCommand}"
-                            CommandParameter="{x:Static race:Race.P}" Classes.active="{Binding SelectedBuild.VsP}"/>
+                            CommandParameter="{x:Static race:Race.Protoss}" Classes.active="{Binding SelectedBuild.VsP}"/>
                 </StackPanel>
                 <DockPanel Margin="0,8,0,0">
                     <TextBlock Text="Attributes" FontWeight="SemiBold" VerticalAlignment="Center"/>

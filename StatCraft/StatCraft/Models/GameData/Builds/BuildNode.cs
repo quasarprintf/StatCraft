@@ -15,7 +15,7 @@ namespace StatCraft.Models.GameData.Builds
         [ObservableProperty] private string _description = string.Empty;
         [ObservableProperty] private bool _isExpanded;
 
-        [ObservableProperty] private Race.Race _playerRace = Race.Race.Z;
+        [ObservableProperty] private Race.Race _playerRace = Race.Race.Zerg;
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(VsZ), nameof(VsT), nameof(VsP))]

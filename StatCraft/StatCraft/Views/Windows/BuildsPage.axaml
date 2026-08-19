@@ -18,7 +18,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:RaceOption">
-                            <Button Content="{Binding Value}"
+                            <Button Content="{Binding Display}"
                                     Command="{Binding $parent[ItemsControl].((vm:BuildsPageViewModel)DataContext).SelectPlayerRaceCommand}"
                                     CommandParameter="{Binding Value}"
                                     Classes.active="{Binding IsSelected}"/>
@@ -36,7 +36,7 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:RaceOption">
-                            <Button Content="{Binding Value}"
+                            <Button Content="{Binding Display}"
                                     Command="{Binding $parent[ItemsControl].((vm:BuildsPageViewModel)DataContext).SelectOpponentRaceExclusiveCommand}"
                                     CommandParameter="{Binding Value}"
                                     RightTapped="OnOpponentRaceRightTapped"

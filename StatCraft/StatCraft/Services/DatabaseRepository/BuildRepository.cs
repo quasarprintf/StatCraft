@@ -37,9 +37,9 @@ namespace StatCraft.Services.DatabaseRepository
 
         private static Matchups ToMatchupFlag(Race race) => race switch
         {
-            Race.Z => Matchups.VsZ,
-            Race.T => Matchups.VsT,
-            Race.P => Matchups.VsP,
+            Race.Zerg => Matchups.VsZ,
+            Race.Terran => Matchups.VsT,
+            Race.Protoss => Matchups.VsP,
             _ => Matchups.None,
         };
 
