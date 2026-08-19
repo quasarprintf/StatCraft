@@ -6,6 +6,7 @@ using Dapper;
 using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
+using StatCraft.Services.BackgroundService;
 using StatCraft.ViewModels;
 
 namespace StatCraft.Services.DatabaseRepository
@@ -16,47 +17,9 @@ namespace StatCraft.Services.DatabaseRepository
         // parts of the app (e.g. BuildPathPicker's menu) can refresh their view of the build tree.
         public event Action? BuildsChanged;
 
-        public BuildRepository(string dbPath) : base(dbPath)
+        public BuildRepository(string dbPath, ILogger? logger = null) : base(dbPath, logger)
         {
         }
-
-        public void Initialize()
-        {
-            EnsureDatabaseFolderExists();
-
-            using SqliteConnection conn = OpenConnection();
-            conn.Execute(@"
-                CREATE TABLE IF NOT EXISTS BuildNodes (
-                    Id          INTEGER PRIMARY KEY AUTOINCREMENT,
-                    PlayerRace  INTEGER NOT NULL DEFAULT 0,
-                    Matchups    INTEGER NOT NULL DEFAULT 0,
-                    ParentId    INTEGER REFERENCES BuildNodes(Id) ON DELETE CASCADE,
-                    Name        TEXT    NOT NULL DEFAULT '',
-                    Description TEXT    NOT NULL DEFAULT '',
-                    SortOrder   INTEGER NOT NULL DEFAULT 0
-                );
-                CREATE TABLE IF NOT EXISTS BuildAttributes (
-                    Id           INTEGER PRIMARY KEY AUTOINCREMENT,
-                    BuildNodeId  INTEGER NOT NULL REFERENCES BuildNodes(Id) ON DELETE CASCADE,
-                    Name         TEXT    NOT NULL DEFAULT '',
-                    Type         INTEGER NOT NULL DEFAULT 0,
-                    DefaultValue TEXT    NOT NULL DEFAULT '',
-                    SortOrder    INTEGER NOT NULL DEFAULT 0
-                );
-                CREATE TABLE IF NOT EXISTS AttributeValueOptions (
-                    Id               INTEGER PRIMARY KEY AUTOINCREMENT,
-                    BuildAttributeId INTEGER NOT NULL REFERENCES BuildAttributes(Id) ON DELETE CASCADE,
-                    Value            TEXT    NOT NULL,
-                    SortOrder        INTEGER NOT NULL DEFAULT 0
-                );");
-
-            RunMigrations(conn, nameof(BuildRepository), Migrations);
-        }
-
-        // No migrations exist yet — CreateTables above already reflects the current schema in full.
-        // Append future schema changes here as named methods, in order; RunMigrations tracks how many
-        // of them a given database has already applied.
-        private static readonly Action<SqliteConnection>[] Migrations = [];
 
         // All builds for a player race, regardless of which opponent races they support — used by the
         // Builds tab, which needs to show/edit every build, not just ones matching the current filter.

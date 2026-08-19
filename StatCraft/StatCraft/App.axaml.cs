@@ -119,35 +119,30 @@ namespace StatCraft
 
             ServiceCollection services = new ServiceCollection();
 
-            services.AddSingleton<BuildRepository>(_ =>
+            services.AddSingleton<BuildRepository>(sp =>
             {
-                BuildRepository repository = new BuildRepository(dbPath);
+                BuildRepository repository = new BuildRepository(dbPath, sp.GetRequiredService<ILogger>());
                 repository.Initialize();
                 return repository;
             });
 
-            services.AddSingleton<AccountRepository>(_ =>
+            services.AddSingleton<AccountRepository>(sp =>
             {
-                AccountRepository repository = new AccountRepository(dbPath);
+                AccountRepository repository = new AccountRepository(dbPath, sp.GetRequiredService<ILogger>());
                 repository.Initialize();
                 return repository;
             });
 
-            services.AddSingleton<MapRepository>(_ =>
+            services.AddSingleton<MapRepository>(sp =>
             {
-                MapRepository repository = new MapRepository(dbPath);
+                MapRepository repository = new MapRepository(dbPath, sp.GetRequiredService<ILogger>());
                 repository.Initialize();
                 return repository;
             });
 
             services.AddSingleton<GameDataRepository>(sp =>
             {
-                // Its MapName -> MapId migration writes into the Maps table, so that table has to exist
-                // first. Singleton factories run on first resolution rather than in registration order,
-                // so the dependency is forced explicitly here even though nothing else needs it.
-                sp.GetRequiredService<MapRepository>();
-
-                GameDataRepository repository = new GameDataRepository(dbPath);
+                GameDataRepository repository = new GameDataRepository(dbPath, sp.GetRequiredService<ILogger>());
                 repository.Initialize();
                 return repository;
             });

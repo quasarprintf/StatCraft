@@ -5,6 +5,7 @@ using Dapper;
 using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Maps;
+using StatCraft.Services.BackgroundService;
 
 namespace StatCraft.Services.DatabaseRepository
 {
@@ -15,7 +16,7 @@ namespace StatCraft.Services.DatabaseRepository
         private const int SideOpponent = 1;
         private const int SideSelf = 2;
 
-        public GameDataRepository(string dbPath) : base(dbPath)
+        public GameDataRepository(string dbPath, ILogger? logger = null) : base(dbPath, logger)
         {
         }
 

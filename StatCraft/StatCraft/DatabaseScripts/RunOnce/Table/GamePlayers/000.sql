@@ -1,0 +1,13 @@
+CREATE TABLE IF NOT EXISTS GamePlayers (
+    Id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    GameId    INTEGER NOT NULL REFERENCES Games(Id) ON DELETE CASCADE,
+    Side      INTEGER NOT NULL,
+    SortOrder INTEGER NOT NULL DEFAULT 0,
+    Name      TEXT    NOT NULL DEFAULT '',
+    Clan      TEXT    NOT NULL DEFAULT '',
+    Mmr       INTEGER NOT NULL DEFAULT 0,
+    MmrAfter  INTEGER,
+    Race      TEXT    NOT NULL DEFAULT '',
+    Random    INTEGER NOT NULL DEFAULT 0,
+    Color     INTEGER
+);

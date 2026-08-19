@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS BuildAttributes (
+    Id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    BuildNodeId  INTEGER NOT NULL REFERENCES BuildNodes(Id) ON DELETE CASCADE,
+    Name         TEXT    NOT NULL DEFAULT '',
+    Type         INTEGER NOT NULL DEFAULT 0,
+    DefaultValue TEXT    NOT NULL DEFAULT '',
+    SortOrder    INTEGER NOT NULL DEFAULT 0
+);

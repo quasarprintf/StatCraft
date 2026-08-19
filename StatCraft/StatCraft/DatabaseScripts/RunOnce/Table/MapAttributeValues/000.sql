@@ -1,0 +1,7 @@
+CREATE TABLE IF NOT EXISTS MapAttributeValues (
+    Id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    MapId          INTEGER NOT NULL REFERENCES Maps(Id) ON DELETE CASCADE,
+    MapAttributeId INTEGER NOT NULL REFERENCES MapAttributes(Id) ON DELETE CASCADE,
+    Value          TEXT    NOT NULL DEFAULT '',
+    UNIQUE(MapId, MapAttributeId)
+);

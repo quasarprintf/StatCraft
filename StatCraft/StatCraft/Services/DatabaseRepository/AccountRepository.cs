@@ -4,43 +4,14 @@ using System.Linq;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using StatCraft.Models.Battlenet;
+using StatCraft.Services.BackgroundService;
 
 namespace StatCraft.Services.DatabaseRepository
 {
     public class AccountRepository : SqliteRepository
     {
-        public AccountRepository(string dbPath) : base(dbPath)
+        public AccountRepository(string dbPath, ILogger? logger = null) : base(dbPath, logger)
         {
-        }
-
-        public void Initialize()
-        {
-            EnsureDatabaseFolderExists();
-
-            using SqliteConnection conn = OpenConnection();
-            conn.Execute(@"
-                CREATE TABLE IF NOT EXISTS BattleNetAccounts (
-                    Id                    INTEGER PRIMARY KEY AUTOINCREMENT,
-                    BattleTag             TEXT    NOT NULL,
-                    AccountSub            TEXT    NOT NULL DEFAULT '',
-                    EncryptedAccessToken  BLOB    NOT NULL,
-                    EncryptedRefreshToken BLOB,
-                    TokenExpiresAtUtc     TEXT    NOT NULL DEFAULT '',
-                    CreatedAtUtc          TEXT    NOT NULL DEFAULT ''
-                );
-                CREATE TABLE IF NOT EXISTS Sc2Profiles (
-                    Id                 INTEGER PRIMARY KEY AUTOINCREMENT,
-                    BattleNetAccountId INTEGER NOT NULL REFERENCES BattleNetAccounts(Id) ON DELETE CASCADE,
-                    RegionId           TEXT    NOT NULL,
-                    RealmId            TEXT    NOT NULL,
-                    ProfileId          INTEGER NOT NULL,
-                    Name               TEXT    NOT NULL,
-                    UNIQUE(BattleNetAccountId, RegionId, RealmId, ProfileId)
-                );
-                CREATE TABLE IF NOT EXISTS AppSettings (
-                    Key   TEXT PRIMARY KEY,
-                    Value TEXT NOT NULL DEFAULT ''
-                );");
         }
 
         private const string AccountColumns = "Id, BattleTag, AccountSub, EncryptedAccessToken, EncryptedRefreshToken, TokenExpiresAtUtc, CreatedAtUtc";

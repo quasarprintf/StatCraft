@@ -5,6 +5,7 @@ using Dapper;
 using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Maps;
+using StatCraft.Services.BackgroundService;
 
 namespace StatCraft.Services.DatabaseRepository
 {
@@ -16,39 +17,8 @@ namespace StatCraft.Services.DatabaseRepository
         // Raised after any map/attribute/value change, so other parts of the app can refresh.
         public event Action? MapsChanged;
 
-        public MapRepository(string dbPath) : base(dbPath)
+        public MapRepository(string dbPath, ILogger? logger = null) : base(dbPath, logger)
         {
-        }
-
-        public void Initialize()
-        {
-            EnsureDatabaseFolderExists();
-
-            using SqliteConnection conn = OpenConnection();
-            conn.Execute(@"
-                CREATE TABLE IF NOT EXISTS Maps (
-                    Id   INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Name TEXT    NOT NULL UNIQUE
-                );
-                CREATE TABLE IF NOT EXISTS MapAttributes (
-                    Id        INTEGER PRIMARY KEY AUTOINCREMENT,
-                    Name      TEXT    NOT NULL DEFAULT '',
-                    Type      INTEGER NOT NULL DEFAULT 0,
-                    SortOrder INTEGER NOT NULL DEFAULT 0
-                );
-                CREATE TABLE IF NOT EXISTS MapAttributeValues (
-                    Id             INTEGER PRIMARY KEY AUTOINCREMENT,
-                    MapId          INTEGER NOT NULL REFERENCES Maps(Id) ON DELETE CASCADE,
-                    MapAttributeId INTEGER NOT NULL REFERENCES MapAttributes(Id) ON DELETE CASCADE,
-                    Value          TEXT    NOT NULL DEFAULT '',
-                    UNIQUE(MapId, MapAttributeId)
-                );
-                CREATE TABLE IF NOT EXISTS MapAttributeValueOptions (
-                    Id             INTEGER PRIMARY KEY AUTOINCREMENT,
-                    MapAttributeId INTEGER NOT NULL REFERENCES MapAttributes(Id) ON DELETE CASCADE,
-                    Value          TEXT    NOT NULL,
-                    SortOrder      INTEGER NOT NULL DEFAULT 0
-                );");
         }
 
         public List<AttributeDefinition> GetAllAttributes()
