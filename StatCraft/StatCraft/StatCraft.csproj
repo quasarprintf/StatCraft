@@ -16,13 +16,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <AvaloniaXaml Remove="Views\Windows\AttributesComponents\**" />
-    <Compile Remove="Views\Windows\AttributesComponents\**" />
-    <EmbeddedResource Remove="Views\Windows\AttributesComponents\**" />
-    <None Remove="Views\Windows\AttributesComponents\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <PackageReference Include="Avalonia" Version="12.1.0" />
     <PackageReference Include="Avalonia.Desktop" Version="12.1.0" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.0" />
