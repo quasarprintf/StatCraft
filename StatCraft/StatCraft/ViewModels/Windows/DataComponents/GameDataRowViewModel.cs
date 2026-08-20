@@ -124,7 +124,7 @@ namespace StatCraft.ViewModels.Windows.DataComponents
             }
             foreach (GamePlayer opponent in replay.Opponents)
             {
-                ObservableCollection<BuildNode>? buildTree = getBuildTree(opponent.Race.AsRace(), selfSideMatchups);
+                ObservableCollection<BuildNode>? buildTree = getBuildTree(opponent.Race.AsRace(), opponentSideMatchups);
                 var buildTracker = new PlayerBuildTrackerViewModel(opponent, repository, buildTree, logger, replayDataExtractor, replay.ReplayPath, useTeamColors, isAlly: false);
                 OtherPlayers.Add(buildTracker);
             }
