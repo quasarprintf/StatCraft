@@ -55,7 +55,7 @@ namespace StatCraft.Services.DatabaseRepository
             public Matchups Matchups { get; set; }
         }
 
-        private class BuildAttributeRow
+        private class BuildDetailsAttributeRow
         {
             public long Id { get; set; }
             public long BuildNodeId { get; set; }
@@ -99,9 +99,9 @@ namespace StatCraft.Services.DatabaseRepository
                 Dictionary<long, AttributeValue> attrDict = new();
                 string nodeIds = string.Join(",", nodeDict.Keys);
 
-                List<BuildAttributeRow> attrRows = conn.Query<BuildAttributeRow>(
-                    $"SELECT Id, BuildNodeId, Name, Type, DefaultValue, Scope FROM BuildAttributes WHERE BuildNodeId IN ({nodeIds}) ORDER BY SortOrder").ToList();
-                foreach (BuildAttributeRow row in attrRows)
+                List<BuildDetailsAttributeRow> attrRows = conn.Query<BuildDetailsAttributeRow>(
+                    $"SELECT Id, BuildNodeId, Name, Type, DefaultValue, Scope FROM BuildDetailsAttributes WHERE BuildNodeId IN ({nodeIds}) ORDER BY SortOrder").ToList();
+                foreach (BuildDetailsAttributeRow row in attrRows)
                 {
                     AttributeDefinition definition = new AttributeDefinition(row.Scope) { Id = (int)row.Id, Name = row.Name, Type = row.Type };
                     AttributeValue attr = new(definition);
@@ -114,7 +114,7 @@ namespace StatCraft.Services.DatabaseRepository
                 {
                     string attrIds = string.Join(",", attrDict.Keys);
                     List<ValueOptionRow> optionRows = conn.Query<ValueOptionRow>(
-                        $"SELECT BuildAttributeId, Value FROM AttributeValueOptions WHERE BuildAttributeId IN ({attrIds}) ORDER BY SortOrder").ToList();
+                        $"SELECT BuildAttributeId, Value FROM BuildDetailsAttributeValueOptions WHERE BuildAttributeId IN ({attrIds}) ORDER BY SortOrder").ToList();
                     foreach (ValueOptionRow row in optionRows)
                         attrDict[row.BuildAttributeId].Definition.ValueOptions.Add(row.Value);
                 }
@@ -163,7 +163,7 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
             attr.Definition.Id = (int)conn.ExecuteScalar<long>(@"
-                INSERT INTO BuildAttributes (BuildNodeId, Name, Type, DefaultValue, Scope, SortOrder)
+                INSERT INTO BuildDetailsAttributes (BuildNodeId, Name, Type, DefaultValue, Scope, SortOrder)
                 VALUES (@buildNodeId, @name, @type, @defaultValue, @scope, @sortOrder);
                 SELECT last_insert_rowid();",
                 new { buildNodeId, name = attr.Definition.Name, type = attr.Definition.Type, defaultValue = attr.Serialize() ?? "", scope = attr.Definition.Scope, sortOrder });
@@ -173,7 +173,7 @@ namespace StatCraft.Services.DatabaseRepository
         public void UpdateAttribute(AttributeValue attr)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("UPDATE BuildAttributes SET Name = @name, Type = @type, DefaultValue = @defaultValue WHERE Id = @id",
+            conn.Execute("UPDATE BuildDetailsAttributes SET Name = @name, Type = @type, DefaultValue = @defaultValue WHERE Id = @id",
                 new { name = attr.Definition.Name, type = attr.Definition.Type, defaultValue = attr.Serialize() ?? "", id = attr.Definition.Id });
             BuildsChanged?.Invoke();
         }
@@ -181,14 +181,14 @@ namespace StatCraft.Services.DatabaseRepository
         public void DeleteAttribute(int id)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("DELETE FROM BuildAttributes WHERE Id = @id", new { id });
+            conn.Execute("DELETE FROM BuildDetailsAttributes WHERE Id = @id", new { id });
             BuildsChanged?.Invoke();
         }
 
         public void InsertValueOption(int attributeId, string value, int sortOrder)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("INSERT INTO AttributeValueOptions (BuildAttributeId, Value, SortOrder) VALUES (@attrId, @value, @sortOrder)",
+            conn.Execute("INSERT INTO BuildDetailsAttributeValueOptions (BuildAttributeId, Value, SortOrder) VALUES (@attrId, @value, @sortOrder)",
                 new { attrId = attributeId, value, sortOrder });
             BuildsChanged?.Invoke();
         }
@@ -196,7 +196,7 @@ namespace StatCraft.Services.DatabaseRepository
         public void DeleteValueOption(int attributeId, string value)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("DELETE FROM AttributeValueOptions WHERE BuildAttributeId = @attrId AND Value = @value",
+            conn.Execute("DELETE FROM BuildDetailsAttributeValueOptions WHERE BuildAttributeId = @attrId AND Value = @value",
                 new { attrId = attributeId, value });
             BuildsChanged?.Invoke();
         }

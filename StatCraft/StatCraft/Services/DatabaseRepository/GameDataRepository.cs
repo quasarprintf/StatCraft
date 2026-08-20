@@ -351,8 +351,8 @@ namespace StatCraft.Services.DatabaseRepository
         // True if any GameBuilds row still points at one of these build node ids. Deleting a BuildNode
         // cascades to its whole subtree (BuildNodes.ParentId ON DELETE CASCADE), and each deleted node
         // cascades away any GameBuilds row referencing it (ON DELETE CASCADE) along with that player's
-        // recorded attribute values for it (via BuildAttributes -> GameAttributeValues) — so callers
-        // should pass every id in the subtree being deleted, not just the root.
+        // recorded attribute values for it (via BuildDetailsAttributes -> GameAttributeValues) — so
+        // callers should pass every id in the subtree being deleted, not just the root.
         public bool IsAnyBuildReferenced(IEnumerable<int> buildNodeIds)
         {
             List<int> ids = buildNodeIds.ToList();

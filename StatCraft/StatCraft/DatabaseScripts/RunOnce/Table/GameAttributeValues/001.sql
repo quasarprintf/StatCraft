@@ -1,0 +1,13 @@
+-- Renames BuildAttributes to disambiguate it from the new shared AttributeDefinitions table — this one
+-- remains specifically the per-BuildNode attribute instances used by the Builds tab. SQLite auto-updates
+-- other tables' "REFERENCES BuildAttributes(...)" clauses to follow this rename, but only for tables
+-- that already exist at the moment the rename runs — a table created LATER, with its own historical
+-- script's literal (unmodified) "REFERENCES BuildAttributes(...)" text, would find no such table and
+-- fail the first time a row is inserted into that FK column. GameAttributeValues.BuildAttributeId is
+-- exactly such a reference, and "GameAttributeValues" sorts alphabetically after "BuildAttributes"
+-- under DbUp's script-name comparer — so on a fresh database, GameAttributeValues.000.sql would
+-- otherwise run (and declare its FK) after this rename already happened. Living here instead, in
+-- GameAttributeValues' own folder, guarantees this runs only after that table already exists to be
+-- swept up by the rename (AttributeValueOptions.000.sql's own such reference is unaffected either way,
+-- since "AttributeValueOptions" already sorts before "BuildAttributes").
+ALTER TABLE BuildAttributes RENAME TO BuildDetailsAttributes;

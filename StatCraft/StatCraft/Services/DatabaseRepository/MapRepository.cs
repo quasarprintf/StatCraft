@@ -9,9 +9,12 @@ using StatCraft.Services.BackgroundService;
 
 namespace StatCraft.Services.DatabaseRepository
 {
-    // Owns maps and their globally-defined attributes. Mirrors BuildRepository's conventions, with one
-    // structural difference: MapAttributes has no owning-entity foreign key, which is exactly what makes
-    // an attribute apply to every map at once.
+    // Owns maps and their globally-defined attributes. Map attribute definitions live in the shared
+    // AttributeDefinitions/AttributeValueOptions tables (also used by Game/BuildDetail-scoped
+    // attributes elsewhere), filtered to AttributeScope.Map everywhere this repository touches them —
+    // that's what keeps this repository from ever seeing or mutating a row it doesn't own. Unlike a
+    // BuildDetailsAttribute, a Map attribute has no owning-entity foreign key, which is exactly what
+    // makes it apply to every map at once.
     public class MapRepository : SqliteRepository
     {
         // Raised after any map/attribute/value change, so other parts of the app can refresh.
@@ -25,12 +28,13 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
 
-            List<MapAttributeRow> rows = conn.Query<MapAttributeRow>(
-                "SELECT Id, Name, Type, Scope FROM MapAttributes ORDER BY SortOrder").ToList();
+            List<AttributeDefinitionRow> rows = conn.Query<AttributeDefinitionRow>(
+                "SELECT Id, Name, Type, Scope FROM AttributeDefinitions WHERE Scope = @scope ORDER BY SortOrder",
+                new { scope = AttributeScope.Map }).ToList();
 
             Dictionary<long, AttributeDefinition> byId = new();
             List<AttributeDefinition> attributes = new();
-            foreach (MapAttributeRow row in rows)
+            foreach (AttributeDefinitionRow row in rows)
             {
                 AttributeDefinition attribute = new AttributeDefinition(row.Scope) { Id = (int)row.Id, Name = row.Name, Type = row.Type };
                 byId[row.Id] = attribute;
@@ -41,9 +45,9 @@ namespace StatCraft.Services.DatabaseRepository
             {
                 string ids = string.Join(",", byId.Keys);
                 IEnumerable<ValueOptionRow> optionRows = conn.Query<ValueOptionRow>(
-                    $"SELECT MapAttributeId, Value FROM MapAttributeValueOptions WHERE MapAttributeId IN ({ids}) ORDER BY SortOrder");
+                    $"SELECT AttributeId, Value FROM AttributeValueOptions WHERE AttributeId IN ({ids}) ORDER BY SortOrder");
                 foreach (ValueOptionRow row in optionRows)
-                    byId[row.MapAttributeId].ValueOptions.Add(row.Value);
+                    byId[row.AttributeId].ValueOptions.Add(row.Value);
             }
 
             return attributes;
@@ -74,12 +78,12 @@ namespace StatCraft.Services.DatabaseRepository
             {
                 string ids = string.Join(",", mapsById.Keys);
                 IEnumerable<MapAttributeValueRow> valueRows = conn.Query<MapAttributeValueRow>(
-                    $"SELECT MapId, MapAttributeId, Value FROM MapAttributeValues WHERE MapId IN ({ids})");
+                    $"SELECT MapId, AttributeId, Value FROM MapAttributeValues WHERE MapId IN ({ids})");
 
                 foreach (MapAttributeValueRow row in valueRows)
                 {
                     AttributeValue? value = mapsById[row.MapId].AttributeValues
-                        .FirstOrDefault(v => v.Definition.Id == row.MapAttributeId);
+                        .FirstOrDefault(v => v.Definition.Id == row.AttributeId);
                     // A stored row for an attribute that's since been deleted is simply ignored.
                     value?.ApplyStoredValue(row.Value);
                 }
@@ -134,7 +138,7 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
             attribute.Id = (int)conn.ExecuteScalar<long>(@"
-                INSERT INTO MapAttributes (Name, Type, Scope, SortOrder) VALUES (@name, @type, @scope, @sortOrder);
+                INSERT INTO AttributeDefinitions (Name, Type, Scope, DefaultValue, SortOrder) VALUES (@name, @type, @scope, '', @sortOrder);
                 SELECT last_insert_rowid();",
                 new { name = attribute.Name, type = attribute.Type, scope = attribute.Scope, sortOrder });
             MapsChanged?.Invoke();
@@ -143,15 +147,15 @@ namespace StatCraft.Services.DatabaseRepository
         public void UpdateAttribute(AttributeDefinition attribute)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("UPDATE MapAttributes SET Name = @name, Type = @type WHERE Id = @id",
-                new { name = attribute.Name, type = attribute.Type, id = attribute.Id });
+            conn.Execute("UPDATE AttributeDefinitions SET Name = @name, Type = @type WHERE Id = @id AND Scope = @scope",
+                new { name = attribute.Name, type = attribute.Type, id = attribute.Id, scope = AttributeScope.Map });
             MapsChanged?.Invoke();
         }
 
         public void DeleteAttribute(int id)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("DELETE FROM MapAttributes WHERE Id = @id", new { id });
+            conn.Execute("DELETE FROM AttributeDefinitions WHERE Id = @id AND Scope = @scope", new { id, scope = AttributeScope.Map });
             MapsChanged?.Invoke();
         }
 
@@ -162,15 +166,15 @@ namespace StatCraft.Services.DatabaseRepository
             using SqliteConnection conn = OpenConnection();
             if (value == null)
             {
-                conn.Execute("DELETE FROM MapAttributeValues WHERE MapId = @mapId AND MapAttributeId = @mapAttributeId",
+                conn.Execute("DELETE FROM MapAttributeValues WHERE MapId = @mapId AND AttributeId = @mapAttributeId",
                     new { mapId, mapAttributeId });
             }
             else
             {
                 conn.Execute(@"
-                    INSERT INTO MapAttributeValues (MapId, MapAttributeId, Value)
+                    INSERT INTO MapAttributeValues (MapId, AttributeId, Value)
                     VALUES (@mapId, @mapAttributeId, @value)
-                    ON CONFLICT(MapId, MapAttributeId) DO UPDATE SET Value = @value",
+                    ON CONFLICT(MapId, AttributeId) DO UPDATE SET Value = @value",
                     new { mapId, mapAttributeId, value });
             }
 
@@ -180,7 +184,7 @@ namespace StatCraft.Services.DatabaseRepository
         public void InsertValueOption(int mapAttributeId, string value, int sortOrder)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("INSERT INTO MapAttributeValueOptions (MapAttributeId, Value, SortOrder) VALUES (@mapAttributeId, @value, @sortOrder)",
+            conn.Execute("INSERT INTO AttributeValueOptions (AttributeId, Value, SortOrder) VALUES (@mapAttributeId, @value, @sortOrder)",
                 new { mapAttributeId, value, sortOrder });
             MapsChanged?.Invoke();
         }
@@ -188,7 +192,7 @@ namespace StatCraft.Services.DatabaseRepository
         public void DeleteValueOption(int mapAttributeId, string value)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("DELETE FROM MapAttributeValueOptions WHERE MapAttributeId = @mapAttributeId AND Value = @value",
+            conn.Execute("DELETE FROM AttributeValueOptions WHERE AttributeId = @mapAttributeId AND Value = @value",
                 new { mapAttributeId, value });
             MapsChanged?.Invoke();
         }
@@ -201,7 +205,7 @@ namespace StatCraft.Services.DatabaseRepository
             public string Name { get; set; } = "";
         }
 
-        private class MapAttributeRow
+        private class AttributeDefinitionRow
         {
             public long Id { get; set; }
             public string Name { get; set; } = "";
@@ -212,13 +216,13 @@ namespace StatCraft.Services.DatabaseRepository
         private class MapAttributeValueRow
         {
             public long MapId { get; set; }
-            public int MapAttributeId { get; set; }
+            public int AttributeId { get; set; }
             public string Value { get; set; } = "";
         }
 
         private class ValueOptionRow
         {
-            public long MapAttributeId { get; set; }
+            public long AttributeId { get; set; }
             public string Value { get; set; } = "";
         }
     }
