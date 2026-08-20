@@ -88,7 +88,7 @@ public class MapRepositoryTests : IDisposable
     {
         _repository.InsertMap(new Map { Name = "A" });
         _repository.InsertMap(new Map { Name = "B" });
-        _repository.InsertAttribute(new AttributeDefinition { Name = "Rush Distance", Type = AttributeType.Numeric }, 0);
+        _repository.InsertAttribute(new AttributeDefinition(AttributeScope.Map) { Name = "Rush Distance", Type = AttributeType.Numeric }, 0);
 
         List<AttributeDefinition> attributes = _repository.GetAllAttributes();
         foreach (Map map in _repository.GetAllMaps(attributes))
@@ -98,7 +98,7 @@ public class MapRepositoryTests : IDisposable
     [Fact]
     public void UpdateAttribute_ThenReload_PersistsNameAndType()
     {
-        AttributeDefinition attribute = new() { Name = "Old", Type = AttributeType.Numeric };
+        AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "Old", Type = AttributeType.Numeric };
         _repository.InsertAttribute(attribute, 0);
 
         attribute.Name = "New";
@@ -114,7 +114,7 @@ public class MapRepositoryTests : IDisposable
     public void DeleteAttribute_RemovesItFromEveryMap()
     {
         _repository.InsertMap(new Map { Name = "A" });
-        AttributeDefinition attribute = new() { Name = "Doomed" };
+        AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "Doomed" };
         _repository.InsertAttribute(attribute, 0);
 
         _repository.DeleteAttribute(attribute.Id);
@@ -126,7 +126,7 @@ public class MapRepositoryTests : IDisposable
     [Fact]
     public void ValueOptions_RoundTripInSortOrder()
     {
-        AttributeDefinition attribute = new() { Name = "Style", Type = AttributeType.Values };
+        AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
         _repository.InsertAttribute(attribute, 0);
         _repository.InsertValueOption(attribute.Id, "Macro", 0);
         _repository.InsertValueOption(attribute.Id, "Rush", 1);
@@ -148,7 +148,7 @@ public class MapRepositoryTests : IDisposable
     public void GetAllMaps_AttributeWithNoStoredValue_ReadsBackAsUnset(AttributeType type)
     {
         _repository.InsertMap(new Map { Name = "A" });
-        _repository.InsertAttribute(new AttributeDefinition { Name = "Attr", Type = type }, 0);
+        _repository.InsertAttribute(new AttributeDefinition(AttributeScope.Map) { Name = "Attr", Type = type }, 0);
 
         AttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
 
@@ -219,7 +219,7 @@ public class MapRepositoryTests : IDisposable
     {
         Map map = new() { Name = "A" };
         _repository.InsertMap(map);
-        AttributeDefinition attribute = new() { Name = "Attr", Type = type };
+        AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "Attr", Type = type };
         _repository.InsertAttribute(attribute, 0);
         return (map, attribute);
     }

@@ -18,9 +18,9 @@ namespace StatCraft.Models.GameData.Attributes
         [NotifyPropertyChangedFor(nameof(IsNumeric), nameof(IsBool), nameof(IsPercent), nameof(IsValues))]
         private AttributeType _type = AttributeType.Numeric;
 
-        // Options for a Values-type attribute. Setter is protected rather than absent so
-        // BuildAttribute.Clone() can reassign it wholesale (a reference copy, not a deep one — existing
-        // behavior); MapAttribute never assigns it, so its own ValueOptions is effectively immutable.
+        private AttributeScope _scope { get; set; }
+
+        // Options for a Values-type attribute
         public ObservableCollection<string> ValueOptions { get; protected set; } = [];
 
         [ObservableProperty] private string _newOptionText = string.Empty;
@@ -29,6 +29,16 @@ namespace StatCraft.Models.GameData.Attributes
         public bool IsBool    => Type == AttributeType.Bool;
         public bool IsPercent => Type == AttributeType.Percent;
         public bool IsValues  => Type == AttributeType.Values;
+
+        public bool IsGameAttribute => _scope == AttributeScope.Game;
+        public bool IsBuildAttribute => _scope == AttributeScope.Build;
+        public bool IsBuildDetailAttribute => _scope == AttributeScope.BuildDetail;
+        public bool IsMapAttribute => _scope == AttributeScope.Map;
+
+        public AttributeDefinition(AttributeScope scope)
+        {
+            _scope = scope;
+        }
 
         [RelayCommand]
         private void AddOption()

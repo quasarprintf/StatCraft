@@ -102,7 +102,7 @@ public class BuildRepositoryTests : IDisposable
         BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
         _repository.InsertBuild(node, null, 0);
 
-        AttributeValue attr = new(new AttributeDefinition { Name = "Supply", Type = type });
+        AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Supply", Type = type });
         switch (type)
         {
             case AttributeType.Numeric: attr.NumericValue = 12; break;
@@ -131,7 +131,7 @@ public class BuildRepositoryTests : IDisposable
         BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
         _repository.InsertBuild(node, null, 0);
 
-        AttributeValue attr = new(new AttributeDefinition { Name = "Opening", Type = AttributeType.Values });
+        AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Opening", Type = AttributeType.Values });
         _repository.InsertAttribute(attr, node.Id, 0);
         _repository.InsertValueOption(attr.Definition.Id, "Zealot", 0);
 
@@ -170,7 +170,7 @@ public class BuildRepositoryTests : IDisposable
     {
         BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
         _repository.InsertBuild(node, null, 0);
-        AttributeValue attr = new(new AttributeDefinition { Name = "Supply", Type = AttributeType.Numeric });
+        AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Supply", Type = AttributeType.Numeric });
         _repository.InsertAttribute(attr, node.Id, 0);
 
         int raisedCount = 0;

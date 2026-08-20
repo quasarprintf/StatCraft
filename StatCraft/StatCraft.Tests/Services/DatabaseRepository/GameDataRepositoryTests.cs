@@ -344,8 +344,8 @@ public class GameDataRepositoryTests : IDisposable
     {
         BuildNode build = new() { Name = "Build" };
         _buildRepository.InsertBuild(build, null, 0);
-        AttributeValue attr1 = new(new AttributeDefinition { Name = "A1", Type = AttributeType.Numeric });
-        AttributeValue attr2 = new(new AttributeDefinition { Name = "A2", Type = AttributeType.Numeric });
+        AttributeValue attr1 = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "A1", Type = AttributeType.Numeric });
+        AttributeValue attr2 = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "A2", Type = AttributeType.Numeric });
         _buildRepository.InsertAttribute(attr1, build.Id, 0);
         _buildRepository.InsertAttribute(attr2, build.Id, 1);
 
@@ -496,7 +496,7 @@ public class GameDataRepositoryTests : IDisposable
     {
         BuildNode build = new() { Name = "Build" };
         _buildRepository.InsertBuild(build, null, 0);
-        AttributeValue attr = new(new AttributeDefinition { Name = "Supply", Type = AttributeType.Numeric });
+        AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Supply", Type = AttributeType.Numeric });
         _buildRepository.InsertAttribute(attr, build.Id, 0);
         return attr;
     }

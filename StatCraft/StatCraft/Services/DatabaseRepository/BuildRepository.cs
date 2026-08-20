@@ -102,7 +102,7 @@ namespace StatCraft.Services.DatabaseRepository
                     $"SELECT Id, BuildNodeId, Name, Type, DefaultValue FROM BuildAttributes WHERE BuildNodeId IN ({nodeIds}) ORDER BY SortOrder").ToList();
                 foreach (BuildAttributeRow row in attrRows)
                 {
-                    AttributeDefinition definition = new() { Id = (int)row.Id, Name = row.Name, Type = row.Type };
+                    AttributeDefinition definition = new AttributeDefinition(AttributeScope.BuildDetail) { Id = (int)row.Id, Name = row.Name, Type = row.Type };
                     AttributeValue attr = new(definition);
                     attr.ApplyStoredValue(row.DefaultValue);
                     attrDict[row.Id] = attr;

@@ -113,5 +113,5 @@ public class AttributeFilterTests
         Assert.Equal(expected, AttributeFilter.MatchesBool(value, true, includeUnset));
     }
 
-    private static AttributeValue Value(AttributeType type) => new(new AttributeDefinition { Name = "Attr", Type = type });
+    private static AttributeValue Value(AttributeType type) => new(new AttributeDefinition(AttributeScope.Map) { Name = "Attr", Type = type });
 }

@@ -300,7 +300,7 @@ namespace StatCraft.ViewModels.Windows
             // Unlike a Map attribute value, a Build attribute's default is never meant to read as
             // "unset" — seed it with the same concrete zero-values a fresh numeric/bool/percent field
             // would have shown before the definition/value split.
-            AttributeValue attr = new(new AttributeDefinition()) { NumericValue = 0, BoolValue = false, PercentValue = 0 };
+            AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail)) { NumericValue = 0, BoolValue = false, PercentValue = 0 };
             _repository.InsertAttribute(attr, SelectedBuild.Id, SelectedBuild.Attributes.Count);
             WireAttribute(attr);
             SelectedBuild.Attributes.Add(attr);

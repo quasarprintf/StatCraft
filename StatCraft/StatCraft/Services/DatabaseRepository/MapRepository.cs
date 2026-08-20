@@ -32,7 +32,7 @@ namespace StatCraft.Services.DatabaseRepository
             List<AttributeDefinition> attributes = new();
             foreach (MapAttributeRow row in rows)
             {
-                AttributeDefinition attribute = new() { Id = (int)row.Id, Name = row.Name, Type = row.Type };
+                AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Id = (int)row.Id, Name = row.Name, Type = row.Type };
                 byId[row.Id] = attribute;
                 attributes.Add(attribute);
             }

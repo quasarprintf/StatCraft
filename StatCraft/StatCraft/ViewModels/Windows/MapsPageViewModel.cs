@@ -124,7 +124,7 @@ namespace StatCraft.ViewModels.Windows
         [RelayCommand]
         public void AddAttribute()
         {
-            AttributeDefinition attribute = new() { Name = "New Definition" };
+            AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "New Definition" };
             _repository.InsertAttribute(attribute, Attributes.Count);
             WireAttribute(attribute);
             Attributes.Add(attribute);

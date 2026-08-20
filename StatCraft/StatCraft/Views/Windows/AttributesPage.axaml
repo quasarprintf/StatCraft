@@ -5,5 +5,4 @@
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
              x:Class="StatCraft.Views.Windows.AttributesPage"
              x:DataType="vmw:AttributesPageViewModel">
-  Welcome to Avalonia!
 </UserControl>

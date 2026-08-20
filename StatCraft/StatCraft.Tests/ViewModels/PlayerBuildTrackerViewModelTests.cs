@@ -54,7 +54,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     {
         BuildNode build = new() { Name = "4 Gate", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(build, null, 0);
-        AttributeValue attr = new(new AttributeDefinition { Name = "Supply", Type = AttributeType.Numeric }) { NumericValue = 10 };
+        AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Supply", Type = AttributeType.Numeric }) { NumericValue = 10 };
         _buildRepository.InsertAttribute(attr, build.Id, 0);
 
         GameData game = CreateGame();
@@ -86,7 +86,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     {
         BuildNode build = new() { Name = "4 Gate", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(build, null, 0);
-        AttributeValue attr = new(new AttributeDefinition { Name = "Supply", Type = AttributeType.Numeric }) { NumericValue = 10 };
+        AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Supply", Type = AttributeType.Numeric }) { NumericValue = 10 };
         _buildRepository.InsertAttribute(attr, build.Id, 0);
 
         // Edit the default before anyone ever selects the build.
@@ -128,15 +128,15 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     {
         BuildNode root = new() { Name = "Cannon Rush", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(root, null, 0);
-        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "Chrono At Start", Type = AttributeType.Numeric }), root.Id, 0);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Chrono At Start", Type = AttributeType.Numeric }), root.Id, 0);
 
         BuildNode child = new() { Name = "Low Ground Start", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(child, root.Id, 0);
-        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "Contested Ramp", Type = AttributeType.Bool }), child.Id, 0);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Contested Ramp", Type = AttributeType.Bool }), child.Id, 0);
 
         BuildNode grandchild = new() { Name = "Proxy Gate", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(grandchild, child.Id, 0);
-        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "Gate Count", Type = AttributeType.Numeric }), grandchild.Id, 0);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Gate Count", Type = AttributeType.Numeric }), grandchild.Id, 0);
 
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
@@ -160,14 +160,14 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     {
         BuildNode root = new() { Name = "Cannon Rush", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(root, null, 0);
-        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "Chrono At Start", Type = AttributeType.Numeric }), root.Id, 0);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Chrono At Start", Type = AttributeType.Numeric }), root.Id, 0);
 
         BuildNode childWithNoAttributes = new() { Name = "Proxy Forge", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(childWithNoAttributes, root.Id, 0);
 
         BuildNode grandchild = new() { Name = "Low Ground Start", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(grandchild, childWithNoAttributes.Id, 0);
-        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "Contested Ramp", Type = AttributeType.Bool }), grandchild.Id, 0);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Contested Ramp", Type = AttributeType.Bool }), grandchild.Id, 0);
 
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
@@ -188,13 +188,13 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     {
         BuildNode parent = new() { Name = "A", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(parent, null, 0);
-        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "SharedAttr", Type = AttributeType.Numeric }), parent.Id, 0);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "SharedAttr", Type = AttributeType.Numeric }), parent.Id, 0);
         BuildNode childB = new() { Name = "B", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(childB, parent.Id, 0);
-        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "BAttr", Type = AttributeType.Numeric }), childB.Id, 0);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "BAttr", Type = AttributeType.Numeric }), childB.Id, 0);
         BuildNode childC = new() { Name = "C", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(childC, parent.Id, 1);
-        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition { Name = "CAttr", Type = AttributeType.Numeric }), childC.Id, 0);
+        _buildRepository.InsertAttribute(new AttributeValue(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "CAttr", Type = AttributeType.Numeric }), childC.Id, 0);
 
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
