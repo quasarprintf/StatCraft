@@ -9,7 +9,7 @@ using StatCraft.Models.Battlenet;
 using StatCraft.Services.BattlenetApi;
 using StatCraft.Services.DatabaseRepository;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows.DataComponents
 {
     public enum LinkAccountStage { EnterCredentials, Connecting, SelectingProfile, Failed }
 

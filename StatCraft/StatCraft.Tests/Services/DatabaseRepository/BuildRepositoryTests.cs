@@ -2,7 +2,6 @@ using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
-using StatCraft.ViewModels;
 
 namespace StatCraft.Tests;
 

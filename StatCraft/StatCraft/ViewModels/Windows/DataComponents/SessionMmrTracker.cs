@@ -8,7 +8,7 @@ using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.BattlenetApi;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows.DataComponents
 {
     // Owns the Data tab header's per-race MMR display: each race's current ladder rating and how far it
     // has moved from where the active session started. A session-start baseline comes from two sources —

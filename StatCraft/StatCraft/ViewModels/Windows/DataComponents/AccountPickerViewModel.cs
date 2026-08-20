@@ -5,7 +5,7 @@ using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.Battlenet;
 using StatCraft.Services.DatabaseRepository;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows.DataComponents
 {
     public enum AccountPickerOutcome { AccountSelected, LinkNew, Cancelled }
 

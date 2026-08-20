@@ -1,6 +1,6 @@
 using StatCraft.Models.GameData.Race;
 using StatCraft.Styles;
-using StatCraft.ViewModels;
+using StatCraft.ViewModels.Windows.DataComponents;
 
 namespace StatCraft.Tests;
 

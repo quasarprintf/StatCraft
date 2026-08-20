@@ -1,10 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:StatCraft.ViewModels"
+             xmlns:vmw="using:StatCraft.ViewModels.Windows"
              xmlns:race="using:StatCraft.Models.GameData.Race"
              xmlns:Attr="using:StatCraft.Models.GameData.Attributes"
              x:Class="StatCraft.Views.BuildDetailsPanel"
-             x:DataType="vm:BuildsPageViewModel">
+             x:DataType="vmw:BuildsPageViewModel">
     <Grid ColumnDefinitions="*,4,*">
 
         <!-- Left: Name + attributes -->
@@ -40,7 +40,7 @@
                                               ItemsSource="{x:Static Attr:AttributeDefinition.AllTypes}"
                                               HorizontalAlignment="Stretch" Margin="0,0,4,0"/>
                                     <Button Grid.Column="2" Content="✕"
-                                            Command="{Binding $parent[UserControl].((vm:BuildsPageViewModel)DataContext).RemoveAttributeCommand}"
+                                            Command="{Binding $parent[UserControl].((vmw:BuildsPageViewModel)DataContext).RemoveAttributeCommand}"
                                             CommandParameter="{Binding}"
                                             Padding="6,2"/>
                                 </Grid>

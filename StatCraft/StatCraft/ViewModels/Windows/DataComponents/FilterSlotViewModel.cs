@@ -2,7 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows.DataComponents
 {
     // One "extra filter" the Data tab's filter bar can show or hide. Two concrete subclasses (rather
     // than one class with a "kind" flag) so Avalonia's implicit per-x:DataType DataTemplate dispatch can

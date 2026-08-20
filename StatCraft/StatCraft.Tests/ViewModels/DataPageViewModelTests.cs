@@ -9,7 +9,8 @@ using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
 using StatCraft.Styles;
 using StatCraft.Tests.Mocks;
-using StatCraft.ViewModels;
+using StatCraft.ViewModels.Windows;
+using StatCraft.ViewModels.Windows.DataComponents;
 
 namespace StatCraft.Tests;
 

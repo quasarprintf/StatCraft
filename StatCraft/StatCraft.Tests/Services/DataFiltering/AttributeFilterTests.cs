@@ -1,7 +1,7 @@
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DataFiltering;
-using StatCraft.ViewModels;
+using StatCraft.ViewModels.Windows;
 
 namespace StatCraft.Tests;
 

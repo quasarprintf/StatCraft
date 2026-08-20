@@ -5,7 +5,7 @@ using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
 using StatCraft.Tests.Mocks;
-using StatCraft.ViewModels;
+using StatCraft.ViewModels.Windows.DataComponents;
 using System.Collections.ObjectModel;
 
 namespace StatCraft.Tests;

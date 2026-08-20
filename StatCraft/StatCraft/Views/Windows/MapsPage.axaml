@@ -1,10 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:StatCraft.ViewModels"
+             xmlns:vmw="using:StatCraft.ViewModels.Windows"
+             xmlns:vmc="using:StatCraft.ViewModels.Windows.DataComponents"
              xmlns:maps="using:StatCraft.Models.GameData.Maps"
              xmlns:local="using:StatCraft.Views"
              x:Class="StatCraft.Views.MapsPage"
-             x:DataType="vm:MapsPageViewModel">
+             x:DataType="vmw:MapsPageViewModel">
     <Grid ColumnDefinitions="240,4,*">
         <!-- Left: name filter + attribute filters, then the map list -->
         <DockPanel Grid.Column="0" Margin="4">
@@ -14,7 +15,7 @@
                     <Button.Flyout>
                         <MenuFlyout ItemsSource="{Binding HiddenFilterSlots}" Placement="BottomEdgeAlignedRight">
                             <MenuFlyout.ItemContainerTheme>
-                                <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vm:FilterSlotViewModel">
+                                <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmc:FilterSlotViewModel">
                                     <Setter Property="Header" Value="{Binding Title}"/>
                                     <Setter Property="Command" Value="{Binding AddCommand}"/>
                                 </ControlTheme>
@@ -36,7 +37,7 @@
                      pane is far narrower than the Data tab's horizontal bar, and a single-line layout
                      pushes the remove button off the edge. -->
                 <ItemsControl.DataTemplates>
-                    <DataTemplate x:DataType="vm:CheckboxFilterSlotViewModel">
+                    <DataTemplate x:DataType="vmc:CheckboxFilterSlotViewModel">
                         <StackPanel Spacing="2">
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
@@ -49,7 +50,7 @@
                             <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
                         </StackPanel>
                     </DataTemplate>
-                    <DataTemplate x:DataType="vm:BoolFilterSlotViewModel">
+                    <DataTemplate x:DataType="vmc:BoolFilterSlotViewModel">
                         <StackPanel Spacing="2">
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
@@ -62,7 +63,7 @@
                             <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
                         </StackPanel>
                     </DataTemplate>
-                    <DataTemplate x:DataType="vm:NumericRangeFilterSlotViewModel">
+                    <DataTemplate x:DataType="vmc:NumericRangeFilterSlotViewModel">
                         <StackPanel Spacing="2">
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"

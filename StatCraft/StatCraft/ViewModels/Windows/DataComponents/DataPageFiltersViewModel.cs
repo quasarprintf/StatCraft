@@ -10,7 +10,7 @@ using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Models.GameData.Maps;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows.DataComponents
 {
     // Owns every filter dimension on the Data tab's filter bar. Player profile and date range are
     // always visible; the other five are "extra filters" that can be added/removed via the bar's

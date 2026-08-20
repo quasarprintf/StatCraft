@@ -1,7 +1,6 @@
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DataParsing;
-using StatCraft.ViewModels;
 
 namespace StatCraft.Tests;
 

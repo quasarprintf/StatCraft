@@ -9,7 +9,7 @@ using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DataParsing;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows.DataComponents
 {
     // One BuildPathPicker's worth of state: which build (if any) is selected in this slot. A
     // GameDataRowViewModel owns a growable list of these so a single game can reference multiple builds.

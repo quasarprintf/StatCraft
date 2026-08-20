@@ -3,7 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Input;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.Models.GameData.Builds;
-using StatCraft.ViewModels;
+using StatCraft.ViewModels.Windows;
 using StatCraft.Views.Components;
 
 namespace StatCraft.Views

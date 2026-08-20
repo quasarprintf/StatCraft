@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows.DataComponents
 {
     // An extra filter for a single Bool map attribute. A three-state checkbox rather than a Yes/No
     // checkbox dropdown, since a Bool attribute never has more than two real values to pick between —

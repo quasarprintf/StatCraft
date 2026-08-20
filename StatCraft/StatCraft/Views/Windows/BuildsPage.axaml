@@ -1,10 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:StatCraft.ViewModels"
+             xmlns:vmw="using:StatCraft.ViewModels.Windows"
              xmlns:builds="using:StatCraft.Models.GameData.Builds"
              xmlns:local="using:StatCraft.Views"
              x:Class="StatCraft.Views.BuildsPage"
-             x:DataType="vm:BuildsPageViewModel">
+             x:DataType="vmw:BuildsPageViewModel">
     <DockPanel>
         <!-- Player race / opponent race selectors -->
         <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="4">
@@ -17,9 +17,9 @@
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:RaceOption">
+                        <DataTemplate x:DataType="vmw:RaceOption">
                             <Button Content="{Binding Display}"
-                                    Command="{Binding $parent[ItemsControl].((vm:BuildsPageViewModel)DataContext).SelectPlayerRaceCommand}"
+                                    Command="{Binding $parent[ItemsControl].((vmw:BuildsPageViewModel)DataContext).SelectPlayerRaceCommand}"
                                     CommandParameter="{Binding Value}"
                                     Classes.active="{Binding IsSelected}"/>
                         </DataTemplate>
@@ -35,9 +35,9 @@
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:RaceOption">
+                        <DataTemplate x:DataType="vmw:RaceOption">
                             <Button Content="{Binding Display}"
-                                    Command="{Binding $parent[ItemsControl].((vm:BuildsPageViewModel)DataContext).SelectOpponentRaceExclusiveCommand}"
+                                    Command="{Binding $parent[ItemsControl].((vmw:BuildsPageViewModel)DataContext).SelectOpponentRaceExclusiveCommand}"
                                     CommandParameter="{Binding Value}"
                                     RightTapped="OnOpponentRaceRightTapped"
                                     Classes.active="{Binding IsSelected}"/>

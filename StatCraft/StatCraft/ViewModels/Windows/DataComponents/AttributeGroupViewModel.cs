@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using Avalonia;
 using StatCraft.Models.GameData.Attributes;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows.DataComponents
 {
     // One build's own attribute editors, grouped for display so it's clear which build each row came
     // from. Depth is that build's position within whichever selected path first introduced it (0 =

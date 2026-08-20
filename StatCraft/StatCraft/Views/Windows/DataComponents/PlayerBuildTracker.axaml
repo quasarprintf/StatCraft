@@ -1,21 +1,21 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:Attr="using:StatCraft.Models.GameData.Attributes"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:StatCraft.ViewModels"
+             xmlns:vmc="using:StatCraft.ViewModels.Windows.DataComponents"
              xmlns:local="using:StatCraft.Views"
              x:Class="StatCraft.Views.PlayerBuildTracker"
-             x:DataType="vm:PlayerBuildTrackerViewModel">
+             x:DataType="vmc:PlayerBuildTrackerViewModel">
     <StackPanel Spacing="8">
         <ItemsControl ItemsSource="{Binding BuildSlots}">
             <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:BuildSelectionSlotViewModel">
+                <DataTemplate x:DataType="vmc:BuildSelectionSlotViewModel">
                     <local:BuildPathPicker Width="300" HorizontalAlignment="Left" Margin="0,0,0,4"/>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
         <ItemsControl ItemsSource="{Binding AttributeGroups}">
             <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vm:AttributeGroupViewModel">
+                <DataTemplate x:DataType="vmc:AttributeGroupViewModel">
                     <StackPanel Margin="{Binding Margin}" Spacing="4" HorizontalAlignment="Left">
                         <Border BorderBrush="Gray" BorderThickness="0,0,0,1" Padding="0,0,0,2">
                             <TextBlock Text="{Binding BuildName}" FontWeight="Bold"/>

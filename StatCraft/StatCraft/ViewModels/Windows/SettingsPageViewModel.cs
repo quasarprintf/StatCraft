@@ -4,7 +4,7 @@ using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.Util;
 using StatCraft.Services.DatabaseRepository;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows
 {
     // Lets the base replay folder — set once during first-run setup by SettingsPromptViewModel — be
     // changed afterward without reinstalling or hand-editing Settings.json. Saves through the same

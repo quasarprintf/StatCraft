@@ -3,7 +3,7 @@ using Avalonia.Media;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Styles;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows.DataComponents
 {
     // One ladder's current rating for the active session's profile. SC2 rates each race independently —
     // and Random separately again — so the header shows one of these per ladder the player has actually

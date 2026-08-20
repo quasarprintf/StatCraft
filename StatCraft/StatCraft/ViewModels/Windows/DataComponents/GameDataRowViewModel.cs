@@ -12,7 +12,7 @@ using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
 using StatCraft.Styles;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows.DataComponents
 {
     // Wraps one GameData for display/editing in the Data page's table. Every public member is a plain
     // scalar or a public-typed collection, so GameData/ParsedReplayData (both internal) never leak

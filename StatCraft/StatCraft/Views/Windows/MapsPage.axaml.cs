@@ -2,7 +2,7 @@ using System.Threading.Tasks;
 using Avalonia.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.Models.GameData.Maps;
-using StatCraft.ViewModels;
+using StatCraft.ViewModels.Windows;
 using StatCraft.Views.Components;
 
 namespace StatCraft.Views

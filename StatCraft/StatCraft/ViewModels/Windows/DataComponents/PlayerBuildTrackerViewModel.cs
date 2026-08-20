@@ -14,7 +14,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading.Tasks;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows.DataComponents
 {
     // Owns one player's build selection(s) and derived attribute editors within a game — reused for the
     // session user as well as every ally/opponent, since GameBuilds/GameAttributeValues are tied to a

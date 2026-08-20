@@ -10,6 +10,8 @@ using Avalonia.Markup.Xaml;
 using Avalonia.Threading;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.ViewModels;
+using StatCraft.ViewModels.Windows;
+using StatCraft.ViewModels.Windows.DataComponents;
 using StatCraft.Views;
 using System.Linq;
 using StatCraft.Services.BattlenetApi;

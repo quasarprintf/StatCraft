@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows.DataComponents
 {
     // An extra filter whose criteria is a numeric [Min, Max] range — opponent MMR on the Data tab, and
     // any Numeric or Percent map attribute on the Maps tab.

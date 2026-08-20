@@ -1,9 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:StatCraft.ViewModels"
+             xmlns:vmc="using:StatCraft.ViewModels.Windows.DataComponents"
              xmlns:builds="using:StatCraft.Models.GameData.Builds"
              x:Class="StatCraft.Views.BuildPathPicker"
-             x:DataType="vm:BuildSelectionSlotViewModel">
+             x:DataType="vmc:BuildSelectionSlotViewModel">
     <UserControl.Styles>
         <Style Selector="MenuItem" x:DataType="builds:BuildNode">
             <Setter Property="Header" Value="{Binding Name}"/>

@@ -8,8 +8,9 @@ using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
+using StatCraft.ViewModels.Windows.DataComponents;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows
 {
     // The Maps tab. Structurally simpler than Builds — maps never nest, so this is a flat list rather
     // than a tree — but with one twist Builds doesn't have: attributes are defined globally, so adding

@@ -1,5 +1,5 @@
 using StatCraft.Services.DatabaseRepository;
-using StatCraft.ViewModels;
+using StatCraft.ViewModels.Windows;
 
 namespace StatCraft.Tests;
 

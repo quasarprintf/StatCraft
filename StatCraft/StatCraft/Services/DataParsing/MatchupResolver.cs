@@ -1,6 +1,5 @@
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Race;
-using StatCraft.ViewModels;
 using System.Collections.Generic;
 using System.Linq;
 

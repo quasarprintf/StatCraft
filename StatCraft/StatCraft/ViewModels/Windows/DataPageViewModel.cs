@@ -20,8 +20,9 @@ using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataParsing;
 using StatCraft.Models.Analytics;
+using StatCraft.ViewModels.Windows.DataComponents;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows
 {
     public partial class DataPageViewModel : ViewModelBase
     {

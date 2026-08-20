@@ -1,7 +1,7 @@
 using Avalonia.Controls;
 using Avalonia.Input;
 using StatCraft.Models.Battlenet;
-using StatCraft.ViewModels;
+using StatCraft.ViewModels.Windows.DataComponents;
 
 namespace StatCraft.Views
 {

@@ -4,7 +4,7 @@ using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.BattlenetApi;
 using StatCraft.Tests.Mocks;
-using StatCraft.ViewModels;
+using StatCraft.ViewModels.Windows.DataComponents;
 
 namespace StatCraft.Tests;
 

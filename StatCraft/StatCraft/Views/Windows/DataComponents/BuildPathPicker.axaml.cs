@@ -8,7 +8,7 @@ using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.BackgroundService;
-using StatCraft.ViewModels;
+using StatCraft.ViewModels.Windows.DataComponents;
 
 namespace StatCraft.Views
 {

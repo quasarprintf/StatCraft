@@ -15,7 +15,8 @@ using Avalonia.VisualTree;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.Models.Battlenet;
 using StatCraft.Services.BackgroundService;
-using StatCraft.ViewModels;
+using StatCraft.ViewModels.Windows;
+using StatCraft.ViewModels.Windows.DataComponents;
 using StatCraft.Views.Components;
 
 namespace StatCraft.Views

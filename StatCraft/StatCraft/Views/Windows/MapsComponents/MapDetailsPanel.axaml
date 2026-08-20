@@ -1,9 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:StatCraft.ViewModels"
+             xmlns:vmw="using:StatCraft.ViewModels.Windows"
              xmlns:Attr="using:StatCraft.Models.GameData.Attributes"
              x:Class="StatCraft.Views.MapDetailsPanel"
-             x:DataType="vm:MapsPageViewModel">
+             x:DataType="vmw:MapsPageViewModel">
     <DockPanel Margin="12">
         <StackPanel DockPanel.Dock="Top" Spacing="6">
             <TextBlock Text="Name" FontWeight="SemiBold"/>
@@ -29,7 +29,7 @@
                                           ItemsSource="{x:Static Attr:AttributeDefinition.AllTypes}"
                                           HorizontalAlignment="Stretch" Margin="0,0,4,0"/>
                                 <Button Grid.Column="2" Content="✕"
-                                        Command="{Binding $parent[UserControl].((vm:MapsPageViewModel)DataContext).RemoveAttributeCommand}"
+                                        Command="{Binding $parent[UserControl].((vmw:MapsPageViewModel)DataContext).RemoveAttributeCommand}"
                                         CommandParameter="{Binding Definition}"
                                         Padding="6,2"/>
                             </Grid>

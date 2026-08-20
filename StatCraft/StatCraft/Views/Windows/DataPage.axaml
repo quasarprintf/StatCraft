@@ -1,10 +1,11 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vm="using:StatCraft.ViewModels"
+             xmlns:vmw="using:StatCraft.ViewModels.Windows"
+             xmlns:vmc="using:StatCraft.ViewModels.Windows.DataComponents"
              xmlns:local="using:StatCraft.Views"
              xmlns:component="using:StatCraft.Views.Components"
               x:Class="StatCraft.Views.DataPage"
-             x:DataType="vm:DataPageViewModel">
+             x:DataType="vmw:DataPageViewModel">
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="8">
             <Button Content="Begin Session" Command="{Binding BeginSessionCommand}" IsVisible="{Binding !HasActiveSession}"/>
@@ -20,7 +21,7 @@
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
                 <ItemsControl.ItemTemplate>
-                    <DataTemplate x:DataType="vm:RaceMmrViewModel">
+                    <DataTemplate x:DataType="vmc:RaceMmrViewModel">
                         <component:ColoredTextBlock Characters="{Binding Characters}"
                                                     FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
                     </DataTemplate>
@@ -47,7 +48,7 @@
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.DataTemplates>
-                        <DataTemplate x:DataType="vm:CheckboxFilterSlotViewModel">
+                        <DataTemplate x:DataType="vmc:CheckboxFilterSlotViewModel">
                             <StackPanel Classes="filterSlot">
                                 <local:CheckboxFilterDropdown Header="{Binding Title}" Options="{Binding Options}"
                                                                ShowSearch="{Binding ShowSearch}" SearchText="{Binding SearchText}"
@@ -55,7 +56,7 @@
                                 <Button Classes="removeFilter" Command="{Binding RemoveCommand}"/>
                             </StackPanel>
                         </DataTemplate>
-                        <DataTemplate x:DataType="vm:NumericRangeFilterSlotViewModel">
+                        <DataTemplate x:DataType="vmc:NumericRangeFilterSlotViewModel">
                             <StackPanel Classes="filterSlot">
                                 <TextBlock Text="{Binding Title}" VerticalAlignment="Center"/>
                                 <NumericUpDown Value="{Binding Min}" Width="60" PlaceholderText="Min" FormatString="0" ShowButtonSpinner="False"/>
@@ -72,7 +73,7 @@
                 <Button.Flyout>
                     <MenuFlyout ItemsSource="{Binding Filters.HiddenExtraFilterSlots}" Placement="BottomEdgeAlignedRight">
                         <MenuFlyout.ItemContainerTheme>
-                            <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vm:FilterSlotViewModel">
+                            <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmc:FilterSlotViewModel">
                                 <Setter Property="Header" Value="{Binding Title}"/>
                                 <Setter Property="Command" Value="{Binding AddCommand}"/>
                             </ControlTheme>
@@ -94,10 +95,10 @@
             <DataGrid.Columns>
                 <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False">
                     <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="vm:GameDataRowViewModel">
+                        <DataTemplate x:DataType="vmc:GameDataRowViewModel">
                             <Button Content="✕" Foreground="Red" Background="Transparent" BorderThickness="0"
                                     FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                    Command="{Binding $parent[DataGrid].((vm:DataPageViewModel)DataContext).DeleteGameCommand}"
+                                    Command="{Binding $parent[DataGrid].((vmw:DataPageViewModel)DataContext).DeleteGameCommand}"
                                     CommandParameter="{Binding}"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
@@ -108,7 +109,7 @@
                      inferred and can be wrong, so correcting it should be obvious and one click. -->
                 <DataGridTemplateColumn Header="Mode">
                     <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="vm:GameDataRowViewModel">
+                        <DataTemplate x:DataType="vmc:GameDataRowViewModel">
                             <ComboBox ItemsSource="{Binding GameTypeOptions}" SelectedItem="{Binding GameType}"
                                       Classes="noCaret" Width="30" Margin="2,0" VerticalAlignment="Center" Padding="0" BorderThickness="0"/>
                         </DataTemplate>
@@ -117,7 +118,7 @@
                 <DataGridTextColumn Header="Map" Binding="{Binding MapName}" IsReadOnly="True"/>
                 <DataGridTemplateColumn Header="Result">
                     <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="vm:GameDataRowViewModel">
+                        <DataTemplate x:DataType="vmc:GameDataRowViewModel">
                             <TextBlock Text="{Binding ResultLabel}" Foreground="{Binding ResultColor}"
                                        VerticalAlignment="Center"/>
                         </DataTemplate>
@@ -125,7 +126,7 @@
                 </DataGridTemplateColumn>
                 <DataGridTemplateColumn Header="MMR(Δ)">
                     <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="vm:GameDataRowViewModel">
+                        <DataTemplate x:DataType="vmc:GameDataRowViewModel">
                             <component:ColoredTextBlock Characters="{Binding MmrText}"
                                                         VerticalAlignment="Center"/>
                         </DataTemplate>
@@ -134,7 +135,7 @@
                 <DataGridTextColumn Header="Length" Binding="{Binding GameLength}" IsReadOnly="True"/>
                 <DataGridTemplateColumn Header="Matchup">
                     <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="vm:GameDataRowViewModel">
+                        <DataTemplate x:DataType="vmc:GameDataRowViewModel">
                             <component:ColoredTextBlock Characters="{Binding MatchupCharacters}"
                                                      VerticalAlignment="Center"/>
                         </DataTemplate>
@@ -151,18 +152,18 @@
                 </DataGridTemplateColumn>
                 <DataGridTemplateColumn Width="36" CanUserResize="False" CanUserSort="False">
                     <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="vm:GameDataRowViewModel">
+                        <DataTemplate x:DataType="vmc:GameDataRowViewModel">
                             <Button Content="▶" Background="Transparent" BorderThickness="0"
                                     FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
                                     ToolTip.Tip="Watch Replay"
-                                    Command="{Binding $parent[DataGrid].((vm:DataPageViewModel)DataContext).LaunchReplayCommand}"
+                                    Command="{Binding $parent[DataGrid].((vmw:DataPageViewModel)DataContext).LaunchReplayCommand}"
                                     CommandParameter="{Binding}"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
             </DataGrid.Columns>
             <DataGrid.RowDetailsTemplate>
-                <DataTemplate x:DataType="vm:GameDataRowViewModel">
+                <DataTemplate x:DataType="vmc:GameDataRowViewModel">
                     <!-- Capped so a single expanded row can't grow arbitrarily tall — GamesGrid locks its
                          own scrolling while details are open (see DataPage.axaml.cs), so this ScrollViewer
                          is what lets a tall details panel still scroll internally. Wheel-scroll isolation
@@ -192,12 +193,12 @@
                                         </Style>
                                     </TabControl.Styles>
                                     <TabControl.ItemTemplate>
-                                        <DataTemplate x:DataType="vm:PlayerBuildTrackerViewModel">
+                                        <DataTemplate x:DataType="vmc:PlayerBuildTrackerViewModel">
                                             <TextBlock Text="{Binding TabHeader}" Foreground="{Binding NameColor}"/>
                                         </DataTemplate>
                                     </TabControl.ItemTemplate>
                                     <TabControl.ContentTemplate>
-                                        <DataTemplate x:DataType="vm:PlayerBuildTrackerViewModel">
+                                        <DataTemplate x:DataType="vmc:PlayerBuildTrackerViewModel">
                                             <local:PlayerBuildTracker Margin="0,8,0,0"/>
                                         </DataTemplate>
                                     </TabControl.ContentTemplate>

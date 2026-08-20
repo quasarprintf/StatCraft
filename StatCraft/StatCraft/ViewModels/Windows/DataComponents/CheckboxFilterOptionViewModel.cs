@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels.Windows.DataComponents
 {
     // Non-generic base is all the reusable CheckboxFilterDropdown view needs (Label/IsChecked); the
     // generic subclass carries the strongly-typed value each filter dimension actually filters on.
