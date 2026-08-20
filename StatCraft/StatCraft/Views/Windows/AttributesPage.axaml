@@ -10,11 +10,11 @@
         <DockPanel Grid.Column="0" Margin="4">
             <TextBox DockPanel.Dock="Top" Text="{Binding NameFilter}" PlaceholderText="Filter attributes..." Margin="0,0,0,4"/>
 
-            <TabControl DockPanel.Dock="Top" SelectedIndex="{Binding SelectedScopeIndex}">
-                <TabItem Header="Game"/>
-                <TabItem Header="Build"/>
-                <TabItem Header="Map"/>
-            </TabControl>
+            <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
+                <Button Content="Game" Command="{ Binding SetScopeCommand }" CommandParameter="{x:Static attr:AttributeScope.Game}" />
+                <Button Content="Build" Command="{ Binding SetScopeCommand }" CommandParameter="{x:Static attr:AttributeScope.Build}" />
+                <Button Content="Map" Command="{ Binding SetScopeCommand }" CommandParameter="{x:Static attr:AttributeScope.Map}" />
+            </StackPanel>
 
             <ListBox x:Name="AttributeListBox" ItemsSource="{Binding FilteredAttributes}" SelectedItem="{Binding SelectedAttribute}">
                 <ListBox.ContextMenu>

@@ -8,16 +8,8 @@ using StatCraft.Models.GameData.Attributes;
 
 namespace StatCraft.ViewModels.Windows
 {
-    // The Attributes tab. Purely UI scaffolding for now — every attribute definition lives only in
-    // memory, bucketed by scope, and every persistence hook below is a TODO stub rather than a real
-    // BuildRepository/MapRepository call. Structurally mirrors BuildsPageViewModel's "one bucket per
-    // selector value" pattern (there: Dictionary<Race, ...>, here: Dictionary<AttributeScope, ...>) and
-    // MapsPageViewModel's name-filtered, in-place-diffed list.
     public partial class AttributesPageViewModel : ViewModelBase
     {
-        // Only these three scopes get a tab — BuildDetail already has its own home on the Builds tab.
-        private static readonly AttributeScope[] TabScopes = [AttributeScope.Game, AttributeScope.Build, AttributeScope.Map];
-
         private readonly Dictionary<AttributeScope, ObservableCollection<AttributeDefinition>> _attributesByScope = new()
         {
             [AttributeScope.Game] = [],
@@ -27,9 +19,7 @@ namespace StatCraft.ViewModels.Windows
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(Attributes))]
-        private int _selectedScopeIndex;
-
-        public AttributeScope SelectedScope => TabScopes[SelectedScopeIndex];
+        private AttributeScope _selectedScope;
 
         // The currently-selected scope's full (unfiltered) bucket.
         public ObservableCollection<AttributeDefinition> Attributes => _attributesByScope[SelectedScope];
@@ -48,9 +38,15 @@ namespace StatCraft.ViewModels.Windows
         // editor has an AttributeValue to bind against.
         [ObservableProperty] private AttributeValue? _selectedAttributeValue;
 
-        partial void OnSelectedScopeIndexChanged(int value) => ApplyFilter();
+        partial void OnSelectedScopeChanged(AttributeScope value) => ApplyFilter();
 
         partial void OnNameFilterChanged(string value) => ApplyFilter();
+
+        [RelayCommand]
+        public void SetScope(AttributeScope scope)
+        {
+            SelectedScope = scope;
+        }
 
         partial void OnSelectedAttributeChanged(AttributeDefinition? value)
         {
