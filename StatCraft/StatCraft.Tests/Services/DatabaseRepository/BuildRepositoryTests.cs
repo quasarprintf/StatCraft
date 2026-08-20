@@ -116,6 +116,8 @@ public class BuildRepositoryTests : IDisposable
         BuildNode loadedNode = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss));
         AttributeValue loadedAttr = Assert.Single(loadedNode.Attributes);
 
+        Assert.Equal(AttributeScope.BuildDetail, loadedAttr.Definition.Scope);
+
         switch (type)
         {
             case AttributeType.Numeric: Assert.Equal(12, loadedAttr.NumericValue); break;

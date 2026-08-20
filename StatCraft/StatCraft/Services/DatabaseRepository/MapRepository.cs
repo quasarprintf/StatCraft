@@ -26,13 +26,13 @@ namespace StatCraft.Services.DatabaseRepository
             using SqliteConnection conn = OpenConnection();
 
             List<MapAttributeRow> rows = conn.Query<MapAttributeRow>(
-                "SELECT Id, Name, Type FROM MapAttributes ORDER BY SortOrder").ToList();
+                "SELECT Id, Name, Type, Scope FROM MapAttributes ORDER BY SortOrder").ToList();
 
             Dictionary<long, AttributeDefinition> byId = new();
             List<AttributeDefinition> attributes = new();
             foreach (MapAttributeRow row in rows)
             {
-                AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Id = (int)row.Id, Name = row.Name, Type = row.Type };
+                AttributeDefinition attribute = new AttributeDefinition(row.Scope) { Id = (int)row.Id, Name = row.Name, Type = row.Type };
                 byId[row.Id] = attribute;
                 attributes.Add(attribute);
             }
@@ -134,9 +134,9 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
             attribute.Id = (int)conn.ExecuteScalar<long>(@"
-                INSERT INTO MapAttributes (Name, Type, SortOrder) VALUES (@name, @type, @sortOrder);
+                INSERT INTO MapAttributes (Name, Type, Scope, SortOrder) VALUES (@name, @type, @scope, @sortOrder);
                 SELECT last_insert_rowid();",
-                new { name = attribute.Name, type = attribute.Type, sortOrder });
+                new { name = attribute.Name, type = attribute.Type, scope = attribute.Scope, sortOrder });
             MapsChanged?.Invoke();
         }
 
@@ -206,6 +206,7 @@ namespace StatCraft.Services.DatabaseRepository
             public long Id { get; set; }
             public string Name { get; set; } = "";
             public AttributeType Type { get; set; }
+            public AttributeScope Scope { get; set; }
         }
 
         private class MapAttributeValueRow

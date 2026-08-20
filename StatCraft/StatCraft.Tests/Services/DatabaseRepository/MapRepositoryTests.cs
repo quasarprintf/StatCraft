@@ -108,6 +108,7 @@ public class MapRepositoryTests : IDisposable
         AttributeDefinition loaded = Assert.Single(_repository.GetAllAttributes());
         Assert.Equal("New", loaded.Name);
         Assert.Equal(AttributeType.Percent, loaded.Type);
+        Assert.Equal(AttributeScope.Map, loaded.Scope);
     }
 
     [Fact]

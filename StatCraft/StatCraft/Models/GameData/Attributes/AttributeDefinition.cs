@@ -18,7 +18,7 @@ namespace StatCraft.Models.GameData.Attributes
         [NotifyPropertyChangedFor(nameof(IsNumeric), nameof(IsBool), nameof(IsPercent), nameof(IsValues))]
         private AttributeType _type = AttributeType.Numeric;
 
-        private AttributeScope _scope { get; set; }
+        [ObservableProperty] private AttributeScope _scope;
 
         // Options for a Values-type attribute
         public ObservableCollection<string> ValueOptions { get; protected set; } = [];
@@ -30,10 +30,10 @@ namespace StatCraft.Models.GameData.Attributes
         public bool IsPercent => Type == AttributeType.Percent;
         public bool IsValues  => Type == AttributeType.Values;
 
-        public bool IsGameAttribute => _scope == AttributeScope.Game;
-        public bool IsBuildAttribute => _scope == AttributeScope.Build;
-        public bool IsBuildDetailAttribute => _scope == AttributeScope.BuildDetail;
-        public bool IsMapAttribute => _scope == AttributeScope.Map;
+        public bool IsGameAttribute => Scope == AttributeScope.Game;
+        public bool IsBuildAttribute => Scope == AttributeScope.Build;
+        public bool IsBuildDetailAttribute => Scope == AttributeScope.BuildDetail;
+        public bool IsMapAttribute => Scope == AttributeScope.Map;
 
         public AttributeDefinition(AttributeScope scope)
         {

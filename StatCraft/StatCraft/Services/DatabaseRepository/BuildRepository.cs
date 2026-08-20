@@ -62,6 +62,7 @@ namespace StatCraft.Services.DatabaseRepository
             public string Name { get; set; } = "";
             public AttributeType Type { get; set; }
             public string DefaultValue { get; set; } = "";
+            public AttributeScope Scope { get; set; }
         }
 
         private class ValueOptionRow
@@ -99,10 +100,10 @@ namespace StatCraft.Services.DatabaseRepository
                 string nodeIds = string.Join(",", nodeDict.Keys);
 
                 List<BuildAttributeRow> attrRows = conn.Query<BuildAttributeRow>(
-                    $"SELECT Id, BuildNodeId, Name, Type, DefaultValue FROM BuildAttributes WHERE BuildNodeId IN ({nodeIds}) ORDER BY SortOrder").ToList();
+                    $"SELECT Id, BuildNodeId, Name, Type, DefaultValue, Scope FROM BuildAttributes WHERE BuildNodeId IN ({nodeIds}) ORDER BY SortOrder").ToList();
                 foreach (BuildAttributeRow row in attrRows)
                 {
-                    AttributeDefinition definition = new AttributeDefinition(AttributeScope.BuildDetail) { Id = (int)row.Id, Name = row.Name, Type = row.Type };
+                    AttributeDefinition definition = new AttributeDefinition(row.Scope) { Id = (int)row.Id, Name = row.Name, Type = row.Type };
                     AttributeValue attr = new(definition);
                     attr.ApplyStoredValue(row.DefaultValue);
                     attrDict[row.Id] = attr;
@@ -162,10 +163,10 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
             attr.Definition.Id = (int)conn.ExecuteScalar<long>(@"
-                INSERT INTO BuildAttributes (BuildNodeId, Name, Type, DefaultValue, SortOrder)
-                VALUES (@buildNodeId, @name, @type, @defaultValue, @sortOrder);
+                INSERT INTO BuildAttributes (BuildNodeId, Name, Type, DefaultValue, Scope, SortOrder)
+                VALUES (@buildNodeId, @name, @type, @defaultValue, @scope, @sortOrder);
                 SELECT last_insert_rowid();",
-                new { buildNodeId, name = attr.Definition.Name, type = attr.Definition.Type, defaultValue = attr.Serialize() ?? "", sortOrder });
+                new { buildNodeId, name = attr.Definition.Name, type = attr.Definition.Type, defaultValue = attr.Serialize() ?? "", scope = attr.Definition.Scope, sortOrder });
             BuildsChanged?.Invoke();
         }
 
