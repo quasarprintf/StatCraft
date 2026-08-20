@@ -21,12 +21,8 @@ namespace StatCraft.ViewModels.Windows
         [NotifyPropertyChangedFor(nameof(Attributes))]
         private AttributeScope _selectedScope;
 
-        // The currently-selected scope's full (unfiltered) bucket.
         public ObservableCollection<AttributeDefinition> Attributes => _attributesByScope[SelectedScope];
 
-        // The subset of Attributes currently passing NameFilter — kept as an in-place-diffed collection
-        // (matching MapsPageViewModel.ApplyFilters) so the ListBox's selection survives a filter/tab
-        // change that still includes it.
         public ObservableCollection<AttributeDefinition> FilteredAttributes { get; } = [];
 
         [ObservableProperty] private string _nameFilter = "";
@@ -76,37 +72,39 @@ namespace StatCraft.ViewModels.Windows
             // TODO: delete the attribute definition from the backend once a repository exists for this scope.
         }
 
-        // Subscribes so edits can be persisted once a backend exists for this scope — mirrors
-        // MapsPageViewModel.WireAttribute's shape, minus the actual repository call.
         private void WireAttribute(AttributeDefinition attribute)
         {
             attribute.PropertyChanged += (_, _) => OnAttributeEdited(attribute);
             attribute.ValueOptions.CollectionChanged += (_, _) => OnAttributeEdited(attribute);
         }
 
-        // TODO: persist Name/Type/Description/ValueOptions changes for this attribute definition once a
-        // repository exists for its scope.
+        
         private void OnAttributeEdited(AttributeDefinition attribute)
         {
+            // TODO: persist Name/Type/Description/ValueOptions changes for this attribute definition once a repository exists for its scope.
         }
 
-        private void WireAttributeValue(AttributeValue value) =>
+        private void WireAttributeValue(AttributeValue value)
+        {
             value.PropertyChanged += (_, e) =>
             {
                 if (e.PropertyName != nameof(AttributeValue.HasValue))
                     OnDefaultValueEdited(value);
             };
-
-        // TODO: persist this attribute's default value once a backend exists for its scope.
-        private void OnDefaultValueEdited(AttributeValue value)
-        {
         }
 
-        // Rebuilds FilteredAttributes from Attributes (the currently-selected scope's bucket) + NameFilter,
-        // in place — same Remove-then-Insert diffing MapsPageViewModel.ApplyFilters uses, so the ListBox's
-        // selection survives a filter/tab change that still includes the selected attribute.
+        private void OnDefaultValueEdited(AttributeValue value)
+        {
+            // TODO: persist this attribute's default value once a backend exists for its scope.
+        }
+
         private void ApplyFilter()
         {
+            bool Matches(AttributeDefinition attribute)
+            {
+                return string.IsNullOrWhiteSpace(NameFilter) || attribute.Name.Contains(NameFilter.Trim(), StringComparison.OrdinalIgnoreCase);
+            }
+
             List<AttributeDefinition> matching = Attributes.Where(Matches).ToList();
 
             for (int i = FilteredAttributes.Count - 1; i >= 0; i--)
@@ -117,8 +115,5 @@ namespace StatCraft.ViewModels.Windows
                 if (!FilteredAttributes.Contains(matching[i]))
                     FilteredAttributes.Insert(i, matching[i]);
         }
-
-        private bool Matches(AttributeDefinition attribute) =>
-            string.IsNullOrWhiteSpace(NameFilter) || attribute.Name.Contains(NameFilter.Trim(), StringComparison.OrdinalIgnoreCase);
     }
 }
