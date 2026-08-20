@@ -3,7 +3,7 @@
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
              xmlns:race="using:StatCraft.Models.GameData.Race"
              xmlns:Attr="using:StatCraft.Models.GameData.Attributes"
-             x:Class="StatCraft.Views.BuildDetailsPanel"
+             x:Class="StatCraft.Views.Windows.BuildsComponents.BuildDetailsPanel"
              x:DataType="vmw:BuildsPageViewModel">
     <Grid ColumnDefinitions="*,4,*">
 

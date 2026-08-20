@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace StatCraft.Views
+namespace StatCraft.Views.Windows.MapsComponents
 {
     public partial class MapDetailsPanel : UserControl
     {

@@ -5,7 +5,7 @@ using Avalonia.Platform.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.ViewModels.Windows;
 
-namespace StatCraft.Views
+namespace StatCraft.Views.Windows
 {
     public partial class SettingsPage : UserControl
     {

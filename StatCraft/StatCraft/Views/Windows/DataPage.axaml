@@ -2,9 +2,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
              xmlns:vmc="using:StatCraft.ViewModels.Windows.DataComponents"
-             xmlns:local="using:StatCraft.Views"
+             xmlns:local="using:StatCraft.Views.Windows.DataComponents"
              xmlns:component="using:StatCraft.Views.Components"
-              x:Class="StatCraft.Views.DataPage"
+              x:Class="StatCraft.Views.Windows.DataPage"
              x:DataType="vmw:DataPageViewModel">
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="8">

@@ -6,7 +6,7 @@ using StatCraft.Models.GameData.Builds;
 using StatCraft.ViewModels.Windows;
 using StatCraft.Views.Components;
 
-namespace StatCraft.Views
+namespace StatCraft.Views.Windows
 {
     public partial class BuildsPage : UserControl
     {

@@ -6,7 +6,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Data.Converters;
 
-namespace StatCraft.Views
+namespace StatCraft.Views.Windows.DataComponents
 {
     // A generic checkbox-list dropdown, decoupled from any one ViewModel shape via plain
     // AvaloniaProperties (rather than binding directly to e.g. CheckboxFilterSlotViewModel) so it can

@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vmc="using:StatCraft.ViewModels.Windows.DataComponents"
         xmlns:bnet="using:StatCraft.Models.Battlenet"
-        x:Class="StatCraft.Views.LinkAccountWindow"
+        x:Class="StatCraft.Views.Windows.DataComponents.LinkAccountWindow"
         x:DataType="vmc:LinkAccountViewModel"
         Title="Link Battle.net Account"
         Width="400" Height="380"

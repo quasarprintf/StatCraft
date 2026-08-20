@@ -2,8 +2,8 @@
              xmlns:Attr="using:StatCraft.Models.GameData.Attributes"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vmc="using:StatCraft.ViewModels.Windows.DataComponents"
-             xmlns:local="using:StatCraft.Views"
-             x:Class="StatCraft.Views.PlayerBuildTracker"
+             xmlns:local="using:StatCraft.Views.Windows.DataComponents"
+             x:Class="StatCraft.Views.Windows.DataComponents.PlayerBuildTracker"
              x:DataType="vmc:PlayerBuildTrackerViewModel">
     <StackPanel Spacing="8">
         <ItemsControl ItemsSource="{Binding BuildSlots}">

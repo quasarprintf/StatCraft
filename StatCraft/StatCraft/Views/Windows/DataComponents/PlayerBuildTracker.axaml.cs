@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 
-namespace StatCraft.Views
+namespace StatCraft.Views.Windows.DataComponents
 {
     public partial class PlayerBuildTracker : UserControl
     {

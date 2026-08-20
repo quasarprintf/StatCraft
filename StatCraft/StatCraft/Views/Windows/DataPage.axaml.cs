@@ -18,8 +18,9 @@ using StatCraft.Services.BackgroundService;
 using StatCraft.ViewModels.Windows;
 using StatCraft.ViewModels.Windows.DataComponents;
 using StatCraft.Views.Components;
+using StatCraft.Views.Windows.DataComponents;
 
-namespace StatCraft.Views
+namespace StatCraft.Views.Windows
 {
     public partial class DataPage : UserControl
     {

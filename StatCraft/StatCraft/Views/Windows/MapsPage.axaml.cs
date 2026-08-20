@@ -5,7 +5,7 @@ using StatCraft.Models.GameData.Maps;
 using StatCraft.ViewModels.Windows;
 using StatCraft.Views.Components;
 
-namespace StatCraft.Views
+namespace StatCraft.Views.Windows
 {
     public partial class MapsPage : UserControl
     {

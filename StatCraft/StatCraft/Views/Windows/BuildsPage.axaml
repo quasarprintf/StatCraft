@@ -2,8 +2,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
              xmlns:builds="using:StatCraft.Models.GameData.Builds"
-             xmlns:local="using:StatCraft.Views"
-             x:Class="StatCraft.Views.BuildsPage"
+             xmlns:local="using:StatCraft.Views.Windows.BuildsComponents"
+             x:Class="StatCraft.Views.Windows.BuildsPage"
              x:DataType="vmw:BuildsPageViewModel">
     <DockPanel>
         <!-- Player race / opponent race selectors -->

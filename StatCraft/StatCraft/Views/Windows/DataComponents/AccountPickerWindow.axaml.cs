@@ -3,7 +3,7 @@ using Avalonia.Input;
 using StatCraft.Models.Battlenet;
 using StatCraft.ViewModels.Windows.DataComponents;
 
-namespace StatCraft.Views
+namespace StatCraft.Views.Windows.DataComponents
 {
     public partial class AccountPickerWindow : Window
     {

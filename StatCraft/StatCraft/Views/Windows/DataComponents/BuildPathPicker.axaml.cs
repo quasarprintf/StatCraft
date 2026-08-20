@@ -10,7 +10,7 @@ using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.BackgroundService;
 using StatCraft.ViewModels.Windows.DataComponents;
 
-namespace StatCraft.Views
+namespace StatCraft.Views.Windows.DataComponents
 {
     public partial class BuildPathPicker : UserControl
     {

@@ -3,8 +3,9 @@
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
              xmlns:vmc="using:StatCraft.ViewModels.Windows.DataComponents"
              xmlns:maps="using:StatCraft.Models.GameData.Maps"
-             xmlns:local="using:StatCraft.Views"
-             x:Class="StatCraft.Views.MapsPage"
+             xmlns:local="using:StatCraft.Views.Windows.MapsComponents"
+             xmlns:data="using:StatCraft.Views.Windows.DataComponents"
+             x:Class="StatCraft.Views.Windows.MapsPage"
              x:DataType="vmw:MapsPageViewModel">
     <Grid ColumnDefinitions="240,4,*">
         <!-- Left: name filter + attribute filters, then the map list -->
@@ -44,7 +45,7 @@
                                            TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
                                 <Button Grid.Column="1" Classes="removeFilter" Command="{Binding RemoveCommand}"/>
                             </Grid>
-                            <local:CheckboxFilterDropdown Header="{Binding Title}" Options="{Binding Options}"
+                            <data:CheckboxFilterDropdown Header="{Binding Title}" Options="{Binding Options}"
                                                           ShowSearch="{Binding ShowSearch}" SearchText="{Binding SearchText}"
                                                           Columns="{Binding Columns}" HorizontalAlignment="Left"/>
                             <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>

@@ -4,7 +4,7 @@ using Avalonia.Controls;
 using Avalonia.Data;
 using Avalonia.Input;
 
-namespace StatCraft.Views
+namespace StatCraft.Views.Windows.DataComponents
 {
     public partial class CompactDatePicker : UserControl
     {

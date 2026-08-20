@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
-             x:Class="StatCraft.Views.SettingsPage"
+             x:Class="StatCraft.Views.Windows.SettingsPage"
              x:DataType="vmw:SettingsPageViewModel">
     <StackPanel Margin="16" Spacing="8" MaxWidth="480" HorizontalAlignment="Left">
         <TextBlock Text="Replay Folder" FontWeight="SemiBold"/>
