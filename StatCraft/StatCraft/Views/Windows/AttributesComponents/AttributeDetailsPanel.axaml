@@ -1,0 +1,77 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vmw="using:StatCraft.ViewModels.Windows"
+             xmlns:attr="using:StatCraft.Models.GameData.Attributes"
+             x:Class="StatCraft.Views.Windows.AttributesComponents.AttributeDetailsPanel"
+             x:DataType="vmw:AttributesPageViewModel">
+    <Grid ColumnDefinitions="*,4,*" IsVisible="{Binding SelectedAttribute, Converter={x:Static ObjectConverters.IsNotNull}}">
+
+        <!-- Left: Name, Type, Default value -->
+        <DockPanel Grid.Column="0" Margin="12">
+            <StackPanel DockPanel.Dock="Top" Spacing="6">
+                <TextBlock Text="Name" FontWeight="SemiBold"/>
+                <TextBox Text="{Binding SelectedAttribute.Name}"/>
+
+                <TextBlock Text="Type" FontWeight="SemiBold" Margin="0,8,0,0"/>
+                <ComboBox SelectedItem="{Binding SelectedAttribute.Type}"
+                          ItemsSource="{x:Static attr:AttributeDefinition.AllTypes}"
+                          HorizontalAlignment="Stretch"/>
+
+                <TextBlock Text="Default Value" FontWeight="SemiBold" Margin="0,8,0,0"/>
+            </StackPanel>
+
+            <!-- Re-scoped to SelectedAttributeValue — the same per-type editor grid BuildDetailsPanel/
+                 MapDetailsPanel use for a stored value, reused here for a definition's default. -->
+            <StackPanel DataContext="{Binding SelectedAttributeValue}" x:DataType="attr:AttributeValue" Spacing="4">
+                <Grid ColumnDefinitions="*" IsVisible="{Binding !Definition.IsValues}">
+                    <NumericUpDown Value="{Binding NumericValue}"
+                                   IsVisible="{Binding Definition.IsNumeric}"
+                                   FormatString="0.##" HorizontalAlignment="Stretch"/>
+                    <CheckBox IsChecked="{Binding BoolValue}"
+                              IsVisible="{Binding Definition.IsBool}"/>
+                    <NumericUpDown Value="{Binding PercentValue}"
+                                   IsVisible="{Binding Definition.IsPercent}"
+                                   Minimum="0" Maximum="100" FormatString="0.##'%'"
+                                   HorizontalAlignment="Stretch"/>
+                </Grid>
+
+                <!-- Values type: the shared option list, then this definition's default pick from it -->
+                <StackPanel IsVisible="{Binding Definition.IsValues}" Spacing="2">
+                    <ItemsControl ItemsSource="{Binding Definition.ValueOptions}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,2">
+                                    <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center"/>
+                                    <Button Grid.Column="1" Content="✕" Padding="4,1"
+                                            Command="{Binding $parent[ItemsControl].((attr:AttributeValue)DataContext).Definition.RemoveOptionCommand}"
+                                            CommandParameter="{Binding}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                        <TextBox Grid.Column="0" Text="{Binding Definition.NewOptionText}"
+                                 PlaceholderText="Add option..." Margin="0,0,4,0"/>
+                        <Button Grid.Column="1" Content="+" Padding="6,2"
+                                Command="{Binding Definition.AddOptionCommand}"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0">
+                        <TextBlock Grid.Column="0" Text="Default:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                        <ComboBox Grid.Column="1" ItemsSource="{Binding Definition.ValueOptions}"
+                                  SelectedItem="{Binding SelectedValue}"
+                                  HorizontalAlignment="Stretch"/>
+                    </Grid>
+                </StackPanel>
+            </StackPanel>
+        </DockPanel>
+
+        <GridSplitter Grid.Column="1" ResizeDirection="Columns"/>
+
+        <!-- Right: Description -->
+        <DockPanel Grid.Column="2" Margin="12">
+            <TextBlock DockPanel.Dock="Top" Text="Description" FontWeight="SemiBold" Margin="0,0,0,6"/>
+            <TextBox Text="{Binding SelectedAttribute.Description}" AcceptsReturn="True" TextWrapping="Wrap"/>
+        </DockPanel>
+
+    </Grid>
+</UserControl>

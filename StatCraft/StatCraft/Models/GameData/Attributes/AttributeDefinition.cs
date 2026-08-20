@@ -14,6 +14,8 @@ namespace StatCraft.Models.GameData.Attributes
 
         [ObservableProperty] private string _name = string.Empty;
 
+        [ObservableProperty] private string _description = string.Empty;
+
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsNumeric), nameof(IsBool), nameof(IsPercent), nameof(IsValues))]
         private AttributeType _type = AttributeType.Numeric;
