@@ -171,6 +171,7 @@ namespace StatCraft
             services.AddTransient<BuildsPageViewModel>();
             services.AddTransient<MapsPageViewModel>();
             services.AddTransient<DataPageViewModel>();
+            services.AddTransient<AttributesPageViewModel>();
             services.AddTransient<AccountPickerViewModel>();
             services.AddTransient<LinkAccountViewModel>();
             services.AddTransient<SettingsPromptViewModel>();
