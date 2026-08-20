@@ -18,7 +18,7 @@ namespace StatCraft.Models.GameData.Attributes
         [NotifyPropertyChangedFor(nameof(IsNumeric), nameof(IsBool), nameof(IsPercent), nameof(IsValues))]
         private AttributeType _type = AttributeType.Numeric;
 
-        [ObservableProperty] private AttributeScope _scope;
+        public AttributeScope Scope { get; private set; }
 
         // Options for a Values-type attribute
         public ObservableCollection<string> ValueOptions { get; protected set; } = [];
@@ -37,7 +37,7 @@ namespace StatCraft.Models.GameData.Attributes
 
         public AttributeDefinition(AttributeScope scope)
         {
-            _scope = scope;
+            Scope = scope;
         }
 
         [RelayCommand]
