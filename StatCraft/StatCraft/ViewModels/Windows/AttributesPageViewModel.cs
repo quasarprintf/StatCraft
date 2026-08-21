@@ -104,22 +104,11 @@ namespace StatCraft.ViewModels.Windows
 
         private void OnAttributeEdited(object? sender, PropertyChangedEventArgs args)
         {
-            AttributeDefinition attribute = (AttributeDefinition)sender!;
-            _repository.UpdateAttribute(attribute);
+            _repository.UpdateAttribute(SelectedAttribute!);
         }
         private void OnAttributeValuesEdited(object? sender, NotifyCollectionChangedEventArgs args)
         {
-            AttributeDefinition attribute = (AttributeDefinition)sender!;
-            //TODO: sort order doesn't work properly with deletion.
-            switch (args.Action)
-            {
-                case NotifyCollectionChangedAction.Add:
-                    _repository.InsertValueOption(attribute.Id, (string)args.NewItems![0]!, args.NewStartingIndex);
-                    return;
-                case NotifyCollectionChangedAction.Remove:
-                    _repository.DeleteValueOption(attribute.Id, (string)args.OldItems![0]!);
-                    return;
-            }
+            AttributeValueOptionSync.Apply(args, SelectedAttribute!.Id, SelectedAttribute!.ValueOptions, _repository.InsertValueOption, _repository.DeleteValueOption);
         }
 
         private void OnDefaultValueEdited(object? sender, PropertyChangedEventArgs args)
