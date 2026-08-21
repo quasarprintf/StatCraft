@@ -1,0 +1,112 @@
+using System.ComponentModel;
+using StatCraft.Models.GameData.Attributes;
+
+namespace StatCraft.Tests;
+
+public class AttributeDefinitionTests
+{
+    // Pins the fix for a real bug: every freshly-created attribute is stored with DefaultValue = "" until
+    // someone sets one, and that empty string must read back as "no default", not as 0/false — see
+    // AttributeValueSerializer's own Parse tests for the lower-level version of this.
+    [Theory]
+    [InlineData(AttributeType.Numeric)]
+    [InlineData(AttributeType.Bool)]
+    [InlineData(AttributeType.Percent)]
+    public void Constructor_EmptyRawDefaultValue_DefaultValueIsUnset(AttributeType type)
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map, type, "");
+
+        Assert.False(attribute.DefaultValue.HasValue);
+        Assert.Null(attribute.DefaultValue.NumericValue);
+        Assert.Null(attribute.DefaultValue.BoolValue);
+        Assert.Null(attribute.DefaultValue.PercentValue);
+    }
+
+    [Fact]
+    public void Constructor_NonEmptyRawDefaultValue_DefaultValueIsSet()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map, AttributeType.Numeric, "5");
+
+        Assert.True(attribute.DefaultValue.HasValue);
+        Assert.Equal(5m, attribute.DefaultValue.NumericValue);
+    }
+
+    // DefinitionChanged drives AttributesPageViewModel's persistence — NewOptionText is a UI-only staging
+    // field for the "add option" textbox and was never meant to trigger a save (that was a real bug: every
+    // keystroke there issued an UPDATE). Confirming both directions here pins that behavior.
+    [Fact]
+    public void DefinitionChanged_NewOptionTextEdited_DoesNotFire()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map);
+        int fireCount = 0;
+        attribute.DefinitionChanged += (_, _) => fireCount++;
+
+        attribute.NewOptionText = "Zealot";
+
+        Assert.Equal(0, fireCount);
+    }
+
+    [Theory]
+    [InlineData(nameof(AttributeDefinition.Name))]
+    [InlineData(nameof(AttributeDefinition.Type))]
+    [InlineData(nameof(AttributeDefinition.Description))]
+    public void DefinitionChanged_OtherPropertyEdited_Fires(string propertyName)
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map);
+        List<string?> fired = [];
+        attribute.DefinitionChanged += (_, e) => fired.Add(e.PropertyName);
+
+        switch (propertyName)
+        {
+            case nameof(AttributeDefinition.Name): attribute.Name = "New"; break;
+            case nameof(AttributeDefinition.Type): attribute.Type = AttributeType.Bool; break;
+            case nameof(AttributeDefinition.Description): attribute.Description = "New description"; break;
+        }
+
+        Assert.Contains(propertyName, fired);
+    }
+
+    [Fact]
+    public void AddOption_RaisesValueOptionsChangedWithTheAddedValue()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { NewOptionText = "Zealot" };
+        CollectionChangeEventArgs? received = null;
+        attribute.ValueOptionsChanged += (_, e) => received = e;
+
+        attribute.AddOptionCommand.Execute(null);
+
+        Assert.NotNull(received);
+        Assert.Equal(CollectionChangeAction.Add, received!.Action);
+        Assert.Equal("Zealot", received.Element);
+        Assert.Equal(["Zealot"], attribute.ValueOptions);
+    }
+
+    [Fact]
+    public void AddOption_BlankNewOptionText_DoesNothing()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { NewOptionText = "   " };
+        bool raised = false;
+        attribute.ValueOptionsChanged += (_, _) => raised = true;
+
+        attribute.AddOptionCommand.Execute(null);
+
+        Assert.False(raised);
+        Assert.Empty(attribute.ValueOptions);
+    }
+
+    [Fact]
+    public void RemoveOption_RaisesValueOptionsChangedWithTheRemovedValue()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { NewOptionText = "Zealot" };
+        attribute.AddOptionCommand.Execute(null);
+        CollectionChangeEventArgs? received = null;
+        attribute.ValueOptionsChanged += (_, e) => received = e;
+
+        attribute.RemoveOptionCommand.Execute("Zealot");
+
+        Assert.NotNull(received);
+        Assert.Equal(CollectionChangeAction.Remove, received!.Action);
+        Assert.Equal("Zealot", received.Element);
+        Assert.Empty(attribute.ValueOptions);
+    }
+}

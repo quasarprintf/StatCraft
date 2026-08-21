@@ -86,6 +86,38 @@ public class MapRepositoryTests : IDisposable
         Assert.Empty(_mapRepo.GetAllMaps([]));
     }
 
+    // GetAllMaps takes its attribute definitions as a parameter rather than querying them itself
+    // (AttributeRepository owns that), so "an attribute applies to every map" now means every map in the
+    // result carries one AttributeValue slot per definition passed in.
+    [Fact]
+    public void GetAllMaps_GivenAnAttribute_AppliesItToEveryMap()
+    {
+        _mapRepo.InsertMap(new Map { Name = "A" });
+        _mapRepo.InsertMap(new Map { Name = "B" });
+        _attributeRepo.InsertAttribute(new AttributeDefinition(AttributeScope.Map) { Name = "Rush Distance", Type = AttributeType.Numeric }, 0);
+
+        List<AttributeDefinition> attributes = _attributeRepo.GetAllAttributes(AttributeScope.Map);
+        foreach (Map map in _mapRepo.GetAllMaps(attributes))
+            Assert.Equal("Rush Distance", Assert.Single(map.AttributeValues).Definition.Name);
+    }
+
+    // Mirrors GetAllMaps_ValueForADeletedAttribute_IsIgnored below, but from the definitions side: once
+    // an attribute is deleted, AttributeRepository.GetAllAttributes no longer returns it, so passing that
+    // fresh (now-shorter) list means no map carries a slot for it anymore.
+    [Fact]
+    public void GetAllMaps_AfterAttributeDeleted_NoLongerAppliesToAnyMap()
+    {
+        _mapRepo.InsertMap(new Map { Name = "A" });
+        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Doomed" };
+        _attributeRepo.InsertAttribute(attribute, 0);
+
+        _attributeRepo.DeleteAttribute(attribute.Id);
+
+        List<AttributeDefinition> attributes = _attributeRepo.GetAllAttributes(AttributeScope.Map);
+        Assert.Empty(attributes);
+        Assert.Empty(Assert.Single(_mapRepo.GetAllMaps(attributes)).AttributeValues);
+    }
+
     // The reason MapAttributeValue's slots are nullable at all: a value that was never entered must not
     // read back as 0/false, which is what AttributeValueSerializer.Parse would produce for an empty
     // string. Absence of a row is the null, so nothing should be parsed for it.
