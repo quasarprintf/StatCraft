@@ -25,9 +25,10 @@ namespace StatCraft.Services.DatabaseRepository
             object? parameters = null;
             if (scope != null)
             {
-                query += " WHERE Scope = @scope ORDER BY SortOrder";
+                query += " WHERE Scope = @scope";
                 parameters = new { scope = scope };
             }
+            query += "  ORDER BY SortOrder";
             List<AttributeDefinitionRow> rows = conn.Query<AttributeDefinitionRow>(query,
                parameters
                ).ToList();
