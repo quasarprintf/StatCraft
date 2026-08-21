@@ -21,7 +21,8 @@ namespace StatCraft.ViewModels.Windows
     // here needs an explicit save.
     public partial class MapsPageViewModel : ViewModelBase
     {
-        private readonly MapRepository _repository;
+        private readonly MapRepository mapRepo;
+        private readonly AttributeRepository attributeRepo;
         private readonly GameDataRepository _gameDataRepository;
 
         // Every map, unfiltered. Maps (the bound collection) is the subset currently passing the filters.
@@ -31,18 +32,19 @@ namespace StatCraft.ViewModels.Windows
         // subclass, so the existing filter-slot types can be reused unchanged.
         private readonly Dictionary<AttributeDefinition, FilterSlotViewModel> _slotByAttribute = [];
 
-        public MapsPageViewModel(MapRepository repository, GameDataRepository gameDataRepository)
+        public MapsPageViewModel(MapRepository mapRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository)
         {
-            _repository = repository;
+            mapRepo = mapRepository;
+            attributeRepo = attributeRepository;
             _gameDataRepository = gameDataRepository;
 
-            foreach (AttributeDefinition attribute in _repository.GetAllAttributes())
+            foreach (AttributeDefinition attribute in attributeRepo.GetAllAttributes())
             {
                 WireAttribute(attribute);
                 Attributes.Add(attribute);
             }
 
-            foreach (Map map in _repository.GetAllMaps(Attributes))
+            foreach (Map map in mapRepo.GetAllMaps(Attributes))
             {
                 WireMap(map);
                 _allMaps.Add(map);
@@ -87,7 +89,7 @@ namespace StatCraft.ViewModels.Windows
         public void AddMap()
         {
             Map map = new() { Name = "New Map" };
-            _repository.InsertMap(map);
+            mapRepo.InsertMap(map);
 
             // Every existing attribute applies to it immediately, with no value.
             foreach (AttributeDefinition attribute in Attributes)
@@ -113,7 +115,7 @@ namespace StatCraft.ViewModels.Windows
             bool wasSelected = SelectedMap == map;
             int index = Maps.IndexOf(map);
 
-            _repository.DeleteMap(map.Id);
+            mapRepo.DeleteMap(map.Id);
             _allMaps.Remove(map);
             ApplyFilters();
 
@@ -125,7 +127,7 @@ namespace StatCraft.ViewModels.Windows
         public void AddAttribute()
         {
             AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "New Definition" };
-            _repository.InsertAttribute(attribute, Attributes.Count);
+            attributeRepo.InsertAttribute(attribute, Attributes.Count);
             WireAttribute(attribute);
             Attributes.Add(attribute);
 
@@ -140,7 +142,7 @@ namespace StatCraft.ViewModels.Windows
         [RelayCommand]
         public void RemoveAttribute(AttributeDefinition attribute)
         {
-            _repository.DeleteAttribute(attribute.Id);
+            attributeRepo.DeleteAttribute(attribute.Id);
             Attributes.Remove(attribute);
 
             foreach (Map map in _allMaps)
@@ -160,7 +162,7 @@ namespace StatCraft.ViewModels.Windows
             {
                 if (s is Map m && e.PropertyName == nameof(Map.Name))
                 {
-                    _repository.UpdateMap(m);
+                    mapRepo.UpdateMap(m);
                     ApplyFilters();
                 }
             };
@@ -187,7 +189,7 @@ namespace StatCraft.ViewModels.Windows
 
                 // Serialize() returns null when unset, and SaveValue deletes the row for null — that
                 // absence is what "no value" actually is in the database.
-                _repository.SaveValue(map.Id, value.Definition.Id, value.Serialize());
+                mapRepo.SaveValue(map.Id, value.Definition.Id, value.Serialize());
                 ApplyFilters();
             };
         }
@@ -200,7 +202,7 @@ namespace StatCraft.ViewModels.Windows
 
                 if (e.PropertyName == nameof(AttributeDefinition.Name))
                 {
-                    _repository.UpdateAttribute(a);
+                    attributeRepo.UpdateAttribute(a);
                     // Title is mutable specifically so a rename — which fires on every keystroke, since
                     // the TextBox binding updates per character — can update the existing slot in place
                     // instead of recreating it and losing whatever the user already entered into it.
@@ -209,7 +211,7 @@ namespace StatCraft.ViewModels.Windows
                 }
                 else if (e.PropertyName == nameof(AttributeDefinition.Type))
                 {
-                    _repository.UpdateAttribute(a);
+                    attributeRepo.UpdateAttribute(a);
                     // Unlike a rename, a type change genuinely needs a new slot instance (Numeric/Percent
                     // vs. Bool vs. Values are different FilterSlotViewModel subclasses) — but only for
                     // this one attribute, not every other filter the user has open.
@@ -222,7 +224,7 @@ namespace StatCraft.ViewModels.Windows
 
             attribute.ValueOptions.CollectionChanged += (s, e) =>
             {
-                AttributeValueOptionSync.Apply(e, attribute.Id, attribute.ValueOptions, _repository.InsertValueOption, _repository.DeleteValueOption);
+                AttributeValueOptionSync.Apply(e, attribute.Id, attribute.ValueOptions, attributeRepo.InsertValueOption, attributeRepo.DeleteValueOption);
 
                 // Patches the existing slot's option list in place, preserving whichever options are
                 // still checked, rather than recreating the slot and losing the whole selection.

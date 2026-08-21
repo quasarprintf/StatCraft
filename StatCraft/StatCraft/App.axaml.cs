@@ -135,6 +135,13 @@ namespace StatCraft
                 return repository;
             });
 
+            services.AddSingleton<AttributeRepository>(sp =>
+            {
+                AttributeRepository repository = new AttributeRepository(dbPath, sp.GetRequiredService<ILogger>());
+                repository.Initialize();
+                return repository;
+            });
+
             services.AddSingleton<MapRepository>(sp =>
             {
                 MapRepository repository = new MapRepository(dbPath, sp.GetRequiredService<ILogger>());

@@ -8,39 +8,42 @@ namespace StatCraft.Tests;
 public class MapRepositoryTests : IDisposable
 {
     private readonly string _dbPath;
-    private readonly MapRepository _repository;
+    private readonly MapRepository _mapRepo;
+    private readonly AttributeRepository _attributeRepo;
 
     public MapRepositoryTests()
     {
         _dbPath = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid() + ".db");
-        _repository = new MapRepository(_dbPath);
-        _repository.Initialize();
+        _mapRepo = new MapRepository(_dbPath);
+        _mapRepo.Initialize();
+        _attributeRepo = new AttributeRepository(_dbPath);
+        _attributeRepo.Initialize();
     }
 
     [Fact]
     public void Initialize_CalledTwice_DoesNotThrow()
     {
-        _repository.Initialize();
+        _mapRepo.Initialize();
     }
 
     [Fact]
     public void GetOrCreateMap_FirstCall_CreatesMap()
     {
-        Map? map = _repository.GetOrCreateMap("Altitude LE");
+        Map? map = _mapRepo.GetOrCreateMap("Altitude LE");
 
         Assert.NotNull(map);
         Assert.Equal("Altitude LE", map.Name);
-        Assert.Single(_repository.GetAllMaps([]));
+        Assert.Single(_mapRepo.GetAllMaps([]));
     }
 
     [Fact]
     public void GetOrCreateMap_SecondCallSameName_ReturnsExistingRow()
     {
-        Map first = _repository.GetOrCreateMap("Altitude LE")!;
-        Map second = _repository.GetOrCreateMap("Altitude LE")!;
+        Map first = _mapRepo.GetOrCreateMap("Altitude LE")!;
+        Map second = _mapRepo.GetOrCreateMap("Altitude LE")!;
 
         Assert.Equal(first.Id, second.Id);
-        Assert.Single(_repository.GetAllMaps([]));
+        Assert.Single(_mapRepo.GetAllMaps([]));
     }
 
     [Theory]
@@ -48,94 +51,39 @@ public class MapRepositoryTests : IDisposable
     [InlineData("   ")]
     public void GetOrCreateMap_BlankName_ReturnsNullWithoutCreatingAMap(string name)
     {
-        Assert.Null(_repository.GetOrCreateMap(name));
-        Assert.Empty(_repository.GetAllMaps([]));
+        Assert.Null(_mapRepo.GetOrCreateMap(name));
+        Assert.Empty(_mapRepo.GetAllMaps([]));
     }
 
     [Fact]
     public void InsertMap_DuplicateName_Throws()
     {
-        _repository.InsertMap(new Map { Name = "Altitude LE" });
+        _mapRepo.InsertMap(new Map { Name = "Altitude LE" });
 
-        Assert.Throws<SqliteException>(() => _repository.InsertMap(new Map { Name = "Altitude LE" }));
+        Assert.Throws<SqliteException>(() => _mapRepo.InsertMap(new Map { Name = "Altitude LE" }));
     }
 
     [Fact]
     public void UpdateMap_ThenReload_PersistsName()
     {
         Map map = new() { Name = "Old" };
-        _repository.InsertMap(map);
+        _mapRepo.InsertMap(map);
 
         map.Name = "New";
-        _repository.UpdateMap(map);
+        _mapRepo.UpdateMap(map);
 
-        Assert.Equal("New", Assert.Single(_repository.GetAllMaps([])).Name);
+        Assert.Equal("New", Assert.Single(_mapRepo.GetAllMaps([])).Name);
     }
 
     [Fact]
     public void DeleteMap_RemovesIt()
     {
         Map map = new() { Name = "Doomed" };
-        _repository.InsertMap(map);
+        _mapRepo.InsertMap(map);
 
-        _repository.DeleteMap(map.Id);
+        _mapRepo.DeleteMap(map.Id);
 
-        Assert.Empty(_repository.GetAllMaps([]));
-    }
-
-    [Fact]
-    public void InsertAttribute_AppliesToEveryMap()
-    {
-        _repository.InsertMap(new Map { Name = "A" });
-        _repository.InsertMap(new Map { Name = "B" });
-        _repository.InsertAttribute(new AttributeDefinition(AttributeScope.Map) { Name = "Rush Distance", Type = AttributeType.Numeric }, 0);
-
-        List<AttributeDefinition> attributes = _repository.GetAllAttributes();
-        foreach (Map map in _repository.GetAllMaps(attributes))
-            Assert.Equal("Rush Distance", Assert.Single(map.AttributeValues).Definition.Name);
-    }
-
-    [Fact]
-    public void UpdateAttribute_ThenReload_PersistsNameAndType()
-    {
-        AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "Old", Type = AttributeType.Numeric };
-        _repository.InsertAttribute(attribute, 0);
-
-        attribute.Name = "New";
-        attribute.Type = AttributeType.Percent;
-        _repository.UpdateAttribute(attribute);
-
-        AttributeDefinition loaded = Assert.Single(_repository.GetAllAttributes());
-        Assert.Equal("New", loaded.Name);
-        Assert.Equal(AttributeType.Percent, loaded.Type);
-        Assert.Equal(AttributeScope.Map, loaded.Scope);
-    }
-
-    [Fact]
-    public void DeleteAttribute_RemovesItFromEveryMap()
-    {
-        _repository.InsertMap(new Map { Name = "A" });
-        AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "Doomed" };
-        _repository.InsertAttribute(attribute, 0);
-
-        _repository.DeleteAttribute(attribute.Id);
-
-        Assert.Empty(_repository.GetAllAttributes());
-        Assert.Empty(Assert.Single(_repository.GetAllMaps(_repository.GetAllAttributes())).AttributeValues);
-    }
-
-    [Fact]
-    public void ValueOptions_RoundTripInSortOrder()
-    {
-        AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
-        _repository.InsertAttribute(attribute, 0);
-        _repository.InsertValueOption(attribute.Id, "Macro", 0);
-        _repository.InsertValueOption(attribute.Id, "Rush", 1);
-
-        Assert.Equal(["Macro", "Rush"], Assert.Single(_repository.GetAllAttributes()).ValueOptions);
-
-        _repository.DeleteValueOption(attribute.Id, "Macro");
-        Assert.Equal(["Rush"], Assert.Single(_repository.GetAllAttributes()).ValueOptions);
+        Assert.Empty(_mapRepo.GetAllMaps([]));
     }
 
     // The reason MapAttributeValue's slots are nullable at all: a value that was never entered must not
@@ -148,8 +96,8 @@ public class MapRepositoryTests : IDisposable
     [InlineData(AttributeType.Values)]
     public void GetAllMaps_AttributeWithNoStoredValue_ReadsBackAsUnset(AttributeType type)
     {
-        _repository.InsertMap(new Map { Name = "A" });
-        _repository.InsertAttribute(new AttributeDefinition(AttributeScope.Map) { Name = "Attr", Type = type }, 0);
+        _mapRepo.InsertMap(new Map { Name = "A" });
+        _attributeRepo.InsertAttribute(new AttributeDefinition(AttributeScope.Map) { Name = "Attr", Type = type }, 0);
 
         AttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
 
@@ -164,7 +112,7 @@ public class MapRepositoryTests : IDisposable
     public void SaveValue_NumericThenReload_RoundTrips()
     {
         (Map map, AttributeDefinition attribute) = SeedMapAndAttribute(AttributeType.Numeric);
-        _repository.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 12.5m));
+        _mapRepo.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 12.5m));
 
         AttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
         Assert.True(value.HasValue);
@@ -175,7 +123,7 @@ public class MapRepositoryTests : IDisposable
     public void SaveValue_BoolFalseThenReload_IsSetRatherThanUnset()
     {
         (Map map, AttributeDefinition attribute) = SeedMapAndAttribute(AttributeType.Bool);
-        _repository.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.BoolValue = false));
+        _mapRepo.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.BoolValue = false));
 
         AttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
         Assert.True(value.HasValue);
@@ -186,9 +134,9 @@ public class MapRepositoryTests : IDisposable
     public void SaveValue_Null_DeletesTheRowSoItReadsBackAsUnset()
     {
         (Map map, AttributeDefinition attribute) = SeedMapAndAttribute(AttributeType.Numeric);
-        _repository.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 42m));
+        _mapRepo.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 42m));
 
-        _repository.SaveValue(map.Id, attribute.Id, null);
+        _mapRepo.SaveValue(map.Id, attribute.Id, null);
 
         AttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
         Assert.False(value.HasValue);
@@ -199,8 +147,8 @@ public class MapRepositoryTests : IDisposable
     public void SaveValue_CalledTwice_UpdatesRatherThanDuplicating()
     {
         (Map map, AttributeDefinition attribute) = SeedMapAndAttribute(AttributeType.Numeric);
-        _repository.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 1m));
-        _repository.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 2m));
+        _mapRepo.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 1m));
+        _mapRepo.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 2m));
 
         AttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
         Assert.Equal(2m, value.NumericValue);
@@ -210,22 +158,22 @@ public class MapRepositoryTests : IDisposable
     public void GetAllMaps_ValueForADeletedAttribute_IsIgnored()
     {
         (Map map, AttributeDefinition attribute) = SeedMapAndAttribute(AttributeType.Numeric);
-        _repository.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 7m));
+        _mapRepo.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 7m));
 
         // Passing no definitions simulates the attribute having been deleted out from under the row.
-        Assert.Empty(Assert.Single(_repository.GetAllMaps([])).AttributeValues);
+        Assert.Empty(Assert.Single(_mapRepo.GetAllMaps([])).AttributeValues);
     }
 
     private (Map Map, AttributeDefinition Attribute) SeedMapAndAttribute(AttributeType type)
     {
         Map map = new() { Name = "A" };
-        _repository.InsertMap(map);
+        _mapRepo.InsertMap(map);
         AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "Attr", Type = type };
-        _repository.InsertAttribute(attribute, 0);
+        _attributeRepo.InsertAttribute(attribute, 0);
         return (map, attribute);
     }
 
-    private Map LoadSingleMap() => Assert.Single(_repository.GetAllMaps(_repository.GetAllAttributes()));
+    private Map LoadSingleMap() => Assert.Single(_mapRepo.GetAllMaps(_attributeRepo.GetAllAttributes()));
 
     // Goes through MapAttributeValue rather than hand-writing the stored string, so these tests pin the
     // round trip the app actually performs.
