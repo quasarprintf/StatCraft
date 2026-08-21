@@ -1,5 +1,7 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 
@@ -7,6 +9,9 @@ namespace StatCraft.Models.GameData.Attributes
 {
     public partial class AttributeDefinition : ObservableObject
     {
+        public event EventHandler<PropertyChangedEventArgs>? DefinitionChanged;
+        public event EventHandler<CollectionChangeEventArgs>? ValueOptionsChanged; 
+
         public static IReadOnlyList<AttributeType> AllTypes { get; } =
             [AttributeType.Numeric, AttributeType.Bool, AttributeType.Percent, AttributeType.Values];
 
@@ -43,6 +48,8 @@ namespace StatCraft.Models.GameData.Attributes
         {
             Scope = scope;
             DefaultValue = new AttributeValue(this);
+
+            PropertyChanged += (_, e) => { if (e.PropertyName != nameof(NewOptionText)) DefinitionChanged?.Invoke(this, e); };
         }
         public AttributeDefinition(AttributeScope scope, AttributeType type, string rawDefaultValue) : this(scope)
         {
@@ -55,10 +62,18 @@ namespace StatCraft.Models.GameData.Attributes
         {
             if (string.IsNullOrWhiteSpace(NewOptionText)) return;
             ValueOptions.Add(NewOptionText.Trim());
+            CollectionChangeEventArgs eventArgs = new CollectionChangeEventArgs(CollectionChangeAction.Add, NewOptionText);
             NewOptionText = string.Empty;
+
+            ValueOptionsChanged?.Invoke(this, eventArgs);
         }
 
         [RelayCommand]
-        private void RemoveOption(string option) => ValueOptions.Remove(option);
+        private void RemoveOption(string option)
+        {
+            ValueOptions.Remove(option);
+            CollectionChangeEventArgs eventArgs = new CollectionChangeEventArgs(CollectionChangeAction.Remove, option);
+            ValueOptionsChanged?.Invoke(this, eventArgs);
+        }
     }
 }

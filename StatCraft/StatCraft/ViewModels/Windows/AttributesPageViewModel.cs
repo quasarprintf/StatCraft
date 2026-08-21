@@ -89,26 +89,34 @@ namespace StatCraft.ViewModels.Windows
 
         private void WireAttribute(AttributeDefinition attribute)
         {
-            attribute.PropertyChanged += OnAttributeEdited;
-            attribute.ValueOptions.CollectionChanged += OnAttributeValuesEdited;
+            attribute.DefinitionChanged += OnAttributeEdited;
+            attribute.ValueOptionsChanged += OnAttributeValuesEdited;
 
-            attribute.DefaultValue.PropertyChanged += OnDefaultValueEdited;
+            attribute.DefaultValue.ValueChanged += OnDefaultValueEdited;
         }
         private void UnWireAttribute(AttributeDefinition attribute)
         {
-            attribute.PropertyChanged -= OnAttributeEdited;
-            attribute.ValueOptions.CollectionChanged -= OnAttributeValuesEdited;
+            attribute.DefinitionChanged -= OnAttributeEdited;
+            attribute.ValueOptionsChanged -= OnAttributeValuesEdited;
 
-            attribute.DefaultValue.PropertyChanged -= OnDefaultValueEdited;
+            attribute.DefaultValue.ValueChanged -= OnDefaultValueEdited;
         }
 
         private void OnAttributeEdited(object? sender, PropertyChangedEventArgs args)
         {
             _repository.UpdateAttribute(SelectedAttribute!);
         }
-        private void OnAttributeValuesEdited(object? sender, NotifyCollectionChangedEventArgs args)
+        private void OnAttributeValuesEdited(object? sender, CollectionChangeEventArgs args)
         {
-            AttributeValueOptionSync.Apply(args, SelectedAttribute!.Id, SelectedAttribute!.ValueOptions, _repository.InsertValueOption, _repository.DeleteValueOption);
+            switch (args.Action)
+            {
+                case CollectionChangeAction.Add:
+                    _repository.InsertValueOption(SelectedAttribute!.Id, (string)args.Element!, SelectedAttribute.ValueOptions.Count);
+                    return;
+                case CollectionChangeAction.Remove:
+                    _repository.DeleteValueOption(SelectedAttribute!.Id, (string)args.Element!);
+                    return;
+            }
         }
 
         private void OnDefaultValueEdited(object? sender, PropertyChangedEventArgs args)

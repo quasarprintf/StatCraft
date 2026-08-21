@@ -1,11 +1,15 @@
 using Avalonia.Markup.Xaml.Templates;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using System;
+using System.ComponentModel;
 
 namespace StatCraft.Models.GameData.Attributes
 {
     public partial class AttributeValue : ObservableObject
     {
+        public event EventHandler<PropertyChangedEventArgs>? ValueChanged;
+
         public AttributeDefinition Definition { get; }
 
         [ObservableProperty]
@@ -38,6 +42,8 @@ namespace StatCraft.Models.GameData.Attributes
         internal AttributeValue(AttributeDefinition attribute)
         {
             Definition = attribute;
+
+            PropertyChanged += (_, e) => ValueChanged?.Invoke(this, e);
         }
 
         // Returns null when unset, so callers persist by deleting the row rather than writing a value
