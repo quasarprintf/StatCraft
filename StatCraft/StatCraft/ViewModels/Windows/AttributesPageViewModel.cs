@@ -69,7 +69,6 @@ namespace StatCraft.ViewModels.Windows
         private void AddAttribute()
         {
             AttributeDefinition attribute = new(SelectedScope) { Name = "New Attribute" };
-            WireAttribute(attribute);
             Attributes.Add(attribute);
             ApplyFilter();
             SelectedAttribute = attribute;
