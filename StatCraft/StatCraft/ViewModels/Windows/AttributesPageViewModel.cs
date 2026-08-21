@@ -1,15 +1,20 @@
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData.Attributes;
+using StatCraft.Services.DatabaseRepository;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Linq;
 
 namespace StatCraft.ViewModels.Windows
 {
     public partial class AttributesPageViewModel : ViewModelBase
     {
+        private readonly AttributeRepository _repository;
+
         private readonly Dictionary<AttributeScope, ObservableCollection<AttributeDefinition>> _attributesByScope = new()
         {
             [AttributeScope.Game] = [],
@@ -27,12 +32,20 @@ namespace StatCraft.ViewModels.Windows
 
         [ObservableProperty] private string _nameFilter = "";
 
+        [NotifyPropertyChangedFor(nameof(SelectedAttributeValue))]
         [ObservableProperty] private AttributeDefinition? _selectedAttribute;
+        public AttributeValue? SelectedAttributeValue => _selectedAttribute?.DefaultValue;
 
-        // A definition has no "current value" of its own — this wraps SelectedAttribute the same way
-        // BuildDetailsPanel/MapDetailsPanel wrap one per row, purely so the details panel's default-value
-        // editor has an AttributeValue to bind against.
-        [ObservableProperty] private AttributeValue? _selectedAttributeValue;
+        public AttributesPageViewModel(AttributeRepository attributeRepository)
+        {
+            _repository = attributeRepository;
+
+            var scopeGroups = _repository.GetAllAttributes().GroupBy(a => a.Scope);
+            foreach (var group in scopeGroups ) 
+            {
+                _attributesByScope[group.Key] = new ObservableCollection<AttributeDefinition>(group.ToArray());
+            }
+        }
 
         partial void OnSelectedScopeChanged(AttributeScope value) => ApplyFilter();
 
@@ -44,11 +57,12 @@ namespace StatCraft.ViewModels.Windows
             SelectedScope = scope;
         }
 
-        partial void OnSelectedAttributeChanged(AttributeDefinition? value)
+        partial void OnSelectedAttributeChanging(AttributeDefinition? value)
         {
-            SelectedAttributeValue = value == null ? null : new AttributeValue(value);
-            if (SelectedAttributeValue != null)
-                WireAttributeValue(SelectedAttributeValue);
+            if (SelectedAttribute != null)
+                UnWireAttribute(SelectedAttribute);
+            if (value != null)
+                WireAttribute(value);
         }
 
         [RelayCommand]
@@ -59,7 +73,8 @@ namespace StatCraft.ViewModels.Windows
             Attributes.Add(attribute);
             ApplyFilter();
             SelectedAttribute = attribute;
-            // TODO: persist the new attribute definition once a repository exists for this scope.
+
+            _repository.InsertAttribute(attribute, Attributes.Count);
         }
 
         [RelayCommand]
@@ -69,33 +84,49 @@ namespace StatCraft.ViewModels.Windows
             ApplyFilter();
             if (SelectedAttribute == attribute)
                 SelectedAttribute = FilteredAttributes.FirstOrDefault();
-            // TODO: delete the attribute definition from the backend once a repository exists for this scope.
+
+            _repository.DeleteAttribute(attribute.Id);
         }
 
         private void WireAttribute(AttributeDefinition attribute)
         {
-            attribute.PropertyChanged += (_, _) => OnAttributeEdited(attribute);
-            attribute.ValueOptions.CollectionChanged += (_, _) => OnAttributeEdited(attribute);
+            attribute.PropertyChanged += OnAttributeEdited;
+            attribute.ValueOptions.CollectionChanged += OnAttributeValuesEdited;
+
+            attribute.DefaultValue.PropertyChanged += OnDefaultValueEdited;
+        }
+        private void UnWireAttribute(AttributeDefinition attribute)
+        {
+            attribute.PropertyChanged -= OnAttributeEdited;
+            attribute.ValueOptions.CollectionChanged -= OnAttributeValuesEdited;
+
+            attribute.DefaultValue.PropertyChanged -= OnDefaultValueEdited;
         }
 
-        
-        private void OnAttributeEdited(AttributeDefinition attribute)
+        private void OnAttributeEdited(object? sender, PropertyChangedEventArgs args)
         {
-            // TODO: persist Name/Type/Description/ValueOptions changes for this attribute definition once a repository exists for its scope.
+            AttributeDefinition attribute = (AttributeDefinition)sender!;
+            _repository.UpdateAttribute(attribute);
         }
-
-        private void WireAttributeValue(AttributeValue value)
+        private void OnAttributeValuesEdited(object? sender, NotifyCollectionChangedEventArgs args)
         {
-            value.PropertyChanged += (_, e) =>
+            AttributeDefinition attribute = (AttributeDefinition)sender!;
+            //TODO: sort order doesn't work properly with deletion.
+            switch (args.Action)
             {
-                if (e.PropertyName != nameof(AttributeValue.HasValue))
-                    OnDefaultValueEdited(value);
-            };
+                case NotifyCollectionChangedAction.Add:
+                    _repository.InsertValueOption(attribute.Id, (string)args.NewItems![0]!, args.NewStartingIndex);
+                    return;
+                case NotifyCollectionChangedAction.Remove:
+                    _repository.DeleteValueOption(attribute.Id, (string)args.OldItems![0]!);
+                    return;
+            }
         }
 
-        private void OnDefaultValueEdited(AttributeValue value)
+        private void OnDefaultValueEdited(object? sender, PropertyChangedEventArgs args)
         {
-            // TODO: persist this attribute's default value once a backend exists for its scope.
+            if (args.PropertyName != nameof(AttributeValue.HasValue))
+                _repository.UpdateAttribute(SelectedAttribute!);
         }
 
         private void ApplyFilter()

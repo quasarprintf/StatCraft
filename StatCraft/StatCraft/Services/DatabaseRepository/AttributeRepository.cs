@@ -17,19 +17,26 @@ namespace StatCraft.Services.DatabaseRepository
         {
         }
 
-        public List<AttributeDefinition> GetAllAttributes()
+        public List<AttributeDefinition> GetAllAttributes(AttributeScope? scope = null)
         {
             using SqliteConnection conn = OpenConnection();
 
-            List<AttributeDefinitionRow> rows = conn.Query<AttributeDefinitionRow>(
-                "SELECT Id, Name, Type, Scope FROM AttributeDefinitions WHERE Scope = @scope ORDER BY SortOrder",
-                new { scope = AttributeScope.Map }).ToList();
+            string query = "SELECT Id, Name, Type, Scope, DefaultValue, Description FROM AttributeDefinitions";
+            object? parameters = null;
+            if (scope != null)
+            {
+                query += " WHERE Scope = @scope ORDER BY SortOrder";
+                parameters = new { scope = scope };
+            }
+            List<AttributeDefinitionRow> rows = conn.Query<AttributeDefinitionRow>(query,
+               parameters
+               ).ToList();
 
             Dictionary<long, AttributeDefinition> byId = new();
             List<AttributeDefinition> attributes = new();
             foreach (AttributeDefinitionRow row in rows)
             {
-                AttributeDefinition attribute = new AttributeDefinition(row.Scope) { Id = (int)row.Id, Name = row.Name, Type = row.Type };
+                AttributeDefinition attribute = new AttributeDefinition(row.Scope, row.Type, row.DefaultValue) { Id = (int)row.Id, Name = row.Name, Description = row.Description };
                 byId[row.Id] = attribute;
                 attributes.Add(attribute);
             }
@@ -50,40 +57,40 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
             attribute.Id = (int)conn.ExecuteScalar<long>(@"
-                INSERT INTO AttributeDefinitions (Name, Type, Scope, DefaultValue, SortOrder) VALUES (@name, @type, @scope, '', @sortOrder);
+                INSERT INTO AttributeDefinitions (Name, Type, Scope, DefaultValue, SortOrder, Description) VALUES (@name, @type, @scope, @defaultValue, @sortOrder, @description);
                 SELECT last_insert_rowid();",
-                new { name = attribute.Name, type = attribute.Type, scope = attribute.Scope, sortOrder });
+                new { name = attribute.Name, type = attribute.Type, scope = attribute.Scope, defaultValue = attribute.DefaultValue.Serialize() ?? "", sortOrder, description = attribute.Description });
             AttributesChanged?.Invoke();
         }
 
         public void UpdateAttribute(AttributeDefinition attribute)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("UPDATE AttributeDefinitions SET Name = @name, Type = @type WHERE Id = @id AND Scope = @scope",
-                new { name = attribute.Name, type = attribute.Type, id = attribute.Id, scope = AttributeScope.Map });
+            conn.Execute("UPDATE AttributeDefinitions SET Name = @name, Type = @type, DefaultValue = @defaultValue, Description = @description WHERE Id = @id",
+                new { name = attribute.Name, type = attribute.Type, defaultValue = attribute.DefaultValue.Serialize() ?? "", description = attribute.Description, id = attribute.Id, scope = AttributeScope.Map });
             AttributesChanged?.Invoke();
         }
 
         public void DeleteAttribute(int id)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("DELETE FROM AttributeDefinitions WHERE Id = @id AND Scope = @scope", new { id, scope = AttributeScope.Map });
+            conn.Execute("DELETE FROM AttributeDefinitions WHERE Id = @id", new { id });
             AttributesChanged?.Invoke();
         }
 
-        public void InsertValueOption(int mapAttributeId, string value, int sortOrder)
+        public void InsertValueOption(int attributeId, string value, int sortOrder)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("INSERT INTO AttributeValueOptions (AttributeId, Value, SortOrder) VALUES (@mapAttributeId, @value, @sortOrder)",
-                new { mapAttributeId, value, sortOrder });
+            conn.Execute("INSERT INTO AttributeValueOptions (AttributeId, Value, SortOrder) VALUES (@attributeId, @value, @sortOrder)",
+                new { attributeId, value, sortOrder });
             AttributesChanged?.Invoke();
         }
 
-        public void DeleteValueOption(int mapAttributeId, string value)
+        public void DeleteValueOption(int attributeId, string value)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("DELETE FROM AttributeValueOptions WHERE AttributeId = @mapAttributeId AND Value = @value",
-                new { mapAttributeId, value });
+            conn.Execute("DELETE FROM AttributeValueOptions WHERE AttributeId = @attributeId AND Value = @value",
+                new { attributeId, value });
             AttributesChanged?.Invoke();
         }
 
@@ -93,6 +100,8 @@ namespace StatCraft.Services.DatabaseRepository
             public string Name { get; set; } = "";
             public AttributeType Type { get; set; }
             public AttributeScope Scope { get; set; }
+            public string DefaultValue { get; set; } = "";
+            public string Description { get; set; } = "";
         }
 
         private class ValueOptionRow

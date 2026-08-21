@@ -38,7 +38,7 @@ namespace StatCraft.ViewModels.Windows
             attributeRepo = attributeRepository;
             _gameDataRepository = gameDataRepository;
 
-            foreach (AttributeDefinition attribute in attributeRepo.GetAllAttributes())
+            foreach (AttributeDefinition attribute in attributeRepo.GetAllAttributes(AttributeScope.Map))
             {
                 WireAttribute(attribute);
                 Attributes.Add(attribute);

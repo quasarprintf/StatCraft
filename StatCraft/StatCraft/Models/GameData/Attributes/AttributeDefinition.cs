@@ -37,9 +37,17 @@ namespace StatCraft.Models.GameData.Attributes
         public bool IsBuildDetailAttribute => Scope == AttributeScope.BuildDetail;
         public bool IsMapAttribute => Scope == AttributeScope.Map;
 
+        public AttributeValue DefaultValue { get; set; }
+
         public AttributeDefinition(AttributeScope scope)
         {
             Scope = scope;
+            DefaultValue = new AttributeValue(this);
+        }
+        public AttributeDefinition(AttributeScope scope, AttributeType type, string rawDefaultValue) : this(scope)
+        {
+            Type = type;
+            DefaultValue.ApplyStoredValue(rawDefaultValue);
         }
 
         [RelayCommand]

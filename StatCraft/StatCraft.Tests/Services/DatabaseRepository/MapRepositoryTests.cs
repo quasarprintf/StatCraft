@@ -173,7 +173,7 @@ public class MapRepositoryTests : IDisposable
         return (map, attribute);
     }
 
-    private Map LoadSingleMap() => Assert.Single(_mapRepo.GetAllMaps(_attributeRepo.GetAllAttributes()));
+    private Map LoadSingleMap() => Assert.Single(_mapRepo.GetAllMaps(_attributeRepo.GetAllAttributes(AttributeScope.Map)));
 
     // Goes through MapAttributeValue rather than hand-writing the stored string, so these tests pin the
     // round trip the app actually performs.
