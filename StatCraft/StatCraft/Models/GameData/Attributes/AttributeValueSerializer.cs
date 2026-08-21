@@ -9,7 +9,7 @@ namespace StatCraft.Models.GameData.Attributes
     // separately, by the presence or absence of the row, and never Parse a missing value.
     internal static class AttributeValueSerializer
     {
-        internal readonly record struct ParsedValue(decimal NumericValue, bool BoolValue, decimal PercentValue, string? SelectedValue);
+        internal readonly record struct ParsedValue(decimal? NumericValue, bool? BoolValue, decimal? PercentValue, string? SelectedValue);
 
         internal static string Serialize(AttributeType type, decimal numericValue, bool boolValue, decimal percentValue, string? selectedValue) => type switch
         {
@@ -22,20 +22,23 @@ namespace StatCraft.Models.GameData.Attributes
 
         internal static ParsedValue Parse(AttributeType type, string value)
         {
-            decimal numeric = 0, percent = 0;
-            bool boolValue = false;
+            decimal? numeric = null, percent = null;
+            bool? boolValue = null;
             string? selectedValue = null;
 
             switch (type)
             {
                 case AttributeType.Numeric:
-                    decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out numeric);
+                    if (decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal parsedNum))
+                        numeric = parsedNum;
                     break;
                 case AttributeType.Bool:
-                    bool.TryParse(value, out boolValue);
+                    if (bool.TryParse(value, out bool parsedBool))
+                        boolValue = parsedBool;
                     break;
                 case AttributeType.Percent:
-                    decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out percent);
+                    if (decimal.TryParse(value, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal parsedPercent))
+                        percent = parsedPercent;
                     break;
                 case AttributeType.Values:
                     selectedValue = string.IsNullOrEmpty(value) ? null : value;
