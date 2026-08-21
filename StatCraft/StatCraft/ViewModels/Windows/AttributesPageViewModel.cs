@@ -24,7 +24,14 @@ namespace StatCraft.ViewModels.Windows
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(Attributes))]
+        [NotifyPropertyChangedFor(nameof(SelectedGame))]
+        [NotifyPropertyChangedFor(nameof(SelectedBuild))]
+        [NotifyPropertyChangedFor(nameof(SelectedMap))]
         private AttributeScope _selectedScope;
+
+        public bool SelectedGame => _selectedScope == AttributeScope.Game;
+        public bool SelectedBuild => _selectedScope == AttributeScope.Build;
+        public bool SelectedMap => _selectedScope == AttributeScope.Map;
 
         public ObservableCollection<AttributeDefinition> Attributes => _attributesByScope[SelectedScope];
 
@@ -40,11 +47,14 @@ namespace StatCraft.ViewModels.Windows
         {
             _repository = attributeRepository;
 
+
             var scopeGroups = _repository.GetAllAttributes().GroupBy(a => a.Scope);
             foreach (var group in scopeGroups ) 
             {
                 _attributesByScope[group.Key] = new ObservableCollection<AttributeDefinition>(group.ToArray());
             }
+
+            SelectedScope = AttributeScope.Game;
         }
 
         partial void OnSelectedScopeChanged(AttributeScope value) => ApplyFilter();

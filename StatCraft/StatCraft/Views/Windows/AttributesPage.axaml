@@ -11,9 +11,9 @@
             <TextBox DockPanel.Dock="Top" Text="{Binding NameFilter}" PlaceholderText="Filter attributes..." Margin="0,0,0,4"/>
 
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
-                <Button Content="Game" Command="{ Binding SetScopeCommand }" CommandParameter="{x:Static attr:AttributeScope.Game}" />
-                <Button Content="Build" Command="{ Binding SetScopeCommand }" CommandParameter="{x:Static attr:AttributeScope.Build}" />
-                <Button Content="Map" Command="{ Binding SetScopeCommand }" CommandParameter="{x:Static attr:AttributeScope.Map}" />
+                <Button Content="Game" Classes.active="{ Binding SelectedGame }" Command="{ Binding SetScopeCommand }" CommandParameter="{x:Static attr:AttributeScope.Game}" />
+                <Button Content="Build" Classes.active="{ Binding SelectedBuild }" Command="{ Binding SetScopeCommand }" CommandParameter="{x:Static attr:AttributeScope.Build}" />
+                <Button Content="Map" Classes.active="{ Binding SelectedMap }" Command="{ Binding SetScopeCommand }" CommandParameter="{x:Static attr:AttributeScope.Map}" />
             </StackPanel>
 
             <ListBox x:Name="AttributeListBox" ItemsSource="{Binding FilteredAttributes}" SelectedItem="{Binding SelectedAttribute}">
