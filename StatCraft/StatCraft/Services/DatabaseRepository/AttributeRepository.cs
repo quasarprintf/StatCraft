@@ -67,8 +67,8 @@ namespace StatCraft.Services.DatabaseRepository
         public void UpdateAttribute(AttributeDefinition attribute)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("UPDATE AttributeDefinitions SET Name = @name, Type = @type, DefaultValue = @defaultValue, Description = @description WHERE Id = @id",
-                new { name = attribute.Name, type = attribute.Type, defaultValue = attribute.DefaultValue.Serialize() ?? "", description = attribute.Description, id = attribute.Id, scope = AttributeScope.Map });
+            conn.Execute("UPDATE AttributeDefinitions SET Name = @name, Type = @type, Scope = @scope, DefaultValue = @defaultValue, Description = @description WHERE Id = @id",
+                new { name = attribute.Name, type = attribute.Type, defaultValue = attribute.DefaultValue.Serialize() ?? "", description = attribute.Description, id = attribute.Id, scope = attribute.Scope });
             AttributesChanged?.Invoke();
         }
 
