@@ -13,9 +13,9 @@ using StatCraft.ViewModels.Windows.DataComponents;
 namespace StatCraft.ViewModels.Windows
 {
     // The Maps tab. Structurally simpler than Builds — maps never nest, so this is a flat list rather
-    // than a tree — but with one twist Builds doesn't have: attributes are defined globally, so adding
-    // one adds it to every map at once (unset everywhere) and editing its name/type/options changes it
-    // everywhere. Only the *values* are per map.
+    // than a tree — but with one twist Builds doesn't have: attributes are defined globally, from the
+    // Attributes tab, so adding one adds it to every map at once (unset everywhere). This page can only
+    // edit the per-map *value* — name/type/options are the attribute definition and aren't editable here.
     //
     // Persistence is write-through on PropertyChanged, the same way BuildsPageViewModel works; nothing
     // here needs an explicit save.
@@ -39,10 +39,7 @@ namespace StatCraft.ViewModels.Windows
             _gameDataRepository = gameDataRepository;
 
             foreach (AttributeDefinition attribute in attributeRepo.GetAllAttributes(AttributeScope.Map))
-            {
-                WireAttribute(attribute);
                 Attributes.Add(attribute);
-            }
 
             foreach (Map map in mapRepo.GetAllMaps(Attributes))
             {
@@ -155,7 +152,6 @@ namespace StatCraft.ViewModels.Windows
             HashSet<int> knownIds = Attributes.Select(a => a.Id).ToHashSet();
             foreach (AttributeDefinition attribute in current.Where(a => !knownIds.Contains(a.Id)))
             {
-                WireAttribute(attribute);
                 Attributes.Add(attribute);
 
                 // Defined for every map at once, and unset on all of them until someone fills it in.
@@ -206,63 +202,15 @@ namespace StatCraft.ViewModels.Windows
             };
         }
 
-        private void WireAttribute(AttributeDefinition attribute)
-        {
-            attribute.PropertyChanged += (s, e) =>
-            {
-                if (s is not AttributeDefinition a) return;
-
-                if (e.PropertyName == nameof(AttributeDefinition.Name))
-                {
-                    attributeRepo.UpdateAttribute(a);
-                    // Title is mutable specifically so a rename — which fires on every keystroke, since
-                    // the TextBox binding updates per character — can update the existing slot in place
-                    // instead of recreating it and losing whatever the user already entered into it.
-                    if (_slotByAttribute.TryGetValue(a, out FilterSlotViewModel? slot))
-                        slot.Title = a.Name;
-                }
-                else if (e.PropertyName == nameof(AttributeDefinition.Type))
-                {
-                    attributeRepo.UpdateAttribute(a);
-                    // Unlike a rename, a type change genuinely needs a new slot instance (Numeric/Percent
-                    // vs. Bool vs. Values are different FilterSlotViewModel subclasses) — but only for
-                    // this one attribute, not every other filter the user has open.
-                    bool wasVisible = _slotByAttribute.TryGetValue(a, out FilterSlotViewModel? old) && old.IsVisible;
-                    RemoveFilterSlot(a);
-                    AddFilterSlot(a, wasVisible);
-                    ApplyFilters();
-                }
-            };
-
-            attribute.ValueOptions.CollectionChanged += (s, e) =>
-            {
-                AttributeValueOptionSync.Apply(e, attribute.Id, attributeRepo.InsertValueOption, attributeRepo.DeleteValueOption);
-
-                // Patches the existing slot's option list in place, preserving whichever options are
-                // still checked, rather than recreating the slot and losing the whole selection.
-                if (_slotByAttribute.TryGetValue(attribute, out FilterSlotViewModel? slot) &&
-                    slot is CheckboxFilterSlotViewModel<string> stringSlot)
-                {
-                    HashSet<string> previouslyChecked = stringSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
-                    stringSlot.ReplaceOptions(attribute.ValueOptions
-                        .Select(o => new CheckboxFilterOptionViewModel<string>(o, o) { IsChecked = previouslyChecked.Contains(o) }));
-                }
-
-                ApplyFilters();
-            };
-        }
-
-        // Adds one new filter slot for this attribute, initially hidden unless told otherwise (used when
-        // a type change replaces a slot that was already showing).
-        private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
+        // Adds one new, initially hidden filter slot for this attribute.
+        private void AddFilterSlot(AttributeDefinition attribute)
         {
             FilterSlotViewModel slot = CreateSlot(attribute);
-            slot.IsVisible = isVisible;
             slot.VisibilityChanged += () => OnSlotVisibilityChanged(slot);
             slot.Changed += ApplyFilters;
 
             _slotByAttribute[attribute] = slot;
-            (isVisible ? VisibleFilterSlots : HiddenFilterSlots).Add(slot);
+            HiddenFilterSlots.Add(slot);
         }
 
         private void RemoveFilterSlot(AttributeDefinition attribute)

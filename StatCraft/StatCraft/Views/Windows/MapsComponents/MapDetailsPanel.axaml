@@ -17,13 +17,9 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="Attr:AttributeValue">
                         <StackPanel Margin="0,0,0,8">
-                            <!-- Definition row: name, type -->
-                            <Grid ColumnDefinitions="*,120">
-                                <TextBox Grid.Column="0" Text="{Binding Definition.Name}" PlaceholderText="Name" Margin="0,0,4,0"/>
-                                <ComboBox Grid.Column="1" SelectedItem="{Binding Definition.Type}"
-                                          ItemsSource="{x:Static Attr:AttributeDefinition.AllTypes}"
-                                          HorizontalAlignment="Stretch"/>
-                            </Grid>
+                            <!-- Definition name, read-only here — name/type/options are only editable
+                                 from the Attributes tab; this page only edits the per-map value below. -->
+                            <TextBlock Text="{Binding Definition.Name}" FontWeight="SemiBold"/>
 
                             <!-- This map's value. Every editor is nullable, and the clear button puts it
                                  back to unset — which is stored as the absence of a row, not as 0/false. -->
@@ -42,35 +38,16 @@
                                         Command="{Binding ClearCommand}"/>
                             </Grid>
 
-                            <!-- Values type: the shared option list, then this map's pick from it -->
-                            <StackPanel IsVisible="{Binding Definition.IsValues}" Margin="16,4,0,0" Spacing="2">
-                                <ItemsControl ItemsSource="{Binding Definition.ValueOptions}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate x:DataType="x:String">
-                                            <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,2">
-                                                <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center"/>
-                                                <Button Grid.Column="1" Content="✕" Padding="4,1"
-                                                        Command="{Binding $parent[ItemsControl].((Attr:AttributeValue)DataContext).Definition.RemoveOptionCommand}"
-                                                        CommandParameter="{Binding}"/>
-                                            </Grid>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                                <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
-                                    <TextBox Grid.Column="0" Text="{Binding Definition.NewOptionText}"
-                                             PlaceholderText="Add option..." Margin="0,0,4,0"/>
-                                    <Button Grid.Column="1" Content="+" Padding="6,2"
-                                            Command="{Binding Definition.AddOptionCommand}"/>
-                                </Grid>
-                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
-                                    <TextBlock Grid.Column="0" Text="Value:" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                    <ComboBox Grid.Column="1" ItemsSource="{Binding Definition.ValueOptions}"
-                                              SelectedItem="{Binding SelectedValue}"
-                                              HorizontalAlignment="Stretch"/>
-                                    <Button Grid.Column="2" Content="Clear" Padding="6,2" Margin="4,0,0,0"
-                                            Command="{Binding ClearCommand}"/>
-                                </Grid>
-                            </StackPanel>
+                            <!-- Values type: picking this map's value from the shared option list — the
+                                 option list itself is only editable from the Attributes tab. -->
+                            <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0" IsVisible="{Binding Definition.IsValues}">
+                                <TextBlock Grid.Column="0" Text="Value:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding Definition.ValueOptions}"
+                                          SelectedItem="{Binding SelectedValue}"
+                                          HorizontalAlignment="Stretch"/>
+                                <Button Grid.Column="2" Content="Clear" Padding="6,2" Margin="4,0,0,0"
+                                        Command="{Binding ClearCommand}"/>
+                            </Grid>
                         </StackPanel>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
