@@ -1,6 +1,7 @@
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.ViewModels.Windows;
+using StatCraft.ViewModels.Windows.DataComponents;
 
 namespace StatCraft.Tests;
 
@@ -62,6 +63,81 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertAttribute(new(AttributeScope.Game) { Name = "Apm" }, 0);
 
         Assert.Empty(vm.Attributes);
+    }
+
+    // Pins the fix for a real bug: this page loads its own AttributeDefinition instances, separate from
+    // whatever instance the Attributes tab is editing, so a rename/retype made there never touched this
+    // page's copy — the value editor kept showing the old type, and the label kept the old name. The fix
+    // patches the same instance this page (and every map's AttributeValues, and the bound editors) already
+    // holds, in place, rather than replacing it.
+    [Fact]
+    public void AttributeTypeChangedElsewhere_UpdatesTheSameInstanceThisPageAlreadyHolds()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Rush Distance", Type = AttributeType.Numeric };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        _mapRepo.InsertMap(new() { Name = "Altitude LE" });
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        AttributeDefinition held = Assert.Single(vm.Attributes);
+        Assert.IsType<NumericRangeFilterSlotViewModel>(Assert.Single(vm.HiddenFilterSlots));
+
+        AttributeDefinition editedElsewhere = Assert.Single(_attributeRepo.GetAllAttributes(AttributeScope.Map));
+        editedElsewhere.Type = AttributeType.Bool;
+        _attributeRepo.UpdateAttribute(editedElsewhere);
+
+        Assert.Equal(AttributeType.Bool, held.Type);
+        Assert.Same(held, Assert.Single(vm.Attributes));
+        Assert.Same(held, Assert.Single(vm.Maps.Single().AttributeValues).Definition);
+        // Numeric/Bool/Values are different FilterSlotViewModel subclasses, so the slot itself must be
+        // swapped, not just have a property change underneath it.
+        Assert.IsType<BoolFilterSlotViewModel>(Assert.Single(vm.HiddenFilterSlots));
+    }
+
+    [Fact]
+    public void AttributeNameChangedElsewhere_UpdatesTheSameInstanceThisPageAlreadyHolds()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Old Name" };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        AttributeDefinition held = Assert.Single(vm.Attributes);
+
+        AttributeDefinition editedElsewhere = Assert.Single(_attributeRepo.GetAllAttributes(AttributeScope.Map));
+        editedElsewhere.Name = "New Name";
+        _attributeRepo.UpdateAttribute(editedElsewhere);
+
+        Assert.Equal("New Name", held.Name);
+        Assert.Equal("New Name", Assert.Single(vm.HiddenFilterSlots).Title);
+    }
+
+    [Fact]
+    public void ValueOptionAddedElsewhere_AppearsOnTheSameInstance()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        AttributeDefinition held = Assert.Single(vm.Attributes);
+
+        _attributeRepo.InsertValueOption(attribute.Id, "Rush");
+
+        Assert.Equal(["Rush"], held.ValueOptions);
+    }
+
+    // The checkbox filter slot keeps its own separate option list (built once at slot-creation time), so
+    // adding an option elsewhere has to patch it too — and preserve whatever the user already checked.
+    [Fact]
+    public void ValueOptionAddedElsewhere_PatchesTheFilterSlotPreservingWhatWasChecked()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        _attributeRepo.InsertValueOption(attribute.Id, "Rush");
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        CheckboxFilterSlotViewModel<string> slot = Assert.IsType<CheckboxFilterSlotViewModel<string>>(Assert.Single(vm.HiddenFilterSlots));
+        slot.Options.Single(o => o.Value == "Rush").IsChecked = true;
+
+        _attributeRepo.InsertValueOption(attribute.Id, "Macro");
+
+        Assert.Equal(["Rush", "Macro"], slot.Options.Select(o => o.Value));
+        Assert.True(slot.Options.Single(o => o.Value == "Rush").IsChecked);
+        Assert.False(slot.Options.Single(o => o.Value == "Macro").IsChecked);
     }
 
     public void Dispose()

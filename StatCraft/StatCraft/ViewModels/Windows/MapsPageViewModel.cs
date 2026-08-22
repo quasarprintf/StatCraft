@@ -126,16 +126,14 @@ namespace StatCraft.ViewModels.Windows
         }
 
         // Reconciles Attributes (and every map's AttributeValues, and the filter slots) against
-        // AttributeDefinitions by Id, so an attribute added or removed from the Attributes tab — the
-        // only place attributes are managed now — ends up reflected here. Only adds/removes: it never
-        // replaces an already-known attribute, so edits to one made elsewhere (e.g. a rename from the
-        // Attributes tab) aren't picked up here.
+        // AttributeDefinitions, so any change made on the Attributes tab — the only place attributes are
+        // managed now — ends up reflected here: added, removed, or edited (name/type/value options).
         private void SyncAttributesFromRepository()
         {
             List<AttributeDefinition> current = attributeRepo.GetAllAttributes(AttributeScope.Map);
-            HashSet<int> currentIds = current.Select(a => a.Id).ToHashSet();
+            Dictionary<int, AttributeDefinition> currentById = current.ToDictionary(a => a.Id);
 
-            foreach (AttributeDefinition attribute in Attributes.Where(a => !currentIds.Contains(a.Id)).ToList())
+            foreach (AttributeDefinition attribute in Attributes.Where(a => !currentById.ContainsKey(a.Id)).ToList())
             {
                 Attributes.Remove(attribute);
 
@@ -147,6 +145,34 @@ namespace StatCraft.ViewModels.Windows
                 }
 
                 RemoveFilterSlot(attribute);
+            }
+
+            // Mutates the instances this page already holds (and every map's AttributeValues and the
+            // ComboBox/CheckBox editors point at) in place, so the existing bindings just pick the edit
+            // up — rather than replacing them, which would orphan every reference to the old instance.
+            foreach (AttributeDefinition attribute in Attributes)
+            {
+                AttributeDefinition latest = currentById[attribute.Id];
+
+                if (attribute.Name != latest.Name)
+                {
+                    attribute.Name = latest.Name;
+                    if (_slotByAttribute.TryGetValue(attribute, out FilterSlotViewModel? slot))
+                        slot.Title = latest.Name;
+                }
+
+                if (attribute.Type != latest.Type)
+                {
+                    attribute.Type = latest.Type;
+                    // Numeric/Percent vs. Bool vs. Values are different FilterSlotViewModel subclasses,
+                    // so the slot itself has to be replaced rather than patched — but only for this one
+                    // attribute, and preserving whether it was actually showing.
+                    bool wasVisible = _slotByAttribute.TryGetValue(attribute, out FilterSlotViewModel? old) && old.IsVisible;
+                    RemoveFilterSlot(attribute);
+                    AddFilterSlot(attribute, wasVisible);
+                }
+
+                SyncValueOptions(attribute, latest.ValueOptions);
             }
 
             HashSet<int> knownIds = Attributes.Select(a => a.Id).ToHashSet();
@@ -162,6 +188,37 @@ namespace StatCraft.ViewModels.Windows
             }
 
             ApplyFilters();
+        }
+
+        // Patches attribute.ValueOptions to match latest in place (add/remove, not replace), so the
+        // ComboBox bound to it updates, and — for a still-visible Values filter — the checkbox slot's
+        // options are patched too, preserving whichever options are still checked.
+        private void SyncValueOptions(AttributeDefinition attribute, ObservableCollection<string> latest)
+        {
+            bool changed = false;
+
+            foreach (string stale in attribute.ValueOptions.Where(o => !latest.Contains(o)).ToList())
+            {
+                attribute.ValueOptions.Remove(stale);
+                changed = true;
+            }
+
+            foreach (string value in latest.Where(o => !attribute.ValueOptions.Contains(o)))
+            {
+                attribute.ValueOptions.Add(value);
+                changed = true;
+            }
+
+            if (!changed)
+                return;
+
+            if (_slotByAttribute.TryGetValue(attribute, out FilterSlotViewModel? slot) &&
+                slot is CheckboxFilterSlotViewModel<string> stringSlot)
+            {
+                HashSet<string> previouslyChecked = stringSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
+                stringSlot.ReplaceOptions(attribute.ValueOptions
+                    .Select(o => new CheckboxFilterOptionViewModel<string>(o, o) { IsChecked = previouslyChecked.Contains(o) }));
+            }
         }
 
         private void WireMap(Map map)
@@ -202,15 +259,17 @@ namespace StatCraft.ViewModels.Windows
             };
         }
 
-        // Adds one new, initially hidden filter slot for this attribute.
-        private void AddFilterSlot(AttributeDefinition attribute)
+        // Adds one new filter slot for this attribute, initially hidden unless told otherwise (used when
+        // a type change replaces a slot that was already showing).
+        private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
         {
             FilterSlotViewModel slot = CreateSlot(attribute);
+            slot.IsVisible = isVisible;
             slot.VisibilityChanged += () => OnSlotVisibilityChanged(slot);
             slot.Changed += ApplyFilters;
 
             _slotByAttribute[attribute] = slot;
-            HiddenFilterSlots.Add(slot);
+            (isVisible ? VisibleFilterSlots : HiddenFilterSlots).Add(slot);
         }
 
         private void RemoveFilterSlot(AttributeDefinition attribute)
