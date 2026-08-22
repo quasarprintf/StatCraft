@@ -6,29 +6,27 @@ namespace StatCraft.Tests;
 public class AttributeValueOptionSyncTests
 {
     [Fact]
-    public void Apply_ItemAdded_InsertsAtItsCurrentIndex()
+    public void Apply_ItemAdded_InsertsIt()
     {
-        List<(int AttributeId, string Value, int SortOrder)> inserted = [];
-        List<string> options = ["Macro", "Rush"];
+        List<(int AttributeId, string Value)> inserted = [];
         NotifyCollectionChangedEventArgs e = new(NotifyCollectionChangedAction.Add, "Rush", index: 1);
 
-        AttributeValueOptionSync.Apply(e, attributeId: 7, options,
-            insertOption: (id, value, sortOrder) => inserted.Add((id, value, sortOrder)),
+        AttributeValueOptionSync.Apply(e, attributeId: 7,
+            insertOption: (id, value) => inserted.Add((id, value)),
             deleteOption: (_, _) => Assert.Fail("Should not delete on an Add."));
 
-        (int AttributeId, string Value, int SortOrder) call = Assert.Single(inserted);
-        Assert.Equal((7, "Rush", 1), call);
+        (int AttributeId, string Value) call = Assert.Single(inserted);
+        Assert.Equal((7, "Rush"), call);
     }
 
     [Fact]
     public void Apply_ItemRemoved_DeletesByValue()
     {
         List<(int AttributeId, string Value)> deleted = [];
-        List<string> options = ["Macro"];
         NotifyCollectionChangedEventArgs e = new(NotifyCollectionChangedAction.Remove, "Rush", index: 0);
 
-        AttributeValueOptionSync.Apply(e, attributeId: 7, options,
-            insertOption: (_, _, _) => Assert.Fail("Should not insert on a Remove."),
+        AttributeValueOptionSync.Apply(e, attributeId: 7,
+            insertOption: (_, _) => Assert.Fail("Should not insert on a Remove."),
             deleteOption: (id, value) => deleted.Add((id, value)));
 
         (int AttributeId, string Value) call = Assert.Single(deleted);
@@ -40,11 +38,10 @@ public class AttributeValueOptionSyncTests
     [Fact]
     public void Apply_Reset_DoesNothing()
     {
-        List<string> options = [];
         NotifyCollectionChangedEventArgs e = new(NotifyCollectionChangedAction.Reset);
 
-        AttributeValueOptionSync.Apply(e, attributeId: 7, options,
-            insertOption: (_, _, _) => Assert.Fail("Reset must not insert."),
+        AttributeValueOptionSync.Apply(e, attributeId: 7,
+            insertOption: (_, _) => Assert.Fail("Reset must not insert."),
             deleteOption: (_, _) => Assert.Fail("Reset must not delete."));
     }
 }

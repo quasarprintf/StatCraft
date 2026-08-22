@@ -156,7 +156,7 @@ namespace StatCraft.ViewModels.Windows
                     _repository.UpdateAttribute(attr);
             };
             attr.Definition.ValueOptions.CollectionChanged += (s, e) =>
-                AttributeValueOptionSync.Apply(e, attr.Definition.Id, attr.Definition.ValueOptions, _repository.InsertValueOption, _repository.DeleteValueOption);
+                AttributeValueOptionSync.Apply(e, attr.Definition.Id, _repository.InsertValueOption, _repository.DeleteValueOption);
         }
 
         public void SelectFirstBuild() => SelectedBuild = Builds.FirstOrDefault(n => n.MatchesOpponentFilter);

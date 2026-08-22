@@ -121,7 +121,7 @@ namespace StatCraft.ViewModels.Windows
             switch (args.Action)
             {
                 case CollectionChangeAction.Add:
-                    _repository.InsertValueOption(SelectedAttribute!.Id, (string)args.Element!, SelectedAttribute.ValueOptions.Count);
+                    _repository.InsertValueOption(SelectedAttribute!.Id, (string)args.Element!);
                     return;
                 case CollectionChangeAction.Remove:
                     _repository.DeleteValueOption(SelectedAttribute!.Id, (string)args.Element!);

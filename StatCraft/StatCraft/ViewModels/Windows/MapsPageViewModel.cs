@@ -224,7 +224,7 @@ namespace StatCraft.ViewModels.Windows
 
             attribute.ValueOptions.CollectionChanged += (s, e) =>
             {
-                AttributeValueOptionSync.Apply(e, attribute.Id, attribute.ValueOptions, attributeRepo.InsertValueOption, attributeRepo.DeleteValueOption);
+                AttributeValueOptionSync.Apply(e, attribute.Id, attributeRepo.InsertValueOption, attributeRepo.DeleteValueOption);
 
                 // Patches the existing slot's option list in place, preserving whichever options are
                 // still checked, rather than recreating the slot and losing the whole selection.

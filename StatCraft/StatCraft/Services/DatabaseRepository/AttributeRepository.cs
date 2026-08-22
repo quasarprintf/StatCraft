@@ -79,11 +79,13 @@ namespace StatCraft.Services.DatabaseRepository
             AttributesChanged?.Invoke();
         }
 
-        public void InsertValueOption(int attributeId, string value, int sortOrder)
+        public void InsertValueOption(int attributeId, string value)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("INSERT INTO AttributeValueOptions (AttributeId, Value, SortOrder) VALUES (@attributeId, @value, @sortOrder)",
-                new { attributeId, value, sortOrder });
+            conn.Execute(@"
+                INSERT INTO AttributeValueOptions (AttributeId, Value, SortOrder)
+                VALUES (@attributeId, @value, (SELECT COALESCE(MAX(SortOrder), -1) + 1 FROM AttributeValueOptions WHERE AttributeId = @attributeId))",
+                new { attributeId, value });
             AttributesChanged?.Invoke();
         }
 

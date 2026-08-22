@@ -41,13 +41,32 @@ public class AttributeRepositoryTests
     {
         AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
         _attributeRepo.InsertAttribute(attribute, 0);
-        _attributeRepo.InsertValueOption(attribute.Id, "Macro", 0);
-        _attributeRepo.InsertValueOption(attribute.Id, "Rush", 1);
+        _attributeRepo.InsertValueOption(attribute.Id, "Macro");
+        _attributeRepo.InsertValueOption(attribute.Id, "Rush");
 
         Assert.Equal(["Macro", "Rush"], Assert.Single(_attributeRepo.GetAllAttributes()).ValueOptions);
 
         _attributeRepo.DeleteValueOption(attribute.Id, "Macro");
         Assert.Equal(["Rush"], Assert.Single(_attributeRepo.GetAllAttributes()).ValueOptions);
+    }
+
+    // Pins the fix for a real bug: SortOrder used to be caller-supplied, derived from the in-memory
+    // option list's position/count. Once an earlier option was deleted, that count no longer matched the
+    // next free SortOrder, so a later insert could collide with a surviving option's SortOrder and the
+    // two would come back in an unpredictable order.
+    [Fact]
+    public void InsertValueOption_AfterAnEarlierOptionWasDeleted_StillSortsAfterSurvivors()
+    {
+        AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        _attributeRepo.InsertValueOption(attribute.Id, "Macro");
+        _attributeRepo.InsertValueOption(attribute.Id, "Rush");
+        _attributeRepo.InsertValueOption(attribute.Id, "Timing");
+
+        _attributeRepo.DeleteValueOption(attribute.Id, "Rush");
+        _attributeRepo.InsertValueOption(attribute.Id, "Cheese");
+
+        Assert.Equal(["Macro", "Timing", "Cheese"], Assert.Single(_attributeRepo.GetAllAttributes()).ValueOptions);
     }
 
     [Fact]

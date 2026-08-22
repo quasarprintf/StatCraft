@@ -135,7 +135,7 @@ public class BuildRepositoryTests : IDisposable
 
         AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Opening", Type = AttributeType.Values });
         _repository.InsertAttribute(attr, node.Id, 0);
-        _repository.InsertValueOption(attr.Definition.Id, "Zealot", 0);
+        _repository.InsertValueOption(attr.Definition.Id, "Zealot");
 
         BuildNode loadedNode = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss));
         AttributeValue loadedAttr = Assert.Single(loadedNode.Attributes);

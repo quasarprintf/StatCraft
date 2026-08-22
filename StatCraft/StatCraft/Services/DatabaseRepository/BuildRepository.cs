@@ -185,11 +185,13 @@ namespace StatCraft.Services.DatabaseRepository
             BuildsChanged?.Invoke();
         }
 
-        public void InsertValueOption(int attributeId, string value, int sortOrder)
+        public void InsertValueOption(int attributeId, string value)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("INSERT INTO BuildDetailsAttributeValueOptions (BuildAttributeId, Value, SortOrder) VALUES (@attrId, @value, @sortOrder)",
-                new { attrId = attributeId, value, sortOrder });
+            conn.Execute(@"
+                INSERT INTO BuildDetailsAttributeValueOptions (BuildAttributeId, Value, SortOrder)
+                VALUES (@attrId, @value, (SELECT COALESCE(MAX(SortOrder), -1) + 1 FROM BuildDetailsAttributeValueOptions WHERE BuildAttributeId = @attrId))",
+                new { attrId = attributeId, value });
             BuildsChanged?.Invoke();
         }
 
