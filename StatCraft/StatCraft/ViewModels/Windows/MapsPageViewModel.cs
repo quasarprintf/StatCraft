@@ -54,6 +54,11 @@ namespace StatCraft.ViewModels.Windows
                 AddFilterSlot(attribute);
             ApplyFilters();
             SelectedMap = Maps.FirstOrDefault();
+
+            // AttributeRepository is shared with the Attributes tab, but this page keeps its own
+            // in-memory attribute list (loaded once, above) — without this, an attribute added or
+            // removed from the Attributes tab would only show up here after restarting the app.
+            attributeRepo.AttributesChanged += SyncAttributesFromRepository;
         }
 
         // The global attribute definitions, shared by every map — each Map holds one MapAttributeValue
@@ -123,36 +128,60 @@ namespace StatCraft.ViewModels.Windows
                 SelectedMap = Maps.ElementAtOrDefault(index) ?? Maps.ElementAtOrDefault(index - 1);
         }
 
+        // SyncAttributesFromRepository (triggered by AttributesChanged, which InsertAttribute raises
+        // synchronously) applies the actual Attributes/filter-slot/per-map bookkeeping for this.
         [RelayCommand]
         public void AddAttribute()
         {
             AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "New Definition" };
             attributeRepo.InsertAttribute(attribute, Attributes.Count);
-            WireAttribute(attribute);
-            Attributes.Add(attribute);
-
-            // Defined for every map at once, and unset on all of them until someone fills it in.
-            foreach (Map map in _allMaps)
-                map.AttributeValues.Add(new AttributeValue(attribute));
-
-            AddFilterSlot(attribute);
-            ApplyFilters();
         }
 
+        // SyncAttributesFromRepository (triggered by AttributesChanged, which DeleteAttribute raises
+        // synchronously) applies the actual Attributes/filter-slot/per-map bookkeeping for this.
         [RelayCommand]
         public void RemoveAttribute(AttributeDefinition attribute)
         {
             attributeRepo.DeleteAttribute(attribute.Id);
-            Attributes.Remove(attribute);
+        }
 
-            foreach (Map map in _allMaps)
+        // Reconciles Attributes (and every map's AttributeValues, and the filter slots) against
+        // AttributeDefinitions by Id, so an attribute added or removed anywhere — the Attributes tab,
+        // this page's own AddAttribute/RemoveAttribute above — ends up reflected here exactly once.
+        // Only adds/removes: it never replaces an already-known attribute, so edits to one made
+        // elsewhere (e.g. a rename from the Attributes tab) aren't picked up here.
+        private void SyncAttributesFromRepository()
+        {
+            List<AttributeDefinition> current = attributeRepo.GetAllAttributes(AttributeScope.Map);
+            HashSet<int> currentIds = current.Select(a => a.Id).ToHashSet();
+
+            foreach (AttributeDefinition attribute in Attributes.Where(a => !currentIds.Contains(a.Id)).ToList())
             {
-                AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Definition == attribute);
-                if (value != null)
-                    map.AttributeValues.Remove(value);
+                Attributes.Remove(attribute);
+
+                foreach (Map map in _allMaps)
+                {
+                    AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Definition == attribute);
+                    if (value != null)
+                        map.AttributeValues.Remove(value);
+                }
+
+                RemoveFilterSlot(attribute);
             }
 
-            RemoveFilterSlot(attribute);
+            HashSet<int> knownIds = Attributes.Select(a => a.Id).ToHashSet();
+            foreach (AttributeDefinition attribute in current.Where(a => !knownIds.Contains(a.Id)))
+            {
+                WireAttribute(attribute);
+                Attributes.Add(attribute);
+
+                // Defined for every map at once, and unset on all of them until someone fills it in.
+                foreach (Map map in _allMaps)
+                    map.AttributeValues.Add(new AttributeValue(attribute));
+
+                AddFilterSlot(attribute);
+            }
+
             ApplyFilters();
         }
 
