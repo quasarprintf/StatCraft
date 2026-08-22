@@ -9,12 +9,7 @@
             <TextBlock Text="Name" FontWeight="SemiBold"/>
             <TextBox Text="{Binding SelectedMap.Name}"/>
 
-            <DockPanel Margin="0,8,0,0">
-                <TextBlock Text="Attributes" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                <Button Content="+" DockPanel.Dock="Right"
-                        Command="{Binding AddAttributeCommand}"
-                        Padding="6,2" HorizontalAlignment="Right"/>
-            </DockPanel>
+            <TextBlock Text="Attributes" FontWeight="SemiBold" Margin="0,8,0,0"/>
         </StackPanel>
 
         <ScrollViewer>
@@ -22,16 +17,12 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="Attr:AttributeValue">
                         <StackPanel Margin="0,0,0,8">
-                            <!-- Definition row: name, type, delete -->
-                            <Grid ColumnDefinitions="*,120,Auto">
+                            <!-- Definition row: name, type -->
+                            <Grid ColumnDefinitions="*,120">
                                 <TextBox Grid.Column="0" Text="{Binding Definition.Name}" PlaceholderText="Name" Margin="0,0,4,0"/>
                                 <ComboBox Grid.Column="1" SelectedItem="{Binding Definition.Type}"
                                           ItemsSource="{x:Static Attr:AttributeDefinition.AllTypes}"
-                                          HorizontalAlignment="Stretch" Margin="0,0,4,0"/>
-                                <Button Grid.Column="2" Content="✕"
-                                        Command="{Binding $parent[UserControl].((vmw:MapsPageViewModel)DataContext).RemoveAttributeCommand}"
-                                        CommandParameter="{Binding Definition}"
-                                        Padding="6,2"/>
+                                          HorizontalAlignment="Stretch"/>
                             </Grid>
 
                             <!-- This map's value. Every editor is nullable, and the clear button puts it

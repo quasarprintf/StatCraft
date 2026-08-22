@@ -64,32 +64,6 @@ public class MapsPageViewModelTests : IDisposable
         Assert.Empty(vm.Attributes);
     }
 
-    [Fact]
-    public void AddAttribute_StillAppliesToEveryExistingMap()
-    {
-        _mapRepo.InsertMap(new() { Name = "Altitude LE" });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
-
-        vm.AddAttributeCommand.Execute(null);
-
-        AttributeDefinition attribute = Assert.Single(vm.Attributes);
-        Assert.Contains(vm.Maps.Single().AttributeValues, v => v.Definition == attribute);
-    }
-
-    [Fact]
-    public void RemoveAttribute_StillRemovesFromEveryMap()
-    {
-        _mapRepo.InsertMap(new() { Name = "Altitude LE" });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
-        vm.AddAttributeCommand.Execute(null);
-        AttributeDefinition attribute = Assert.Single(vm.Attributes);
-
-        vm.RemoveAttributeCommand.Execute(attribute);
-
-        Assert.Empty(vm.Attributes);
-        Assert.Empty(vm.Maps.Single().AttributeValues);
-    }
-
     public void Dispose()
     {
         try

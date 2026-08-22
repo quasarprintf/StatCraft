@@ -128,28 +128,11 @@ namespace StatCraft.ViewModels.Windows
                 SelectedMap = Maps.ElementAtOrDefault(index) ?? Maps.ElementAtOrDefault(index - 1);
         }
 
-        // SyncAttributesFromRepository (triggered by AttributesChanged, which InsertAttribute raises
-        // synchronously) applies the actual Attributes/filter-slot/per-map bookkeeping for this.
-        [RelayCommand]
-        public void AddAttribute()
-        {
-            AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "New Definition" };
-            attributeRepo.InsertAttribute(attribute, Attributes.Count);
-        }
-
-        // SyncAttributesFromRepository (triggered by AttributesChanged, which DeleteAttribute raises
-        // synchronously) applies the actual Attributes/filter-slot/per-map bookkeeping for this.
-        [RelayCommand]
-        public void RemoveAttribute(AttributeDefinition attribute)
-        {
-            attributeRepo.DeleteAttribute(attribute.Id);
-        }
-
         // Reconciles Attributes (and every map's AttributeValues, and the filter slots) against
-        // AttributeDefinitions by Id, so an attribute added or removed anywhere — the Attributes tab,
-        // this page's own AddAttribute/RemoveAttribute above — ends up reflected here exactly once.
-        // Only adds/removes: it never replaces an already-known attribute, so edits to one made
-        // elsewhere (e.g. a rename from the Attributes tab) aren't picked up here.
+        // AttributeDefinitions by Id, so an attribute added or removed from the Attributes tab — the
+        // only place attributes are managed now — ends up reflected here. Only adds/removes: it never
+        // replaces an already-known attribute, so edits to one made elsewhere (e.g. a rename from the
+        // Attributes tab) aren't picked up here.
         private void SyncAttributesFromRepository()
         {
             List<AttributeDefinition> current = attributeRepo.GetAllAttributes(AttributeScope.Map);
