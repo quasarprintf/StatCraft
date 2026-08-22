@@ -8,8 +8,6 @@
         <StackPanel DockPanel.Dock="Top" Spacing="6">
             <TextBlock Text="Name" FontWeight="SemiBold"/>
             <TextBox Text="{Binding SelectedMap.Name}"/>
-
-            <TextBlock Text="Attributes" FontWeight="SemiBold" Margin="0,8,0,0"/>
         </StackPanel>
 
         <ScrollViewer>
