@@ -182,8 +182,10 @@ namespace StatCraft.ViewModels.Windows
 
                 SyncValueOptions(attribute, latest.ValueOptions);
 
-                if (attribute.DefaultValue.Serialize() != latest.DefaultValue.Serialize())
-                    attribute.DefaultValue = latest.DefaultValue;
+                if (attribute.DefaultValue.HasValue)
+                    attribute.DefaultValue.ApplyStoredValue(latest.DefaultValue.Serialize()!);
+                else
+                    attribute.DefaultValue.Clear();
             }
 
             //sync new attributes
