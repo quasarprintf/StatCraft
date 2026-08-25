@@ -4,13 +4,7 @@ using StatCraft.Models.GameData.Attributes;
 
 namespace StatCraft.Services.DataFiltering
 {
-    // Predicates behind the Maps tab's filter bar. Takes plain values rather than filter-slot view models
-    // so the rules stay independently testable; MapsPageViewModel is what unpacks a slot into these.
-    //
-    // Two conventions run through all of them. An empty constraint is inactive and matches everything —
-    // adding a filter without filling it in must not hide anything, matching the Data tab. And a map with
-    // no value for the attribute is excluded unless includeUnset says otherwise, since a freshly defined
-    // attribute is unset on every map and would otherwise swallow the entire list.
+    // filter logic for each attribute type
     internal static class AttributeFilter
     {
         // Numeric and Percent attributes. Bounds are inclusive, and either end may be left open.

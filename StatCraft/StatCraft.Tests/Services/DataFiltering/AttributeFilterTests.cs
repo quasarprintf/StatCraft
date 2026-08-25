@@ -20,10 +20,23 @@ public class AttributeFilterTests
         Assert.Equal(expected, MapsPageViewModel.MatchesName(map, filter));
     }
 
-    [Fact]
-    public void MatchesRange_NoBounds_MatchesEvenAnUnsetValue()
+    // Whether the value is set takes priority over whether the constraint itself is active — an unset
+    // value is excluded by a freshly-opened, not-yet-configured filter too, unless includeUnset says
+    // otherwise, since "no value" should behave the same whether or not bounds have been typed in yet.
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public void MatchesRange_NoBounds_UnsetValueStillFollowsIncludeUnset(bool includeUnset, bool expected)
     {
         AttributeValue value = Value(AttributeType.Numeric);
+        Assert.Equal(expected, AttributeFilter.MatchesRange(value, null, null, includeUnset));
+    }
+
+    [Fact]
+    public void MatchesRange_NoBounds_MatchesASetValue()
+    {
+        AttributeValue value = Value(AttributeType.Numeric);
+        value.NumericValue = 42m;
         Assert.True(AttributeFilter.MatchesRange(value, null, null, includeUnset: false));
     }
 
@@ -61,10 +74,18 @@ public class AttributeFilterTests
         Assert.Equal(expected, AttributeFilter.MatchesRange(value, 10, 20, includeUnset));
     }
 
-    [Fact]
-    public void MatchesSelection_NothingChecked_MatchesEvenAnUnsetValue()
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public void MatchesSelection_NothingChecked_UnsetValueStillFollowsIncludeUnset(bool includeUnset, bool expected)
     {
-        Assert.True(AttributeFilter.MatchesSelection(new HashSet<string>(), hasValue: false, "", includeUnset: false));
+        Assert.Equal(expected, AttributeFilter.MatchesSelection(new HashSet<string>(), hasValue: false, "", includeUnset));
+    }
+
+    [Fact]
+    public void MatchesSelection_NothingChecked_MatchesASetValue()
+    {
+        Assert.True(AttributeFilter.MatchesSelection(new HashSet<string>(), hasValue: true, "Macro", includeUnset: false));
     }
 
     [Theory]
@@ -83,10 +104,20 @@ public class AttributeFilterTests
         Assert.Equal(expected, AttributeFilter.MatchesSelection(new HashSet<string> { "Macro" }, hasValue: false, "", includeUnset));
     }
 
-    [Fact]
-    public void MatchesBool_NoFilterValue_MatchesEvenAnUnsetValue()
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public void MatchesBool_NoFilterValue_UnsetValueStillFollowsIncludeUnset(bool includeUnset, bool expected)
     {
         AttributeValue value = Value(AttributeType.Bool);
+        Assert.Equal(expected, AttributeFilter.MatchesBool(value, null, includeUnset));
+    }
+
+    [Fact]
+    public void MatchesBool_NoFilterValue_MatchesASetValue()
+    {
+        AttributeValue value = Value(AttributeType.Bool);
+        value.BoolValue = true;
         Assert.True(AttributeFilter.MatchesBool(value, null, includeUnset: false));
     }
 
