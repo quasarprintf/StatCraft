@@ -181,6 +181,9 @@ namespace StatCraft.ViewModels.Windows
                 }
 
                 SyncValueOptions(attribute, latest.ValueOptions);
+
+                if (attribute.DefaultValue.Serialize() != latest.DefaultValue.Serialize())
+                    attribute.DefaultValue = latest.DefaultValue;
             }
 
             //sync new attributes
