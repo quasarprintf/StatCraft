@@ -14,7 +14,7 @@ namespace StatCraft.Models.GameData.Maps
         [RelayCommand]
         public void AddAttribute(AttributeDefinition definition) 
         {
-            AttributeValues.Add(new AttributeValue(definition));
+            AttributeValues.Add(definition.DefaultValue.Clone());
         }
 
         [RelayCommand]
