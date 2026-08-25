@@ -64,7 +64,10 @@
                                 <ComboBox Grid.Column="1" ItemsSource="{Binding Definition.ValueOptions}"
                                           SelectedItem="{Binding SelectedValue}"
                                           HorizontalAlignment="Stretch"/>
-                                <Button Grid.Column="2" Content="{Binding Definition}" Padding="6,2" Margin="4,0,0,0"
+                                <Button Grid.Column="2" Content="x" IsVisible="{Binding !Definition.IsMandatory}" Padding="6,2" Margin="4,0,28,0"
+                                        Command="{Binding ((vmw:MapsPageViewModel)DataContext).SelectedMap.RemoveAttributeCommand, ElementName=mapDetails}"
+                                        CommandParameter="{Binding .}" />
+                                <Button Grid.Column="2" Content="Clear" IsVisible="{Binding Definition.IsMandatory}" Padding="6,2" Margin="4,0,0,0"
                                         Command="{Binding ClearCommand}"/>
                             </Grid>
                         </StackPanel>
