@@ -126,13 +126,13 @@ namespace StatCraft.ViewModels.Windows
         }
 
         // Reconciles Attributes (and every map's AttributeValues, and the filter slots) against
-        // AttributeDefinitions, so any change made on the Attributes tab — the only place attributes are
-        // managed now — ends up reflected here: added, removed, or edited (name/type/value options).
+        // AttributeDefinitions, so any change made on the Attributes tab ends up reflected here
         private void SyncAttributesFromRepository()
         {
             List<AttributeDefinition> current = attributeRepo.GetAllAttributes(AttributeScope.Map);
             Dictionary<int, AttributeDefinition> currentById = current.ToDictionary(a => a.Id);
 
+            //sync deleted attributes
             foreach (AttributeDefinition attribute in Attributes.Where(a => !currentById.ContainsKey(a.Id)).ToList())
             {
                 Attributes.Remove(attribute);
@@ -147,9 +147,7 @@ namespace StatCraft.ViewModels.Windows
                 RemoveFilterSlot(attribute);
             }
 
-            // Mutates the instances this page already holds (and every map's AttributeValues and the
-            // ComboBox/CheckBox editors point at) in place, so the existing bindings just pick the edit
-            // up — rather than replacing them, which would orphan every reference to the old instance.
+            //sync edited attributes
             foreach (AttributeDefinition attribute in Attributes)
             {
                 AttributeDefinition latest = currentById[attribute.Id];
@@ -175,6 +173,7 @@ namespace StatCraft.ViewModels.Windows
                 SyncValueOptions(attribute, latest.ValueOptions);
             }
 
+            //sync new attributes
             HashSet<int> knownIds = Attributes.Select(a => a.Id).ToHashSet();
             foreach (AttributeDefinition attribute in current.Where(a => !knownIds.Contains(a.Id)))
             {
@@ -197,12 +196,14 @@ namespace StatCraft.ViewModels.Windows
         {
             bool changed = false;
 
+            //remove deleted options
             foreach (string stale in attribute.ValueOptions.Where(o => !latest.Contains(o)).ToList())
             {
                 attribute.ValueOptions.Remove(stale);
                 changed = true;
             }
 
+            //sync new options
             foreach (string value in latest.Where(o => !attribute.ValueOptions.Contains(o)))
             {
                 attribute.ValueOptions.Add(value);
@@ -259,8 +260,7 @@ namespace StatCraft.ViewModels.Windows
             };
         }
 
-        // Adds one new filter slot for this attribute, initially hidden unless told otherwise (used when
-        // a type change replaces a slot that was already showing).
+        // Adds one new filter slot for this attribute
         private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
         {
             FilterSlotViewModel slot = CreateSlot(attribute);
