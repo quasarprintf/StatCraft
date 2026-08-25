@@ -3,12 +3,29 @@
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
              xmlns:Attr="using:StatCraft.Models.GameData.Attributes"
              x:Class="StatCraft.Views.Windows.MapsComponents.MapDetailsPanel"
-             x:DataType="vmw:MapsPageViewModel">
+             x:DataType="vmw:MapsPageViewModel"
+             Name="mapDetails">
     <DockPanel Margin="12">
         <StackPanel DockPanel.Dock="Top" Spacing="6">
             <TextBlock Text="Name" FontWeight="SemiBold"/>
             <TextBox Text="{Binding SelectedMap.Name}"/>
         </StackPanel>
+
+        <Button DockPanel.Dock="Top" Grid.Column="1" Content="Add attribute" Padding="6,2" VerticalAlignment="Center">
+            <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedRight">
+                    <ItemsControl ItemsSource="{Binding UnusedAttributes}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Button Content="{Binding  Name}" 
+                                        Command="{Binding ((vmw:MapsPageViewModel)DataContext).SelectedMap.AddAttributeCommand, ElementName=mapDetails}" 
+                                        CommandParameter="{Binding .}"/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Flyout>
+            </Button.Flyout>
+        </Button>
 
         <ScrollViewer>
             <ItemsControl ItemsSource="{Binding SelectedMap.AttributeValues}">
@@ -32,7 +49,11 @@
                                                IsVisible="{Binding Definition.IsPercent}"
                                                Minimum="0" Maximum="100" FormatString="0.##'%'"
                                                HorizontalAlignment="Stretch"/>
-                                <Button Grid.Column="2" Content="Clear" Padding="6,2" Margin="4,0,0,0"
+
+                                <Button Grid.Column="2" Content="x" IsVisible="{Binding !Definition.IsMandatory}" Padding="6,2" Margin="4,0,28,0"
+                                        Command="{Binding ((vmw:MapsPageViewModel)DataContext).SelectedMap.RemoveAttributeCommand, ElementName=mapDetails}"
+                                        CommandParameter="{Binding .}" />
+                                <Button Grid.Column="2" Content="Clear" IsVisible="{Binding Definition.IsMandatory}" Padding="6,2" Margin="4,0,0,0"
                                         Command="{Binding ClearCommand}"/>
                             </Grid>
 
@@ -43,7 +64,7 @@
                                 <ComboBox Grid.Column="1" ItemsSource="{Binding Definition.ValueOptions}"
                                           SelectedItem="{Binding SelectedValue}"
                                           HorizontalAlignment="Stretch"/>
-                                <Button Grid.Column="2" Content="Clear" Padding="6,2" Margin="4,0,0,0"
+                                <Button Grid.Column="2" Content="{Binding Definition}" Padding="6,2" Margin="4,0,0,0"
                                         Command="{Binding ClearCommand}"/>
                             </Grid>
                         </StackPanel>

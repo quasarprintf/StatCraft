@@ -12,13 +12,6 @@ using StatCraft.ViewModels.Windows.DataComponents;
 
 namespace StatCraft.ViewModels.Windows
 {
-    // The Maps tab. Structurally simpler than Builds — maps never nest, so this is a flat list rather
-    // than a tree — but with one twist Builds doesn't have: attributes are defined globally, from the
-    // Attributes tab, so adding one adds it to every map at once (unset everywhere). This page can only
-    // edit the per-map *value* — name/type/options are the attribute definition and aren't editable here.
-    //
-    // Persistence is write-through on PropertyChanged, the same way BuildsPageViewModel works; nothing
-    // here needs an explicit save.
     public partial class MapsPageViewModel : ViewModelBase
     {
         private readonly MapRepository mapRepo;
@@ -56,11 +49,13 @@ namespace StatCraft.ViewModels.Windows
             // in-memory attribute list (loaded once, above) — without this, an attribute added or
             // removed from the Attributes tab would only show up here after restarting the app.
             attributeRepo.AttributesChanged += SyncAttributesFromRepository;
+
+            Attributes.CollectionChanged += RaiseUnusedAttributesChanged;
         }
 
-        // The global attribute definitions, shared by every map — each Map holds one MapAttributeValue
-        // per entry here, in the same order.
+        // cache of all map attribute definitions
         public ObservableCollection<AttributeDefinition> Attributes { get; } = [];
+        public IEnumerable<AttributeDefinition> UnusedAttributes => SelectedMap == null ? Enumerable.Empty<AttributeDefinition>() : Attributes.Where(a => !SelectedMap.AttributeValues.Any(v => v.Definition.Id == a.Id));
 
         // The maps currently passing the name and attribute filters.
         public ObservableCollection<Map> Maps { get; } = [];
@@ -69,14 +64,6 @@ namespace StatCraft.ViewModels.Windows
 
         [ObservableProperty] private string _nameFilter = "";
 
-
-        // Split views of AttributeFilterSlots by visibility, kept in sync incrementally rather than as a
-        // computed `Where(...)` property notified via OnPropertyChanged. The visible-side ItemsControl
-        // tolerated that pattern fine, but the "+ " button's MenuFlyout (bound to HiddenFilterSlots) does
-        // not reliably re-evaluate a property-changed-only binding once its popup content has been
-        // realized once — reopening it kept showing whatever attributes existed the first time it was
-        // shown, silently missing anything added or removed afterward. Real ObservableCollections raise
-        // CollectionChanged, which the flyout's presenter does honor correctly.
         public ObservableCollection<FilterSlotViewModel> VisibleFilterSlots { get; } = [];
         public ObservableCollection<FilterSlotViewModel> HiddenFilterSlots { get; } = [];
 
@@ -248,6 +235,23 @@ namespace StatCraft.ViewModels.Windows
             }
         }
 
+        private void RaiseUnusedAttributesChanged(object? sender, EventArgs e)
+        {
+            
+            OnPropertyChanged(nameof(UnusedAttributes));
+        }
+        partial void OnSelectedMapChanged(Map? value)
+        {
+            OnPropertyChanged(nameof(UnusedAttributes));
+        }
+        partial void OnSelectedMapChanging(Map? value)
+        {
+            if (SelectedMap != null)
+                SelectedMap.AttributeValues.CollectionChanged -= RaiseUnusedAttributesChanged;
+
+            if (value != null)
+                value.AttributeValues.CollectionChanged += RaiseUnusedAttributesChanged;
+        }
         private void WireMap(Map map)
         {
             map.PropertyChanged += (s, e) =>
