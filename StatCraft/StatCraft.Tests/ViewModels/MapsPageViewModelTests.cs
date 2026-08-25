@@ -32,7 +32,7 @@ public class MapsPageViewModelTests : IDisposable
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
         MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
 
-        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Rush Distance" };
+        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Rush Distance", IsMandatory = true };
         _attributeRepo.InsertAttribute(attribute, 0);
 
         Assert.Contains(vm.Attributes, a => a.Id == attribute.Id);
@@ -73,7 +73,7 @@ public class MapsPageViewModelTests : IDisposable
     [Fact]
     public void AttributeTypeChangedElsewhere_UpdatesTheSameInstanceThisPageAlreadyHolds()
     {
-        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Rush Distance", Type = AttributeType.Numeric };
+        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Rush Distance", Type = AttributeType.Numeric, IsMandatory = true };
         _attributeRepo.InsertAttribute(attribute, 0);
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
         MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);

@@ -94,7 +94,7 @@ public class MapRepositoryTests : IDisposable
     {
         _mapRepo.InsertMap(new Map { Name = "A" });
         _mapRepo.InsertMap(new Map { Name = "B" });
-        _attributeRepo.InsertAttribute(new AttributeDefinition(AttributeScope.Map) { Name = "Rush Distance", Type = AttributeType.Numeric }, 0);
+        _attributeRepo.InsertAttribute(new AttributeDefinition(AttributeScope.Map) { Name = "Rush Distance", Type = AttributeType.Numeric, IsMandatory = true }, 0);
 
         List<AttributeDefinition> attributes = _attributeRepo.GetAllAttributes(AttributeScope.Map);
         foreach (Map map in _mapRepo.GetAllMaps(attributes))
@@ -129,7 +129,7 @@ public class MapRepositoryTests : IDisposable
     public void GetAllMaps_AttributeWithNoStoredValue_ReadsBackAsUnset(AttributeType type)
     {
         _mapRepo.InsertMap(new Map { Name = "A" });
-        _attributeRepo.InsertAttribute(new AttributeDefinition(AttributeScope.Map) { Name = "Attr", Type = type }, 0);
+        _attributeRepo.InsertAttribute(new AttributeDefinition(AttributeScope.Map) { Name = "Attr", Type = type, IsMandatory = true }, 0);
 
         AttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
 
@@ -200,7 +200,7 @@ public class MapRepositoryTests : IDisposable
     {
         Map map = new() { Name = "A" };
         _mapRepo.InsertMap(map);
-        AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "Attr", Type = type };
+        AttributeDefinition attribute = new AttributeDefinition(AttributeScope.Map) { Name = "Attr", Type = type, IsMandatory = true };
         _attributeRepo.InsertAttribute(attribute, 0);
         return (map, attribute);
     }
