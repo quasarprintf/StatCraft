@@ -21,7 +21,7 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
 
-            string query = "SELECT Id, Name, Type, Scope, DefaultValue, Description FROM AttributeDefinitions";
+            string query = "SELECT Id, Name, Type, Scope, DefaultValue, Description, IsMandatory FROM AttributeDefinitions";
             object? parameters = null;
             if (scope != null)
             {
@@ -37,7 +37,7 @@ namespace StatCraft.Services.DatabaseRepository
             List<AttributeDefinition> attributes = new();
             foreach (AttributeDefinitionRow row in rows)
             {
-                AttributeDefinition attribute = new AttributeDefinition(row.Scope, row.Type, row.DefaultValue) { Id = (int)row.Id, Name = row.Name, Description = row.Description };
+                AttributeDefinition attribute = new AttributeDefinition(row.Scope, row.Type, row.DefaultValue) { Id = (int)row.Id, Name = row.Name, Description = row.Description, IsMandatory = row.IsMandatory };
                 byId[row.Id] = attribute;
                 attributes.Add(attribute);
             }
@@ -58,17 +58,17 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
             attribute.Id = (int)conn.ExecuteScalar<long>(@"
-                INSERT INTO AttributeDefinitions (Name, Type, Scope, DefaultValue, SortOrder, Description) VALUES (@name, @type, @scope, @defaultValue, @sortOrder, @description);
+                INSERT INTO AttributeDefinitions (Name, Type, Scope, DefaultValue, SortOrder, Description, IsMandatory) VALUES (@name, @type, @scope, @defaultValue, @sortOrder, @description, @isMandatory);
                 SELECT last_insert_rowid();",
-                new { name = attribute.Name, type = attribute.Type, scope = attribute.Scope, defaultValue = attribute.DefaultValue.Serialize() ?? "", sortOrder, description = attribute.Description });
+                new { name = attribute.Name, type = attribute.Type, scope = attribute.Scope, defaultValue = attribute.DefaultValue.Serialize() ?? "", sortOrder, description = attribute.Description, isMandatory = attribute.IsMandatory });
             AttributesChanged?.Invoke();
         }
 
         public void UpdateAttribute(AttributeDefinition attribute)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("UPDATE AttributeDefinitions SET Name = @name, Type = @type, Scope = @scope, DefaultValue = @defaultValue, Description = @description WHERE Id = @id",
-                new { name = attribute.Name, type = attribute.Type, defaultValue = attribute.DefaultValue.Serialize() ?? "", description = attribute.Description, id = attribute.Id, scope = attribute.Scope });
+            conn.Execute("UPDATE AttributeDefinitions SET Name = @name, Type = @type, Scope = @scope, DefaultValue = @defaultValue, Description = @description, IsMandatory = @isMandatory WHERE Id = @id",
+                new { name = attribute.Name, type = attribute.Type, defaultValue = attribute.DefaultValue.Serialize() ?? "", description = attribute.Description, id = attribute.Id, scope = attribute.Scope, isMandatory = attribute.IsMandatory });
             AttributesChanged?.Invoke();
         }
 
@@ -105,6 +105,7 @@ namespace StatCraft.Services.DatabaseRepository
             public AttributeScope Scope { get; set; }
             public string DefaultValue { get; set; } = "";
             public string Description { get; set; } = "";
+            public bool IsMandatory { get; set; }
         }
 
         private class ValueOptionRow

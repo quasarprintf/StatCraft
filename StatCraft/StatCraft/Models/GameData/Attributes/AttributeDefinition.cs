@@ -26,6 +26,7 @@ namespace StatCraft.Models.GameData.Attributes
         private AttributeType _type = AttributeType.Numeric;
 
         public AttributeScope Scope { get; private set; }
+        [ObservableProperty] private bool _isMandatory;
 
         // Options for a Values-type attribute
         public ObservableCollection<string> ValueOptions { get; protected set; } = [];

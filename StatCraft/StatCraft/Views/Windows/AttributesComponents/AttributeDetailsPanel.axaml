@@ -12,6 +12,11 @@
                 <TextBlock Text="Name" FontWeight="SemiBold"/>
                 <TextBox Text="{Binding SelectedAttribute.Name}"/>
 
+                <StackPanel Orientation="Horizontal">
+                    <CheckBox IsChecked="{Binding SelectedAttribute.IsMandatory}" />
+                    <TextBlock Text="Mandatory" Margin="0,8,0,0" />
+                </StackPanel>
+
                 <TextBlock Text="Type" FontWeight="SemiBold" Margin="0,8,0,0"/>
                 <ComboBox SelectedItem="{Binding SelectedAttribute.Type}"
                           ItemsSource="{x:Static attr:AttributeDefinition.AllTypes}"

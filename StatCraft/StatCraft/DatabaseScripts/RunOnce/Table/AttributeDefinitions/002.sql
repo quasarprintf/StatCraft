@@ -1,0 +1,2 @@
+﻿ALTER TABLE AttributeDefinitions
+	ADD COLUMN IsMandatory INTEGER NOT NULL DEFAULT 1
