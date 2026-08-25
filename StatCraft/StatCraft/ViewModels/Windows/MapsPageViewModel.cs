@@ -381,8 +381,6 @@ namespace StatCraft.ViewModels.Windows
                     continue;
 
                 AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Definition == attribute);
-                if (value == null)
-                    continue;
 
                 if (!MatchesSlot(slot, value))
                     return false;
@@ -396,16 +394,22 @@ namespace StatCraft.ViewModels.Windows
         {
             return string.IsNullOrWhiteSpace(nameFilter) || map.Name.Contains(nameFilter.Trim(), StringComparison.OrdinalIgnoreCase);
         }
-        private static bool MatchesSlot(FilterSlotViewModel slot, AttributeValue value) => slot switch
+        private static bool MatchesSlot(FilterSlotViewModel slot, AttributeValue? value)
         {
-            NumericRangeFilterSlotViewModel range =>
-                AttributeFilter.MatchesRange(value, range.Min, range.Max, range.IncludeUnset),
-            BoolFilterSlotViewModel boolSlot =>
-                AttributeFilter.MatchesBool(value, boolSlot.Value, boolSlot.IncludeUnset),
-            CheckboxFilterSlotViewModel<string> strings =>
-                AttributeFilter.MatchesSelection(Checked(strings), value.HasValue, value.SelectedValue ?? "", strings.IncludeUnset),
-            _ => true,
-        };
+            if (value == null)
+                return slot.IncludeUnset;
+            switch (slot)
+            {
+                case NumericRangeFilterSlotViewModel range:
+                    return AttributeFilter.MatchesRange(value, range.Min, range.Max, range.IncludeUnset);
+                case BoolFilterSlotViewModel boolSlot:
+                    return AttributeFilter.MatchesBool(value, boolSlot.Value, boolSlot.IncludeUnset);
+                case CheckboxFilterSlotViewModel<string> strings:
+                    return AttributeFilter.MatchesSelection(Checked(strings), value.HasValue, value.SelectedValue ?? "", strings.IncludeUnset);
+                default:
+                    return true;
+            }
+        }
 
         private static IReadOnlySet<T> Checked<T>(CheckboxFilterSlotViewModel<T> slot) =>
             slot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
