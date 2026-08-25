@@ -82,7 +82,7 @@ namespace StatCraft.ViewModels.Windows
 
             // Every existing attribute applies to it immediately, with no value.
             foreach (AttributeDefinition attribute in Attributes)
-                map.AttributeValues.Add(new AttributeValue(attribute));
+                map.AttributeValues.Add(attribute.DefaultValue.Clone());
 
             WireMap(map);
             _allMaps.Add(map);
@@ -166,7 +166,7 @@ namespace StatCraft.ViewModels.Windows
                         foreach (Map map in _allMaps)
                         {
                             if (!map.AttributeValues.Any(a => a.Definition.Id == latest.Id))
-                                map.AttributeValues.Add(new AttributeValue(attribute));
+                                map.AttributeValues.Add(attribute.DefaultValue.Clone());
                         }
                     }
                     else
@@ -198,7 +198,7 @@ namespace StatCraft.ViewModels.Windows
                 {
                     // Defined for every map at once, and unset on all of them until someone fills it in.
                     foreach (Map map in _allMaps)
-                        map.AttributeValues.Add(new AttributeValue(attribute));
+                        map.AttributeValues.Add(attribute.DefaultValue.Clone());
                 }
 
                 AddFilterSlot(attribute);
