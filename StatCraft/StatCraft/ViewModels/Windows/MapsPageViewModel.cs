@@ -270,9 +270,19 @@ namespace StatCraft.ViewModels.Windows
             // the per-value subscriptions have to follow the collection rather than being set up once.
             map.AttributeValues.CollectionChanged += (s, e) =>
             {
-                if (e.NewItems == null) return;
-                foreach (AttributeValue value in e.NewItems.OfType<AttributeValue>())
-                    WireValue(map, value);
+                if (e.OldItems != null)
+                {
+                    foreach (AttributeValue value in e.OldItems.OfType<AttributeValue>())
+                        mapRepo.SaveValue(map.Id, value.Definition.Id, null);
+                }
+                if (e.NewItems != null)
+                {
+                    foreach (AttributeValue value in e.NewItems.OfType<AttributeValue>())
+                    {
+                        WireValue(map, value);
+                        mapRepo.SaveValue(map.Id, value.Definition.Id, value.Serialize());
+                    }
+                }
             };
         }
 
