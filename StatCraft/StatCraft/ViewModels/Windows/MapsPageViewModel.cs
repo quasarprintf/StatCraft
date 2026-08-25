@@ -139,7 +139,7 @@ namespace StatCraft.ViewModels.Windows
 
                 foreach (Map map in _allMaps)
                 {
-                    AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Definition == attribute);
+                    AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Definition.Id == attribute.Id);
                     if (value != null)
                         map.AttributeValues.Remove(value);
                 }
@@ -170,6 +170,29 @@ namespace StatCraft.ViewModels.Windows
                     AddFilterSlot(attribute, wasVisible);
                 }
 
+                if (latest.IsMandatory != attribute.IsMandatory)
+                {
+                    attribute.IsMandatory = latest.IsMandatory;
+                    if (latest.IsMandatory)
+                    {
+                        // Defined for every map at once, and unset on all of them until someone fills it in.
+                        foreach (Map map in _allMaps)
+                        {
+                            if (!map.AttributeValues.Any(a => a.Definition.Id == latest.Id))
+                                map.AttributeValues.Add(new AttributeValue(attribute));
+                        }
+                    }
+                    else
+                    {
+                        foreach (Map map in _allMaps)
+                        {
+                            AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Definition.Id == attribute.Id);
+                            if (value != null && !value.HasValue)
+                                map.AttributeValues.Remove(value);
+                        }
+                    }
+                }
+
                 SyncValueOptions(attribute, latest.ValueOptions);
             }
 
@@ -179,9 +202,12 @@ namespace StatCraft.ViewModels.Windows
             {
                 Attributes.Add(attribute);
 
-                // Defined for every map at once, and unset on all of them until someone fills it in.
-                foreach (Map map in _allMaps)
-                    map.AttributeValues.Add(new AttributeValue(attribute));
+                if (attribute.IsMandatory)
+                {
+                    // Defined for every map at once, and unset on all of them until someone fills it in.
+                    foreach (Map map in _allMaps)
+                        map.AttributeValues.Add(new AttributeValue(attribute));
+                }
 
                 AddFilterSlot(attribute);
             }
