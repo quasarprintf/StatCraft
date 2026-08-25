@@ -38,6 +38,7 @@ namespace StatCraft.ViewModels.Windows
         public ObservableCollection<AttributeDefinition> FilteredAttributes { get; } = [];
 
         [ObservableProperty] private string _nameFilter = "";
+        [ObservableProperty] private bool? _mandatoryFilter;
 
         [NotifyPropertyChangedFor(nameof(SelectedAttributeValue))]
         [ObservableProperty] private AttributeDefinition? _selectedAttribute;
@@ -60,6 +61,7 @@ namespace StatCraft.ViewModels.Windows
         partial void OnSelectedScopeChanged(AttributeScope value) => ApplyFilter();
 
         partial void OnNameFilterChanged(string value) => ApplyFilter();
+        partial void OnMandatoryFilterChanged(bool? value) => ApplyFilter();
 
         [RelayCommand]
         public void SetScope(AttributeScope scope)
@@ -139,7 +141,13 @@ namespace StatCraft.ViewModels.Windows
         {
             bool Matches(AttributeDefinition attribute)
             {
-                return string.IsNullOrWhiteSpace(NameFilter) || attribute.Name.Contains(NameFilter.Trim(), StringComparison.OrdinalIgnoreCase);
+                if (MandatoryFilter != null && attribute.IsMandatory != MandatoryFilter)
+                    return false;
+                if (string.IsNullOrWhiteSpace(NameFilter))
+                    return true;
+                if (attribute.Name.Contains(NameFilter.Trim(), StringComparison.OrdinalIgnoreCase))
+                    return true;
+                return  false;
             }
 
             List<AttributeDefinition> matching = Attributes.Where(Matches).ToList();

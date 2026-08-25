@@ -9,6 +9,7 @@
         <!-- Left: name filter, scope tabs, then the filtered attribute list -->
         <DockPanel Grid.Column="0" Margin="4">
             <TextBox DockPanel.Dock="Top" Text="{Binding NameFilter}" PlaceholderText="Filter attributes..." Margin="0,0,0,4"/>
+            <CheckBox DockPanel.Dock="Top" IsChecked="{Binding MandatoryFilter}" Content="Mandatory" IsThreeState="True" />
 
             <StackPanel DockPanel.Dock="Top" Orientation="Horizontal">
                 <Button Content="Game" Classes.active="{ Binding SelectedGame }" Command="{ Binding SetScopeCommand }" CommandParameter="{x:Static attr:AttributeScope.Game}" />
