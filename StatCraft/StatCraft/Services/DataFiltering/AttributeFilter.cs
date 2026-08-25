@@ -16,10 +16,11 @@ namespace StatCraft.Services.DataFiltering
         // Numeric and Percent attributes. Bounds are inclusive, and either end may be left open.
         public static bool MatchesRange(AttributeValue value, decimal? min, decimal? max, bool includeUnset)
         {
-            if (min == null && max == null)
-                return true;
             if (!value.HasValue)
                 return includeUnset;
+
+            if (min == null && max == null)
+                return true;
 
             decimal actual = value.Definition.Type == AttributeType.Percent
                 ? value.PercentValue ?? 0m
@@ -32,10 +33,11 @@ namespace StatCraft.Services.DataFiltering
         // an unset value.
         public static bool MatchesSelection<T>(IReadOnlySet<T> checkedValues, bool hasValue, T actual, bool includeUnset)
         {
-            if (checkedValues.Count == 0)
-                return true;
             if (!hasValue)
                 return includeUnset;
+
+            if (checkedValues.Count == 0)
+                return true;
 
             return checkedValues.Contains(actual);
         }
@@ -45,10 +47,11 @@ namespace StatCraft.Services.DataFiltering
         // equal it exactly.
         public static bool MatchesBool(AttributeValue value, bool? filterValue, bool includeUnset)
         {
-            if (filterValue == null)
-                return true;
             if (!value.HasValue)
                 return includeUnset;
+
+            if (filterValue == null)
+                return true;
 
             return value.BoolValue == filterValue;
         }
