@@ -34,8 +34,6 @@ namespace StatCraft.Services.DatabaseRepository
             foreach (MapRow row in mapRows)
             {
                 Map map = new() { Id = (int)row.Id, Name = row.Name };
-                foreach (AttributeDefinition attribute in attributes)
-                    map.AttributeValues.Add(new AttributeValue(attribute));
                 mapsById[row.Id] = map;
                 maps.Add(map);
             }
@@ -46,12 +44,24 @@ namespace StatCraft.Services.DatabaseRepository
                 IEnumerable<MapAttributeValueRow> valueRows = conn.Query<MapAttributeValueRow>(
                     $"SELECT MapId, AttributeId, Value FROM MapAttributeValues WHERE MapId IN ({ids})");
 
+                Dictionary<int, AttributeDefinition> definitionMap = attributes.ToDictionary(d => d.Id);
                 foreach (MapAttributeValueRow row in valueRows)
                 {
-                    AttributeValue? value = mapsById[row.MapId].AttributeValues
-                        .FirstOrDefault(v => v.Definition.Id == row.AttributeId);
-                    // A stored row for an attribute that's since been deleted is simply ignored.
-                    value?.ApplyStoredValue(row.Value);
+                    if (definitionMap.TryGetValue(row.AttributeId, out AttributeDefinition? definition))
+                    {
+                        AttributeValue value = new AttributeValue(definition);
+                        value.ApplyStoredValue(row.Value);
+                        mapsById[row.MapId].AttributeValues.Add(value);
+                    }
+                }
+
+                foreach (var definition in attributes.Where(a => a.IsMandatory))
+                {
+                    foreach (var map in maps)
+                    {
+                        if (!map.AttributeValues.Any(v => v.Definition == definition))
+                            map.AddAttribute(definition);
+                    }
                 }
             }
 
