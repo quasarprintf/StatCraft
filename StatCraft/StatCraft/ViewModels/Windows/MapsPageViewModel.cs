@@ -116,11 +116,11 @@ namespace StatCraft.ViewModels.Windows
         // AttributeDefinitions, so any change made on the Attributes tab ends up reflected here
         private void SyncAttributesFromRepository()
         {
-            List<AttributeDefinition> current = attributeRepo.GetAllAttributes(AttributeScope.Map);
-            Dictionary<int, AttributeDefinition> currentById = current.ToDictionary(a => a.Id);
+            List<AttributeDefinition> dbAttributes = attributeRepo.GetAllAttributes(AttributeScope.Map);
+            Dictionary<int, AttributeDefinition> dbById = dbAttributes.ToDictionary(a => a.Id);
 
             //sync deleted attributes
-            foreach (AttributeDefinition attribute in Attributes.Where(a => !currentById.ContainsKey(a.Id)).ToList())
+            foreach (AttributeDefinition attribute in Attributes.Where(a => !dbById.ContainsKey(a.Id)).ToList())
             {
                 Attributes.Remove(attribute);
 
@@ -135,62 +135,62 @@ namespace StatCraft.ViewModels.Windows
             }
 
             //sync edited attributes
-            foreach (AttributeDefinition attribute in Attributes)
+            foreach (AttributeDefinition cachedAttr in Attributes)
             {
-                AttributeDefinition latest = currentById[attribute.Id];
+                AttributeDefinition dbAttr = dbById[cachedAttr.Id];
 
-                if (attribute.Name != latest.Name)
+                if (cachedAttr.Name != dbAttr.Name)
                 {
-                    attribute.Name = latest.Name;
-                    if (_slotByAttribute.TryGetValue(attribute, out FilterSlotViewModel? slot))
-                        slot.Title = latest.Name;
+                    cachedAttr.Name = dbAttr.Name;
+                    if (_slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? slot))
+                        slot.Title = dbAttr.Name;
                 }
 
-                if (attribute.Type != latest.Type)
+                if (cachedAttr.Type != dbAttr.Type)
                 {
-                    attribute.Type = latest.Type;
+                    cachedAttr.Type = dbAttr.Type;
                     // Numeric/Percent vs. Bool vs. Values are different FilterSlotViewModel subclasses,
                     // so the slot itself has to be replaced rather than patched — but only for this one
                     // attribute, and preserving whether it was actually showing.
-                    bool wasVisible = _slotByAttribute.TryGetValue(attribute, out FilterSlotViewModel? old) && old.IsVisible;
-                    RemoveFilterSlot(attribute);
-                    AddFilterSlot(attribute, wasVisible);
+                    bool wasVisible = _slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? old) && old.IsVisible;
+                    RemoveFilterSlot(cachedAttr);
+                    AddFilterSlot(cachedAttr, wasVisible);
                 }
 
-                if (latest.IsMandatory != attribute.IsMandatory)
+                if (dbAttr.IsMandatory != cachedAttr.IsMandatory)
                 {
-                    attribute.IsMandatory = latest.IsMandatory;
-                    if (latest.IsMandatory)
+                    cachedAttr.IsMandatory = dbAttr.IsMandatory;
+                    if (dbAttr.IsMandatory)
                     {
                         // Defined for every map at once, and unset on all of them until someone fills it in.
                         foreach (Map map in _allMaps)
                         {
-                            if (!map.AttributeValues.Any(a => a.Definition.Id == latest.Id))
-                                map.AttributeValues.Add(attribute.DefaultValue.Clone());
+                            if (!map.AttributeValues.Any(a => a.Definition.Id == dbAttr.Id))
+                                map.AttributeValues.Add(cachedAttr.DefaultValue.Clone());
                         }
                     }
                     else
                     {
                         foreach (Map map in _allMaps)
                         {
-                            AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Definition.Id == attribute.Id);
+                            AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Definition.Id == cachedAttr.Id);
                             if (value != null && !value.HasValue)
                                 map.AttributeValues.Remove(value);
                         }
                     }
                 }
 
-                SyncValueOptions(attribute, latest.ValueOptions);
+                SyncValueOptions(cachedAttr, dbAttr.ValueOptions);
 
-                if (attribute.DefaultValue.HasValue)
-                    attribute.DefaultValue.ApplyStoredValue(latest.DefaultValue.Serialize()!);
+                if (dbAttr.DefaultValue.HasValue)
+                    cachedAttr.DefaultValue.ApplyStoredValue(dbAttr.DefaultValue.Serialize()!);
                 else
-                    attribute.DefaultValue.Clear();
+                    cachedAttr.DefaultValue.Clear();
             }
 
             //sync new attributes
             HashSet<int> knownIds = Attributes.Select(a => a.Id).ToHashSet();
-            foreach (AttributeDefinition attribute in current.Where(a => !knownIds.Contains(a.Id)))
+            foreach (AttributeDefinition attribute in dbAttributes.Where(a => !knownIds.Contains(a.Id)))
             {
                 Attributes.Add(attribute);
 
