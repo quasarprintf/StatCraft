@@ -242,7 +242,6 @@ namespace StatCraft.ViewModels.Windows
 
         private void RaiseUnusedAttributesChanged(object? sender, EventArgs e)
         {
-            
             OnPropertyChanged(nameof(UnusedAttributes));
         }
         partial void OnSelectedMapChanged(Map? value)

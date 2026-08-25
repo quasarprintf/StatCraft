@@ -147,7 +147,7 @@ namespace StatCraft.ViewModels.Windows
                     return true;
                 if (attribute.Name.Contains(NameFilter.Trim(), StringComparison.OrdinalIgnoreCase))
                     return true;
-                return  false;
+                return false;
             }
 
             List<AttributeDefinition> matching = Attributes.Where(Matches).ToList();
