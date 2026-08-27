@@ -131,6 +131,23 @@ namespace StatCraft.Services.DatabaseRepository
 
             MapsChanged?.Invoke();
         }
+        public void SaveValues(List<Map> maps, int mapAttributeId)
+        {
+            using SqliteConnection conn = OpenConnection();
+            List<int> deleteMapIds = new List<int>();
+            Dictionary<int, string> setValues = new Dictionary<int, string>();
+            foreach (var map in maps)
+            {
+                AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Definition.Id == mapAttributeId);
+                if (value == null || !value.HasValue)
+                    deleteMapIds.Add(map.Id);
+                else
+                    setValues[map.Id] = value.Serialize()!;
+            }
+            //TODO: delete attribute for deleteMapIds
+            //TODO: upsert attribute for setValues
+            MapsChanged?.Invoke();
+        }
 
         // Plain classes with settable properties, not positional records — see the equivalent note in
         // BuildRepository: Dapper's constructor materialization skips the widening/type-handler path.

@@ -161,13 +161,17 @@ namespace StatCraft.ViewModels.Windows
                 if (dbAttr.IsMandatory != cachedAttr.IsMandatory)
                 {
                     cachedAttr.IsMandatory = dbAttr.IsMandatory;
+                    List<Map> mapsToSave = new List<Map>();
                     if (dbAttr.IsMandatory)
                     {
-                        // Defined for every map at once, and unset on all of them until someone fills it in.
+                        // Defined for every map with default value
                         foreach (Map map in _allMaps)
                         {
                             if (!map.AttributeValues.Any(a => a.Definition.Id == dbAttr.Id))
+                            {
                                 map.AttributeValues.Add(cachedAttr.DefaultValue.Clone());
+                                mapsToSave.Add(map);
+                            }
                         }
                     }
                     else
@@ -176,9 +180,13 @@ namespace StatCraft.ViewModels.Windows
                         {
                             AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Definition.Id == cachedAttr.Id);
                             if (value != null && !value.HasValue)
+                            {
                                 map.AttributeValues.Remove(value);
+                                mapsToSave.Add(map);
+                            }
                         }
                     }
+                    mapRepo.SaveValues(mapsToSave, dbAttr.Id);
                 }
 
                 SyncValueOptions(cachedAttr, dbAttr.ValueOptions);
