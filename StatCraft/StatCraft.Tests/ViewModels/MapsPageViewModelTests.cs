@@ -35,7 +35,7 @@ public class MapsPageViewModelTests : IDisposable
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Rush Distance", IsMandatory = true };
         _attributeRepo.InsertAttribute(attribute, 0);
 
-        Assert.Contains(vm.Attributes, a => a.Id == attribute.Id);
+        Assert.Contains(vm.AllAttributes, a => a.Id == attribute.Id);
         Assert.Contains(vm.FilteredMaps.Single().AttributeValues, v => v.Definition.Id == attribute.Id);
     }
 
@@ -49,7 +49,7 @@ public class MapsPageViewModelTests : IDisposable
 
         _attributeRepo.DeleteAttribute(attribute.Id);
 
-        Assert.DoesNotContain(vm.Attributes, a => a.Id == attribute.Id);
+        Assert.DoesNotContain(vm.AllAttributes, a => a.Id == attribute.Id);
         Assert.DoesNotContain(vm.FilteredMaps.Single().AttributeValues, v => v.Definition.Id == attribute.Id);
     }
 
@@ -62,7 +62,7 @@ public class MapsPageViewModelTests : IDisposable
 
         _attributeRepo.InsertAttribute(new(AttributeScope.Game) { Name = "Apm" }, 0);
 
-        Assert.Empty(vm.Attributes);
+        Assert.Empty(vm.AllAttributes);
     }
 
     // Pins the fix for a real bug: this page loads its own AttributeDefinition instances, separate from
@@ -77,7 +77,7 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertAttribute(attribute, 0);
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
         MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
-        AttributeDefinition held = Assert.Single(vm.Attributes);
+        AttributeDefinition held = Assert.Single(vm.AllAttributes);
         Assert.IsType<NumericRangeFilterSlotViewModel>(Assert.Single(vm.HiddenFilterSlots));
 
         AttributeDefinition editedElsewhere = Assert.Single(_attributeRepo.GetAllAttributes(AttributeScope.Map));
@@ -85,7 +85,7 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.UpdateAttribute(editedElsewhere);
 
         Assert.Equal(AttributeType.Bool, held.Type);
-        Assert.Same(held, Assert.Single(vm.Attributes));
+        Assert.Same(held, Assert.Single(vm.AllAttributes));
         Assert.Same(held, Assert.Single(vm.FilteredMaps.Single().AttributeValues).Definition);
         // Numeric/Bool/Values are different FilterSlotViewModel subclasses, so the slot itself must be
         // swapped, not just have a property change underneath it.
@@ -98,7 +98,7 @@ public class MapsPageViewModelTests : IDisposable
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Old Name" };
         _attributeRepo.InsertAttribute(attribute, 0);
         MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
-        AttributeDefinition held = Assert.Single(vm.Attributes);
+        AttributeDefinition held = Assert.Single(vm.AllAttributes);
 
         AttributeDefinition editedElsewhere = Assert.Single(_attributeRepo.GetAllAttributes(AttributeScope.Map));
         editedElsewhere.Name = "New Name";
@@ -114,7 +114,7 @@ public class MapsPageViewModelTests : IDisposable
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
         _attributeRepo.InsertAttribute(attribute, 0);
         MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
-        AttributeDefinition held = Assert.Single(vm.Attributes);
+        AttributeDefinition held = Assert.Single(vm.AllAttributes);
 
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
 
