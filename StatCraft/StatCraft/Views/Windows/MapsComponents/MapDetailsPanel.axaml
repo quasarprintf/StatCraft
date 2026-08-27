@@ -11,15 +11,16 @@
             <TextBox Text="{Binding SelectedMap.Name}"/>
         </StackPanel>
 
-        <Button DockPanel.Dock="Top" Grid.Column="1" Content="Add attribute" Padding="6,2" VerticalAlignment="Center">
+        <Button x:Name="AddAttributeButton" DockPanel.Dock="Top" Grid.Column="1" Content="Add attribute" Padding="6,2" VerticalAlignment="Center">
             <Button.Flyout>
                 <Flyout Placement="BottomEdgeAlignedRight">
                     <ItemsControl ItemsSource="{Binding UnusedAttributes}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Button Content="{Binding  Name}" 
-                                        Command="{Binding ((vmw:MapsPageViewModel)DataContext).SelectedMap.AddAttributeCommand, ElementName=mapDetails}" 
-                                        CommandParameter="{Binding .}"/>
+                                <Button Content="{Binding  Name}"
+                                        Command="{Binding ((vmw:MapsPageViewModel)DataContext).SelectedMap.AddAttributeCommand, ElementName=mapDetails}"
+                                        CommandParameter="{Binding .}"
+                                        Click="OnAddAttributeOptionClicked"/>
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
