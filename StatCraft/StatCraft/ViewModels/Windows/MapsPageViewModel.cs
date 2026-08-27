@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -36,7 +38,6 @@ namespace StatCraft.ViewModels.Windows
 
             foreach (Map map in mapRepo.GetAllMaps(Attributes))
             {
-                WireMap(map);
                 _allMaps.Add(map);
             }
 
@@ -251,57 +252,77 @@ namespace StatCraft.ViewModels.Windows
         partial void OnSelectedMapChanging(Map? value)
         {
             if (SelectedMap != null)
-                SelectedMap.AttributeValues.CollectionChanged -= RaiseUnusedAttributesChanged;
+                UnWireMap(SelectedMap);
 
             if (value != null)
-                value.AttributeValues.CollectionChanged += RaiseUnusedAttributesChanged;
+                WireMap(value);
+        }
+        private void UnWireMap(Map map)
+        {
+            map.AttributeValues.CollectionChanged -= RaiseUnusedAttributesChanged;
+            map.PropertyChanged -= MapPropertyChanged;
+
+            foreach (AttributeValue value in map.AttributeValues)
+                UnWireValue(map, value);
+            map.AttributeValues.CollectionChanged -= MapAttributeValuesChanged;
         }
         private void WireMap(Map map)
         {
-            map.PropertyChanged += (s, e) =>
-            {
-                if (s is Map m && e.PropertyName == nameof(Map.Name))
-                {
-                    mapRepo.UpdateMap(m);
-                    ApplyFilters();
-                }
-            };
+            map.AttributeValues.CollectionChanged += RaiseUnusedAttributesChanged;
+            map.PropertyChanged += MapPropertyChanged;
 
             foreach (AttributeValue value in map.AttributeValues)
                 WireValue(map, value);
-
-            // Values are appended when a new attribute is defined and removed when one is deleted, so
-            // the per-value subscriptions have to follow the collection rather than being set up once.
-            map.AttributeValues.CollectionChanged += (s, e) =>
+            map.AttributeValues.CollectionChanged += MapAttributeValuesChanged;
+        }
+        private void MapPropertyChanged(object? s, PropertyChangedEventArgs e)
+        {
+            if (s is Map m && e.PropertyName == nameof(Map.Name))
             {
-                if (e.OldItems != null)
+                mapRepo.UpdateMap(m);
+                ApplyFilters();
+            }
+        }
+        private void MapAttributeValuesChanged(object? s, NotifyCollectionChangedEventArgs e)
+        {
+            if (SelectedMap == null)
+                return;
+            if (e.OldItems != null)
                 {
                     foreach (AttributeValue value in e.OldItems.OfType<AttributeValue>())
-                        mapRepo.SaveValue(map.Id, value.Definition.Id, null);
+                        mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, null);
                 }
                 if (e.NewItems != null)
                 {
                     foreach (AttributeValue value in e.NewItems.OfType<AttributeValue>())
                     {
-                        WireValue(map, value);
-                        mapRepo.SaveValue(map.Id, value.Definition.Id, value.Serialize());
+                        WireValue(SelectedMap, value);
+                        mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, value.Serialize());
                     }
                 }
-            };
         }
 
+        private void UnWireValue(Map map, AttributeValue value)
+        {
+            value.PropertyChanged -= ValuePropertyChanged;
+        }
         private void WireValue(Map map, AttributeValue value)
         {
-            value.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(AttributeValue.HasValue))
-                    return;
+            value.PropertyChanged += ValuePropertyChanged;
+        }
+        private void ValuePropertyChanged(object? s, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(AttributeValue.HasValue))
+                return;
+            if (SelectedMap == null)
+                return;
+            if (s is not AttributeValue value)
+                return;
 
-                // Serialize() returns null when unset, and SaveValue deletes the row for null — that
-                // absence is what "no value" actually is in the database.
-                mapRepo.SaveValue(map.Id, value.Definition.Id, value.Serialize());
-                ApplyFilters();
-            };
+            // Serialize() returns null when unset, and SaveValue deletes the row for null — that
+            // absence is what "no value" actually is in the database.
+            mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, value.Serialize());
+            ApplyFilters();
         }
 
         // Adds one new filter slot for this attribute
