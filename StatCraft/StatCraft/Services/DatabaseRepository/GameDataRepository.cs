@@ -194,7 +194,7 @@ namespace StatCraft.Services.DatabaseRepository
             if (mapIds.Count > 0)
             {
                 IEnumerable<MapRow> mapRows = conn.Query<MapRow>(
-                    $"SELECT Id, Name FROM Maps WHERE Id IN ({string.Join(",", mapIds)})");
+                    $"SELECT Id, Name FROM FilteredMaps WHERE Id IN ({string.Join(",", mapIds)})");
                 foreach (MapRow row in mapRows)
                     mapsById[(int)row.Id] = new Map { Id = (int)row.Id, Name = row.Name };
             }

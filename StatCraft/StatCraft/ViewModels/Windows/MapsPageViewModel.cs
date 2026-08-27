@@ -27,6 +27,23 @@ namespace StatCraft.ViewModels.Windows
         // subclass, so the existing filter-slot types can be reused unchanged.
         private readonly Dictionary<AttributeDefinition, FilterSlotViewModel> _slotByAttribute = [];
 
+        public ObservableCollection<AttributeDefinition> Attributes { get; } = [];
+        public IEnumerable<AttributeDefinition> UnusedAttributes => SelectedMap == null ? Enumerable.Empty<AttributeDefinition>() : Attributes.Where(a => !SelectedMap.AttributeValues.Any(v => v.Definition.Id == a.Id));
+
+        public ObservableCollection<Map> FilteredMaps { get; } = [];
+
+        [ObservableProperty] private Map? _selectedMap;
+
+        [ObservableProperty] private string _nameFilter = "";
+
+        public ObservableCollection<FilterSlotViewModel> VisibleFilterSlots { get; } = [];
+        public ObservableCollection<FilterSlotViewModel> HiddenFilterSlots { get; } = [];
+
+        // Raised instead of deleting when the map still has games recorded on it. Unlike a build, a map
+        // can't be detached from its games — Games.MapId has no cascade — so the view reports this rather
+        // than offering to go ahead anyway.
+        public event Action<Map>? DeleteBlocked;
+
         public MapsPageViewModel(MapRepository mapRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository)
         {
             _mapRepo = mapRepository;
@@ -44,7 +61,7 @@ namespace StatCraft.ViewModels.Windows
             foreach (AttributeDefinition attribute in Attributes)
                 AddFilterSlot(attribute);
             ApplyFilters();
-            SelectedMap = Maps.FirstOrDefault();
+            SelectedMap = FilteredMaps.FirstOrDefault();
 
             // AttributeRepository is shared with the Attributes tab, but this page keeps its own
             // in-memory attribute list (loaded once, above) — without this, an attribute added or
@@ -54,26 +71,10 @@ namespace StatCraft.ViewModels.Windows
             Attributes.CollectionChanged += RaiseUnusedAttributesChanged;
         }
 
-        // cache of all map attribute definitions
-        public ObservableCollection<AttributeDefinition> Attributes { get; } = [];
-        public IEnumerable<AttributeDefinition> UnusedAttributes => SelectedMap == null ? Enumerable.Empty<AttributeDefinition>() : Attributes.Where(a => !SelectedMap.AttributeValues.Any(v => v.Definition.Id == a.Id));
-
-        // The maps currently passing the name and attribute filters.
-        public ObservableCollection<Map> Maps { get; } = [];
-
-        [ObservableProperty] private Map? _selectedMap;
-
-        [ObservableProperty] private string _nameFilter = "";
-
-        public ObservableCollection<FilterSlotViewModel> VisibleFilterSlots { get; } = [];
-        public ObservableCollection<FilterSlotViewModel> HiddenFilterSlots { get; } = [];
-
-        // Raised instead of deleting when the map still has games recorded on it. Unlike a build, a map
-        // can't be detached from its games — Games.MapId has no cascade — so the view reports this rather
-        // than offering to go ahead anyway.
-        public event Action<Map>? DeleteBlocked;
-
-        partial void OnNameFilterChanged(string value) => ApplyFilters();
+        partial void OnNameFilterChanged(string value)
+        {
+            ApplyFilters();
+        }
 
         [RelayCommand]
         public void AddMap()
@@ -102,14 +103,14 @@ namespace StatCraft.ViewModels.Windows
             // Captured before the list changes: removing the item from Maps makes the ListBox null its
             // own selection, so SelectedMap can't be compared against afterwards.
             bool wasSelected = SelectedMap == map;
-            int index = Maps.IndexOf(map);
+            int index = FilteredMaps.IndexOf(map);
 
             _mapRepo.DeleteMap(map.Id);
             _allMaps.Remove(map);
             ApplyFilters();
 
             if (wasSelected)
-                SelectedMap = Maps.ElementAtOrDefault(index) ?? Maps.ElementAtOrDefault(index - 1);
+                SelectedMap = FilteredMaps.ElementAtOrDefault(index) ?? FilteredMaps.ElementAtOrDefault(index - 1);
         }
 
         // Reconciles Attributes (and every map's AttributeValues, and the filter slots) against
@@ -393,13 +394,13 @@ namespace StatCraft.ViewModels.Windows
         {
             List<Map> matching = _allMaps.Where(Matches).ToList();
 
-            for (int i = Maps.Count - 1; i >= 0; i--)
-                if (!matching.Contains(Maps[i]))
-                    Maps.RemoveAt(i);
+            for (int i = FilteredMaps.Count - 1; i >= 0; i--)
+                if (!matching.Contains(FilteredMaps[i]))
+                    FilteredMaps.RemoveAt(i);
 
             for (int i = 0; i < matching.Count; i++)
-                if (!Maps.Contains(matching[i]))
-                    Maps.Insert(i, matching[i]);
+                if (!FilteredMaps.Contains(matching[i]))
+                    FilteredMaps.Insert(i, matching[i]);
         }
 
         private bool Matches(Map map)
@@ -443,7 +444,9 @@ namespace StatCraft.ViewModels.Windows
             }
         }
 
-        private static IReadOnlySet<T> Checked<T>(CheckboxFilterSlotViewModel<T> slot) =>
-            slot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
+        private static IReadOnlySet<T> Checked<T>(CheckboxFilterSlotViewModel<T> slot)
+        {
+            return slot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
+        }
     }
 }

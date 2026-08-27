@@ -34,7 +34,7 @@ public class MapAttributesMigrationTests : IDisposable
                 Id INTEGER PRIMARY KEY AUTOINCREMENT, AttributeId INTEGER NOT NULL REFERENCES AttributeDefinitions(Id) ON DELETE CASCADE,
                 Value TEXT NOT NULL, SortOrder INTEGER NOT NULL DEFAULT 0
             );
-            CREATE TABLE Maps (
+            CREATE TABLE FilteredMaps (
                 Id INTEGER PRIMARY KEY AUTOINCREMENT, Name TEXT NOT NULL UNIQUE
             );
             CREATE TABLE MapAttributes (
@@ -46,7 +46,7 @@ public class MapAttributesMigrationTests : IDisposable
                 Value TEXT NOT NULL, SortOrder INTEGER NOT NULL DEFAULT 0
             );
             CREATE TABLE MapAttributeValues (
-                Id INTEGER PRIMARY KEY AUTOINCREMENT, MapId INTEGER NOT NULL REFERENCES Maps(Id) ON DELETE CASCADE,
+                Id INTEGER PRIMARY KEY AUTOINCREMENT, MapId INTEGER NOT NULL REFERENCES FilteredMaps(Id) ON DELETE CASCADE,
                 MapAttributeId INTEGER NOT NULL REFERENCES MapAttributes(Id) ON DELETE CASCADE, Value TEXT NOT NULL DEFAULT '',
                 UNIQUE(MapId, MapAttributeId)
             );");
@@ -59,7 +59,7 @@ public class MapAttributesMigrationTests : IDisposable
         // happened to be ID 1.
         _conn.Execute("INSERT INTO MapAttributes (Id, Name, Type, SortOrder, Scope) VALUES (57, 'Rush Distance', 0, 3, 4)");
         _conn.Execute("INSERT INTO MapAttributeValueOptions (Id, MapAttributeId, Value, SortOrder) VALUES (91, 57, 'Close', 0)");
-        _conn.Execute("INSERT INTO Maps (Id, Name) VALUES (12, 'Altitude LE')");
+        _conn.Execute("INSERT INTO FilteredMaps (Id, Name) VALUES (12, 'Altitude LE')");
         _conn.Execute("INSERT INTO MapAttributeValues (Id, MapId, MapAttributeId, Value) VALUES (200, 12, 57, '4.5')");
 
         string migrationSql = ReadEmbeddedMigrationScript();
@@ -92,7 +92,7 @@ public class MapAttributesMigrationTests : IDisposable
     private static string ReadEmbeddedMigrationScript()
     {
         Assembly assembly = typeof(DatabaseMigrator).Assembly;
-        using Stream? stream = assembly.GetManifestResourceStream("StatCraft.DatabaseScripts.RunOnce.Table.Maps.001.sql");
+        using Stream? stream = assembly.GetManifestResourceStream("StatCraft.DatabaseScripts.RunOnce.Table.FilteredMaps.001.sql");
         Assert.NotNull(stream);
         using StreamReader reader = new(stream);
         return reader.ReadToEnd();

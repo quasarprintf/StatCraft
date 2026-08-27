@@ -36,7 +36,7 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertAttribute(attribute, 0);
 
         Assert.Contains(vm.Attributes, a => a.Id == attribute.Id);
-        Assert.Contains(vm.Maps.Single().AttributeValues, v => v.Definition.Id == attribute.Id);
+        Assert.Contains(vm.FilteredMaps.Single().AttributeValues, v => v.Definition.Id == attribute.Id);
     }
 
     [Fact]
@@ -50,7 +50,7 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.DeleteAttribute(attribute.Id);
 
         Assert.DoesNotContain(vm.Attributes, a => a.Id == attribute.Id);
-        Assert.DoesNotContain(vm.Maps.Single().AttributeValues, v => v.Definition.Id == attribute.Id);
+        Assert.DoesNotContain(vm.FilteredMaps.Single().AttributeValues, v => v.Definition.Id == attribute.Id);
     }
 
     // A Game- or Build-scoped attribute change is irrelevant to this page; reconciling shouldn't pull it
@@ -86,7 +86,7 @@ public class MapsPageViewModelTests : IDisposable
 
         Assert.Equal(AttributeType.Bool, held.Type);
         Assert.Same(held, Assert.Single(vm.Attributes));
-        Assert.Same(held, Assert.Single(vm.Maps.Single().AttributeValues).Definition);
+        Assert.Same(held, Assert.Single(vm.FilteredMaps.Single().AttributeValues).Definition);
         // Numeric/Bool/Values are different FilterSlotViewModel subclasses, so the slot itself must be
         // swapped, not just have a property change underneath it.
         Assert.IsType<BoolFilterSlotViewModel>(Assert.Single(vm.HiddenFilterSlots));

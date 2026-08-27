@@ -82,7 +82,7 @@
                 </ItemsControl.DataTemplates>
             </ItemsControl>
 
-            <ListBox x:Name="MapListBox" ItemsSource="{Binding Maps}" SelectedItem="{Binding SelectedMap}">
+            <ListBox x:Name="MapListBox" ItemsSource="{Binding FilteredMaps}" SelectedItem="{Binding SelectedMap}">
                 <ListBox.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="Add Map" Command="{Binding AddMapCommand}"/>
