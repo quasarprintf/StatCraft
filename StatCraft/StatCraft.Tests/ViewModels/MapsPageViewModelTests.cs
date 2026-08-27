@@ -23,6 +23,24 @@ public class MapsPageViewModelTests : IDisposable
         _gameDataRepo.Initialize();
     }
 
+    // Exercised through NameFilter/FilteredMaps rather than calling MatchesName directly, per the comment on it.
+    [Theory]
+    [InlineData("", true)]
+    [InlineData("   ", true)]
+    [InlineData("alt", true)]
+    [InlineData("ALT", true)]
+    [InlineData(" LE ", true)]
+    [InlineData("Rorschach", false)]
+    public void NameFilter_IsCaseInsensitiveSubstringMatch(string filter, bool expected)
+    {
+        _mapRepo.InsertMap(new() { Name = "Altitude LE" });
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+
+        vm.NameFilter = filter;
+
+        Assert.Equal(expected, vm.FilteredMaps.Any(m => m.Name == "Altitude LE"));
+    }
+
     // Pins the fix for a real bug: MapsPageViewModel loaded its attribute list once at construction and
     // never refreshed it, so an attribute added elsewhere (the Attributes tab, sharing the same
     // AttributeRepository) never showed up here without restarting the app.

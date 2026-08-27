@@ -414,8 +414,7 @@ namespace StatCraft.ViewModels.Windows
             return true;
         }
 
-        //temporarily public to facilitate testing. Should be indirectly tested via OnNameFilterChanged, then this can be made private again
-        public static bool MatchesName(Map map, string? nameFilter)
+        private static bool MatchesName(Map map, string? nameFilter)
         {
             return string.IsNullOrWhiteSpace(nameFilter) || map.Name.Contains(nameFilter.Trim(), StringComparison.OrdinalIgnoreCase);
         }

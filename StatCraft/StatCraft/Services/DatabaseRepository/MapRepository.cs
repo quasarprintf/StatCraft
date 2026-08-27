@@ -27,7 +27,7 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
 
-            List<MapRow> mapRows = conn.Query<MapRow>("SELECT Id, Name FROM FilteredMaps ORDER BY Name").ToList();
+            List<MapRow> mapRows = conn.Query<MapRow>("SELECT Id, Name FROM Maps ORDER BY Name").ToList();
 
             Dictionary<long, Map> mapsById = new();
             List<Map> maps = new();
@@ -78,12 +78,12 @@ namespace StatCraft.Services.DatabaseRepository
 
             using SqliteConnection conn = OpenConnection();
 
-            MapRow? existing = conn.QueryFirstOrDefault<MapRow>("SELECT Id, Name FROM FilteredMaps WHERE Name = @name", new { name });
+            MapRow? existing = conn.QueryFirstOrDefault<MapRow>("SELECT Id, Name FROM Maps WHERE Name = @name", new { name });
             if (existing != null)
                 return new Map { Id = (int)existing.Id, Name = existing.Name };
 
             long id = conn.ExecuteScalar<long>(
-                "INSERT INTO FilteredMaps (Name) VALUES (@name); SELECT last_insert_rowid();", new { name });
+                "INSERT INTO Maps (Name) VALUES (@name); SELECT last_insert_rowid();", new { name });
             MapsChanged?.Invoke();
             return new Map { Id = (int)id, Name = name };
         }
@@ -92,21 +92,21 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
             map.Id = (int)conn.ExecuteScalar<long>(
-                "INSERT INTO FilteredMaps (Name) VALUES (@name); SELECT last_insert_rowid();", new { name = map.Name });
+                "INSERT INTO Maps (Name) VALUES (@name); SELECT last_insert_rowid();", new { name = map.Name });
             MapsChanged?.Invoke();
         }
 
         public void UpdateMap(Map map)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("UPDATE FilteredMaps SET Name = @name WHERE Id = @id", new { name = map.Name, id = map.Id });
+            conn.Execute("UPDATE Maps SET Name = @name WHERE Id = @id", new { name = map.Name, id = map.Id });
             MapsChanged?.Invoke();
         }
 
         public void DeleteMap(int id)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("DELETE FROM FilteredMaps WHERE Id = @id", new { id });
+            conn.Execute("DELETE FROM Maps WHERE Id = @id", new { id });
             MapsChanged?.Invoke();
         }
 
