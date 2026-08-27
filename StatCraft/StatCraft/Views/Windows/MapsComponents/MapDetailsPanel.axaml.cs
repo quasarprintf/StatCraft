@@ -11,13 +11,11 @@ namespace StatCraft.Views.Windows.MapsComponents
             InitializeComponent();
         }
 
-        // The flyout's ItemsControl is plain Buttons, not MenuItems, so nothing closes it automatically
-        // once one is clicked (unlike a MenuFlyout) — close it explicitly alongside the AddAttribute call.
-        // Button.OnClick raises this Click event before it reads CommandParameter and invokes Command, so
-        // hiding the flyout synchronously here tears down the (now-recycled) item container first and
-        // CommandParameter arrives null. Posting the Hide() defers it to the next dispatcher pass, after
-        // this click's Command.Execute has already run against the still-live container.
-        private void OnAddAttributeOptionClicked(object? sender, RoutedEventArgs e) =>
+        private void OnAddAttributeOptionClicked(object? sender, RoutedEventArgs e)
+        {
+            //Click handler fires before Command handler, and hiding the flyout breaks CommandParameter binding
+            //so delay the hide with dispatcher
             Dispatcher.UIThread.Post(() => AddAttributeButton.Flyout?.Hide());
+        }
     }
 }
