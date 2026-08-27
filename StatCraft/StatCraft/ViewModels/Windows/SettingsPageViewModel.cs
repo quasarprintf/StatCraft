@@ -24,18 +24,16 @@ namespace StatCraft.ViewModels.Windows
             _useTeamColors = settings.UseTeamColors;
         }
 
-        [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
-        private string _baseReplayFolderPath = "";
+        [ObservableProperty] private string _baseReplayFolderPath = "";
 
         [ObservableProperty] private bool _useTeamColors;
 
         partial void OnUseTeamColorsChanged(bool value) =>
             _settingsRepo.Save(new AppSettingsData { BaseReplayFolderPath = BaseReplayFolderPath, UseTeamColors = value });
 
-        [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasError))]
-        private string _errorMessage = "";
+        [ObservableProperty] private string _errorMessage = "";
 
         public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 

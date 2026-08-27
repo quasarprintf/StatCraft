@@ -39,9 +39,8 @@ namespace StatCraft.ViewModels.Windows
             RefreshOpponentFilter();
         }
 
-        [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(Builds))]
-        private Race _playerRace = Race.Zerg;
+        [ObservableProperty] private Race _playerRace = Race.Zerg;
 
         [ObservableProperty] private BuildNode? _selectedBuild;
 

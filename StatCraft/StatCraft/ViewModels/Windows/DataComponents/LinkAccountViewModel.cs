@@ -38,30 +38,26 @@ namespace StatCraft.ViewModels.Windows.DataComponents
             _sc2ProfileService = sc2ProfileService;
         }
 
-        [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(IsEnterCredentials), nameof(IsConnecting), nameof(IsSelectingProfile), nameof(IsFailed))]
-        private LinkAccountStage _stage;
+        [ObservableProperty] private LinkAccountStage _stage;
 
         public bool IsEnterCredentials => Stage == LinkAccountStage.EnterCredentials;
         public bool IsConnecting => Stage == LinkAccountStage.Connecting;
         public bool IsSelectingProfile => Stage == LinkAccountStage.SelectingProfile;
         public bool IsFailed => Stage == LinkAccountStage.Failed;
 
-        [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(SubmitCredentialsCommand))]
-        private string _clientId = "";
+        [ObservableProperty] private string _clientId = "";
 
-        [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(SubmitCredentialsCommand))]
-        private string _clientSecret = "";
+        [ObservableProperty] private string _clientSecret = "";
 
         [ObservableProperty] private string _statusMessage = "";
 
         public ObservableCollection<Sc2Profile> Sc2Profiles { get; } = [];
 
-        [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(ConfirmProfileCommand))]
-        private Sc2Profile? _selectedSc2Profile;
+        [ObservableProperty] private Sc2Profile? _selectedSc2Profile;
 
         public Sc2Profile? LinkedProfile { get; private set; }
 

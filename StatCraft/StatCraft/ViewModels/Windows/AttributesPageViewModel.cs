@@ -22,12 +22,11 @@ namespace StatCraft.ViewModels.Windows
             [AttributeScope.Map] = [],
         };
 
-        [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(Attributes))]
         [NotifyPropertyChangedFor(nameof(SelectedGame))]
         [NotifyPropertyChangedFor(nameof(SelectedBuild))]
         [NotifyPropertyChangedFor(nameof(SelectedMap))]
-        private AttributeScope _selectedScope;
+        [ObservableProperty] private AttributeScope _selectedScope;
 
         public bool SelectedGame => _selectedScope == AttributeScope.Game;
         public bool SelectedBuild => _selectedScope == AttributeScope.Build;

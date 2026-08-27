@@ -16,13 +16,11 @@ namespace StatCraft.ViewModels
             _settingsRepository = settingsRepository;
         }
 
-        [ObservableProperty]
         [NotifyCanExecuteChangedFor(nameof(ContinueCommand))]
-        private string _baseReplayFolderPath = "";
+        [ObservableProperty] private string _baseReplayFolderPath = "";
 
-        [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasError))]
-        private string _errorMessage = "";
+        [ObservableProperty] private string _errorMessage = "";
 
         public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 

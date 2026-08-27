@@ -12,21 +12,17 @@ namespace StatCraft.Models.GameData.Attributes
 
         public AttributeDefinition Definition { get; }
 
-        [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasValue))]
-        private decimal? _numericValue;
+        [ObservableProperty] private decimal? _numericValue;
 
-        [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasValue))]
-        private bool? _boolValue;
+        [ObservableProperty] private bool? _boolValue;
 
-        [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasValue))]
-        private decimal? _percentValue;
+        [ObservableProperty] private decimal? _percentValue;
 
-        [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasValue))]
-        private string? _selectedValue;
+        [ObservableProperty] private string? _selectedValue;
 
         // Only the slot matching the attribute's type counts — switching an attribute's type leaves the
         // old slot populated, and that stale value must not read as "set".

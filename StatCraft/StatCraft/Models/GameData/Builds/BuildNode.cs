@@ -17,9 +17,8 @@ namespace StatCraft.Models.GameData.Builds
 
         [ObservableProperty] private Race.Race _playerRace = Race.Race.Zerg;
 
-        [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(VsZ), nameof(VsT), nameof(VsP))]
-        private Matchups _matchups = Race.Matchups.None;
+        [ObservableProperty] private Matchups _matchups = Race.Matchups.None;
 
         public bool VsZ => Matchups.HasFlag(Matchups.VsZ);
         public bool VsT => Matchups.HasFlag(Matchups.VsT);

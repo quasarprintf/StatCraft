@@ -75,9 +75,8 @@ namespace StatCraft.ViewModels.Windows
             Filters.ToDate = today;
         }
 
-        [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(ActiveProfileLabel), nameof(HasActiveSession))]
-        private Sc2Profile? _activeProfile;
+        [ObservableProperty] private Sc2Profile? _activeProfile;
 
         public string ActiveProfileLabel => ActiveProfile == null ? "No active session" : ActiveProfile.DisplayName;
 
