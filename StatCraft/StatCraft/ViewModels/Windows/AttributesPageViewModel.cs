@@ -13,7 +13,7 @@ namespace StatCraft.ViewModels.Windows
 {
     public partial class AttributesPageViewModel : ViewModelBase
     {
-        private readonly AttributeRepository _repository;
+        private readonly AttributeRepository _attributeRepo;
 
         private readonly Dictionary<AttributeScope, ObservableCollection<AttributeDefinition>> _attributesByScope = new()
         {
@@ -46,10 +46,10 @@ namespace StatCraft.ViewModels.Windows
 
         public AttributesPageViewModel(AttributeRepository attributeRepository)
         {
-            _repository = attributeRepository;
+            _attributeRepo = attributeRepository;
 
 
-            var scopeGroups = _repository.GetAllAttributes().GroupBy(a => a.Scope);
+            var scopeGroups = _attributeRepo.GetAllAttributes().GroupBy(a => a.Scope);
             foreach (var group in scopeGroups ) 
             {
                 _attributesByScope[group.Key] = new ObservableCollection<AttributeDefinition>(group.ToArray());
@@ -85,7 +85,7 @@ namespace StatCraft.ViewModels.Windows
             ApplyFilter();
             SelectedAttribute = attribute;
 
-            _repository.InsertAttribute(attribute, Attributes.Count);
+            _attributeRepo.InsertAttribute(attribute, Attributes.Count);
         }
 
         [RelayCommand]
@@ -96,7 +96,7 @@ namespace StatCraft.ViewModels.Windows
             if (SelectedAttribute == attribute)
                 SelectedAttribute = FilteredAttributes.FirstOrDefault();
 
-            _repository.DeleteAttribute(attribute.Id);
+            _attributeRepo.DeleteAttribute(attribute.Id);
         }
 
         private void WireAttribute(AttributeDefinition attribute)
@@ -116,17 +116,17 @@ namespace StatCraft.ViewModels.Windows
 
         private void OnAttributeEdited(object? sender, PropertyChangedEventArgs args)
         {
-            _repository.UpdateAttribute(SelectedAttribute!);
+            _attributeRepo.UpdateAttribute(SelectedAttribute!);
         }
         private void OnAttributeValuesEdited(object? sender, CollectionChangeEventArgs args)
         {
             switch (args.Action)
             {
                 case CollectionChangeAction.Add:
-                    _repository.InsertValueOption(SelectedAttribute!.Id, (string)args.Element!);
+                    _attributeRepo.InsertValueOption(SelectedAttribute!.Id, (string)args.Element!);
                     return;
                 case CollectionChangeAction.Remove:
-                    _repository.DeleteValueOption(SelectedAttribute!.Id, (string)args.Element!);
+                    _attributeRepo.DeleteValueOption(SelectedAttribute!.Id, (string)args.Element!);
                     return;
             }
         }
@@ -134,7 +134,7 @@ namespace StatCraft.ViewModels.Windows
         private void OnDefaultValueEdited(object? sender, PropertyChangedEventArgs args)
         {
             if (args.PropertyName != nameof(AttributeValue.HasValue))
-                _repository.UpdateAttribute(SelectedAttribute!);
+                _attributeRepo.UpdateAttribute(SelectedAttribute!);
         }
 
         private void ApplyFilter()

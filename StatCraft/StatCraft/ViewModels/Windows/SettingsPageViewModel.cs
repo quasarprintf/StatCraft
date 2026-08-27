@@ -12,12 +12,12 @@ namespace StatCraft.ViewModels.Windows
     // its replay watcher immediately if a session is currently active.
     public partial class SettingsPageViewModel : ViewModelBase
     {
-        private readonly SettingsRepository _settingsRepository;
+        private readonly SettingsRepository _settingsRepo;
 
         public SettingsPageViewModel(SettingsRepository settingsRepository)
         {
-            _settingsRepository = settingsRepository;
-            AppSettingsData settings = _settingsRepository.Load();
+            _settingsRepo = settingsRepository;
+            AppSettingsData settings = _settingsRepo.Load();
             BaseReplayFolderPath = settings.BaseReplayFolderPath ?? "";
             // Assigned to the backing field, not the property, so hydrating this from disk doesn't
             // immediately trigger OnUseTeamColorsChanged and re-save the file it was just read from.
@@ -31,7 +31,7 @@ namespace StatCraft.ViewModels.Windows
         [ObservableProperty] private bool _useTeamColors;
 
         partial void OnUseTeamColorsChanged(bool value) =>
-            _settingsRepository.Save(new AppSettingsData { BaseReplayFolderPath = BaseReplayFolderPath, UseTeamColors = value });
+            _settingsRepo.Save(new AppSettingsData { BaseReplayFolderPath = BaseReplayFolderPath, UseTeamColors = value });
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(HasError))]
@@ -65,7 +65,7 @@ namespace StatCraft.ViewModels.Windows
             }
 
             ErrorMessage = "";
-            _settingsRepository.Save(new AppSettingsData { BaseReplayFolderPath = BaseReplayFolderPath });
+            _settingsRepo.Save(new AppSettingsData { BaseReplayFolderPath = BaseReplayFolderPath });
             JustSaved = true;
         }
     }

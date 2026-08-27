@@ -16,9 +16,9 @@ namespace StatCraft.ViewModels.Windows
 {
     public partial class MapsPageViewModel : ViewModelBase
     {
-        private readonly MapRepository mapRepo;
-        private readonly AttributeRepository attributeRepo;
-        private readonly GameDataRepository _gameDataRepository;
+        private readonly MapRepository _mapRepo;
+        private readonly AttributeRepository _attributeRepo;
+        private readonly GameDataRepository _gameDataRepo;
 
         // Every map, unfiltered. Maps (the bound collection) is the subset currently passing the filters.
         private readonly List<Map> _allMaps = [];
@@ -29,14 +29,14 @@ namespace StatCraft.ViewModels.Windows
 
         public MapsPageViewModel(MapRepository mapRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository)
         {
-            mapRepo = mapRepository;
-            attributeRepo = attributeRepository;
-            _gameDataRepository = gameDataRepository;
+            _mapRepo = mapRepository;
+            _attributeRepo = attributeRepository;
+            _gameDataRepo = gameDataRepository;
 
-            foreach (AttributeDefinition attribute in attributeRepo.GetAllAttributes(AttributeScope.Map))
+            foreach (AttributeDefinition attribute in _attributeRepo.GetAllAttributes(AttributeScope.Map))
                 Attributes.Add(attribute);
 
-            foreach (Map map in mapRepo.GetAllMaps(Attributes))
+            foreach (Map map in _mapRepo.GetAllMaps(Attributes))
             {
                 _allMaps.Add(map);
             }
@@ -49,7 +49,7 @@ namespace StatCraft.ViewModels.Windows
             // AttributeRepository is shared with the Attributes tab, but this page keeps its own
             // in-memory attribute list (loaded once, above) — without this, an attribute added or
             // removed from the Attributes tab would only show up here after restarting the app.
-            attributeRepo.AttributesChanged += SyncAttributesFromRepository;
+            _attributeRepo.AttributesChanged += SyncAttributesFromRepository;
 
             Attributes.CollectionChanged += RaiseUnusedAttributesChanged;
         }
@@ -79,7 +79,7 @@ namespace StatCraft.ViewModels.Windows
         public void AddMap()
         {
             Map map = new() { Name = "New Map" };
-            mapRepo.InsertMap(map);
+            _mapRepo.InsertMap(map);
 
             // Every existing attribute applies to it immediately, with no value.
             foreach (AttributeDefinition attribute in Attributes)
@@ -93,7 +93,7 @@ namespace StatCraft.ViewModels.Windows
         [RelayCommand]
         public void DeleteMap(Map map)
         {
-            if (_gameDataRepository.IsAnyMapReferenced(map.Id))
+            if (_gameDataRepo.IsAnyMapReferenced(map.Id))
             {
                 DeleteBlocked?.Invoke(map);
                 return;
@@ -104,7 +104,7 @@ namespace StatCraft.ViewModels.Windows
             bool wasSelected = SelectedMap == map;
             int index = Maps.IndexOf(map);
 
-            mapRepo.DeleteMap(map.Id);
+            _mapRepo.DeleteMap(map.Id);
             _allMaps.Remove(map);
             ApplyFilters();
 
@@ -116,7 +116,7 @@ namespace StatCraft.ViewModels.Windows
         // AttributeDefinitions, so any change made on the Attributes tab ends up reflected here
         private void SyncAttributesFromRepository()
         {
-            List<AttributeDefinition> dbAttributes = attributeRepo.GetAllAttributes(AttributeScope.Map);
+            List<AttributeDefinition> dbAttributes = _attributeRepo.GetAllAttributes(AttributeScope.Map);
             Dictionary<int, AttributeDefinition> dbById = dbAttributes.ToDictionary(a => a.Id);
 
             //sync deleted attributes
@@ -185,7 +185,7 @@ namespace StatCraft.ViewModels.Windows
                             }
                         }
                     }
-                    mapRepo.SaveValues(mapsToSave, dbAttr.Id);
+                    _mapRepo.SaveValues(mapsToSave, dbAttr.Id);
                 }
 
                 SyncValueOptions(cachedAttr, dbAttr.ValueOptions);
@@ -211,7 +211,7 @@ namespace StatCraft.ViewModels.Windows
                         map.AttributeValues.Add(dbAttr.DefaultValue.Clone());
                         mapsToSave.Add(map);
                     }
-                    mapRepo.SaveValues(mapsToSave, dbAttr.Id);
+                    _mapRepo.SaveValues(mapsToSave, dbAttr.Id);
                 }
 
                 AddFilterSlot(dbAttr);
@@ -291,7 +291,7 @@ namespace StatCraft.ViewModels.Windows
         {
             if (s is Map m && e.PropertyName == nameof(Map.Name))
             {
-                mapRepo.UpdateMap(m);
+                _mapRepo.UpdateMap(m);
                 ApplyFilters();
             }
         }
@@ -302,14 +302,14 @@ namespace StatCraft.ViewModels.Windows
             if (e.OldItems != null)
                 {
                     foreach (AttributeValue value in e.OldItems.OfType<AttributeValue>())
-                        mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, null);
+                        _mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, null);
                 }
                 if (e.NewItems != null)
                 {
                     foreach (AttributeValue value in e.NewItems.OfType<AttributeValue>())
                     {
                         WireValue(SelectedMap, value);
-                        mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, value.Serialize());
+                        _mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, value.Serialize());
                     }
                 }
         }
@@ -333,7 +333,7 @@ namespace StatCraft.ViewModels.Windows
 
             // Serialize() returns null when unset, and SaveValue deletes the row for null — that
             // absence is what "no value" actually is in the database.
-            mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, value.Serialize());
+            _mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, value.Serialize());
             ApplyFilters();
         }
 

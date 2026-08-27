@@ -26,12 +26,12 @@ namespace StatCraft.ViewModels.Windows
 {
     public partial class DataPageViewModel : ViewModelBase
     {
-        private readonly SettingsRepository _settingsRepository;
+        private readonly SettingsRepository _settingsRepo;
         private readonly ReplayWatcherService _replayWatcherService;
         private readonly ReplayImportService _replayImportService;
-        private readonly AccountRepository _accountRepository;
-        private readonly BuildRepository _buildRepository;
-        private readonly GameDataRepository _gameDataRepository;
+        private readonly AccountRepository _accountRepo;
+        private readonly BuildRepository _buildRepo;
+        private readonly GameDataRepository _gameDataRepo;
         private readonly SessionMmrTracker _mmrTracker;
         private readonly ILogger _logger;
         private readonly ReplayDataExtractor _replayDataExtractor;
@@ -48,20 +48,20 @@ namespace StatCraft.ViewModels.Windows
             ReplayImportService replayImportService, AccountRepository accountRepository, BuildRepository buildRepository,
             GameDataRepository gameDataRepository, Sc2LadderService ladderService, ILogger logger, ReplayDataExtractor replayDataExtractor)
         {
-            _settingsRepository = settingsRepository;
+            _settingsRepo = settingsRepository;
             _replayWatcherService = replayWatcherService;
             _replayImportService = replayImportService;
-            _accountRepository = accountRepository;
-            _buildRepository = buildRepository;
-            _gameDataRepository = gameDataRepository;
+            _accountRepo = accountRepository;
+            _buildRepo = buildRepository;
+            _gameDataRepo = gameDataRepository;
             _logger = logger;
             _replayDataExtractor = replayDataExtractor;
             _mmrTracker = new SessionMmrTracker(ladderService);
             _replayWatcherService.NewReplayFileFound += OnNewReplayFileFound;
             _replayImportService.GameParsed += OnGameParsed;
             _replayImportService.GameMmrUpdated += OnGameMmrUpdated;
-            _buildRepository.BuildsChanged += OnBuildsChanged;
-            _settingsRepository.SettingsChanged += OnSettingsChanged;
+            _buildRepo.BuildsChanged += OnBuildsChanged;
+            _settingsRepo.SettingsChanged += OnSettingsChanged;
 
             Filters = new DataPageFiltersViewModel(buildRepository);
             Filters.ProfileSelectionChanged += async () => await ReloadGamesFromDatabase();
@@ -69,7 +69,7 @@ namespace StatCraft.ViewModels.Windows
 
             // Give the two always-visible filters sensible defaults as soon as the page exists, rather
             // than leaving them blank until a session actually starts.
-            Filters.RefreshProfileOptions(_accountRepository.GetAllProfiles());
+            Filters.RefreshProfileOptions(_accountRepo.GetAllProfiles());
             DateTime today = DateTime.Today;
             Filters.FromDate = today;
             Filters.ToDate = today;
@@ -127,7 +127,7 @@ namespace StatCraft.ViewModels.Windows
 
         public void ConfirmDeleteGame(GameDataRowViewModel row)
         {
-            _gameDataRepository.DeleteGame(row.GameId);
+            _gameDataRepo.DeleteGame(row.GameId);
             _loadedGames.RemoveAll(g => g.GameId == row.GameId);
             Games.Remove(row);
         }
@@ -175,7 +175,7 @@ namespace StatCraft.ViewModels.Windows
 
             // Every session start collapses the profile filter back to just this profile and the date
             // range back to today, per spec, even if the user had broadened either beforehand.
-            Filters.RefreshProfileOptions(_accountRepository.GetAllProfiles());
+            Filters.RefreshProfileOptions(_accountRepo.GetAllProfiles());
             Filters.SetSingleActiveProfile(profile);
             await ReloadGamesFromDatabase();
 
@@ -187,7 +187,7 @@ namespace StatCraft.ViewModels.Windows
         // OnSettingsChanged makes to redirect an already-running watcher mid-session.
         private async Task StartWatcherFor(Sc2Profile profile)
         {
-            string baseReplayFolderPath = _settingsRepository.Load().BaseReplayFolderPath ?? "";
+            string baseReplayFolderPath = _settingsRepo.Load().BaseReplayFolderPath ?? "";
             string replayFolderPath = Path.Combine(baseReplayFolderPath, profile.ReplayFolderPathSuffix);
             await _replayWatcherService.Start(replayFolderPath);
         }
@@ -199,7 +199,7 @@ namespace StatCraft.ViewModels.Windows
         // row's ally/opponent tabs.
         private async void OnSettingsChanged()
         {
-            bool useTeamColors = _settingsRepository.Load().UseTeamColors;
+            bool useTeamColors = _settingsRepo.Load().UseTeamColors;
             foreach (GameDataRowViewModel row in Games)
                 row.RefreshTeamColors(useTeamColors);
 
@@ -283,7 +283,7 @@ namespace StatCraft.ViewModels.Windows
         public void NotifyActivated()
         {
             if (ActiveProfile != null)
-                Filters.RefreshProfileOptions(_accountRepository.GetAllProfiles());
+                Filters.RefreshProfileOptions(_accountRepo.GetAllProfiles());
 
             if (!_buildTreeCacheDirty)
                 return;
@@ -303,7 +303,7 @@ namespace StatCraft.ViewModels.Windows
             foreach (((Race player, Matchups opponent), ObservableCollection<BuildNode> tree) in _buildTreeCache)
             {
                 tree.Clear();
-                foreach (BuildNode node in _buildRepository.GetBuildsForMatchup(player, opponent))
+                foreach (BuildNode node in _buildRepo.GetBuildsForMatchup(player, opponent))
                     tree.Add(node);
             }
 
@@ -317,7 +317,7 @@ namespace StatCraft.ViewModels.Windows
         private async Task ReloadGamesFromDatabase()
         {
             List<int> profileIds = Filters.ProfileSlot.Options.Where(o => o.IsChecked).Select(o => o.Value.Id).ToList();
-            _loadedGames = profileIds.Count == 0 ? [] : _gameDataRepository.GetGamesForProfiles(profileIds);
+            _loadedGames = profileIds.Count == 0 ? [] : _gameDataRepo.GetGamesForProfiles(profileIds);
             Filters.RefreshMapOptions(_loadedGames.Where(g => g.Map != null).Select(g => g.Map!).Distinct());
             ApplyFilters();
             await Task.CompletedTask;
@@ -374,8 +374,8 @@ namespace StatCraft.ViewModels.Windows
         }
 
         private GameDataRowViewModel WrapGame(GameData game) =>
-            new GameDataRowViewModel(game, _gameDataRepository, ResolveProfileLabel(game.Sc2ProfileId), GetBuildTree, _logger, _replayDataExtractor,
-                _settingsRepository.Load().UseTeamColors);
+            new GameDataRowViewModel(game, _gameDataRepo, ResolveProfileLabel(game.Sc2ProfileId), GetBuildTree, _logger, _replayDataExtractor,
+                _settingsRepo.Load().UseTeamColors);
 
         private string ResolveProfileLabel(int sc2ProfileId) =>
             Filters.ProfileSlot.Options.FirstOrDefault(o => o.Value.Id == sc2ProfileId)?.Value.DisplayName ?? sc2ProfileId.ToString();
@@ -386,7 +386,7 @@ namespace StatCraft.ViewModels.Windows
                 return null;
             if (!_buildTreeCache.TryGetValue((player.Value, matchups), out ObservableCollection<BuildNode>? tree))
             {
-                tree = new ObservableCollection<BuildNode>(_buildRepository.GetBuildsForMatchup(player.Value, matchups));
+                tree = new ObservableCollection<BuildNode>(_buildRepo.GetBuildsForMatchup(player.Value, matchups));
                 _buildTreeCache[(player.Value, matchups)] = tree;
             }
 

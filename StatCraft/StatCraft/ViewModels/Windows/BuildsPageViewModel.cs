@@ -21,14 +21,14 @@ namespace StatCraft.ViewModels.Windows
 
     public partial class BuildsPageViewModel : ViewModelBase
     {
-        private readonly BuildRepository _repository;
-        private readonly GameDataRepository _gameDataRepository;
+        private readonly BuildRepository _buildRepo;
+        private readonly GameDataRepository _gameDataRepo;
         private readonly HashSet<Race> _loadedPlayerRaces = [];
 
         public BuildsPageViewModel(BuildRepository repository, GameDataRepository gameDataRepository)
         {
-            _repository = repository;
-            _gameDataRepository = gameDataRepository;
+            _buildRepo = repository;
+            _gameDataRepo = gameDataRepository;
             PlayerRaceOptions = Enum.GetValues<Race>()
                 .Select(r => new RaceOption(r) { IsSelected = r == PlayerRace })
                 .ToList();
@@ -121,7 +121,7 @@ namespace StatCraft.ViewModels.Windows
         private void LoadPlayerRaceIfNeeded(Race playerRace)
         {
             if (!_loadedPlayerRaces.Add(playerRace)) return;
-            foreach (BuildNode node in _repository.GetBuildsForPlayerRace(playerRace))
+            foreach (BuildNode node in _buildRepo.GetBuildsForPlayerRace(playerRace))
             {
                 WireNode(node);
                 _buildsByPlayerRace[playerRace].Add(node);
@@ -134,7 +134,7 @@ namespace StatCraft.ViewModels.Windows
             {
                 if (s is BuildNode n && (e.PropertyName == nameof(BuildNode.Name) || e.PropertyName == nameof(BuildNode.Description)
                     || e.PropertyName == nameof(BuildNode.Matchups)))
-                    _repository.UpdateBuild(n);
+                    _buildRepo.UpdateBuild(n);
             };
             foreach (AttributeValue attr in node.Attributes)
                 WireAttribute(attr);
@@ -147,16 +147,16 @@ namespace StatCraft.ViewModels.Windows
             attr.Definition.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(AttributeDefinition.Name) || e.PropertyName == nameof(AttributeDefinition.Type))
-                    _repository.UpdateAttribute(attr);
+                    _buildRepo.UpdateAttribute(attr);
             };
             attr.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(AttributeValue.NumericValue) || e.PropertyName == nameof(AttributeValue.BoolValue)
                     || e.PropertyName == nameof(AttributeValue.PercentValue) || e.PropertyName == nameof(AttributeValue.SelectedValue))
-                    _repository.UpdateAttribute(attr);
+                    _buildRepo.UpdateAttribute(attr);
             };
             attr.Definition.ValueOptions.CollectionChanged += (s, e) =>
-                AttributeValueOptionSync.Apply(e, attr.Definition.Id, _repository.InsertValueOption, _repository.DeleteValueOption);
+                AttributeValueOptionSync.Apply(e, attr.Definition.Id, _buildRepo.InsertValueOption, _buildRepo.DeleteValueOption);
         }
 
         public void SelectFirstBuild() => SelectedBuild = Builds.FirstOrDefault(n => n.MatchesOpponentFilter);
@@ -165,7 +165,7 @@ namespace StatCraft.ViewModels.Windows
         public void AddBuild()
         {
             BuildNode node = new BuildNode { Name = "New Build", PlayerRace = PlayerRace, Matchups = Matchups.VsZ | Matchups.VsT | Matchups.VsP };
-            _repository.InsertBuild(node, null, Builds.Count);
+            _buildRepo.InsertBuild(node, null, Builds.Count);
             WireNode(node);
             Builds.Add(node);
             RefreshOpponentFilter();
@@ -176,7 +176,7 @@ namespace StatCraft.ViewModels.Windows
         public void AddChildBuild(BuildNode parent)
         {
             BuildNode node = new BuildNode { Name = "New Build", PlayerRace = parent.PlayerRace, Matchups = parent.Matchups };
-            _repository.InsertBuild(node, parent.Id, parent.Children.Count);
+            _buildRepo.InsertBuild(node, parent.Id, parent.Children.Count);
             WireNode(node);
             parent.Children.Add(node);
             parent.IsExpanded = true;
@@ -225,7 +225,7 @@ namespace StatCraft.ViewModels.Windows
         [RelayCommand]
         public void DeleteBuild(BuildNode node)
         {
-            if (_gameDataRepository.IsAnyBuildReferenced(CollectSubtreeIds(node)))
+            if (_gameDataRepo.IsAnyBuildReferenced(CollectSubtreeIds(node)))
             {
                 DeleteConfirmationRequested?.Invoke(node);
                 return;
@@ -241,7 +241,7 @@ namespace StatCraft.ViewModels.Windows
             bool needsReselect = SelectedBuild == node || (SelectedBuild != null && ContainsDescendant(node, SelectedBuild));
             BuildNode? replacement = needsReselect ? FindReplacementSelection(node) : null;
 
-            _repository.DeleteBuild(node.Id);
+            _buildRepo.DeleteBuild(node.Id);
             RemoveNode(Builds, node);
 
             if (needsReselect)
@@ -301,7 +301,7 @@ namespace StatCraft.ViewModels.Windows
             // "unset" — seed it with the same concrete zero-values a fresh numeric/bool/percent field
             // would have shown before the definition/value split.
             AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail)) { NumericValue = 0, BoolValue = false, PercentValue = 0 };
-            _repository.InsertAttribute(attr, SelectedBuild.Id, SelectedBuild.Attributes.Count);
+            _buildRepo.InsertAttribute(attr, SelectedBuild.Id, SelectedBuild.Attributes.Count);
             WireAttribute(attr);
             SelectedBuild.Attributes.Add(attr);
         }
@@ -310,7 +310,7 @@ namespace StatCraft.ViewModels.Windows
         public void RemoveAttribute(AttributeValue attribute)
         {
             if (SelectedBuild == null) return;
-            _repository.DeleteAttribute(attribute.Definition.Id);
+            _buildRepo.DeleteAttribute(attribute.Definition.Id);
             SelectedBuild.Attributes.Remove(attribute);
         }
     }
