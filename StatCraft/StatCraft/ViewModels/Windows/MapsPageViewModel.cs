@@ -120,18 +120,18 @@ namespace StatCraft.ViewModels.Windows
             Dictionary<int, AttributeDefinition> dbById = dbAttributes.ToDictionary(a => a.Id);
 
             //sync deleted attributes
-            foreach (AttributeDefinition attribute in Attributes.Where(a => !dbById.ContainsKey(a.Id)).ToList())
+            foreach (AttributeDefinition cachedAttr in Attributes.Where(a => !dbById.ContainsKey(a.Id)).ToList())
             {
-                Attributes.Remove(attribute);
+                Attributes.Remove(cachedAttr);
 
                 foreach (Map map in _allMaps)
                 {
-                    AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Definition.Id == attribute.Id);
+                    AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Definition.Id == cachedAttr.Id);
                     if (value != null)
                         map.AttributeValues.Remove(value);
                 }
 
-                RemoveFilterSlot(attribute);
+                RemoveFilterSlot(cachedAttr);
             }
 
             //sync edited attributes
@@ -198,18 +198,23 @@ namespace StatCraft.ViewModels.Windows
 
             //sync new attributes
             HashSet<int> knownIds = Attributes.Select(a => a.Id).ToHashSet();
-            foreach (AttributeDefinition attribute in dbAttributes.Where(a => !knownIds.Contains(a.Id)))
+            foreach (AttributeDefinition dbAttr in dbAttributes.Where(a => !knownIds.Contains(a.Id)))
             {
-                Attributes.Add(attribute);
+                Attributes.Add(dbAttr);
 
-                if (attribute.IsMandatory)
+                if (dbAttr.IsMandatory)
                 {
                     // Defined for every map at once, and unset on all of them until someone fills it in.
+                    List<Map> mapsToSave = new List<Map>();
                     foreach (Map map in _allMaps)
-                        map.AttributeValues.Add(attribute.DefaultValue.Clone());
+                    {
+                        map.AttributeValues.Add(dbAttr.DefaultValue.Clone());
+                        mapsToSave.Add(map);
+                    }
+                    mapRepo.SaveValues(mapsToSave, dbAttr.Id);
                 }
 
-                AddFilterSlot(attribute);
+                AddFilterSlot(dbAttr);
             }
 
             ApplyFilters();
