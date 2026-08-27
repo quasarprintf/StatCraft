@@ -59,11 +59,6 @@ namespace StatCraft.ViewModels.Windows
             AllAttributes.CollectionChanged += RaiseUnusedAttributesChanged;
         }
 
-        partial void OnNameFilterChanged(string value)
-        {
-            ApplyFilters();
-        }
-
         [RelayCommand]
         public void AddMap()
         {
@@ -240,6 +235,7 @@ namespace StatCraft.ViewModels.Windows
             }
         }
 
+        #region event handling for selected map
         private void RaiseUnusedAttributesChanged(object? sender, EventArgs e)
         {
             OnPropertyChanged(nameof(UnusedAttributes));
@@ -323,7 +319,9 @@ namespace StatCraft.ViewModels.Windows
             _mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, value.Serialize());
             ApplyFilters();
         }
+        #endregion
 
+        #region filters
         private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
         {
             FilterSlotViewModel slot = CreateSlot(attribute);
@@ -334,7 +332,6 @@ namespace StatCraft.ViewModels.Windows
             _slotByAttribute[attribute] = slot;
             (isVisible ? VisibleFilterSlots : HiddenFilterSlots).Add(slot);
         }
-
         private void RemoveFilterSlot(AttributeDefinition attribute)
         {
             if (!_slotByAttribute.Remove(attribute, out FilterSlotViewModel? slot))
@@ -343,6 +340,21 @@ namespace StatCraft.ViewModels.Windows
             slot.Changed -= ApplyFilters;
             VisibleFilterSlots.Remove(slot);
             HiddenFilterSlots.Remove(slot);
+        }
+        private static FilterSlotViewModel CreateSlot(AttributeDefinition attribute)
+        {
+            switch (attribute.Type)
+            {
+                case AttributeType.Bool:
+                    return new BoolFilterSlotViewModel(attribute.Name);
+                case AttributeType.Values:
+                    var checkboxFilters = attribute.ValueOptions.Select(o => new CheckboxFilterOptionViewModel<string>(o, o));
+                    return new CheckboxFilterSlotViewModel<string>(attribute.Name, checkboxFilters, showSearch: true);
+                case AttributeType.Numeric:
+                case AttributeType.Percent:
+                default:
+                    return new NumericRangeFilterSlotViewModel(attribute.Name);
+            }
         }
 
         // Moves a slot between the visible/hidden collections when its own IsVisible flips — via the
@@ -363,20 +375,9 @@ namespace StatCraft.ViewModels.Windows
             }
         }
 
-        private static FilterSlotViewModel CreateSlot(AttributeDefinition attribute)
+        partial void OnNameFilterChanged(string value)
         {
-            switch (attribute.Type)
-            {
-                case AttributeType.Bool:
-                    return new BoolFilterSlotViewModel(attribute.Name);
-                case AttributeType.Values:
-                    var checkboxFilters = attribute.ValueOptions.Select(o => new CheckboxFilterOptionViewModel<string>(o, o));
-                    return new CheckboxFilterSlotViewModel<string>(attribute.Name, checkboxFilters, showSearch: true);
-                case AttributeType.Numeric:
-                case AttributeType.Percent:
-                default:
-                    return new NumericRangeFilterSlotViewModel(attribute.Name);
-            }
+            ApplyFilters();
         }
 
         // Rebuilds the visible map list from the name box and every active attribute filter, ANDed.
@@ -394,7 +395,6 @@ namespace StatCraft.ViewModels.Windows
                 if (!FilteredMaps.Contains(matching[i]))
                     FilteredMaps.Insert(i, matching[i]);
         }
-
         private bool Matches(Map map)
         {
             if (!MatchesName(map, NameFilter))
@@ -413,7 +413,6 @@ namespace StatCraft.ViewModels.Windows
 
             return true;
         }
-
         private static bool MatchesName(Map map, string? nameFilter)
         {
             return string.IsNullOrWhiteSpace(nameFilter) || map.Name.Contains(nameFilter.Trim(), StringComparison.OrdinalIgnoreCase);
@@ -434,10 +433,10 @@ namespace StatCraft.ViewModels.Windows
                     return true;
             }
         }
-
         private static IReadOnlySet<T> Checked<T>(CheckboxFilterSlotViewModel<T> slot)
         {
             return slot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
         }
+        #endregion
     }
 }
