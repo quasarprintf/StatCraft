@@ -2,6 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
              xmlns:Attr="using:StatCraft.Models.GameData.Attributes"
+             xmlns:conv="using:StatCraft.Views.Converters"
              x:Class="StatCraft.Views.Windows.MapsComponents.MapDetailsPanel"
              x:DataType="vmw:MapsPageViewModel"
              Name="mapDetails">
@@ -11,7 +12,11 @@
             <TextBox Text="{Binding SelectedMap.Name}"/>
         </StackPanel>
 
-        <Button x:Name="AddAttributeButton" DockPanel.Dock="Top" Grid.Column="1" Content="Add attribute" Padding="6,2" VerticalAlignment="Center" IsVisible="{Binding HasUnusedAttributes}">
+        <!-- Opacity/IsHitTestVisible rather than IsVisible, so the button keeps reserving its layout
+             space while hidden instead of the page shifting when there's nothing left to add. -->
+        <Button x:Name="AddAttributeButton" DockPanel.Dock="Top" Grid.Column="1" Content="Add attribute" Padding="6,2" VerticalAlignment="Center"
+                Opacity="{Binding HasUnusedAttributes, Converter={x:Static conv:BoolToOpacityConverter.Instance}}"
+                IsHitTestVisible="{Binding HasUnusedAttributes}">
             <Button.Flyout>
                 <Flyout Placement="BottomEdgeAlignedRight">
                     <ItemsControl ItemsSource="{Binding UnusedAttributes}">
