@@ -85,7 +85,6 @@ namespace StatCraft.ViewModels.Windows
             foreach (AttributeDefinition attribute in Attributes)
                 map.AttributeValues.Add(attribute.DefaultValue.Clone());
 
-            WireMap(map);
             _allMaps.Add(map);
             ApplyFilters();
             SelectedMap = map;
