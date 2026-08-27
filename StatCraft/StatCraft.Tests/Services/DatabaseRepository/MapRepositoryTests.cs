@@ -196,6 +196,101 @@ public class MapRepositoryTests : IDisposable
         Assert.Empty(Assert.Single(_mapRepo.GetAllMaps([])).AttributeValues);
     }
 
+    [Fact]
+    public void SaveValues_SetValuesAcrossMultipleMaps_PersistsEachOne()
+    {
+        (Map mapA, AttributeDefinition attribute) = SeedMapAndAttribute(AttributeType.Numeric);
+        Map mapB = new() { Name = "B" };
+        _mapRepo.InsertMap(mapB);
+        mapA.AttributeValues.Add(new AttributeValue(attribute) { NumericValue = 5m });
+        mapB.AttributeValues.Add(new AttributeValue(attribute) { NumericValue = 10m });
+
+        _mapRepo.SaveValues([mapA, mapB], attribute.Id);
+
+        List<Map> reloaded = _mapRepo.GetAllMaps(_attributeRepo.GetAllAttributes(AttributeScope.Map));
+        Assert.Equal(5m, reloaded.Single(m => m.Id == mapA.Id).AttributeValues.Single().NumericValue);
+        Assert.Equal(10m, reloaded.Single(m => m.Id == mapB.Id).AttributeValues.Single().NumericValue);
+    }
+
+    [Fact]
+    public void SaveValues_UnsetValue_DeletesAnExistingRow()
+    {
+        (Map map, AttributeDefinition attribute) = SeedMapAndAttribute(AttributeType.Numeric);
+        _mapRepo.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 42m));
+
+        Map mapWithUnsetValue = new() { Id = map.Id };
+        mapWithUnsetValue.AttributeValues.Add(new AttributeValue(attribute));
+
+        _mapRepo.SaveValues([mapWithUnsetValue], attribute.Id);
+
+        AttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
+        Assert.False(value.HasValue);
+    }
+
+    // The caller (MapsPageViewModel) passes a Map with no AttributeValue entry at all for this attribute
+    // to mean the same thing as an explicit unset one — both should delete any existing row.
+    [Fact]
+    public void SaveValues_MapWithNoEntryForTheAttribute_DeletesAnExistingRow()
+    {
+        (Map map, AttributeDefinition attribute) = SeedMapAndAttribute(AttributeType.Numeric);
+        _mapRepo.SaveValue(map.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 42m));
+
+        Map mapWithNoEntry = new() { Id = map.Id };
+
+        _mapRepo.SaveValues([mapWithNoEntry], attribute.Id);
+
+        AttributeValue value = Assert.Single(LoadSingleMap().AttributeValues);
+        Assert.False(value.HasValue);
+    }
+
+    [Fact]
+    public void SaveValues_MixOfSetAndUnsetMaps_HandlesBothInOneCall()
+    {
+        (Map mapA, AttributeDefinition attribute) = SeedMapAndAttribute(AttributeType.Numeric);
+        Map mapB = new() { Name = "B" };
+        _mapRepo.InsertMap(mapB);
+        _mapRepo.SaveValue(mapB.Id, attribute.Id, SerializeVia(attribute, v => v.NumericValue = 99m));
+
+        mapA.AttributeValues.Add(new AttributeValue(attribute) { NumericValue = 5m });
+        Map mapBNowUnset = new() { Id = mapB.Id };
+        mapBNowUnset.AttributeValues.Add(new AttributeValue(attribute));
+
+        _mapRepo.SaveValues([mapA, mapBNowUnset], attribute.Id);
+
+        List<Map> reloaded = _mapRepo.GetAllMaps(_attributeRepo.GetAllAttributes(AttributeScope.Map));
+        Assert.Equal(5m, reloaded.Single(m => m.Id == mapA.Id).AttributeValues.Single().NumericValue);
+        Assert.False(reloaded.Single(m => m.Id == mapB.Id).AttributeValues.Single().HasValue);
+    }
+
+    [Fact]
+    public void SaveValues_EmptyList_DoesNotRaiseMapsChanged()
+    {
+        int raisedCount = 0;
+        _mapRepo.MapsChanged += () => raisedCount++;
+
+        _mapRepo.SaveValues([], 1);
+
+        Assert.Equal(0, raisedCount);
+    }
+
+    // Pins the point of batching this at all: one event for the whole call, not one per map.
+    [Fact]
+    public void SaveValues_MultipleMaps_RaisesMapsChangedExactlyOnce()
+    {
+        (Map mapA, AttributeDefinition attribute) = SeedMapAndAttribute(AttributeType.Numeric);
+        Map mapB = new() { Name = "B" };
+        _mapRepo.InsertMap(mapB);
+        mapA.AttributeValues.Add(new AttributeValue(attribute) { NumericValue = 1m });
+        mapB.AttributeValues.Add(new AttributeValue(attribute) { NumericValue = 2m });
+
+        int raisedCount = 0;
+        _mapRepo.MapsChanged += () => raisedCount++;
+
+        _mapRepo.SaveValues([mapA, mapB], attribute.Id);
+
+        Assert.Equal(1, raisedCount);
+    }
+
     private (Map Map, AttributeDefinition Attribute) SeedMapAndAttribute(AttributeType type)
     {
         Map map = new() { Name = "A" };
