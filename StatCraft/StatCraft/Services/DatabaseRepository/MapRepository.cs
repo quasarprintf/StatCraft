@@ -131,8 +131,6 @@ namespace StatCraft.Services.DatabaseRepository
 
             MapsChanged?.Invoke();
         }
-        // Batched form of SaveValue, for one attribute across many maps at once (e.g. toggling
-        // IsMandatory) — one transaction and one MapsChanged instead of one of each per map.
         public void SaveValues(List<Map> maps, int mapAttributeId)
         {
             if (maps.Count == 0)
@@ -150,14 +148,12 @@ namespace StatCraft.Services.DatabaseRepository
             }
 
             using SqliteConnection conn = OpenConnection();
-            using SqliteTransaction transaction = conn.BeginTransaction();
 
             if (deleteMapIds.Count > 0)
             {
                 conn.Execute("DELETE FROM MapAttributeValues WHERE MapId IN @mapIds AND AttributeId = @mapAttributeId",
-                    new { mapIds = deleteMapIds, mapAttributeId }, transaction);
+                    new { mapIds = deleteMapIds, mapAttributeId });
             }
-
             if (setValues.Count > 0)
             {
                 var rows = setValues.Select(kvp => new { mapId = kvp.Key, mapAttributeId, value = kvp.Value });
@@ -165,10 +161,9 @@ namespace StatCraft.Services.DatabaseRepository
                     INSERT INTO MapAttributeValues (MapId, AttributeId, Value)
                     VALUES (@mapId, @mapAttributeId, @value)
                     ON CONFLICT(MapId, AttributeId) DO UPDATE SET Value = @value",
-                    rows, transaction);
+                    rows);
             }
 
-            transaction.Commit();
             MapsChanged?.Invoke();
         }
 
