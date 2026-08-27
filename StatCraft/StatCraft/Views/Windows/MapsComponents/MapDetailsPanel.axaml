@@ -11,7 +11,7 @@
             <TextBox Text="{Binding SelectedMap.Name}"/>
         </StackPanel>
 
-        <Button x:Name="AddAttributeButton" DockPanel.Dock="Top" Grid.Column="1" Content="Add attribute" Padding="6,2" VerticalAlignment="Center">
+        <Button x:Name="AddAttributeButton" DockPanel.Dock="Top" Grid.Column="1" Content="Add attribute" Padding="6,2" VerticalAlignment="Center" IsVisible="{Binding HasUnusedAttributes}">
             <Button.Flyout>
                 <Flyout Placement="BottomEdgeAlignedRight">
                     <ItemsControl ItemsSource="{Binding UnusedAttributes}">

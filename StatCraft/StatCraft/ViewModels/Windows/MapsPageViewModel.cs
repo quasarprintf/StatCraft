@@ -31,6 +31,7 @@ namespace StatCraft.ViewModels.Windows
 
         public ObservableCollection<AttributeDefinition> AllAttributes { get; } = [];
         public IEnumerable<AttributeDefinition> UnusedAttributes => SelectedMap == null ? Enumerable.Empty<AttributeDefinition>() : AllAttributes.Where(a => !SelectedMap.AttributeValues.Any(v => v.Definition.Id == a.Id));
+        public bool HasUnusedAttributes => UnusedAttributes.Any();
 
         // Raised instead of deleting when the map still has games recorded on it
         public event Action<Map>? DeleteBlocked;
@@ -239,10 +240,12 @@ namespace StatCraft.ViewModels.Windows
         private void RaiseUnusedAttributesChanged(object? sender, EventArgs e)
         {
             OnPropertyChanged(nameof(UnusedAttributes));
+            OnPropertyChanged(nameof(HasUnusedAttributes));
         }
         partial void OnSelectedMapChanged(Map? value)
         {
             OnPropertyChanged(nameof(UnusedAttributes));
+            OnPropertyChanged(nameof(HasUnusedAttributes));
         }
         partial void OnSelectedMapChanging(Map? value)
         {
