@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -126,40 +128,78 @@ namespace StatCraft.ViewModels.Windows
             if (!_loadedPlayerRaces.Add(playerRace)) return;
             foreach (BuildNode node in _buildRepo.GetBuildsForPlayerRace(playerRace))
             {
-                WireNode(node);
                 _buildsByPlayerRace[playerRace].Add(node);
             }
         }
 
+        partial void OnSelectedBuildChanging(BuildNode? value)
+        {
+            if (SelectedBuild != null)
+                UnWireNode(SelectedBuild);
+            if (value != null)
+                WireNode(value);
+        }
+
         private void WireNode(BuildNode node)
         {
-            node.PropertyChanged += (s, e) =>
-            {
-                if (s is BuildNode n && (e.PropertyName == nameof(BuildNode.Name) || e.PropertyName == nameof(BuildNode.Description)
-                    || e.PropertyName == nameof(BuildNode.Matchups)))
-                    _buildRepo.UpdateBuild(n);
-            };
+            node.PropertyChanged += NodePropertyChanged;
             foreach (AttributeValue attr in node.Details)
                 WireAttribute(attr);
-            foreach (BuildNode child in node.Children)
-                WireNode(child);
+        }
+        private void UnWireNode(BuildNode node)
+        {
+            node.PropertyChanged -= NodePropertyChanged;
+            foreach (AttributeValue attr in node.Details)
+                UnWireAttribute(attr);
+        }
+
+        private void NodePropertyChanged(object? s, PropertyChangedEventArgs e)
+        {
+            if (s is BuildNode n && (e.PropertyName == nameof(BuildNode.Name) || e.PropertyName == nameof(BuildNode.Description)
+                    || e.PropertyName == nameof(BuildNode.Matchups)))
+                    _buildRepo.UpdateBuild(n);
         }
 
         private void WireAttribute(AttributeValue attr)
         {
-            attr.Definition.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(AttributeDefinition.Name) || e.PropertyName == nameof(AttributeDefinition.Type))
-                    _buildRepo.UpdateAttribute(attr);
-            };
-            attr.PropertyChanged += (s, e) =>
-            {
-                if (e.PropertyName == nameof(AttributeValue.NumericValue) || e.PropertyName == nameof(AttributeValue.BoolValue)
+            attr.Definition.DefinitionChanged += DefinitionPropertyChanged;
+            attr.ValueChanged += AttributePropertyChanged;
+            attr.Definition.ValueOptionsChanged += DefinitionOptionsChanged;
+        }
+        private void UnWireAttribute(AttributeValue attr)
+        {
+            attr.Definition.DefinitionChanged -= DefinitionPropertyChanged;
+            attr.ValueChanged -= AttributePropertyChanged;
+            attr.Definition.ValueOptionsChanged -= DefinitionOptionsChanged;
+        }
+        private void DefinitionPropertyChanged(object? s, PropertyChangedEventArgs e)
+        {
+            if (s is not AttributeDefinition definition)
+                return;
+            if (e.PropertyName == nameof(AttributeDefinition.Name) || e.PropertyName == nameof(AttributeDefinition.Type))
+                    _buildRepo.UpdateAttribute(definition.DefaultValue);
+        }
+        private void AttributePropertyChanged(object? s, PropertyChangedEventArgs e)
+        {
+            if (s is not AttributeValue attr)
+                return;
+            if (e.PropertyName == nameof(AttributeValue.NumericValue) || e.PropertyName == nameof(AttributeValue.BoolValue)
                     || e.PropertyName == nameof(AttributeValue.PercentValue) || e.PropertyName == nameof(AttributeValue.SelectedValue))
                     _buildRepo.UpdateAttribute(attr);
-            };
-            attr.Definition.ValueOptions.CollectionChanged += (s, e) =>
-                AttributeValueOptionSync.Apply(e, attr.Definition.Id, _buildRepo.InsertValueOption, _buildRepo.DeleteValueOption);
+        }
+        private void DefinitionOptionsChanged(object? s, CollectionChangeEventArgs e)
+        {
+            if (s is not AttributeDefinition definition)
+                return;
+            switch (e.Action)
+            {
+                case CollectionChangeAction.Add:
+                    _buildRepo.InsertValueOption(definition.Id, (string)e.Element!);
+                    return;
+                case CollectionChangeAction.Remove:
+                    _buildRepo.DeleteValueOption(definition.Id, (string)e.Element!);
+                    return;
+            }
         }
 
         public void SelectFirstBuild()
@@ -172,7 +212,6 @@ namespace StatCraft.ViewModels.Windows
         {
             BuildNode node = new BuildNode { Name = "New Build", PlayerRace = PlayerRace, Matchups = Matchups.VsZ | Matchups.VsT | Matchups.VsP };
             _buildRepo.InsertBuild(node, null, Builds.Count);
-            WireNode(node);
             Builds.Add(node);
             RefreshOpponentFilter();
             SelectedBuild = node;
@@ -183,7 +222,6 @@ namespace StatCraft.ViewModels.Windows
         {
             BuildNode node = new BuildNode { Name = "New Build", PlayerRace = parent.PlayerRace, Matchups = parent.Matchups };
             _buildRepo.InsertBuild(node, parent.Id, parent.Children.Count);
-            WireNode(node);
             parent.Children.Add(node);
             parent.IsExpanded = true;
             RefreshOpponentFilter();

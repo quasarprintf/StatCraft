@@ -28,6 +28,7 @@ namespace StatCraft.Models.GameData.Builds
         [ObservableProperty] private bool _matchesOpponentFilter = true;
 
         public ObservableCollection<AttributeValue> Details { get; } = [];
+        public ObservableCollection<AttributeValue> StaticAttributes { get; } = []; //NYI
 
         [NotifyPropertyChangedFor(nameof(HasChildren))]
         [ObservableProperty] private ObservableCollection<BuildNode> _children = [];
