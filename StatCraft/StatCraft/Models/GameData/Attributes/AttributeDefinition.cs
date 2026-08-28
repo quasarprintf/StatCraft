@@ -26,7 +26,7 @@ namespace StatCraft.Models.GameData.Attributes
 
         public AttributeScope Scope { get; private set; }
         [ObservableProperty] private bool _isMandatory;
-        public bool IsNullable { get; set; } = true;
+        public bool IsNullable => Scope != AttributeScope.BuildDetail;
 
         // Options for a Values-type attribute
         public ObservableCollection<string> ValueOptions { get; protected set; } = [];

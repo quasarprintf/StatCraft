@@ -39,6 +39,7 @@ namespace StatCraft.Models.GameData.Attributes
         internal AttributeValue(AttributeDefinition attribute)
         {
             Definition = attribute;
+            Clear();
 
             PropertyChanged += (_, e) => ValueChanged?.Invoke(this, e);
         }
