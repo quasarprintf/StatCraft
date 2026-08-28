@@ -339,11 +339,9 @@ namespace StatCraft.ViewModels.Windows
         public void AddAttribute()
         {
             if (SelectedBuild == null) return;
-            // Unlike a Map attribute value, a Build attribute's default is never meant to read as
-            // "unset" — seed it with the same concrete zero-values a fresh numeric/bool/percent field
-            // would have shown before the definition/value split.
             AttributeDefinition definition = new AttributeDefinition(AttributeScope.BuildDetail);
             AttributeValue attr = definition.DefaultValue;
+            attr.ApplyStoredValue("0");
             _buildRepo.InsertAttribute(attr, SelectedBuild.Id, SelectedBuild.Details.Count);
             WireAttribute(definition);
             SelectedBuild.Details.Add(definition);
