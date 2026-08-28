@@ -114,7 +114,7 @@ public class BuildRepositoryTests : IDisposable
         _repository.InsertAttribute(attr, node.Id, 0);
 
         BuildNode loadedNode = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss));
-        AttributeValue loadedAttr = Assert.Single(loadedNode.Details);
+        AttributeValue loadedAttr = Assert.Single(loadedNode.Details).DefaultValue;
 
         Assert.Equal(AttributeScope.BuildDetail, loadedAttr.Definition.Scope);
 
@@ -138,7 +138,7 @@ public class BuildRepositoryTests : IDisposable
         _repository.InsertValueOption(attr.Definition.Id, "Zealot");
 
         BuildNode loadedNode = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss));
-        AttributeValue loadedAttr = Assert.Single(loadedNode.Details);
+        AttributeValue loadedAttr = Assert.Single(loadedNode.Details).DefaultValue;
         Assert.Equal(["Zealot"], loadedAttr.Definition.ValueOptions);
     }
 

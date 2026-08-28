@@ -104,10 +104,9 @@ namespace StatCraft.Services.DatabaseRepository
                 foreach (BuildDetailsAttributeRow row in attrRows)
                 {
                     AttributeDefinition definition = new AttributeDefinition(row.Scope) { Id = (int)row.Id, Name = row.Name, Type = row.Type };
-                    AttributeValue attr = new(definition);
-                    attr.ApplyStoredValue(row.DefaultValue);
-                    attrDict[row.Id] = attr;
-                    nodeDict[row.BuildNodeId].Details.Add(attr);
+                    definition.DefaultValue.ApplyStoredValue(row.DefaultValue);
+                    attrDict[row.Id] = definition.DefaultValue;
+                    nodeDict[row.BuildNodeId].Details.Add(definition);
                 }
 
                 if (attrDict.Count > 0)

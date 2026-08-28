@@ -333,7 +333,7 @@ namespace StatCraft.ViewModels.Windows.DataComponents
                     if (seen.Add(path[depth].Id))
                         unionPath.Add((path[depth], depth));
             }
-            List<int> newIds = unionPath.SelectMany(p => p.Node.Details).Select(a => a.Definition.Id).ToList();
+            List<int> newIds = unionPath.SelectMany(p => p.Node.Details).Select(a => a.Id).ToList();
 
             // Left every selected path: drop the stored value from the DB, but leave it in
             // _player.AttributeValues (in-memory) so re-selecting the build within this session restores it.
@@ -347,10 +347,10 @@ namespace StatCraft.ViewModels.Windows.DataComponents
                     continue; // nothing to show for this build — no group at all, rather than an empty one
 
                 ObservableCollection<AttributeValue> groupEditors = [];
-                foreach (AttributeValue template in node.Details)
+                foreach (AttributeDefinition template in node.Details)
                 {
-                    AttributeValue editor = template.Clone();
-                    GameAttributeValue? cached = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Definition.Id);
+                    AttributeValue editor = template.DefaultValue.Clone();
+                    GameAttributeValue? cached = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Id);
                     if (cached != null)
                     {
                         editor.ApplyStoredValue(cached.Value);
@@ -358,8 +358,8 @@ namespace StatCraft.ViewModels.Windows.DataComponents
                     else
                     {
                         string defaultValue = editor.Serialize() ?? "";
-                        _player.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Definition.Id, Value = defaultValue });
-                        TryUpsertAttributeValue(template.Definition.Id, defaultValue);
+                        _player.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Id, Value = defaultValue });
+                        TryUpsertAttributeValue(template.Id, defaultValue);
                     }
 
                     editor.PropertyChanged += (_, e) =>
@@ -370,12 +370,12 @@ namespace StatCraft.ViewModels.Windows.DataComponents
                             or nameof(AttributeValue.SelectedValue))
                         {
                             string value = editor.Serialize() ?? "";
-                            GameAttributeValue? existing = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Definition.Id);
+                            GameAttributeValue? existing = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Id);
                             if (existing != null)
                                 existing.Value = value;
                             else
-                                _player.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Definition.Id, Value = value });
-                            TryUpsertAttributeValue(template.Definition.Id, value);
+                                _player.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Id, Value = value });
+                            TryUpsertAttributeValue(template.Id, value);
                         }
                     };
                     groupEditors.Add(editor);

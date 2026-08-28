@@ -143,13 +143,13 @@ namespace StatCraft.ViewModels.Windows
         private void WireNode(BuildNode node)
         {
             node.PropertyChanged += NodePropertyChanged;
-            foreach (AttributeValue attr in node.Details)
+            foreach (AttributeDefinition attr in node.Details)
                 WireAttribute(attr);
         }
         private void UnWireNode(BuildNode node)
         {
             node.PropertyChanged -= NodePropertyChanged;
-            foreach (AttributeValue attr in node.Details)
+            foreach (AttributeDefinition attr in node.Details)
                 UnWireAttribute(attr);
         }
 
@@ -160,17 +160,17 @@ namespace StatCraft.ViewModels.Windows
                     _buildRepo.UpdateBuild(n);
         }
 
-        private void WireAttribute(AttributeValue attr)
+        private void WireAttribute(AttributeDefinition attr)
         {
-            attr.Definition.DefinitionChanged += DefinitionPropertyChanged;
-            attr.ValueChanged += AttributePropertyChanged;
-            attr.Definition.ValueOptionsChanged += DefinitionOptionsChanged;
+            attr.DefinitionChanged += DefinitionPropertyChanged;
+            attr.DefaultValue.ValueChanged += AttributePropertyChanged;
+            attr.ValueOptionsChanged += DefinitionOptionsChanged;
         }
-        private void UnWireAttribute(AttributeValue attr)
+        private void UnWireAttribute(AttributeDefinition attr)
         {
-            attr.Definition.DefinitionChanged -= DefinitionPropertyChanged;
-            attr.ValueChanged -= AttributePropertyChanged;
-            attr.Definition.ValueOptionsChanged -= DefinitionOptionsChanged;
+            attr.DefinitionChanged -= DefinitionPropertyChanged;
+            attr.DefaultValue.ValueChanged -= AttributePropertyChanged;
+            attr.ValueOptionsChanged -= DefinitionOptionsChanged;
         }
         private void DefinitionPropertyChanged(object? s, PropertyChangedEventArgs e)
         {
@@ -342,17 +342,18 @@ namespace StatCraft.ViewModels.Windows
             // Unlike a Map attribute value, a Build attribute's default is never meant to read as
             // "unset" — seed it with the same concrete zero-values a fresh numeric/bool/percent field
             // would have shown before the definition/value split.
-            AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail)) { NumericValue = 0, BoolValue = false, PercentValue = 0 };
+            AttributeDefinition definition = new AttributeDefinition(AttributeScope.BuildDetail);
+            AttributeValue attr = definition.DefaultValue;
             _buildRepo.InsertAttribute(attr, SelectedBuild.Id, SelectedBuild.Details.Count);
-            WireAttribute(attr);
-            SelectedBuild.Details.Add(attr);
+            WireAttribute(definition);
+            SelectedBuild.Details.Add(definition);
         }
 
         [RelayCommand]
-        public void RemoveAttribute(AttributeValue attribute)
+        public void RemoveAttribute(AttributeDefinition attribute)
         {
             if (SelectedBuild == null) return;
-            _buildRepo.DeleteAttribute(attribute.Definition.Id);
+            _buildRepo.DeleteAttribute(attribute.Id);
             UnWireAttribute(attribute);
             SelectedBuild.Details.Remove(attribute);
         }
