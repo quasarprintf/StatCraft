@@ -94,6 +94,44 @@ public class AttributeDefinitionTests
         Assert.Empty(attribute.ValueOptions);
     }
 
+    // Pins the point of the IsNullable/AddOption pairing: a non-nullable Values attribute has nothing
+    // concrete to fall back to until it has at least one option, so the very first one added becomes the
+    // default automatically rather than leaving DefaultValue.SelectedValue unset.
+    [Fact]
+    public void AddOption_NotNullable_FirstOption_BecomesTheDefaultValue()
+    {
+        AttributeDefinition attribute = new(AttributeScope.BuildDetail) { IsNullable = false, NewOptionText = "Zealot" };
+
+        attribute.AddOptionCommand.Execute(null);
+
+        Assert.Equal("Zealot", attribute.DefaultValue.SelectedValue);
+    }
+
+    // Only the first option should be auto-picked — once a default exists (even implicitly, from the
+    // first option), adding more options must not silently override whatever the user has selected.
+    [Fact]
+    public void AddOption_NotNullable_SecondOption_DoesNotOverrideTheDefaultValue()
+    {
+        AttributeDefinition attribute = new(AttributeScope.BuildDetail) { IsNullable = false, NewOptionText = "Zealot" };
+        attribute.AddOptionCommand.Execute(null);
+        attribute.DefaultValue.SelectedValue = "Zealot"; // simulates whatever the user picked
+
+        attribute.NewOptionText = "Stalker";
+        attribute.AddOptionCommand.Execute(null);
+
+        Assert.Equal("Zealot", attribute.DefaultValue.SelectedValue);
+    }
+
+    [Fact]
+    public void AddOption_Nullable_FirstOption_DoesNotSetTheDefaultValue()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { IsNullable = true, NewOptionText = "Zealot" };
+
+        attribute.AddOptionCommand.Execute(null);
+
+        Assert.Null(attribute.DefaultValue.SelectedValue);
+    }
+
     [Fact]
     public void RemoveOption_RaisesValueOptionsChangedWithTheRemovedValue()
     {
