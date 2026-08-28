@@ -73,9 +73,9 @@ namespace StatCraft.Models.GameData.Attributes
             }
             else
             {
-                NumericValue = default;
-                BoolValue = default;
-                PercentValue = default;
+                NumericValue = default(decimal);
+                BoolValue = default(bool);
+                PercentValue = default(decimal);
                 SelectedValue = Definition.ValueOptions.FirstOrDefault();
             }
         }
