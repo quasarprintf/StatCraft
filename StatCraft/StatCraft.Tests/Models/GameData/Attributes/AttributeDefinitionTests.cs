@@ -132,6 +132,56 @@ public class AttributeDefinitionTests
         Assert.Null(attribute.DefaultValue.SelectedValue);
     }
 
+    // RemoveOption's fallback checks "SelectedValue == null || SelectedValue == option" — but in the
+    // live app, a bound ComboBox's SelectedItem clears itself the instant its selected item disappears
+    // from ItemsSource, and that clear round-trips back through the two-way binding to
+    // DefaultValue.SelectedValue synchronously — before RemoveOption's own check ever runs. So the
+    // "== null" branch is what actually fires when a user removes the option they'd selected; this test
+    // simulates that precondition directly, rather than relying on a bound ComboBox to produce it.
+    [Fact]
+    public void RemoveOption_NotNullable_SelectedValueAlreadyNulledByTheBoundComboBox_FallsBackToFirstRemainingOption()
+    {
+        AttributeDefinition attribute = new(AttributeScope.BuildDetail) { IsNullable = false };
+        attribute.ValueOptions.Add("A");
+        attribute.ValueOptions.Add("B");
+        attribute.DefaultValue.SelectedValue = null; // what a bound ComboBox would already have done
+
+        attribute.RemoveOptionCommand.Execute("A");
+
+        Assert.Equal("B", attribute.DefaultValue.SelectedValue);
+    }
+
+    // Only reachable with nothing bound to DefaultValue.SelectedValue to clear it first (e.g. calling
+    // RemoveOption directly, as this test does) — kept as a defensive fallback for that case, not because
+    // it's the path the live UI actually takes.
+    [Fact]
+    public void RemoveOption_NotNullable_NoBoundComboBox_StillFallsBackViaTheEqualityCheck()
+    {
+        AttributeDefinition attribute = new(AttributeScope.BuildDetail) { IsNullable = false };
+        attribute.ValueOptions.Add("A");
+        attribute.ValueOptions.Add("B");
+        attribute.DefaultValue.SelectedValue = "A";
+
+        attribute.RemoveOptionCommand.Execute("A");
+
+        Assert.Equal("B", attribute.DefaultValue.SelectedValue);
+    }
+
+    // Mirrors what a bound ComboBox does: removing the last remaining option, matching the precondition
+    // above (SelectedValue already nulled by the binding before RemoveOption's own check runs). With
+    // nothing left to fall back to, it correctly stays null rather than dangling on the removed option.
+    [Fact]
+    public void RemoveOption_NotNullable_RemovingTheLastOption_LeavesSelectedValueNull()
+    {
+        AttributeDefinition attribute = new(AttributeScope.BuildDetail) { IsNullable = false };
+        attribute.ValueOptions.Add("A");
+        attribute.DefaultValue.SelectedValue = null; // what a bound ComboBox would already have done
+
+        attribute.RemoveOptionCommand.Execute("A");
+
+        Assert.Null(attribute.DefaultValue.SelectedValue);
+    }
+
     [Fact]
     public void RemoveOption_RaisesValueOptionsChangedWithTheRemovedValue()
     {
