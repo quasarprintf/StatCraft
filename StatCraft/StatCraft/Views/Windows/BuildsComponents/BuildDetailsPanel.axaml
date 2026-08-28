@@ -29,7 +29,7 @@
                 </DockPanel>
             </StackPanel>
             <ScrollViewer>
-                <ItemsControl ItemsSource="{Binding SelectedBuild.Attributes}">
+                <ItemsControl ItemsSource="{Binding SelectedBuild.Details}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="Attr:AttributeValue">
                             <StackPanel Margin="0,0,0,4">

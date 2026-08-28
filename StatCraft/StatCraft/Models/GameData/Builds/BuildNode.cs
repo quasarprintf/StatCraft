@@ -27,7 +27,7 @@ namespace StatCraft.Models.GameData.Builds
         // Transient UI-only flag driving the Builds tab's opponent-race filter; never persisted.
         [ObservableProperty] private bool _matchesOpponentFilter = true;
 
-        public ObservableCollection<AttributeValue> Attributes { get; } = [];
+        public ObservableCollection<AttributeValue> Details { get; } = [];
 
         [NotifyPropertyChangedFor(nameof(HasChildren))]
         [ObservableProperty] private ObservableCollection<BuildNode> _children = [];

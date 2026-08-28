@@ -333,7 +333,7 @@ namespace StatCraft.ViewModels.Windows.DataComponents
                     if (seen.Add(path[depth].Id))
                         unionPath.Add((path[depth], depth));
             }
-            List<int> newIds = unionPath.SelectMany(p => p.Node.Attributes).Select(a => a.Definition.Id).ToList();
+            List<int> newIds = unionPath.SelectMany(p => p.Node.Details).Select(a => a.Definition.Id).ToList();
 
             // Left every selected path: drop the stored value from the DB, but leave it in
             // _player.AttributeValues (in-memory) so re-selecting the build within this session restores it.
@@ -343,11 +343,11 @@ namespace StatCraft.ViewModels.Windows.DataComponents
             AttributeGroups.Clear();
             foreach ((BuildNode node, int depth) in unionPath)
             {
-                if (node.Attributes.Count == 0)
+                if (node.Details.Count == 0)
                     continue; // nothing to show for this build — no group at all, rather than an empty one
 
                 ObservableCollection<AttributeValue> groupEditors = [];
-                foreach (AttributeValue template in node.Attributes)
+                foreach (AttributeValue template in node.Details)
                 {
                     AttributeValue editor = template.Clone();
                     GameAttributeValue? cached = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Definition.Id);

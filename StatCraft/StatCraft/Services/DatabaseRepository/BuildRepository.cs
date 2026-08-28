@@ -107,7 +107,7 @@ namespace StatCraft.Services.DatabaseRepository
                     AttributeValue attr = new(definition);
                     attr.ApplyStoredValue(row.DefaultValue);
                     attrDict[row.Id] = attr;
-                    nodeDict[row.BuildNodeId].Attributes.Add(attr);
+                    nodeDict[row.BuildNodeId].Details.Add(attr);
                 }
 
                 if (attrDict.Count > 0)

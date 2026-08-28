@@ -135,7 +135,7 @@ namespace StatCraft.ViewModels.Windows
                     || e.PropertyName == nameof(BuildNode.Matchups)))
                     _buildRepo.UpdateBuild(n);
             };
-            foreach (AttributeValue attr in node.Attributes)
+            foreach (AttributeValue attr in node.Details)
                 WireAttribute(attr);
             foreach (BuildNode child in node.Children)
                 WireNode(child);
@@ -300,9 +300,9 @@ namespace StatCraft.ViewModels.Windows
             // "unset" — seed it with the same concrete zero-values a fresh numeric/bool/percent field
             // would have shown before the definition/value split.
             AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail)) { NumericValue = 0, BoolValue = false, PercentValue = 0 };
-            _buildRepo.InsertAttribute(attr, SelectedBuild.Id, SelectedBuild.Attributes.Count);
+            _buildRepo.InsertAttribute(attr, SelectedBuild.Id, SelectedBuild.Details.Count);
             WireAttribute(attr);
-            SelectedBuild.Attributes.Add(attr);
+            SelectedBuild.Details.Add(attr);
         }
 
         [RelayCommand]
@@ -310,7 +310,7 @@ namespace StatCraft.ViewModels.Windows
         {
             if (SelectedBuild == null) return;
             _buildRepo.DeleteAttribute(attribute.Definition.Id);
-            SelectedBuild.Attributes.Remove(attribute);
+            SelectedBuild.Details.Remove(attribute);
         }
     }
 }
