@@ -21,9 +21,26 @@ namespace StatCraft.ViewModels.Windows
 
     public partial class BuildsPageViewModel : ViewModelBase
     {
+        // Raised instead of deleting immediately when the build (or a descendant, since deleting a
+        // parent cascades its whole subtree) has games recorded against it. The view shows a
+        // confirmation dialog and, if accepted, calls ConfirmDeleteBuild.
+        public event Action<BuildNode>? DeleteConfirmationRequested;
+
         private readonly BuildRepository _buildRepo;
         private readonly GameDataRepository _gameDataRepo;
         private readonly HashSet<Race> _loadedPlayerRaces = [];
+
+        [NotifyPropertyChangedFor(nameof(Builds))]
+        [ObservableProperty] private Race _playerRace = Race.Zerg;
+
+        [ObservableProperty] private BuildNode? _selectedBuild;
+
+        public IReadOnlyList<RaceOption> PlayerRaceOptions { get; }
+        public IReadOnlyList<RaceOption> OpponentRaceOptions { get; }
+
+        private readonly Dictionary<Race, ObservableCollection<BuildNode>> _buildsByPlayerRace =
+            Enum.GetValues<Race>().ToDictionary(r => r, _ => new ObservableCollection<BuildNode>());
+        public ObservableCollection<BuildNode> Builds => _buildsByPlayerRace[PlayerRace];
 
         public BuildsPageViewModel(BuildRepository repository, GameDataRepository gameDataRepository)
         {
@@ -38,19 +55,6 @@ namespace StatCraft.ViewModels.Windows
             LoadPlayerRaceIfNeeded(PlayerRace);
             RefreshOpponentFilter();
         }
-
-        [NotifyPropertyChangedFor(nameof(Builds))]
-        [ObservableProperty] private Race _playerRace = Race.Zerg;
-
-        [ObservableProperty] private BuildNode? _selectedBuild;
-
-        public IReadOnlyList<RaceOption> PlayerRaceOptions { get; }
-        public IReadOnlyList<RaceOption> OpponentRaceOptions { get; }
-
-        private readonly Dictionary<Race, ObservableCollection<BuildNode>> _buildsByPlayerRace =
-            Enum.GetValues<Race>().ToDictionary(r => r, _ => new ObservableCollection<BuildNode>());
-
-        public ObservableCollection<BuildNode> Builds => _buildsByPlayerRace[PlayerRace];
 
         [RelayCommand]
         public void SelectPlayerRace(Race race)
@@ -158,7 +162,10 @@ namespace StatCraft.ViewModels.Windows
                 AttributeValueOptionSync.Apply(e, attr.Definition.Id, _buildRepo.InsertValueOption, _buildRepo.DeleteValueOption);
         }
 
-        public void SelectFirstBuild() => SelectedBuild = Builds.FirstOrDefault(n => n.MatchesOpponentFilter);
+        public void SelectFirstBuild()
+        {
+            SelectedBuild = Builds.FirstOrDefault(n => n.MatchesOpponentFilter);
+        }
 
         [RelayCommand]
         public void AddBuild()
@@ -216,11 +223,6 @@ namespace StatCraft.ViewModels.Windows
             }
         }
 
-        // Raised instead of deleting immediately when the build (or a descendant, since deleting a
-        // parent cascades its whole subtree) has games recorded against it. The view shows a
-        // confirmation dialog and, if accepted, calls ConfirmDeleteBuild.
-        public event Action<BuildNode>? DeleteConfirmationRequested;
-
         [RelayCommand]
         public void DeleteBuild(BuildNode node)
         {
@@ -233,7 +235,10 @@ namespace StatCraft.ViewModels.Windows
             PerformDelete(node);
         }
 
-        public void ConfirmDeleteBuild(BuildNode node) => PerformDelete(node);
+        public void ConfirmDeleteBuild(BuildNode node)
+        {
+            PerformDelete(node);
+        }
 
         private void PerformDelete(BuildNode node)
         {
