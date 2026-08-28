@@ -1,15 +1,17 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using StatCraft.Models.GameData.Attributes;
+using StatCraft.Models.GameData.Builds;
+using StatCraft.Models.GameData.Maps;
+using StatCraft.Models.GameData.Race;
+using StatCraft.Services.DatabaseRepository;
+using StatCraft.ViewModels.Windows.DataComponents;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using StatCraft.Models.GameData.Attributes;
-using StatCraft.Models.GameData.Builds;
-using StatCraft.Models.GameData.Race;
-using StatCraft.Services.DatabaseRepository;
 
 namespace StatCraft.ViewModels.Windows
 {
@@ -29,6 +31,7 @@ namespace StatCraft.ViewModels.Windows
         public event Action<BuildNode>? DeleteConfirmationRequested;
 
         private readonly BuildRepository _buildRepo;
+        private readonly AttributeRepository _attributeRepo;
         private readonly GameDataRepository _gameDataRepo;
         private readonly HashSet<Race> _loadedPlayerRaces = [];
 
@@ -44,9 +47,14 @@ namespace StatCraft.ViewModels.Windows
             Enum.GetValues<Race>().ToDictionary(r => r, _ => new ObservableCollection<BuildNode>());
         public ObservableCollection<BuildNode> Builds => _buildsByPlayerRace[PlayerRace];
 
-        public BuildsPageViewModel(BuildRepository repository, GameDataRepository gameDataRepository)
+        public ObservableCollection<AttributeDefinition> AllAttributes { get; } = [];
+        public IEnumerable<AttributeDefinition> UnusedAttributes => SelectedBuild == null ? Enumerable.Empty<AttributeDefinition>() : AllAttributes.Where(a => !SelectedBuild.StaticAttributes.Any(v => v.Definition.Id == a.Id));
+        public bool HasUnusedAttributes => UnusedAttributes.Any();
+
+        public BuildsPageViewModel(BuildRepository buildRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository)
         {
-            _buildRepo = repository;
+            _buildRepo = buildRepository;
+            _attributeRepo = attributeRepository;
             _gameDataRepo = gameDataRepository;
             PlayerRaceOptions = Enum.GetValues<Race>()
                 .Select(r => new RaceOption(r) { IsSelected = r == PlayerRace })
@@ -56,6 +64,17 @@ namespace StatCraft.ViewModels.Windows
                 .ToList();
             LoadPlayerRaceIfNeeded(PlayerRace);
             RefreshOpponentFilter();
+
+            foreach (AttributeDefinition attribute in _attributeRepo.GetAllAttributes(AttributeScope.Build))
+                AllAttributes.Add(attribute);
+            //TODO:
+            //foreach (AttributeDefinition attribute in AllAttributes)
+                //AddFilterSlot(attribute);
+            //ApplyFilters();
+
+            _attributeRepo.AttributesChanged += SyncAttributesFromRepository;
+
+            AllAttributes.CollectionChanged += RaiseUnusedAttributesChanged;
         }
 
         [RelayCommand]
@@ -132,6 +151,156 @@ namespace StatCraft.ViewModels.Windows
             }
         }
 
+        private void SyncAttributesFromRepository()
+        {
+            List<AttributeDefinition> dbAttributes = _attributeRepo.GetAllAttributes(AttributeScope.Build);
+            Dictionary<int, AttributeDefinition> dbById = dbAttributes.ToDictionary(a => a.Id);
+
+            //sync deleted attributes
+            foreach (AttributeDefinition cachedAttr in AllAttributes.Where(a => !dbById.ContainsKey(a.Id)).ToList())
+            {
+                AllAttributes.Remove(cachedAttr);
+
+                foreach (BuildNode rootNode in _buildsByPlayerRace.SelectMany(r => r.Value))
+                {
+                    RemoveAttributeRecursively(rootNode, cachedAttr);
+                }
+
+                //TODO:
+                //RemoveFilterSlot(cachedAttr);
+            }
+
+            //sync edited attributes
+            foreach (AttributeDefinition cachedAttr in AllAttributes)
+            {
+                AttributeDefinition dbAttr = dbById[cachedAttr.Id];
+
+                if (cachedAttr.Name != dbAttr.Name)
+                {
+                    cachedAttr.Name = dbAttr.Name;
+                    //TODO:
+                    //if (_slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? slot))
+                    //    slot.Title = dbAttr.Name;
+                }
+
+                if (cachedAttr.Type != dbAttr.Type)
+                {
+                    cachedAttr.Type = dbAttr.Type;
+                    // Numeric/Percent vs. Bool vs. Values are different FilterSlotViewModel subclasses,
+                    // so the slot itself has to be replaced rather than patched — but only for this one
+                    // attribute, and preserving whether it was actually showing.
+                    //TODO:
+                    //bool wasVisible = _slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? old) && old.IsVisible;
+                    //RemoveFilterSlot(cachedAttr);
+                    //AddFilterSlot(cachedAttr, wasVisible);
+                }
+
+                if (dbAttr.IsMandatory != cachedAttr.IsMandatory)
+                {
+                    cachedAttr.IsMandatory = dbAttr.IsMandatory;
+                    List<BuildNode> nodesToSave = new List<BuildNode>();
+
+                    // Children can override parent, but don't have to, so only roots are updated for mandatory toggle
+                    if (dbAttr.IsMandatory)
+                    {
+                        foreach (BuildNode rootNode in _buildsByPlayerRace.SelectMany(r => r.Value))
+                        {
+                            if (!rootNode.StaticAttributes.Any(a => a.Definition.Id == dbAttr.Id))
+                            {
+                                rootNode.StaticAttributes.Add(cachedAttr.DefaultValue.Clone());
+                                nodesToSave.Add(rootNode);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        foreach (BuildNode rootNode in _buildsByPlayerRace.SelectMany(r => r.Value))
+                        {
+                            AttributeValue? value = rootNode.StaticAttributes.FirstOrDefault(v => v.Definition.Id == cachedAttr.Id);
+                            if (value != null && !value.HasValue)
+                            {
+                                rootNode.StaticAttributes.Remove(value);
+                                nodesToSave.Add(rootNode);
+                            }
+                        }
+                    }
+                    _buildRepo.SaveStaticAttributes(nodesToSave, dbAttr.Id);
+                }
+
+                SyncValueOptions(cachedAttr, dbAttr.ValueOptions);
+
+                if (dbAttr.DefaultValue.HasValue)
+                    cachedAttr.DefaultValue.ApplyStoredValue(dbAttr.DefaultValue.Serialize()!);
+                else
+                    cachedAttr.DefaultValue.Clear();
+            }
+
+            //sync new attributes
+            HashSet<int> knownIds = AllAttributes.Select(a => a.Id).ToHashSet();
+            foreach (AttributeDefinition dbAttr in dbAttributes.Where(a => !knownIds.Contains(a.Id)))
+            {
+                AllAttributes.Add(dbAttr);
+
+                if (dbAttr.IsMandatory)
+                {
+                    // Defined for every map at once, and unset on all of them until someone fills it in.
+                    List<BuildNode> nodesToSave = new List<BuildNode>();
+                    // Children can override parent, but don't have to, so only roots are updated for mandatory toggle
+                    foreach (BuildNode rootNode in _buildsByPlayerRace.SelectMany(r => r.Value))
+                    {
+                        rootNode.StaticAttributes.Add(dbAttr.DefaultValue.Clone());
+                        nodesToSave.Add(rootNode);
+                    }
+                    _buildRepo.SaveStaticAttributes(nodesToSave, dbAttr.Id);
+                }
+
+                //TODO:
+                //AddFilterSlot(dbAttr);
+            }
+
+            //TODO:
+            //ApplyFilters();
+        }
+        private void SyncValueOptions(AttributeDefinition attribute, ObservableCollection<string> latest)
+        {
+            bool changed = false;
+
+            //remove deleted options
+            foreach (string stale in attribute.ValueOptions.Where(o => !latest.Contains(o)).ToList())
+            {
+                attribute.ValueOptions.Remove(stale);
+                changed = true;
+            }
+
+            //sync new options
+            foreach (string value in latest.Where(o => !attribute.ValueOptions.Contains(o)))
+            {
+                attribute.ValueOptions.Add(value);
+                changed = true;
+            }
+
+            if (!changed)
+                return;
+
+            //TODO:
+            //if (_slotByAttribute.TryGetValue(attribute, out FilterSlotViewModel? slot) &&
+            //    slot is CheckboxFilterSlotViewModel<string> stringSlot)
+            //{
+            //    HashSet<string> previouslyChecked = stringSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
+            //    stringSlot.ReplaceOptions(attribute.ValueOptions
+            //        .Select(o => new CheckboxFilterOptionViewModel<string>(o, o) { IsChecked = previouslyChecked.Contains(o) }));
+            //}
+        }
+
+        private void RemoveAttributeRecursively(BuildNode node, AttributeDefinition attribute)
+        {
+            AttributeValue? value = node.StaticAttributes.FirstOrDefault(v => v.Definition.Id == attribute.Id);
+            if (value != null)
+                node.StaticAttributes.Remove(value);
+            foreach (var child in node.Children)
+                RemoveAttributeRecursively(child, attribute);
+        }
+
         partial void OnSelectedBuildChanging(BuildNode? value)
         {
             if (SelectedBuild != null)
@@ -140,14 +309,28 @@ namespace StatCraft.ViewModels.Windows
                 WireNode(value);
         }
 
+        partial void OnSelectedBuildChanged(BuildNode? value)
+        {
+            OnPropertyChanged(nameof(UnusedAttributes));
+            OnPropertyChanged(nameof(HasUnusedAttributes));
+        }
+
+        private void RaiseUnusedAttributesChanged(object? sender, EventArgs e)
+        {
+            OnPropertyChanged(nameof(UnusedAttributes));
+            OnPropertyChanged(nameof(HasUnusedAttributes));
+        }
+
         private void WireNode(BuildNode node)
         {
+            node.StaticAttributes.CollectionChanged += RaiseUnusedAttributesChanged;
             node.PropertyChanged += NodePropertyChanged;
             foreach (AttributeDefinition attr in node.Details)
                 WireDetail(attr);
         }
         private void UnWireNode(BuildNode node)
         {
+            node.StaticAttributes.CollectionChanged -= RaiseUnusedAttributesChanged;
             node.PropertyChanged -= NodePropertyChanged;
             foreach (AttributeDefinition attr in node.Details)
                 UnWireDetail(attr);
