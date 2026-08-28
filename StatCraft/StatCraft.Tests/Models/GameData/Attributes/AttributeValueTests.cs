@@ -17,7 +17,7 @@ public class AttributeValueTests
     [Fact]
     public void Clear_Nullable_ResetsEveryFieldToNull()
     {
-        AttributeDefinition definition = new(AttributeScope.Map) { IsNullable = true };
+        AttributeDefinition definition = new(AttributeScope.Map);
         AttributeValue value = definition.DefaultValue;
         value.NumericValue = 5m;
         value.BoolValue = true;
@@ -40,7 +40,7 @@ public class AttributeValueTests
     [Fact]
     public void Clear_NotNullable_ResetsNumericAndPercentToZeroNotNull()
     {
-        AttributeDefinition definition = new(AttributeScope.BuildDetail) { IsNullable = false };
+        AttributeDefinition definition = new(AttributeScope.BuildDetail);
         AttributeValue value = definition.DefaultValue;
         value.NumericValue = 5m;
         value.PercentValue = 50m;
@@ -54,7 +54,7 @@ public class AttributeValueTests
     [Fact]
     public void Clear_NotNullable_ResetsBoolToFalseNotNull()
     {
-        AttributeDefinition definition = new(AttributeScope.BuildDetail) { IsNullable = false };
+        AttributeDefinition definition = new(AttributeScope.BuildDetail);
         AttributeValue value = definition.DefaultValue;
         value.BoolValue = true;
 
@@ -66,7 +66,7 @@ public class AttributeValueTests
     [Fact]
     public void Clear_NotNullable_SelectedValue_FallsBackToFirstOption()
     {
-        AttributeDefinition definition = new(AttributeScope.BuildDetail) { IsNullable = false, Type = AttributeType.Values };
+        AttributeDefinition definition = new(AttributeScope.BuildDetail) { Type = AttributeType.Values };
         definition.ValueOptions.Add("Zealot");
         definition.ValueOptions.Add("Stalker");
         AttributeValue value = definition.DefaultValue;
@@ -80,7 +80,7 @@ public class AttributeValueTests
     [Fact]
     public void Clear_NotNullable_SelectedValue_NullWhenNoOptionsYet()
     {
-        AttributeDefinition definition = new(AttributeScope.BuildDetail) { IsNullable = false, Type = AttributeType.Values };
+        AttributeDefinition definition = new(AttributeScope.BuildDetail) { Type = AttributeType.Values };
         AttributeValue value = definition.DefaultValue;
 
         value.ClearCommand.Execute(null);
@@ -96,7 +96,7 @@ public class AttributeValueTests
     [InlineData(AttributeType.Percent)]
     public void Clear_NotNullable_HasValueIsTrueAfterward(AttributeType type)
     {
-        AttributeDefinition definition = new(AttributeScope.BuildDetail) { IsNullable = false, Type = type };
+        AttributeDefinition definition = new(AttributeScope.BuildDetail) { Type = type };
         AttributeValue value = definition.DefaultValue;
 
         value.ClearCommand.Execute(null);

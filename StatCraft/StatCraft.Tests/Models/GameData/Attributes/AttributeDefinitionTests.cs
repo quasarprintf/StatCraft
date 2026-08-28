@@ -100,7 +100,7 @@ public class AttributeDefinitionTests
     [Fact]
     public void AddOption_NotNullable_FirstOption_BecomesTheDefaultValue()
     {
-        AttributeDefinition attribute = new(AttributeScope.BuildDetail) { IsNullable = false, NewOptionText = "Zealot" };
+        AttributeDefinition attribute = new(AttributeScope.BuildDetail) { NewOptionText = "Zealot" };
 
         attribute.AddOptionCommand.Execute(null);
 
@@ -112,7 +112,7 @@ public class AttributeDefinitionTests
     [Fact]
     public void AddOption_NotNullable_SecondOption_DoesNotOverrideTheDefaultValue()
     {
-        AttributeDefinition attribute = new(AttributeScope.BuildDetail) { IsNullable = false, NewOptionText = "Zealot" };
+        AttributeDefinition attribute = new(AttributeScope.BuildDetail) { NewOptionText = "Zealot" };
         attribute.AddOptionCommand.Execute(null);
         attribute.DefaultValue.SelectedValue = "Zealot"; // simulates whatever the user picked
 
@@ -125,7 +125,7 @@ public class AttributeDefinitionTests
     [Fact]
     public void AddOption_Nullable_FirstOption_DoesNotSetTheDefaultValue()
     {
-        AttributeDefinition attribute = new(AttributeScope.Map) { IsNullable = true, NewOptionText = "Zealot" };
+        AttributeDefinition attribute = new(AttributeScope.Map) { NewOptionText = "Zealot" };
 
         attribute.AddOptionCommand.Execute(null);
 
@@ -141,7 +141,7 @@ public class AttributeDefinitionTests
     [Fact]
     public void RemoveOption_NotNullable_SelectedValueAlreadyNulledByTheBoundComboBox_FallsBackToFirstRemainingOption()
     {
-        AttributeDefinition attribute = new(AttributeScope.BuildDetail) { IsNullable = false };
+        AttributeDefinition attribute = new(AttributeScope.BuildDetail);
         attribute.ValueOptions.Add("A");
         attribute.ValueOptions.Add("B");
         attribute.DefaultValue.SelectedValue = null; // what a bound ComboBox would already have done
@@ -157,7 +157,7 @@ public class AttributeDefinitionTests
     [Fact]
     public void RemoveOption_NotNullable_NoBoundComboBox_StillFallsBackViaTheEqualityCheck()
     {
-        AttributeDefinition attribute = new(AttributeScope.BuildDetail) { IsNullable = false };
+        AttributeDefinition attribute = new(AttributeScope.BuildDetail);
         attribute.ValueOptions.Add("A");
         attribute.ValueOptions.Add("B");
         attribute.DefaultValue.SelectedValue = "A";
@@ -173,7 +173,7 @@ public class AttributeDefinitionTests
     [Fact]
     public void RemoveOption_NotNullable_RemovingTheLastOption_LeavesSelectedValueNull()
     {
-        AttributeDefinition attribute = new(AttributeScope.BuildDetail) { IsNullable = false };
+        AttributeDefinition attribute = new(AttributeScope.BuildDetail);
         attribute.ValueOptions.Add("A");
         attribute.DefaultValue.SelectedValue = null; // what a bound ComboBox would already have done
 
