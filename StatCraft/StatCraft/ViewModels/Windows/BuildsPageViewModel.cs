@@ -353,6 +353,7 @@ namespace StatCraft.ViewModels.Windows
         {
             if (SelectedBuild == null) return;
             _buildRepo.DeleteAttribute(attribute.Definition.Id);
+            UnWireAttribute(attribute);
             SelectedBuild.Details.Remove(attribute);
         }
     }
