@@ -2,7 +2,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
              xmlns:Attr="using:StatCraft.Models.GameData.Attributes"
-             xmlns:conv="using:StatCraft.Views.Converters"
+             xmlns:conv="using:StatCraft.Services.Converters"
              x:Class="StatCraft.Views.Windows.MapsComponents.MapDetailsPanel"
              x:DataType="vmw:MapsPageViewModel"
              Name="mapDetails">
