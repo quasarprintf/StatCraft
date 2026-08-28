@@ -77,6 +77,9 @@ namespace StatCraft.Models.GameData.Attributes
         {
             ValueOptions.Remove(option);
             CollectionChangeEventArgs eventArgs = new CollectionChangeEventArgs(CollectionChangeAction.Remove, option);
+            if (!IsNullable && ValueOptions.Count > 0 && (DefaultValue.SelectedValue == null || DefaultValue.SelectedValue == option))
+                DefaultValue.SelectedValue = ValueOptions[0];
+
             ValueOptionsChanged?.Invoke(this, eventArgs);
         }
     }
