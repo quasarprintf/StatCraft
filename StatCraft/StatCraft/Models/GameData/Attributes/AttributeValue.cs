@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System;
 using System.ComponentModel;
+using System.Linq;
 
 namespace StatCraft.Models.GameData.Attributes
 {
@@ -63,10 +64,20 @@ namespace StatCraft.Models.GameData.Attributes
         [RelayCommand]
         public void Clear()
         {
-            NumericValue = null;
-            BoolValue = null;
-            PercentValue = null;
-            SelectedValue = null;
+            if (Definition.IsNullable)
+            {
+                NumericValue = null;
+                BoolValue = null;
+                PercentValue = null;
+                SelectedValue = null;
+            }
+            else
+            {
+                NumericValue = default;
+                BoolValue = default;
+                PercentValue = default;
+                SelectedValue = Definition.ValueOptions.FirstOrDefault();
+            }
         }
 
         public AttributeValue Clone()

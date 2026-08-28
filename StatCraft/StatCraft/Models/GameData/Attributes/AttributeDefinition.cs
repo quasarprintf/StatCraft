@@ -26,6 +26,7 @@ namespace StatCraft.Models.GameData.Attributes
 
         public AttributeScope Scope { get; private set; }
         [ObservableProperty] private bool _isMandatory;
+        public bool IsNullable { get; set; } = true;
 
         // Options for a Values-type attribute
         public ObservableCollection<string> ValueOptions { get; protected set; } = [];
@@ -64,6 +65,9 @@ namespace StatCraft.Models.GameData.Attributes
             ValueOptions.Add(NewOptionText.Trim());
             CollectionChangeEventArgs eventArgs = new CollectionChangeEventArgs(CollectionChangeAction.Add, NewOptionText);
             NewOptionText = string.Empty;
+
+            if (!IsNullable && ValueOptions.Count == 1)
+                DefaultValue.SelectedValue = ValueOptions[0];
 
             ValueOptionsChanged?.Invoke(this, eventArgs);
         }

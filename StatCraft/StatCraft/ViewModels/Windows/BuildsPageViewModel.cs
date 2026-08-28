@@ -339,9 +339,12 @@ namespace StatCraft.ViewModels.Windows
         public void AddAttribute()
         {
             if (SelectedBuild == null) return;
-            AttributeDefinition definition = new AttributeDefinition(AttributeScope.BuildDetail);
+            AttributeDefinition definition = new AttributeDefinition(AttributeScope.BuildDetail)
+            {
+                IsNullable = false
+            };
             AttributeValue attr = definition.DefaultValue;
-            attr.ApplyStoredValue("0");
+            attr.Clear();
             _buildRepo.InsertAttribute(attr, SelectedBuild.Id, SelectedBuild.Details.Count);
             WireAttribute(definition);
             SelectedBuild.Details.Add(definition);
