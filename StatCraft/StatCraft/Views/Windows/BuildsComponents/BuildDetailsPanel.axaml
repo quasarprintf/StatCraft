@@ -65,7 +65,7 @@
                                                 <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,2">
                                                     <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center"/>
                                                     <Button Grid.Column="1" Content="✕" Padding="4,1"
-                                                            Command="{Binding $parent[ItemsControl].((Attr:AttributeValue)DataContext).Definition.RemoveOptionCommand}"
+                                                            Command="{Binding $parent[ItemsControl].((Attr:AttributeDefinition)DataContext).RemoveOptionCommand}"
                                                             CommandParameter="{Binding}"/>
                                                 </Grid>
                                             </DataTemplate>
