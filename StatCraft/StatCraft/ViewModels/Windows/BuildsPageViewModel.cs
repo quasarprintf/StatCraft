@@ -144,13 +144,13 @@ namespace StatCraft.ViewModels.Windows
         {
             node.PropertyChanged += NodePropertyChanged;
             foreach (AttributeDefinition attr in node.Details)
-                WireAttribute(attr);
+                WireDetail(attr);
         }
         private void UnWireNode(BuildNode node)
         {
             node.PropertyChanged -= NodePropertyChanged;
             foreach (AttributeDefinition attr in node.Details)
-                UnWireAttribute(attr);
+                UnWireDetail(attr);
         }
 
         private void NodePropertyChanged(object? s, PropertyChangedEventArgs e)
@@ -160,26 +160,26 @@ namespace StatCraft.ViewModels.Windows
                     _buildRepo.UpdateBuild(n);
         }
 
-        private void WireAttribute(AttributeDefinition attr)
+        private void WireDetail(AttributeDefinition attr)
         {
-            attr.DefinitionChanged += DefinitionPropertyChanged;
-            attr.DefaultValue.ValueChanged += AttributePropertyChanged;
-            attr.ValueOptionsChanged += DefinitionOptionsChanged;
+            attr.DefinitionChanged += DetailDefinitionPropertyChanged;
+            attr.DefaultValue.ValueChanged += DetailPropertyChanged;
+            attr.ValueOptionsChanged += DetailDefinitionOptionsChanged;
         }
-        private void UnWireAttribute(AttributeDefinition attr)
+        private void UnWireDetail(AttributeDefinition attr)
         {
-            attr.DefinitionChanged -= DefinitionPropertyChanged;
-            attr.DefaultValue.ValueChanged -= AttributePropertyChanged;
-            attr.ValueOptionsChanged -= DefinitionOptionsChanged;
+            attr.DefinitionChanged -= DetailDefinitionPropertyChanged;
+            attr.DefaultValue.ValueChanged -= DetailPropertyChanged;
+            attr.ValueOptionsChanged -= DetailDefinitionOptionsChanged;
         }
-        private void DefinitionPropertyChanged(object? s, PropertyChangedEventArgs e)
+        private void DetailDefinitionPropertyChanged(object? s, PropertyChangedEventArgs e)
         {
             if (s is not AttributeDefinition definition)
                 return;
             if (e.PropertyName == nameof(AttributeDefinition.Name) || e.PropertyName == nameof(AttributeDefinition.Type))
                     _buildRepo.UpdateAttribute(definition.DefaultValue);
         }
-        private void AttributePropertyChanged(object? s, PropertyChangedEventArgs e)
+        private void DetailPropertyChanged(object? s, PropertyChangedEventArgs e)
         {
             if (s is not AttributeValue attr)
                 return;
@@ -187,7 +187,7 @@ namespace StatCraft.ViewModels.Windows
                     || e.PropertyName == nameof(AttributeValue.PercentValue) || e.PropertyName == nameof(AttributeValue.SelectedValue))
                     _buildRepo.UpdateAttribute(attr);
         }
-        private void DefinitionOptionsChanged(object? s, CollectionChangeEventArgs e)
+        private void DetailDefinitionOptionsChanged(object? s, CollectionChangeEventArgs e)
         {
             if (s is not AttributeDefinition definition)
                 return;
@@ -336,22 +336,22 @@ namespace StatCraft.ViewModels.Windows
         }
 
         [RelayCommand]
-        public void AddAttribute()
+        public void AddDetail()
         {
             if (SelectedBuild == null) return;
             AttributeDefinition definition = new AttributeDefinition(AttributeScope.BuildDetail);
             AttributeValue attr = definition.DefaultValue;
             _buildRepo.InsertAttribute(attr, SelectedBuild.Id, SelectedBuild.Details.Count);
-            WireAttribute(definition);
+            WireDetail(definition);
             SelectedBuild.Details.Add(definition);
         }
 
         [RelayCommand]
-        public void RemoveAttribute(AttributeDefinition attribute)
+        public void RemoveDetail(AttributeDefinition attribute)
         {
             if (SelectedBuild == null) return;
             _buildRepo.DeleteAttribute(attribute.Id);
-            UnWireAttribute(attribute);
+            UnWireDetail(attribute);
             SelectedBuild.Details.Remove(attribute);
         }
     }
