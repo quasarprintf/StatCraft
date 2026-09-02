@@ -357,18 +357,21 @@ namespace StatCraft.ViewModels.Windows
             if (SelectedBuild == null)
                 return;
             if (e.OldItems != null)
+            {
+                foreach (AttributeValue value in e.OldItems.OfType<AttributeValue>())
                 {
-                    foreach (AttributeValue value in e.OldItems.OfType<AttributeValue>())
-                        _buildRepo.SaveStaticAttribute(SelectedBuild.Id, value.Definition.Id, null);
+                    UnWireStaticValue(SelectedBuild, value);
+                    _buildRepo.SaveStaticAttribute(SelectedBuild.Id, value.Definition.Id, null);
                 }
-                if (e.NewItems != null)
+            }
+            if (e.NewItems != null)
+            {
+                foreach (AttributeValue value in e.NewItems.OfType<AttributeValue>())
                 {
-                    foreach (AttributeValue value in e.NewItems.OfType<AttributeValue>())
-                    {
-                        WireStaticValue(SelectedBuild, value);
-                        _buildRepo.SaveStaticAttribute(SelectedBuild.Id, value.Definition.Id, value.Serialize());
-                    }
+                    WireStaticValue(SelectedBuild, value);
+                    _buildRepo.SaveStaticAttribute(SelectedBuild.Id, value.Definition.Id, value.Serialize());
                 }
+            }
         }
         private void UnWireStaticValue(BuildNode map, AttributeValue value)
         {

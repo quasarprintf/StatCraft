@@ -284,18 +284,21 @@ namespace StatCraft.ViewModels.Windows
             if (SelectedMap == null)
                 return;
             if (e.OldItems != null)
+            {
+                foreach (AttributeValue value in e.OldItems.OfType<AttributeValue>())
                 {
-                    foreach (AttributeValue value in e.OldItems.OfType<AttributeValue>())
-                        _mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, null);
+                    UnWireValue(SelectedMap, value);
+                    _mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, null);
                 }
-                if (e.NewItems != null)
+            }
+            if (e.NewItems != null)
+            {
+                foreach (AttributeValue value in e.NewItems.OfType<AttributeValue>())
                 {
-                    foreach (AttributeValue value in e.NewItems.OfType<AttributeValue>())
-                    {
-                        WireValue(SelectedMap, value);
-                        _mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, value.Serialize());
-                    }
+                    WireValue(SelectedMap, value);
+                    _mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, value.Serialize());
                 }
+            }
         }
 
         private void UnWireValue(Map map, AttributeValue value)
