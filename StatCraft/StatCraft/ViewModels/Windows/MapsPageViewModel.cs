@@ -257,21 +257,19 @@ namespace StatCraft.ViewModels.Windows
         }
         private void UnWireMap(Map map)
         {
-            map.AttributeValues.CollectionChanged -= RaiseUnusedAttributesChanged;
-            map.PropertyChanged -= MapPropertyChanged;
-
             foreach (AttributeValue value in map.AttributeValues)
                 UnWireValue(map, value);
             map.AttributeValues.CollectionChanged -= MapAttributeValuesChanged;
+            map.AttributeValues.CollectionChanged -= RaiseUnusedAttributesChanged;
+            map.PropertyChanged -= MapPropertyChanged;
         }
         private void WireMap(Map map)
         {
-            map.AttributeValues.CollectionChanged += RaiseUnusedAttributesChanged;
-            map.PropertyChanged += MapPropertyChanged;
-
             foreach (AttributeValue value in map.AttributeValues)
                 WireValue(map, value);
             map.AttributeValues.CollectionChanged += MapAttributeValuesChanged;
+            map.AttributeValues.CollectionChanged += RaiseUnusedAttributesChanged;
+            map.PropertyChanged += MapPropertyChanged;
         }
         private void MapPropertyChanged(object? s, PropertyChangedEventArgs e)
         {

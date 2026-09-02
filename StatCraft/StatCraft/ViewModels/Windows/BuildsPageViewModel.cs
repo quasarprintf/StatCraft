@@ -328,16 +328,22 @@ namespace StatCraft.ViewModels.Windows
         private void WireNode(BuildNode node)
         {
             node.StaticAttributes.CollectionChanged += RaiseUnusedAttributesChanged;
+            node.StaticAttributes.CollectionChanged += StaticAttributeValuesChanged;
             node.PropertyChanged += NodePropertyChanged;
             foreach (AttributeDefinition attr in node.Details)
                 WireDetail(attr);
+            foreach (AttributeValue attr in node.StaticAttributes)
+                WireStaticValue(node, attr);
         }
         private void UnWireNode(BuildNode node)
         {
             node.StaticAttributes.CollectionChanged -= RaiseUnusedAttributesChanged;
+            node.StaticAttributes.CollectionChanged -= StaticAttributeValuesChanged;
             node.PropertyChanged -= NodePropertyChanged;
             foreach (AttributeDefinition attr in node.Details)
                 UnWireDetail(attr);
+            foreach (AttributeValue attr in node.StaticAttributes)
+                UnWireStaticValue(node, attr);
         }
 
         private void NodePropertyChanged(object? s, PropertyChangedEventArgs e)
@@ -345,6 +351,47 @@ namespace StatCraft.ViewModels.Windows
             if (s is BuildNode n && (e.PropertyName == nameof(BuildNode.Name) || e.PropertyName == nameof(BuildNode.Description)
                     || e.PropertyName == nameof(BuildNode.Matchups)))
                     _buildRepo.UpdateBuild(n);
+        }
+        private void StaticAttributeValuesChanged(object? s, NotifyCollectionChangedEventArgs e)
+        {
+            if (SelectedBuild == null)
+                return;
+            if (e.OldItems != null)
+                {
+                    foreach (AttributeValue value in e.OldItems.OfType<AttributeValue>())
+                        _buildRepo.SaveStaticAttribute(SelectedBuild.Id, value.Definition.Id, null);
+                }
+                if (e.NewItems != null)
+                {
+                    foreach (AttributeValue value in e.NewItems.OfType<AttributeValue>())
+                    {
+                        WireStaticValue(SelectedBuild, value);
+                        _buildRepo.SaveStaticAttribute(SelectedBuild.Id, value.Definition.Id, value.Serialize());
+                    }
+                }
+        }
+        private void UnWireStaticValue(BuildNode map, AttributeValue value)
+        {
+            value.PropertyChanged -= ValuePropertyChanged;
+        }
+        private void WireStaticValue(BuildNode map, AttributeValue value)
+        {
+            value.PropertyChanged += ValuePropertyChanged;
+        }
+        private void ValuePropertyChanged(object? s, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(AttributeValue.HasValue))
+                return;
+            if (SelectedBuild == null)
+                return;
+            if (s is not AttributeValue value)
+                return;
+
+            // Serialize() returns null when unset, and SaveValue deletes the row for null — that
+            // absence is what "no value" actually is in the database.
+            _buildRepo.SaveStaticAttribute(SelectedBuild.Id, value.Definition.Id, value.Serialize());
+            //TODO:
+            //ApplyFilters();
         }
 
         private void WireDetail(AttributeDefinition attr)

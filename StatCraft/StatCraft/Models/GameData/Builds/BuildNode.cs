@@ -1,9 +1,10 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using StatCraft.Models.GameData.Attributes;
+using StatCraft.Models.GameData.Race;
 using System;
 using System.Collections.ObjectModel;
 using System.Linq;
-using StatCraft.Models.GameData.Race;
-using StatCraft.Models.GameData.Attributes;
 
 namespace StatCraft.Models.GameData.Builds
 {
@@ -37,6 +38,18 @@ namespace StatCraft.Models.GameData.Builds
         public BuildNode()
         {
             Children.CollectionChanged += (s,e) => OnPropertyChanged(nameof(HasChildren));
+        }
+
+        [RelayCommand]
+        public void AddAttribute(AttributeDefinition definition) 
+        {
+            StaticAttributes.Add(definition.DefaultValue.Clone());
+        }
+
+        [RelayCommand]
+        public void RemoveAttribute(AttributeValue value)
+        {
+            StaticAttributes.Remove(value);
         }
     }
 }

@@ -2,9 +2,11 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
              xmlns:race="using:StatCraft.Models.GameData.Race"
+             xmlns:conv="using:StatCraft.Services.Converters"
              xmlns:Attr="using:StatCraft.Models.GameData.Attributes"
              x:Class="StatCraft.Views.Windows.BuildsComponents.BuildDetailsPanel"
-             x:DataType="vmw:BuildsPageViewModel">
+             x:DataType="vmw:BuildsPageViewModel"
+             Name="buildDetails">
     <Grid ColumnDefinitions="*,4,*">
 
         <!-- Left: Name + attributes -->
@@ -22,7 +24,7 @@
                             CommandParameter="{x:Static race:Race.Protoss}" Classes.active="{Binding SelectedBuild.VsP}"/>
                 </StackPanel>
                 <DockPanel Margin="0,8,0,0">
-                    <TextBlock Text="Attributes" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                    <TextBlock Text="Details" FontWeight="SemiBold" VerticalAlignment="Center"/>
                     <Button Content="+" DockPanel.Dock="Right"
                             Command="{Binding AddDetailCommand}"
                             Padding="6,2" HorizontalAlignment="Right"/>
@@ -93,8 +95,77 @@
 
         <GridSplitter Grid.Column="1" ResizeDirection="Columns"/>
 
-        <!-- Right: Description -->
+        <!-- Right: static attributes and description -->
         <DockPanel Grid.Column="2" Margin="12">
+            <Button x:Name="AddAttributeButton" DockPanel.Dock="Top" Grid.Column="1" Content="Add attribute" Padding="6,2" VerticalAlignment="Center"
+                Opacity="{Binding HasUnusedAttributes, Converter={x:Static conv:BoolToOpacityConverter.Instance}}"
+                IsHitTestVisible="{Binding HasUnusedAttributes}">
+                <Button.Flyout>
+                    <Flyout Placement="BottomEdgeAlignedRight">
+                        <ItemsControl ItemsSource="{Binding UnusedAttributes}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Button Content="{Binding  Name}"
+                                            Command="{Binding ((vmw:BuildsPageViewModel)DataContext).SelectedBuild.AddAttributeCommand, ElementName=buildDetails}"
+                                            CommandParameter="{Binding .}"
+                                            Click="OnAddAttributeOptionClicked"/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Flyout>
+                </Button.Flyout>
+            </Button>
+
+            <ScrollViewer DockPanel.Dock="Top">
+                <ItemsControl ItemsSource="{Binding SelectedBuild.StaticAttributes}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="Attr:AttributeValue">
+                            <StackPanel Margin="0,0,0,8">
+                                <!-- Definition name, read-only here — name/type/options are only editable
+                                     from the Attributes tab; this page only edits the per-build value below. -->
+                                <TextBlock Text="{Binding Definition.Name}" FontWeight="SemiBold"/>
+
+                                <!-- This build's value. Every editor is nullable, and the clear button puts it
+                                     back to unset — which is stored as the absence of a row, not as 0/false. -->
+                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0" IsVisible="{Binding !Definition.IsValues}">
+                                    <TextBlock Grid.Column="0" Text="Value:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <NumericUpDown Grid.Column="1" Value="{Binding NumericValue}"
+                                                   IsVisible="{Binding Definition.IsNumeric}"
+                                                   FormatString="0.##" HorizontalAlignment="Stretch"/>
+                                    <CheckBox Grid.Column="1" IsChecked="{Binding BoolValue}" IsThreeState="True"
+                                              IsVisible="{Binding Definition.IsBool}"/>
+                                    <NumericUpDown Grid.Column="1" Value="{Binding PercentValue}"
+                                                   IsVisible="{Binding Definition.IsPercent}"
+                                                   Minimum="0" Maximum="100" FormatString="0.##'%'"
+                                                   HorizontalAlignment="Stretch"/>
+
+                                    <Button Grid.Column="2" Content="x" IsVisible="{Binding !Definition.IsMandatory}" Padding="6,2" Margin="4,0,28,0"
+                                            Command="{Binding ((vmw:BuildsPageViewModel)DataContext).SelectedBuild.RemoveAttributeCommand, ElementName=buildDetails}"
+                                            CommandParameter="{Binding .}" />
+                                    <Button Grid.Column="2" Content="Clear" IsVisible="{Binding Definition.IsMandatory}" Padding="6,2" Margin="4,0,0,0"
+                                            Command="{Binding ClearCommand}"/>
+                                </Grid>
+
+                                <!-- Values type: picking this build's value from the shared option list — the
+                                     option list itself is only editable from the Attributes tab. -->
+                                <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0" IsVisible="{Binding Definition.IsValues}">
+                                    <TextBlock Grid.Column="0" Text="Value:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                    <ComboBox Grid.Column="1" ItemsSource="{Binding Definition.ValueOptions}"
+                                              SelectedItem="{Binding SelectedValue}"
+                                              HorizontalAlignment="Stretch"/>
+                                    <Button Grid.Column="2" Content="x" IsVisible="{Binding !Definition.IsMandatory}" Padding="6,2" Margin="4,0,28,0"
+                                            Command="{Binding ((vmw:BuildsPageViewModel)DataContext).SelectedBuild.RemoveAttributeCommand, ElementName=buildDetails}"
+                                            CommandParameter="{Binding .}" />
+                                    <Button Grid.Column="2" Content="Clear" IsVisible="{Binding Definition.IsMandatory}" Padding="6,2" Margin="4,0,0,0"
+                                            Command="{Binding ClearCommand}"/>
+                                </Grid>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+
             <TextBlock DockPanel.Dock="Top" Text="Description" FontWeight="SemiBold" Margin="0,0,0,6"/>
             <TextBox Text="{Binding SelectedBuild.Description}" AcceptsReturn="True" TextWrapping="Wrap"/>
         </DockPanel>
