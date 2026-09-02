@@ -13,73 +13,26 @@ namespace StatCraft.Services.DatabaseRepository
 {
     public class BuildRepository : SqliteRepository
     {
-        // Raised after any build/attribute/value-option is inserted, updated, or deleted, so other
-        // parts of the app (e.g. BuildPathPicker's menu) can refresh their view of the build tree.
+        // Raised after any build/attribute/value-option is inserted, updated, or deleted
         public event Action? BuildsChanged;
 
         public BuildRepository(string dbPath, ILogger? logger = null) : base(dbPath, logger)
         {
         }
 
-        // All builds for a player race, regardless of which opponent races they support — used by the
-        // Builds tab, which needs to show/edit every build, not just ones matching the current filter.
-        // attributes populates each root's StaticAttributes (see LoadTree) — omit it for callers that
-        // don't need static attributes at all, matching MapRepository.GetAllMaps' shape.
-        public List<BuildNode> GetBuildsForPlayerRace(Race playerRace, IReadOnlyCollection<AttributeDefinition>? attributes = null) =>
-            LoadTree("PlayerRace = @playerRace", new { playerRace }, attributes ?? []);
-
-        // Only builds that support the given opponent race — used by the Data tab's build picker, which
-        // only ever needs the exact-matchup subtree for a played game.
-        public List<BuildNode> GetBuildsForMatchup(Race playerRace, Matchups matchups, IReadOnlyCollection<AttributeDefinition>? attributes = null) =>
-            LoadTree("PlayerRace = @playerRace AND (Matchups & @flag) != 0", new { playerRace, flag = matchups }, attributes ?? []);
-
-        // Every build across every player race — used by the Data tab's build filter, which (unlike the
-        // Builds tab or the per-game build picker) isn't scoped to a single race or matchup.
-        public List<BuildNode> GetAllBuilds(IReadOnlyCollection<AttributeDefinition>? attributes = null) =>
-            LoadTree("1=1", new { }, attributes ?? []);
-
-        private static Matchups ToMatchupFlag(Race race) => race switch
+        public List<BuildNode> GetBuildsForPlayerRace(Race playerRace, IReadOnlyCollection<AttributeDefinition>? attributes = null)
         {
-            Race.Zerg => Matchups.VsZ,
-            Race.Terran => Matchups.VsT,
-            Race.Protoss => Matchups.VsP,
-            _ => Matchups.None,
-        };
-
-        // Plain classes with settable properties, not positional records — Dapper's constructor-based
-        // materialization requires constructor parameter types to exactly match the raw column types,
-        // which the property-setter path used for a parameterless-constructible type doesn't require.
-        private class BuildNodeRow
-        {
-            public long Id { get; set; }
-            public long? ParentId { get; set; }
-            public string Name { get; set; } = "";
-            public string Description { get; set; } = "";
-            public Race PlayerRace { get; set; }
-            public Matchups Matchups { get; set; }
+            return LoadTree("PlayerRace = @playerRace", new { playerRace }, attributes ?? []);
         }
 
-        private class BuildDetailsAttributeRow
+        public List<BuildNode> GetBuildsForMatchup(Race playerRace, Matchups matchups, IReadOnlyCollection<AttributeDefinition>? attributes = null)
         {
-            public long Id { get; set; }
-            public long BuildNodeId { get; set; }
-            public string Name { get; set; } = "";
-            public AttributeType Type { get; set; }
-            public string DefaultValue { get; set; } = "";
-            public AttributeScope Scope { get; set; }
+            return LoadTree("PlayerRace = @playerRace AND (Matchups & @flag) != 0", new { playerRace, flag = matchups }, attributes ?? []);
         }
 
-        private class ValueOptionRow
+        public List<BuildNode> GetAllBuilds(IReadOnlyCollection<AttributeDefinition>? attributes = null)
         {
-            public long BuildAttributeId { get; set; }
-            public string Value { get; set; } = "";
-        }
-
-        private class BuildAttributeValueRow
-        {
-            public long BuildId { get; set; }
-            public int AttributeId { get; set; }
-            public string Value { get; set; } = "";
+            return LoadTree("1=1", new { }, attributes ?? []);
         }
 
         private List<BuildNode> LoadTree(string whereClause, object parameters, IReadOnlyCollection<AttributeDefinition> attributes)
@@ -129,8 +82,6 @@ namespace StatCraft.Services.DatabaseRepository
                         attrDict[row.BuildAttributeId].Definition.ValueOptions.Add(row.Value);
                 }
 
-                // Static attributes (globally-defined, Scope.Build) — one stored row per (BuildId,
-                // AttributeId), same shape as MapRepository.GetAllMaps' MapAttributeValues loading.
                 if (attributes.Count > 0)
                 {
                     Dictionary<int, AttributeDefinition> definitionMap = attributes.ToDictionary(d => d.Id);
@@ -158,11 +109,7 @@ namespace StatCraft.Services.DatabaseRepository
                     roots.Add(node);
             }
 
-            // Mandatory static attributes apply to root builds only, not every node in the tree —
-            // children may override a static attribute but aren't required to carry their own row,
-            // matching BuildsPageViewModel.SyncAttributesFromRepository's own "only roots are updated
-            // for mandatory toggle" convention. In-memory only, same as MapRepository.GetAllMaps' own
-            // backfill — nothing is written back until the value is actually touched.
+            // Children can override parent, but don't have to, so only roots are updated for new mandatory attributes
             foreach (AttributeDefinition definition in attributes.Where(a => a.IsMandatory))
                 foreach (BuildNode root in roots)
                     if (!root.StaticAttributes.Any(v => v.Definition.Id == definition.Id))
@@ -263,9 +210,8 @@ namespace StatCraft.Services.DatabaseRepository
             BuildsChanged?.Invoke();
         }
 
-        // Batched form of SaveStaticAttribute, for one attribute across many builds at once (e.g.
-        // toggling IsMandatory) — at most two statements and one BuildsChanged instead of one of each per
-        // build. Mirrors MapRepository.SaveValues.
+        // Batched form of SaveStaticAttribute
+        // only raises BuildsChanged once
         public void SaveStaticAttributes(List<BuildNode> builds, int buildAttributeId)
         {
             if (builds.Count == 0)
@@ -300,6 +246,39 @@ namespace StatCraft.Services.DatabaseRepository
             }
 
             BuildsChanged?.Invoke();
+        }
+
+        private class BuildNodeRow
+        {
+            public long Id { get; set; }
+            public long? ParentId { get; set; }
+            public string Name { get; set; } = "";
+            public string Description { get; set; } = "";
+            public Race PlayerRace { get; set; }
+            public Matchups Matchups { get; set; }
+        }
+
+        private class BuildDetailsAttributeRow
+        {
+            public long Id { get; set; }
+            public long BuildNodeId { get; set; }
+            public string Name { get; set; } = "";
+            public AttributeType Type { get; set; }
+            public string DefaultValue { get; set; } = "";
+            public AttributeScope Scope { get; set; }
+        }
+
+        private class ValueOptionRow
+        {
+            public long BuildAttributeId { get; set; }
+            public string Value { get; set; } = "";
+        }
+
+        private class BuildAttributeValueRow
+        {
+            public long BuildId { get; set; }
+            public int AttributeId { get; set; }
+            public string Value { get; set; } = "";
         }
     }
 }
