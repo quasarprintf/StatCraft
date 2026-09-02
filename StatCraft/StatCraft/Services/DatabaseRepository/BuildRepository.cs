@@ -23,17 +23,20 @@ namespace StatCraft.Services.DatabaseRepository
 
         // All builds for a player race, regardless of which opponent races they support — used by the
         // Builds tab, which needs to show/edit every build, not just ones matching the current filter.
-        public List<BuildNode> GetBuildsForPlayerRace(Race playerRace) =>
-            LoadTree("PlayerRace = @playerRace", new { playerRace });
+        // attributes populates each root's StaticAttributes (see LoadTree) — omit it for callers that
+        // don't need static attributes at all, matching MapRepository.GetAllMaps' shape.
+        public List<BuildNode> GetBuildsForPlayerRace(Race playerRace, IReadOnlyCollection<AttributeDefinition>? attributes = null) =>
+            LoadTree("PlayerRace = @playerRace", new { playerRace }, attributes ?? []);
 
         // Only builds that support the given opponent race — used by the Data tab's build picker, which
         // only ever needs the exact-matchup subtree for a played game.
-        public List<BuildNode> GetBuildsForMatchup(Race playerRace, Matchups matchups) =>
-            LoadTree("PlayerRace = @playerRace AND (Matchups & @flag) != 0", new { playerRace, flag = matchups });
+        public List<BuildNode> GetBuildsForMatchup(Race playerRace, Matchups matchups, IReadOnlyCollection<AttributeDefinition>? attributes = null) =>
+            LoadTree("PlayerRace = @playerRace AND (Matchups & @flag) != 0", new { playerRace, flag = matchups }, attributes ?? []);
 
         // Every build across every player race — used by the Data tab's build filter, which (unlike the
         // Builds tab or the per-game build picker) isn't scoped to a single race or matchup.
-        public List<BuildNode> GetAllBuilds() => LoadTree("1=1", new { });
+        public List<BuildNode> GetAllBuilds(IReadOnlyCollection<AttributeDefinition>? attributes = null) =>
+            LoadTree("1=1", new { }, attributes ?? []);
 
         private static Matchups ToMatchupFlag(Race race) => race switch
         {
@@ -72,7 +75,14 @@ namespace StatCraft.Services.DatabaseRepository
             public string Value { get; set; } = "";
         }
 
-        private List<BuildNode> LoadTree(string whereClause, object parameters)
+        private class BuildAttributeValueRow
+        {
+            public long BuildId { get; set; }
+            public int AttributeId { get; set; }
+            public string Value { get; set; } = "";
+        }
+
+        private List<BuildNode> LoadTree(string whereClause, object parameters, IReadOnlyCollection<AttributeDefinition> attributes)
         {
             using SqliteConnection conn = OpenConnection();
 
@@ -118,6 +128,24 @@ namespace StatCraft.Services.DatabaseRepository
                     foreach (ValueOptionRow row in optionRows)
                         attrDict[row.BuildAttributeId].Definition.ValueOptions.Add(row.Value);
                 }
+
+                // Static attributes (globally-defined, Scope.Build) — one stored row per (BuildId,
+                // AttributeId), same shape as MapRepository.GetAllMaps' MapAttributeValues loading.
+                if (attributes.Count > 0)
+                {
+                    Dictionary<int, AttributeDefinition> definitionMap = attributes.ToDictionary(d => d.Id);
+                    List<BuildAttributeValueRow> staticRows = conn.Query<BuildAttributeValueRow>(
+                        $"SELECT BuildId, AttributeId, Value FROM BuildAttributeValues WHERE BuildId IN ({nodeIds})").ToList();
+                    foreach (BuildAttributeValueRow row in staticRows)
+                    {
+                        if (definitionMap.TryGetValue(row.AttributeId, out AttributeDefinition? definition))
+                        {
+                            AttributeValue value = new AttributeValue(definition);
+                            value.ApplyStoredValue(row.Value);
+                            nodeDict[row.BuildId].StaticAttributes.Add(value);
+                        }
+                    }
+                }
             }
 
             List<BuildNode> roots = new List<BuildNode>();
@@ -129,6 +157,16 @@ namespace StatCraft.Services.DatabaseRepository
                 else
                     roots.Add(node);
             }
+
+            // Mandatory static attributes apply to root builds only, not every node in the tree —
+            // children may override a static attribute but aren't required to carry their own row,
+            // matching BuildsPageViewModel.SyncAttributesFromRepository's own "only roots are updated
+            // for mandatory toggle" convention. In-memory only, same as MapRepository.GetAllMaps' own
+            // backfill — nothing is written back until the value is actually touched.
+            foreach (AttributeDefinition definition in attributes.Where(a => a.IsMandatory))
+                foreach (BuildNode root in roots)
+                    if (!root.StaticAttributes.Any(v => v.Definition.Id == definition.Id))
+                        root.StaticAttributes.Add(definition.DefaultValue.Clone());
 
             return roots;
         }
@@ -203,6 +241,31 @@ namespace StatCraft.Services.DatabaseRepository
             BuildsChanged?.Invoke();
         }
 
+        // A null value deletes the row rather than storing one — absence is how "unset" is represented,
+        // since the stored encoding can't distinguish an empty string from 0/false.
+        public void SaveStaticAttribute(int buildId, int attributeId, string? value)
+        {
+            using SqliteConnection conn = OpenConnection();
+            if (value == null)
+            {
+                conn.Execute("DELETE FROM BuildAttributeValues WHERE BuildId = @buildId AND AttributeId = @attributeId",
+                    new { buildId, attributeId });
+            }
+            else
+            {
+                conn.Execute(@"
+                    INSERT INTO BuildAttributeValues (BuildId, AttributeId, Value)
+                    VALUES (@buildId, @attributeId, @value)
+                    ON CONFLICT(BuildId, AttributeId) DO UPDATE SET Value = @value",
+                    new { buildId, attributeId, value });
+            }
+
+            BuildsChanged?.Invoke();
+        }
+
+        // Batched form of SaveStaticAttribute, for one attribute across many builds at once (e.g.
+        // toggling IsMandatory) — at most two statements and one BuildsChanged instead of one of each per
+        // build. Mirrors MapRepository.SaveValues.
         public void SaveStaticAttributes(List<BuildNode> builds, int buildAttributeId)
         {
             if (builds.Count == 0)
@@ -221,8 +284,20 @@ namespace StatCraft.Services.DatabaseRepository
 
             using SqliteConnection conn = OpenConnection();
 
-            //TODO: delete
-            //TODO: upsert
+            if (deleteBuildIds.Count > 0)
+            {
+                conn.Execute("DELETE FROM BuildAttributeValues WHERE BuildId IN @buildIds AND AttributeId = @buildAttributeId",
+                    new { buildIds = deleteBuildIds, buildAttributeId });
+            }
+            if (setValues.Count > 0)
+            {
+                var rows = setValues.Select(kvp => new { buildId = kvp.Key, buildAttributeId, value = kvp.Value });
+                conn.Execute(@"
+                    INSERT INTO BuildAttributeValues (BuildId, AttributeId, Value)
+                    VALUES (@buildId, @buildAttributeId, @value)
+                    ON CONFLICT(BuildId, AttributeId) DO UPDATE SET Value = @value",
+                    rows);
+            }
 
             BuildsChanged?.Invoke();
         }

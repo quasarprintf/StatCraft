@@ -62,15 +62,19 @@ namespace StatCraft.ViewModels.Windows
             OpponentRaceOptions = Enum.GetValues<Race>()
                 .Select(r => new RaceOption(r))
                 .ToList();
-            LoadPlayerRaceIfNeeded(PlayerRace);
-            RefreshOpponentFilter();
 
+            // Must happen before LoadPlayerRaceIfNeeded below — it passes AllAttributes straight through
+            // to GetBuildsForPlayerRace so the very first load's static attributes (including the
+            // mandatory-on-root backfill) aren't silently skipped by loading against an empty list.
             foreach (AttributeDefinition attribute in _attributeRepo.GetAllAttributes(AttributeScope.Build))
                 AllAttributes.Add(attribute);
             //TODO:
             //foreach (AttributeDefinition attribute in AllAttributes)
                 //AddFilterSlot(attribute);
             //ApplyFilters();
+
+            LoadPlayerRaceIfNeeded(PlayerRace);
+            RefreshOpponentFilter();
 
             _attributeRepo.AttributesChanged += SyncAttributesFromRepository;
 
@@ -145,7 +149,7 @@ namespace StatCraft.ViewModels.Windows
         private void LoadPlayerRaceIfNeeded(Race playerRace)
         {
             if (!_loadedPlayerRaces.Add(playerRace)) return;
-            foreach (BuildNode node in _buildRepo.GetBuildsForPlayerRace(playerRace))
+            foreach (BuildNode node in _buildRepo.GetBuildsForPlayerRace(playerRace, AllAttributes))
             {
                 _buildsByPlayerRace[playerRace].Add(node);
             }

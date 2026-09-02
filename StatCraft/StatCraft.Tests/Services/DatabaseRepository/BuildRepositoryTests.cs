@@ -9,12 +9,15 @@ public class BuildRepositoryTests : IDisposable
 {
     private readonly string _dbPath;
     private readonly BuildRepository _repository;
+    private readonly AttributeRepository _attributeRepo;
 
     public BuildRepositoryTests()
     {
         _dbPath = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid() + ".db");
         _repository = new BuildRepository(_dbPath);
         _repository.Initialize();
+        _attributeRepo = new AttributeRepository(_dbPath);
+        _attributeRepo.Initialize();
     }
 
     [Fact]
@@ -182,6 +185,172 @@ public class BuildRepositoryTests : IDisposable
         _repository.UpdateAttribute(attr);
 
         Assert.Equal(1, raisedCount);
+    }
+
+    // Static attributes (Scope.Build) are only loaded when definitions are passed in — omitting them
+    // (as most tests above do) must leave StaticAttributes empty rather than throwing or guessing.
+    [Fact]
+    public void GetBuildsForPlayerRace_NoAttributesPassed_LeavesStaticAttributesEmpty()
+    {
+        BuildNode node = new() { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
+        _repository.InsertBuild(node, null, 0);
+        AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Elo", IsMandatory = true };
+        _attributeRepo.InsertAttribute(attribute, 0);
+
+        BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss));
+
+        Assert.Empty(loaded.StaticAttributes);
+    }
+
+    [Fact]
+    public void SaveStaticAttribute_ThenGetBuildsForPlayerRace_IncludesStoredValue()
+    {
+        BuildNode node = new() { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
+        _repository.InsertBuild(node, null, 0);
+        AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Elo", Type = AttributeType.Numeric };
+        _attributeRepo.InsertAttribute(attribute, 0);
+
+        AttributeValue toSave = new(attribute) { NumericValue = 1500m };
+        _repository.SaveStaticAttribute(node.Id, attribute.Id, toSave.Serialize());
+
+        BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss, [attribute]));
+        AttributeValue loadedValue = Assert.Single(loaded.StaticAttributes);
+        Assert.Equal(1500m, loadedValue.NumericValue);
+    }
+
+    [Fact]
+    public void SaveStaticAttribute_Null_DeletesTheRow()
+    {
+        BuildNode node = new() { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
+        _repository.InsertBuild(node, null, 0);
+        AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Elo", Type = AttributeType.Numeric };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        _repository.SaveStaticAttribute(node.Id, attribute.Id, "1500");
+
+        _repository.SaveStaticAttribute(node.Id, attribute.Id, null);
+
+        BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss, [attribute]));
+        Assert.Empty(loaded.StaticAttributes);
+    }
+
+    [Fact]
+    public void SaveStaticAttribute_CalledTwice_UpdatesRatherThanDuplicating()
+    {
+        BuildNode node = new() { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
+        _repository.InsertBuild(node, null, 0);
+        AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Elo", Type = AttributeType.Numeric };
+        _attributeRepo.InsertAttribute(attribute, 0);
+
+        _repository.SaveStaticAttribute(node.Id, attribute.Id, "1500");
+        _repository.SaveStaticAttribute(node.Id, attribute.Id, "1600");
+
+        BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss, [attribute]));
+        AttributeValue loadedValue = Assert.Single(loaded.StaticAttributes);
+        Assert.Equal(1600m, loadedValue.NumericValue);
+    }
+
+    [Fact]
+    public void SaveStaticAttributes_SetValuesAcrossMultipleBuilds_PersistsEachOne()
+    {
+        BuildNode buildA = new() { Name = "A", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
+        BuildNode buildB = new() { Name = "B", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
+        _repository.InsertBuild(buildA, null, 0);
+        _repository.InsertBuild(buildB, null, 1);
+        AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Elo", Type = AttributeType.Numeric };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        buildA.StaticAttributes.Add(new AttributeValue(attribute) { NumericValue = 5m });
+        buildB.StaticAttributes.Add(new AttributeValue(attribute) { NumericValue = 10m });
+
+        _repository.SaveStaticAttributes([buildA, buildB], attribute.Id);
+
+        List<BuildNode> reloaded = _repository.GetBuildsForPlayerRace(Race.Protoss, [attribute]);
+        Assert.Equal(5m, reloaded.Single(b => b.Id == buildA.Id).StaticAttributes.Single().NumericValue);
+        Assert.Equal(10m, reloaded.Single(b => b.Id == buildB.Id).StaticAttributes.Single().NumericValue);
+    }
+
+    [Fact]
+    public void SaveStaticAttributes_UnsetValue_DeletesAnExistingRow()
+    {
+        BuildNode node = new() { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
+        _repository.InsertBuild(node, null, 0);
+        AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Elo", Type = AttributeType.Numeric };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        _repository.SaveStaticAttribute(node.Id, attribute.Id, "1500");
+
+        BuildNode unsetNode = new() { Id = node.Id };
+        unsetNode.StaticAttributes.Add(new AttributeValue(attribute));
+        _repository.SaveStaticAttributes([unsetNode], attribute.Id);
+
+        BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss, [attribute]));
+        Assert.Empty(loaded.StaticAttributes);
+    }
+
+    [Fact]
+    public void SaveStaticAttributes_EmptyList_DoesNotRaiseBuildsChanged()
+    {
+        int raisedCount = 0;
+        _repository.BuildsChanged += () => raisedCount++;
+
+        _repository.SaveStaticAttributes([], 1);
+
+        Assert.Equal(0, raisedCount);
+    }
+
+    // Pins the point of batching this at all: one event for the whole call, not one per build.
+    [Fact]
+    public void SaveStaticAttributes_MultipleBuilds_RaisesBuildsChangedExactlyOnce()
+    {
+        BuildNode buildA = new() { Name = "A", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
+        BuildNode buildB = new() { Name = "B", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
+        _repository.InsertBuild(buildA, null, 0);
+        _repository.InsertBuild(buildB, null, 1);
+        AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Elo", Type = AttributeType.Numeric };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        buildA.StaticAttributes.Add(new AttributeValue(attribute) { NumericValue = 1m });
+        buildB.StaticAttributes.Add(new AttributeValue(attribute) { NumericValue = 2m });
+
+        int raisedCount = 0;
+        _repository.BuildsChanged += () => raisedCount++;
+
+        _repository.SaveStaticAttributes([buildA, buildB], attribute.Id);
+
+        Assert.Equal(1, raisedCount);
+    }
+
+    // Mandatory static attributes apply to root builds only — a child may still opt in explicitly via
+    // SaveStaticAttribute, but isn't backfilled just because its parent's tree root was.
+    [Fact]
+    public void GetBuildsForPlayerRace_MandatoryAttribute_BackfillsRootsOnlyNotChildren()
+    {
+        BuildNode root = new() { Name = "Root", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
+        _repository.InsertBuild(root, null, 0);
+        BuildNode child = new() { Name = "Child", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
+        _repository.InsertBuild(child, root.Id, 0);
+        AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Elo", Type = AttributeType.Numeric, IsMandatory = true };
+        attribute.DefaultValue.NumericValue = 1200m;
+        _attributeRepo.InsertAttribute(attribute, 0);
+
+        BuildNode loadedRoot = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss, [attribute]));
+        BuildNode loadedChild = Assert.Single(loadedRoot.Children);
+
+        Assert.Equal(1200m, Assert.Single(loadedRoot.StaticAttributes).NumericValue);
+        Assert.Empty(loadedChild.StaticAttributes);
+    }
+
+    // A mandatory attribute already stored for a root must not be backfilled a second time on top of it.
+    [Fact]
+    public void GetBuildsForPlayerRace_MandatoryAttribute_DoesNotOverrideAnExistingStoredValue()
+    {
+        BuildNode root = new() { Name = "Root", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
+        _repository.InsertBuild(root, null, 0);
+        AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Elo", Type = AttributeType.Numeric, IsMandatory = true };
+        attribute.DefaultValue.NumericValue = 1200m;
+        _attributeRepo.InsertAttribute(attribute, 0);
+        _repository.SaveStaticAttribute(root.Id, attribute.Id, "1500");
+
+        BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss, [attribute]));
+
+        Assert.Equal(1500m, Assert.Single(loaded.StaticAttributes).NumericValue);
     }
 
     public void Dispose()
