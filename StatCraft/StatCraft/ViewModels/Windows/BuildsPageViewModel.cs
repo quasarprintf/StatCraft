@@ -52,6 +52,7 @@ namespace StatCraft.ViewModels.Windows
         public IEnumerable<AttributeDefinition> UnusedAttributes => SelectedBuild == null ? Enumerable.Empty<AttributeDefinition>() : AllAttributes.Where(a => !SelectedBuild.StaticAttributes.Any(v => v.Definition.Id == a.Id));
         public bool HasUnusedAttributes => UnusedAttributes.Any();
 
+        [ObservableProperty] private string _nameFilter = "";
         private readonly Dictionary<AttributeDefinition, FilterSlotViewModel> _slotByAttribute = [];
         public ObservableCollection<FilterSlotViewModel> VisibleFilterSlots { get; } = [];
         public ObservableCollection<FilterSlotViewModel> HiddenFilterSlots { get; } = [];
@@ -349,7 +350,11 @@ namespace StatCraft.ViewModels.Windows
         {
             if (s is BuildNode n && (e.PropertyName == nameof(BuildNode.Name) || e.PropertyName == nameof(BuildNode.Description)
                     || e.PropertyName == nameof(BuildNode.Matchups)))
-                    _buildRepo.UpdateBuild(n);
+            {
+                _buildRepo.UpdateBuild(n);
+                if (e.PropertyName == nameof(BuildNode.Name))
+                    ApplyFilters();
+            }
         }
         private void StaticAttributeValuesChanged(object? s, NotifyCollectionChangedEventArgs e)
         {
@@ -644,31 +649,39 @@ namespace StatCraft.ViewModels.Windows
             }
         }
 
-        // Recomputes MatchesAttributeFilter for every node in the current player race's tree from every
-        // active attribute filter, ANDed — same as Maps' Matches, except a build's own value isn't the
-        // whole story: unlike a flat map list, hiding a non-matching node here would also hide any
-        // matching descendant nested under it, so RefreshAttributeFilter folds descendants in too.
+        partial void OnNameFilterChanged(string value)
+        {
+            ApplyFilters();
+        }
+
+        // Recomputes MatchesFilter for every node in the current player race's tree from the name box and
+        // every active attribute filter, ANDed — same as Maps' Matches, except a build's own value isn't
+        // the whole story: unlike a flat map list, hiding a non-matching node here would also hide any
+        // matching descendant nested under it, so RefreshFilterMatch folds descendants in too.
         private void ApplyFilters()
         {
             foreach (BuildNode root in Builds)
-                RefreshAttributeFilter(root);
+                RefreshFilterMatch(root);
         }
 
-        // Post-order: a node matches if it satisfies every visible filter itself, or any descendant
-        // (transitively) does — so a match's whole ancestor chain stays visible, even though those
-        // ancestors may not themselves pass the filter.
-        private bool RefreshAttributeFilter(BuildNode node)
+        // Post-order: a node matches if it satisfies the name box and every visible attribute filter
+        // itself, or any descendant (transitively) does — so a match's whole ancestor chain stays
+        // visible, even though those ancestors may not themselves pass the filter.
+        private bool RefreshFilterMatch(BuildNode node)
         {
             bool anyDescendantMatches = false;
             foreach (BuildNode child in node.Children)
-                anyDescendantMatches |= RefreshAttributeFilter(child);
+                anyDescendantMatches |= RefreshFilterMatch(child);
 
-            bool matches = MatchesAttributes(node) || anyDescendantMatches;
-            node.MatchesAttributeFilter = matches;
+            bool matches = Matches(node) || anyDescendantMatches;
+            node.MatchesFilter = matches;
             return matches;
         }
-        private bool MatchesAttributes(BuildNode node)
+        private bool Matches(BuildNode node)
         {
+            if (!MatchesName(node, NameFilter))
+                return false;
+
             foreach ((AttributeDefinition attribute, FilterSlotViewModel slot) in _slotByAttribute)
             {
                 if (!slot.IsVisible)
@@ -681,6 +694,10 @@ namespace StatCraft.ViewModels.Windows
             }
 
             return true;
+        }
+        private static bool MatchesName(BuildNode node, string? nameFilter)
+        {
+            return string.IsNullOrWhiteSpace(nameFilter) || node.Name.Contains(nameFilter.Trim(), StringComparison.OrdinalIgnoreCase);
         }
         private static bool MatchesSlot(FilterSlotViewModel slot, AttributeValue? value)
         {

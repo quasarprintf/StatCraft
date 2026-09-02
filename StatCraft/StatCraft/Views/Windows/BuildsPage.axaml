@@ -54,7 +54,7 @@
             <!-- Build tree -->
             <DockPanel Grid.Column="0">
                 <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="4">
-                    <TextBlock Grid.Column="0" Text="Filter by attribute" VerticalAlignment="Center"/>
+                    <TextBox Grid.Column="0" Text="{Binding NameFilter}" PlaceholderText="Filter builds..." Margin="0,0,4,0"/>
                     <Button Grid.Column="1" Content="+" Padding="6,2" VerticalAlignment="Center" ToolTip.Tip="Add attribute filter">
                         <Button.Flyout>
                             <MenuFlyout ItemsSource="{Binding HiddenFilterSlots}" Placement="BottomEdgeAlignedRight">
