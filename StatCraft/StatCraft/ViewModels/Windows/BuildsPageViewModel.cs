@@ -5,6 +5,7 @@ using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
+using StatCraft.Services.DataFiltering;
 using StatCraft.ViewModels.Windows.DataComponents;
 using System;
 using System.Collections.Generic;
@@ -51,6 +52,10 @@ namespace StatCraft.ViewModels.Windows
         public IEnumerable<AttributeDefinition> UnusedAttributes => SelectedBuild == null ? Enumerable.Empty<AttributeDefinition>() : AllAttributes.Where(a => !SelectedBuild.StaticAttributes.Any(v => v.Definition.Id == a.Id));
         public bool HasUnusedAttributes => UnusedAttributes.Any();
 
+        private readonly Dictionary<AttributeDefinition, FilterSlotViewModel> _slotByAttribute = [];
+        public ObservableCollection<FilterSlotViewModel> VisibleFilterSlots { get; } = [];
+        public ObservableCollection<FilterSlotViewModel> HiddenFilterSlots { get; } = [];
+
         public BuildsPageViewModel(BuildRepository buildRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository)
         {
             _buildRepo = buildRepository;
@@ -68,13 +73,12 @@ namespace StatCraft.ViewModels.Windows
             // mandatory-on-root backfill) aren't silently skipped by loading against an empty list.
             foreach (AttributeDefinition attribute in _attributeRepo.GetAllAttributes(AttributeScope.Build))
                 AllAttributes.Add(attribute);
-            //TODO:
-            //foreach (AttributeDefinition attribute in AllAttributes)
-                //AddFilterSlot(attribute);
-            //ApplyFilters();
+            foreach (AttributeDefinition attribute in AllAttributes)
+                AddFilterSlot(attribute);
 
             LoadPlayerRaceIfNeeded(PlayerRace);
             RefreshOpponentFilter();
+            ApplyFilters();
 
             _attributeRepo.AttributesChanged += SyncAttributesFromRepository;
 
@@ -89,6 +93,7 @@ namespace StatCraft.ViewModels.Windows
                 option.IsSelected = option.Value == race;
             LoadPlayerRaceIfNeeded(race);
             RefreshOpponentFilter();
+            ApplyFilters();
             SelectFirstBuild();
         }
 
@@ -170,8 +175,7 @@ namespace StatCraft.ViewModels.Windows
                     RemoveAttributeRecursively(rootNode, cachedAttr);
                 }
 
-                //TODO:
-                //RemoveFilterSlot(cachedAttr);
+                RemoveFilterSlot(cachedAttr);
             }
 
             //sync edited attributes
@@ -182,9 +186,8 @@ namespace StatCraft.ViewModels.Windows
                 if (cachedAttr.Name != dbAttr.Name)
                 {
                     cachedAttr.Name = dbAttr.Name;
-                    //TODO:
-                    //if (_slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? slot))
-                    //    slot.Title = dbAttr.Name;
+                    if (_slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? slot))
+                        slot.Title = dbAttr.Name;
                 }
 
                 if (cachedAttr.Type != dbAttr.Type)
@@ -193,10 +196,9 @@ namespace StatCraft.ViewModels.Windows
                     // Numeric/Percent vs. Bool vs. Values are different FilterSlotViewModel subclasses,
                     // so the slot itself has to be replaced rather than patched — but only for this one
                     // attribute, and preserving whether it was actually showing.
-                    //TODO:
-                    //bool wasVisible = _slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? old) && old.IsVisible;
-                    //RemoveFilterSlot(cachedAttr);
-                    //AddFilterSlot(cachedAttr, wasVisible);
+                    bool wasVisible = _slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? old) && old.IsVisible;
+                    RemoveFilterSlot(cachedAttr);
+                    AddFilterSlot(cachedAttr, wasVisible);
                 }
 
                 if (dbAttr.IsMandatory != cachedAttr.IsMandatory)
@@ -258,12 +260,10 @@ namespace StatCraft.ViewModels.Windows
                     _buildRepo.SaveStaticAttributes(nodesToSave, dbAttr.Id);
                 }
 
-                //TODO:
-                //AddFilterSlot(dbAttr);
+                AddFilterSlot(dbAttr);
             }
 
-            //TODO:
-            //ApplyFilters();
+            ApplyFilters();
         }
         private void SyncValueOptions(AttributeDefinition attribute, ObservableCollection<string> latest)
         {
@@ -286,14 +286,13 @@ namespace StatCraft.ViewModels.Windows
             if (!changed)
                 return;
 
-            //TODO:
-            //if (_slotByAttribute.TryGetValue(attribute, out FilterSlotViewModel? slot) &&
-            //    slot is CheckboxFilterSlotViewModel<string> stringSlot)
-            //{
-            //    HashSet<string> previouslyChecked = stringSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
-            //    stringSlot.ReplaceOptions(attribute.ValueOptions
-            //        .Select(o => new CheckboxFilterOptionViewModel<string>(o, o) { IsChecked = previouslyChecked.Contains(o) }));
-            //}
+            if (_slotByAttribute.TryGetValue(attribute, out FilterSlotViewModel? slot) &&
+                slot is CheckboxFilterSlotViewModel<string> stringSlot)
+            {
+                HashSet<string> previouslyChecked = stringSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
+                stringSlot.ReplaceOptions(attribute.ValueOptions
+                    .Select(o => new CheckboxFilterOptionViewModel<string>(o, o) { IsChecked = previouslyChecked.Contains(o) }));
+            }
         }
 
         private void RemoveAttributeRecursively(BuildNode node, AttributeDefinition attribute)
@@ -393,8 +392,7 @@ namespace StatCraft.ViewModels.Windows
             // Serialize() returns null when unset, and SaveValue deletes the row for null — that
             // absence is what "no value" actually is in the database.
             _buildRepo.SaveStaticAttribute(SelectedBuild.Id, value.Definition.Id, value.Serialize());
-            //TODO:
-            //ApplyFilters();
+            ApplyFilters();
         }
 
         private void WireDetail(AttributeDefinition attr)
@@ -591,5 +589,119 @@ namespace StatCraft.ViewModels.Windows
             UnWireDetail(attribute);
             SelectedBuild.Details.Remove(attribute);
         }
+
+        #region filters
+        private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
+        {
+            FilterSlotViewModel slot = CreateSlot(attribute);
+            slot.IsVisible = isVisible;
+            slot.VisibilityChanged += () => OnSlotVisibilityChanged(slot);
+            slot.Changed += ApplyFilters;
+
+            _slotByAttribute[attribute] = slot;
+            (isVisible ? VisibleFilterSlots : HiddenFilterSlots).Add(slot);
+        }
+        private void RemoveFilterSlot(AttributeDefinition attribute)
+        {
+            if (!_slotByAttribute.Remove(attribute, out FilterSlotViewModel? slot))
+                return;
+
+            slot.Changed -= ApplyFilters;
+            VisibleFilterSlots.Remove(slot);
+            HiddenFilterSlots.Remove(slot);
+        }
+        private static FilterSlotViewModel CreateSlot(AttributeDefinition attribute)
+        {
+            switch (attribute.Type)
+            {
+                case AttributeType.Bool:
+                    return new BoolFilterSlotViewModel(attribute.Name);
+                case AttributeType.Values:
+                    var checkboxFilters = attribute.ValueOptions.Select(o => new CheckboxFilterOptionViewModel<string>(o, o));
+                    return new CheckboxFilterSlotViewModel<string>(attribute.Name, checkboxFilters, showSearch: true);
+                case AttributeType.Numeric:
+                case AttributeType.Percent:
+                default:
+                    return new NumericRangeFilterSlotViewModel(attribute.Name);
+            }
+        }
+
+        // Moves a slot between the visible/hidden collections when its own IsVisible flips — via the
+        // Add/Remove commands the "+" menu and the filter's own ✕ button invoke.
+        private void OnSlotVisibilityChanged(FilterSlotViewModel slot)
+        {
+            if (slot.IsVisible)
+            {
+                HiddenFilterSlots.Remove(slot);
+                if (!VisibleFilterSlots.Contains(slot))
+                    VisibleFilterSlots.Add(slot);
+            }
+            else
+            {
+                VisibleFilterSlots.Remove(slot);
+                if (!HiddenFilterSlots.Contains(slot))
+                    HiddenFilterSlots.Add(slot);
+            }
+        }
+
+        // Recomputes MatchesAttributeFilter for every node in the current player race's tree from every
+        // active attribute filter, ANDed — same as Maps' Matches, except a build's own value isn't the
+        // whole story: unlike a flat map list, hiding a non-matching node here would also hide any
+        // matching descendant nested under it, so RefreshAttributeFilter folds descendants in too.
+        private void ApplyFilters()
+        {
+            foreach (BuildNode root in Builds)
+                RefreshAttributeFilter(root);
+        }
+
+        // Post-order: a node matches if it satisfies every visible filter itself, or any descendant
+        // (transitively) does — so a match's whole ancestor chain stays visible, even though those
+        // ancestors may not themselves pass the filter.
+        private bool RefreshAttributeFilter(BuildNode node)
+        {
+            bool anyDescendantMatches = false;
+            foreach (BuildNode child in node.Children)
+                anyDescendantMatches |= RefreshAttributeFilter(child);
+
+            bool matches = MatchesAttributes(node) || anyDescendantMatches;
+            node.MatchesAttributeFilter = matches;
+            return matches;
+        }
+        private bool MatchesAttributes(BuildNode node)
+        {
+            foreach ((AttributeDefinition attribute, FilterSlotViewModel slot) in _slotByAttribute)
+            {
+                if (!slot.IsVisible)
+                    continue;
+
+                AttributeValue? value = node.StaticAttributes.FirstOrDefault(v => v.Definition == attribute);
+
+                if (!MatchesSlot(slot, value))
+                    return false;
+            }
+
+            return true;
+        }
+        private static bool MatchesSlot(FilterSlotViewModel slot, AttributeValue? value)
+        {
+            if (value == null)
+                return slot.IncludeUnset;
+            switch (slot)
+            {
+                case NumericRangeFilterSlotViewModel range:
+                    return AttributeFilter.MatchesRange(value, range.Min, range.Max, range.IncludeUnset);
+                case BoolFilterSlotViewModel boolSlot:
+                    return AttributeFilter.MatchesBool(value, boolSlot.Value, boolSlot.IncludeUnset);
+                case CheckboxFilterSlotViewModel<string> strings:
+                    return AttributeFilter.MatchesSelection(Checked(strings), value.HasValue, value.SelectedValue ?? "", strings.IncludeUnset);
+                default:
+                    return true;
+            }
+        }
+        private static IReadOnlySet<T> Checked<T>(CheckboxFilterSlotViewModel<T> slot)
+        {
+            return slot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
+        }
+        #endregion
     }
 }

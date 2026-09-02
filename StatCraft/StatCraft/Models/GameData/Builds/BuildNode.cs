@@ -25,8 +25,19 @@ namespace StatCraft.Models.GameData.Builds
         public bool VsT => Matchups.HasFlag(Matchups.VsT);
         public bool VsP => Matchups.HasFlag(Matchups.VsP);
 
-        // Transient UI-only flag driving the Builds tab's opponent-race filter; never persisted.
+        // Transient UI-only flags driving the Builds tab's opponent-race and attribute filters; never
+        // persisted. MatchesOpponentFilter is a plain per-node check — the child-⊆-parent matchup
+        // invariant guarantees a matching child never has a non-matching parent, so it needs no help from
+        // its descendants. MatchesAttributeFilter has no such invariant (a child's static attribute value
+        // has no relationship to its parent's), so BuildsPageViewModel.RefreshAttributeFilter folds in
+        // "or any descendant matches" when computing it, to keep a match's ancestor chain visible.
+        [NotifyPropertyChangedFor(nameof(IsVisibleInTree))]
         [ObservableProperty] private bool _matchesOpponentFilter = true;
+
+        [NotifyPropertyChangedFor(nameof(IsVisibleInTree))]
+        [ObservableProperty] private bool _matchesAttributeFilter = true;
+
+        public bool IsVisibleInTree => MatchesOpponentFilter && MatchesAttributeFilter;
 
         public ObservableCollection<AttributeDefinition> Details { get; } = [];
         public ObservableCollection<AttributeValue> StaticAttributes { get; } = [];

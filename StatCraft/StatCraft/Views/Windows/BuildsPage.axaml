@@ -1,8 +1,10 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
+             xmlns:vmc="using:StatCraft.ViewModels.Windows.DataComponents"
              xmlns:builds="using:StatCraft.Models.GameData.Builds"
              xmlns:local="using:StatCraft.Views.Windows.BuildsComponents"
+             xmlns:data="using:StatCraft.Views.Windows.DataComponents"
              x:Class="StatCraft.Views.Windows.BuildsPage"
              x:DataType="vmw:BuildsPageViewModel">
     <DockPanel>
@@ -51,6 +53,76 @@
         <Grid ColumnDefinitions="200,4,*">
             <!-- Build tree -->
             <DockPanel Grid.Column="0">
+                <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="4">
+                    <TextBlock Grid.Column="0" Text="Filter by attribute" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Content="+" Padding="6,2" VerticalAlignment="Center" ToolTip.Tip="Add attribute filter">
+                        <Button.Flyout>
+                            <MenuFlyout ItemsSource="{Binding HiddenFilterSlots}" Placement="BottomEdgeAlignedRight">
+                                <MenuFlyout.ItemContainerTheme>
+                                    <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmc:FilterSlotViewModel">
+                                        <Setter Property="Header" Value="{Binding Title}"/>
+                                        <Setter Property="Command" Value="{Binding AddCommand}"/>
+                                    </ControlTheme>
+                                </MenuFlyout.ItemContainerTheme>
+                            </MenuFlyout>
+                        </Button.Flyout>
+                    </Button>
+                </Grid>
+
+                <!-- Same slot templates as the Maps tab's filter bar (MapsPage.axaml) — kept as a
+                     duplicate rather than a shared control, matching how the two pages' ViewModels
+                     already duplicate the filtering logic behind them. -->
+                <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding VisibleFilterSlots}" Margin="4,0,4,4">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <StackPanel Spacing="4"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.DataTemplates>
+                        <DataTemplate x:DataType="vmc:CheckboxFilterSlotViewModel">
+                            <StackPanel Spacing="2">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
+                                    <Button Grid.Column="1" Classes="removeFilter" Command="{Binding RemoveCommand}"/>
+                                </Grid>
+                                <data:CheckboxFilterDropdown Header="{Binding Title}" Options="{Binding Options}"
+                                                              ShowSearch="{Binding ShowSearch}" SearchText="{Binding SearchText}"
+                                                              Columns="{Binding Columns}" HorizontalAlignment="Left"/>
+                                <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
+                            </StackPanel>
+                        </DataTemplate>
+                        <DataTemplate x:DataType="vmc:BoolFilterSlotViewModel">
+                            <StackPanel Spacing="2">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
+                                    <Button Grid.Column="1" Classes="removeFilter" Command="{Binding RemoveCommand}"/>
+                                </Grid>
+                                <!-- Three-state: checked/unchecked pick true/false, indeterminate (the
+                                     attribute's own starting state) means no constraint on this dimension. -->
+                                <CheckBox IsChecked="{Binding Value}" IsThreeState="True"/>
+                                <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
+                            </StackPanel>
+                        </DataTemplate>
+                        <DataTemplate x:DataType="vmc:NumericRangeFilterSlotViewModel">
+                            <StackPanel Spacing="2">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
+                                    <Button Grid.Column="1" Classes="removeFilter" Command="{Binding RemoveCommand}"/>
+                                </Grid>
+                                <StackPanel Classes="filterSlot">
+                                    <NumericUpDown Value="{Binding Min}" Width="90" PlaceholderText="Min" FormatString="0.##" ShowButtonSpinner="False"/>
+                                    <TextBlock Text="-" VerticalAlignment="Center"/>
+                                    <NumericUpDown Value="{Binding Max}" Width="90" PlaceholderText="Max" FormatString="0.##" ShowButtonSpinner="False"/>
+                                </StackPanel>
+                                <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.DataTemplates>
+                </ItemsControl>
+
                 <TreeView x:Name="BuildTreeView" ItemsSource="{Binding Builds}" SelectedItem="{Binding SelectedBuild}">
                     <TreeView.ContextMenu>
                         <ContextMenu>
@@ -60,7 +132,7 @@
                     <TreeView.Styles>
                         <Style Selector="TreeViewItem" x:DataType="builds:BuildNode">
                             <Setter Property="IsExpanded" Value="{Binding IsExpanded}"/>
-                            <Setter Property="IsVisible" Value="{Binding MatchesOpponentFilter}"/>
+                            <Setter Property="IsVisible" Value="{Binding IsVisibleInTree}"/>
                             <!-- Root builds stand out in bold; nested builds are normal weight, so the top of
                                  each subtree is obvious even before reading the indentation. -->
                             <Setter Property="FontWeight" Value="Bold"/>
