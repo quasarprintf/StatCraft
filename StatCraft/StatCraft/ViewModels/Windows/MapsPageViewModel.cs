@@ -10,6 +10,7 @@ using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
+using StatCraft.ViewModels.Windows.AttributeComponents;
 using StatCraft.ViewModels.Windows.DataComponents;
 
 namespace StatCraft.ViewModels.Windows
@@ -30,8 +31,7 @@ namespace StatCraft.ViewModels.Windows
         public ObservableCollection<FilterSlotViewModel> HiddenFilterSlots { get; } = [];
 
         public ObservableCollection<AttributeDefinition> AllAttributes { get; } = [];
-        public IEnumerable<AttributeDefinition> UnusedAttributes => SelectedMap == null ? Enumerable.Empty<AttributeDefinition>() : AllAttributes.Where(a => !SelectedMap.AttributeValues.Any(v => v.Definition.Id == a.Id));
-        public bool HasUnusedAttributes => UnusedAttributes.Any();
+        public AttributeValuesSelectViewModel AttributeValuesSelect { get; }
 
         // Raised instead of deleting when the map still has games recorded on it
         public event Action<Map>? DeleteBlocked;
@@ -44,6 +44,7 @@ namespace StatCraft.ViewModels.Windows
 
             foreach (AttributeDefinition attribute in _attributeRepo.GetAllAttributes(AttributeScope.Map))
                 AllAttributes.Add(attribute);
+            AttributeValuesSelect = new AttributeValuesSelectViewModel(AllAttributes);
 
             foreach (Map map in _mapRepo.GetAllMaps(AllAttributes))
             {
@@ -55,9 +56,10 @@ namespace StatCraft.ViewModels.Windows
             ApplyFilters();
             SelectedMap = FilteredMaps.FirstOrDefault();
 
-            _attributeRepo.AttributesChanged += SyncAttributesFromRepository;
+            AttributeValuesSelect.ValueChanged += AttributeValueChanged;
+            AttributeValuesSelect.ValueDeleted += AttributeValueDeleted;
 
-            AllAttributes.CollectionChanged += RaiseUnusedAttributesChanged;
+            _attributeRepo.AttributesChanged += SyncAttributesFromRepository;
         }
 
         [RelayCommand]
@@ -237,16 +239,6 @@ namespace StatCraft.ViewModels.Windows
         }
 
         #region event handling for selected map
-        private void RaiseUnusedAttributesChanged(object? sender, EventArgs e)
-        {
-            OnPropertyChanged(nameof(UnusedAttributes));
-            OnPropertyChanged(nameof(HasUnusedAttributes));
-        }
-        partial void OnSelectedMapChanged(Map? value)
-        {
-            OnPropertyChanged(nameof(UnusedAttributes));
-            OnPropertyChanged(nameof(HasUnusedAttributes));
-        }
         partial void OnSelectedMapChanging(Map? value)
         {
             if (SelectedMap != null)
@@ -254,23 +246,18 @@ namespace StatCraft.ViewModels.Windows
 
             if (value != null)
                 WireMap(value);
-        }
-        private void UnWireMap(Map map)
-        {
-            foreach (AttributeValue value in map.AttributeValues)
-                UnWireValue(map, value);
-            map.AttributeValues.CollectionChanged -= MapAttributeValuesChanged;
-            map.AttributeValues.CollectionChanged -= RaiseUnusedAttributesChanged;
-            map.PropertyChanged -= MapPropertyChanged;
+
+            AttributeValuesSelect.Object = value;
         }
         private void WireMap(Map map)
         {
-            foreach (AttributeValue value in map.AttributeValues)
-                WireValue(map, value);
-            map.AttributeValues.CollectionChanged += MapAttributeValuesChanged;
-            map.AttributeValues.CollectionChanged += RaiseUnusedAttributesChanged;
             map.PropertyChanged += MapPropertyChanged;
         }
+        private void UnWireMap(Map map)
+        {
+            map.PropertyChanged -= MapPropertyChanged;
+        }
+        
         private void MapPropertyChanged(object? s, PropertyChangedEventArgs e)
         {
             if (s is Map m && e.PropertyName == nameof(Map.Name))
@@ -279,48 +266,22 @@ namespace StatCraft.ViewModels.Windows
                 ApplyFilters();
             }
         }
-        private void MapAttributeValuesChanged(object? s, NotifyCollectionChangedEventArgs e)
-        {
-            if (SelectedMap == null)
-                return;
-            if (e.OldItems != null)
-            {
-                foreach (AttributeValue value in e.OldItems.OfType<AttributeValue>())
-                {
-                    UnWireValue(SelectedMap, value);
-                    _mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, null);
-                }
-            }
-            if (e.NewItems != null)
-            {
-                foreach (AttributeValue value in e.NewItems.OfType<AttributeValue>())
-                {
-                    WireValue(SelectedMap, value);
-                    _mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, value.Serialize());
-                }
-            }
-        }
 
-        private void UnWireValue(Map map, AttributeValue value)
+        private void AttributeValueDeleted(object? s, AttributeValue value)
         {
-            value.PropertyChanged -= ValuePropertyChanged;
-        }
-        private void WireValue(Map map, AttributeValue value)
-        {
-            value.PropertyChanged += ValuePropertyChanged;
-        }
-        private void ValuePropertyChanged(object? s, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(AttributeValue.HasValue))
-                return;
-            if (SelectedMap == null)
-                return;
-            if (s is not AttributeValue value)
-                return;
+            if (s is not Map map)
+                return; //TODO: log this, it's unexpected
 
-            // Serialize() returns null when unset, and SaveValue deletes the row for null — that
-            // absence is what "no value" actually is in the database.
-            _mapRepo.SaveValue(SelectedMap.Id, value.Definition.Id, value.Serialize());
+            // SaveValue deletes if value is null
+            _mapRepo.SaveValue(map.Id, value.Definition.Id, null);
+            ApplyFilters();
+        }
+        private void AttributeValueChanged(object? s, AttributeValue value)
+        {
+            if (s is not Map map)
+                return; //TODO: log this, it's unexpected
+
+            _mapRepo.SaveValue(map.Id, value.Definition.Id, value.Serialize());
             ApplyFilters();
         }
         #endregion
