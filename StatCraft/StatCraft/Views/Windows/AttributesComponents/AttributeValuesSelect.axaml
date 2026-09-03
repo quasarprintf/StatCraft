@@ -35,12 +35,8 @@
                 <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="Attr:AttributeValue">
                         <StackPanel Margin="0,0,0,8">
-                            <!-- Definition name, read-only here — name/type/options are only editable
-                                    from the Attributes tab; this page only edits the per-map value below. -->
                             <TextBlock Text="{Binding Definition.Name}" FontWeight="SemiBold"/>
 
-                            <!-- This map's value. Every editor is nullable, and the clear button puts it
-                                    back to unset — which is stored as the absence of a row, not as 0/false. -->
                             <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0" IsVisible="{Binding !Definition.IsValues}">
                                 <TextBlock Grid.Column="0" Text="Value:" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                 <NumericUpDown Grid.Column="1" Value="{Binding NumericValue}"

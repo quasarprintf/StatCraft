@@ -1,4 +1,5 @@
-﻿using CommunityToolkit.Mvvm.Input;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Maps;
 using System;
@@ -18,19 +19,7 @@ namespace StatCraft.ViewModels.Windows.AttributeComponents
 
         public ObservableCollection<AttributeDefinition> AllAttributes { get; } = [];
         public IEnumerable<AttributeDefinition> UnusedAttributes => Object == null ? Enumerable.Empty<AttributeDefinition>() : AllAttributes.Where(a => !Object.AttributeValues.Any(v => v.Definition.Id == a.Id));
-        public IAttributedObject? Object 
-        { 
-            get => field;
-            set
-            {
-                if (field != null)
-                    UnWireObject(field);
-                field = value;
-                if (value != null)
-                    WireObject(value);
-                RaiseUnusedAttributesChanged();
-            }
-        }
+        [ObservableProperty]private IAttributedObject? _object;
         public bool HasUnusedAttributes => UnusedAttributes.Any();
 
         public AttributeValuesSelectViewModel(ObservableCollection<AttributeDefinition> attributes)
@@ -40,6 +29,18 @@ namespace StatCraft.ViewModels.Windows.AttributeComponents
         }
 
         #region property changed events
+        partial void OnObjectChanging(IAttributedObject? value)
+        {
+            if (_object != null)
+                UnWireObject(_object);
+            if (value != null)
+                WireObject(value);
+        }
+        partial void OnObjectChanged(IAttributedObject? value)
+        {
+            RaiseUnusedAttributesChanged();
+        }
+
         private void AllAttributesChanged(object? sender, EventArgs e)
         {
             RaiseUnusedAttributesChanged();
