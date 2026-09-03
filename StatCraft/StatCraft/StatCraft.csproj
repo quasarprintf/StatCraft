@@ -32,4 +32,10 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
     <PackageReference Include="s2protocol.NET" Version="0.9.4" />
   </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Views\Windows\AttributesComponents\AttributeValuesSelect.axaml.cs">
+      <DependentUpon>AttributeValuesSelect.axaml</DependentUpon>
+    </Compile>
+  </ItemGroup>
 </Project>

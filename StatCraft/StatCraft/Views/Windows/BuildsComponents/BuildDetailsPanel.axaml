@@ -117,7 +117,7 @@
             </Button>
 
             <ScrollViewer DockPanel.Dock="Top">
-                <ItemsControl ItemsSource="{Binding SelectedBuild.StaticAttributes}">
+                <ItemsControl ItemsSource="{Binding SelectedBuild.AttributeValues}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="Attr:AttributeValue">
                             <StackPanel Margin="0,0,0,8">

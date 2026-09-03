@@ -93,7 +93,7 @@ namespace StatCraft.Services.DatabaseRepository
                         {
                             AttributeValue value = new AttributeValue(definition);
                             value.ApplyStoredValue(row.Value);
-                            nodeDict[row.BuildId].StaticAttributes.Add(value);
+                            nodeDict[row.BuildId].AttributeValues.Add(value);
                         }
                     }
                 }
@@ -112,8 +112,8 @@ namespace StatCraft.Services.DatabaseRepository
             // Children can override parent, but don't have to, so only roots are updated for new mandatory attributes
             foreach (AttributeDefinition definition in attributes.Where(a => a.IsMandatory))
                 foreach (BuildNode root in roots)
-                    if (!root.StaticAttributes.Any(v => v.Definition.Id == definition.Id))
-                        root.StaticAttributes.Add(definition.DefaultValue.Clone());
+                    if (!root.AttributeValues.Any(v => v.Definition.Id == definition.Id))
+                        root.AttributeValues.Add(definition.DefaultValue.Clone());
 
             return roots;
         }
@@ -221,7 +221,7 @@ namespace StatCraft.Services.DatabaseRepository
             Dictionary<int, string> setValues = new Dictionary<int, string>();
             foreach (var build in builds)
             {
-                AttributeValue? value = build.StaticAttributes.FirstOrDefault(v => v.Definition.Id == buildAttributeId);
+                AttributeValue? value = build.AttributeValues.FirstOrDefault(v => v.Definition.Id == buildAttributeId);
                 if (value == null || !value.HasValue)
                     deleteBuildIds.Add(build.Id);
                 else

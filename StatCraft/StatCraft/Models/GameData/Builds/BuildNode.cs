@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace StatCraft.Models.GameData.Builds
 {
-    public partial class BuildNode : ObservableObject
+    public partial class BuildNode : ObservableObject, IAttributedObject
     {
         public int Id { get; set; }
 
@@ -41,7 +41,7 @@ namespace StatCraft.Models.GameData.Builds
         public bool IsVisibleInTree => MatchesOpponentFilter && MatchesFilter;
 
         public ObservableCollection<AttributeDefinition> Details { get; } = [];
-        public ObservableCollection<AttributeValue> StaticAttributes { get; } = [];
+        public ObservableCollection<AttributeValue> AttributeValues { get; } = [];
 
         [NotifyPropertyChangedFor(nameof(HasChildren))]
         [ObservableProperty] private ObservableCollection<BuildNode> _children = [];
@@ -55,13 +55,13 @@ namespace StatCraft.Models.GameData.Builds
         [RelayCommand]
         public void AddAttribute(AttributeDefinition definition) 
         {
-            StaticAttributes.Add(definition.DefaultValue.Clone());
+            AttributeValues.Add(definition.DefaultValue.Clone());
         }
 
         [RelayCommand]
         public void RemoveAttribute(AttributeValue value)
         {
-            StaticAttributes.Remove(value);
+            AttributeValues.Remove(value);
         }
     }
 }

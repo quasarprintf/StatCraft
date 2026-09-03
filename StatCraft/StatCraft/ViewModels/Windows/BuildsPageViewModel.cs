@@ -49,7 +49,7 @@ namespace StatCraft.ViewModels.Windows
         public ObservableCollection<BuildNode> Builds => _buildsByPlayerRace[PlayerRace];
 
         public ObservableCollection<AttributeDefinition> AllAttributes { get; } = [];
-        public IEnumerable<AttributeDefinition> UnusedAttributes => SelectedBuild == null ? Enumerable.Empty<AttributeDefinition>() : AllAttributes.Where(a => !SelectedBuild.StaticAttributes.Any(v => v.Definition.Id == a.Id));
+        public IEnumerable<AttributeDefinition> UnusedAttributes => SelectedBuild == null ? Enumerable.Empty<AttributeDefinition>() : AllAttributes.Where(a => !SelectedBuild.AttributeValues.Any(v => v.Definition.Id == a.Id));
         public bool HasUnusedAttributes => UnusedAttributes.Any();
 
         [ObservableProperty] private string _nameFilter = "";
@@ -212,9 +212,9 @@ namespace StatCraft.ViewModels.Windows
                     {
                         foreach (BuildNode rootNode in _buildsByPlayerRace.SelectMany(r => r.Value))
                         {
-                            if (!rootNode.StaticAttributes.Any(a => a.Definition.Id == dbAttr.Id))
+                            if (!rootNode.AttributeValues.Any(a => a.Definition.Id == dbAttr.Id))
                             {
-                                rootNode.StaticAttributes.Add(cachedAttr.DefaultValue.Clone());
+                                rootNode.AttributeValues.Add(cachedAttr.DefaultValue.Clone());
                                 nodesToSave.Add(rootNode);
                             }
                         }
@@ -223,10 +223,10 @@ namespace StatCraft.ViewModels.Windows
                     {
                         foreach (BuildNode rootNode in _buildsByPlayerRace.SelectMany(r => r.Value))
                         {
-                            AttributeValue? value = rootNode.StaticAttributes.FirstOrDefault(v => v.Definition.Id == cachedAttr.Id);
+                            AttributeValue? value = rootNode.AttributeValues.FirstOrDefault(v => v.Definition.Id == cachedAttr.Id);
                             if (value != null && !value.HasValue)
                             {
-                                rootNode.StaticAttributes.Remove(value);
+                                rootNode.AttributeValues.Remove(value);
                                 nodesToSave.Add(rootNode);
                             }
                         }
@@ -255,7 +255,7 @@ namespace StatCraft.ViewModels.Windows
                     // Children can override parent, but don't have to, so only roots are updated for mandatory toggle
                     foreach (BuildNode rootNode in _buildsByPlayerRace.SelectMany(r => r.Value))
                     {
-                        rootNode.StaticAttributes.Add(dbAttr.DefaultValue.Clone());
+                        rootNode.AttributeValues.Add(dbAttr.DefaultValue.Clone());
                         nodesToSave.Add(rootNode);
                     }
                     _buildRepo.SaveStaticAttributes(nodesToSave, dbAttr.Id);
@@ -298,9 +298,9 @@ namespace StatCraft.ViewModels.Windows
 
         private void RemoveAttributeRecursively(BuildNode node, AttributeDefinition attribute)
         {
-            AttributeValue? value = node.StaticAttributes.FirstOrDefault(v => v.Definition.Id == attribute.Id);
+            AttributeValue? value = node.AttributeValues.FirstOrDefault(v => v.Definition.Id == attribute.Id);
             if (value != null)
-                node.StaticAttributes.Remove(value);
+                node.AttributeValues.Remove(value);
             foreach (var child in node.Children)
                 RemoveAttributeRecursively(child, attribute);
         }
@@ -327,22 +327,22 @@ namespace StatCraft.ViewModels.Windows
 
         private void WireNode(BuildNode node)
         {
-            node.StaticAttributes.CollectionChanged += RaiseUnusedAttributesChanged;
-            node.StaticAttributes.CollectionChanged += StaticAttributeValuesChanged;
+            node.AttributeValues.CollectionChanged += RaiseUnusedAttributesChanged;
+            node.AttributeValues.CollectionChanged += StaticAttributeValuesChanged;
             node.PropertyChanged += NodePropertyChanged;
             foreach (AttributeDefinition attr in node.Details)
                 WireDetail(attr);
-            foreach (AttributeValue attr in node.StaticAttributes)
+            foreach (AttributeValue attr in node.AttributeValues)
                 WireStaticValue(node, attr);
         }
         private void UnWireNode(BuildNode node)
         {
-            node.StaticAttributes.CollectionChanged -= RaiseUnusedAttributesChanged;
-            node.StaticAttributes.CollectionChanged -= StaticAttributeValuesChanged;
+            node.AttributeValues.CollectionChanged -= RaiseUnusedAttributesChanged;
+            node.AttributeValues.CollectionChanged -= StaticAttributeValuesChanged;
             node.PropertyChanged -= NodePropertyChanged;
             foreach (AttributeDefinition attr in node.Details)
                 UnWireDetail(attr);
-            foreach (AttributeValue attr in node.StaticAttributes)
+            foreach (AttributeValue attr in node.AttributeValues)
                 UnWireStaticValue(node, attr);
         }
 
@@ -687,7 +687,7 @@ namespace StatCraft.ViewModels.Windows
                 if (!slot.IsVisible)
                     continue;
 
-                AttributeValue? value = node.StaticAttributes.FirstOrDefault(v => v.Definition == attribute);
+                AttributeValue? value = node.AttributeValues.FirstOrDefault(v => v.Definition == attribute);
 
                 if (!MatchesSlot(slot, value))
                     return false;

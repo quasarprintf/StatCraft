@@ -199,7 +199,7 @@ public class BuildRepositoryTests : IDisposable
 
         BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss));
 
-        Assert.Empty(loaded.StaticAttributes);
+        Assert.Empty(loaded.AttributeValues);
     }
 
     [Fact]
@@ -214,7 +214,7 @@ public class BuildRepositoryTests : IDisposable
         _repository.SaveStaticAttribute(node.Id, attribute.Id, toSave.Serialize());
 
         BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss, [attribute]));
-        AttributeValue loadedValue = Assert.Single(loaded.StaticAttributes);
+        AttributeValue loadedValue = Assert.Single(loaded.AttributeValues);
         Assert.Equal(1500m, loadedValue.NumericValue);
     }
 
@@ -230,7 +230,7 @@ public class BuildRepositoryTests : IDisposable
         _repository.SaveStaticAttribute(node.Id, attribute.Id, null);
 
         BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss, [attribute]));
-        Assert.Empty(loaded.StaticAttributes);
+        Assert.Empty(loaded.AttributeValues);
     }
 
     [Fact]
@@ -245,7 +245,7 @@ public class BuildRepositoryTests : IDisposable
         _repository.SaveStaticAttribute(node.Id, attribute.Id, "1600");
 
         BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss, [attribute]));
-        AttributeValue loadedValue = Assert.Single(loaded.StaticAttributes);
+        AttributeValue loadedValue = Assert.Single(loaded.AttributeValues);
         Assert.Equal(1600m, loadedValue.NumericValue);
     }
 
@@ -258,14 +258,14 @@ public class BuildRepositoryTests : IDisposable
         _repository.InsertBuild(buildB, null, 1);
         AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Elo", Type = AttributeType.Numeric };
         _attributeRepo.InsertAttribute(attribute, 0);
-        buildA.StaticAttributes.Add(new AttributeValue(attribute) { NumericValue = 5m });
-        buildB.StaticAttributes.Add(new AttributeValue(attribute) { NumericValue = 10m });
+        buildA.AttributeValues.Add(new AttributeValue(attribute) { NumericValue = 5m });
+        buildB.AttributeValues.Add(new AttributeValue(attribute) { NumericValue = 10m });
 
         _repository.SaveStaticAttributes([buildA, buildB], attribute.Id);
 
         List<BuildNode> reloaded = _repository.GetBuildsForPlayerRace(Race.Protoss, [attribute]);
-        Assert.Equal(5m, reloaded.Single(b => b.Id == buildA.Id).StaticAttributes.Single().NumericValue);
-        Assert.Equal(10m, reloaded.Single(b => b.Id == buildB.Id).StaticAttributes.Single().NumericValue);
+        Assert.Equal(5m, reloaded.Single(b => b.Id == buildA.Id).AttributeValues.Single().NumericValue);
+        Assert.Equal(10m, reloaded.Single(b => b.Id == buildB.Id).AttributeValues.Single().NumericValue);
     }
 
     [Fact]
@@ -278,11 +278,11 @@ public class BuildRepositoryTests : IDisposable
         _repository.SaveStaticAttribute(node.Id, attribute.Id, "1500");
 
         BuildNode unsetNode = new() { Id = node.Id };
-        unsetNode.StaticAttributes.Add(new AttributeValue(attribute));
+        unsetNode.AttributeValues.Add(new AttributeValue(attribute));
         _repository.SaveStaticAttributes([unsetNode], attribute.Id);
 
         BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss, [attribute]));
-        Assert.Empty(loaded.StaticAttributes);
+        Assert.Empty(loaded.AttributeValues);
     }
 
     [Fact]
@@ -306,8 +306,8 @@ public class BuildRepositoryTests : IDisposable
         _repository.InsertBuild(buildB, null, 1);
         AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Elo", Type = AttributeType.Numeric };
         _attributeRepo.InsertAttribute(attribute, 0);
-        buildA.StaticAttributes.Add(new AttributeValue(attribute) { NumericValue = 1m });
-        buildB.StaticAttributes.Add(new AttributeValue(attribute) { NumericValue = 2m });
+        buildA.AttributeValues.Add(new AttributeValue(attribute) { NumericValue = 1m });
+        buildB.AttributeValues.Add(new AttributeValue(attribute) { NumericValue = 2m });
 
         int raisedCount = 0;
         _repository.BuildsChanged += () => raisedCount++;
@@ -333,8 +333,8 @@ public class BuildRepositoryTests : IDisposable
         BuildNode loadedRoot = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss, [attribute]));
         BuildNode loadedChild = Assert.Single(loadedRoot.Children);
 
-        Assert.Equal(1200m, Assert.Single(loadedRoot.StaticAttributes).NumericValue);
-        Assert.Empty(loadedChild.StaticAttributes);
+        Assert.Equal(1200m, Assert.Single(loadedRoot.AttributeValues).NumericValue);
+        Assert.Empty(loadedChild.AttributeValues);
     }
 
     // A mandatory attribute already stored for a root must not be backfilled a second time on top of it.
@@ -350,7 +350,7 @@ public class BuildRepositoryTests : IDisposable
 
         BuildNode loaded = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss, [attribute]));
 
-        Assert.Equal(1500m, Assert.Single(loaded.StaticAttributes).NumericValue);
+        Assert.Equal(1500m, Assert.Single(loaded.AttributeValues).NumericValue);
     }
 
     public void Dispose()

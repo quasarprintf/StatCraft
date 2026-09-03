@@ -5,7 +5,7 @@ using StatCraft.Models.GameData.Attributes;
 
 namespace StatCraft.Models.GameData.Maps
 {
-    public partial class Map : ObservableObject
+    public partial class Map : ObservableObject, IAttributedObject
     {
         public int Id { get; set; }
         [ObservableProperty] private string _name = string.Empty;
