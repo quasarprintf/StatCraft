@@ -10,12 +10,5 @@ namespace StatCraft.Views.Windows.BuildsComponents
         {
             InitializeComponent();
         }
-
-        private void OnAddAttributeOptionClicked(object? sender, RoutedEventArgs e)
-        {
-            //Click handler fires before Command handler, and hiding the flyout breaks CommandParameter binding
-            //so delay the hide with dispatcher
-            Dispatcher.UIThread.Post(() => AddAttributeButton.Flyout?.Hide());
-        }
     }
 }

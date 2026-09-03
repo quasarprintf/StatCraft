@@ -6,6 +6,7 @@ using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
+using StatCraft.ViewModels.Windows.AttributeComponents;
 using StatCraft.ViewModels.Windows.DataComponents;
 using System;
 using System.Collections.Generic;
@@ -49,8 +50,7 @@ namespace StatCraft.ViewModels.Windows
         public ObservableCollection<BuildNode> Builds => _buildsByPlayerRace[PlayerRace];
 
         public ObservableCollection<AttributeDefinition> AllAttributes { get; } = [];
-        public IEnumerable<AttributeDefinition> UnusedAttributes => SelectedBuild == null ? Enumerable.Empty<AttributeDefinition>() : AllAttributes.Where(a => !SelectedBuild.AttributeValues.Any(v => v.Definition.Id == a.Id));
-        public bool HasUnusedAttributes => UnusedAttributes.Any();
+        public AttributeValuesSelectViewModel AttributeValuesSelect { get; }
 
         [ObservableProperty] private string _nameFilter = "";
         private readonly Dictionary<AttributeDefinition, FilterSlotViewModel> _slotByAttribute = [];
@@ -74,6 +74,8 @@ namespace StatCraft.ViewModels.Windows
             // mandatory-on-root backfill) aren't silently skipped by loading against an empty list.
             foreach (AttributeDefinition attribute in _attributeRepo.GetAllAttributes(AttributeScope.Build))
                 AllAttributes.Add(attribute);
+            AttributeValuesSelect = new AttributeValuesSelectViewModel(AllAttributes);
+
             foreach (AttributeDefinition attribute in AllAttributes)
                 AddFilterSlot(attribute);
 
@@ -81,9 +83,10 @@ namespace StatCraft.ViewModels.Windows
             RefreshOpponentFilter();
             ApplyFilters();
 
-            _attributeRepo.AttributesChanged += SyncAttributesFromRepository;
+            AttributeValuesSelect.ValueChanged += AttributeValueChanged;
+            AttributeValuesSelect.ValueDeleted += AttributeValueDeleted;
 
-            AllAttributes.CollectionChanged += RaiseUnusedAttributesChanged;
+            _attributeRepo.AttributesChanged += SyncAttributesFromRepository;
         }
 
         [RelayCommand]
@@ -311,39 +314,21 @@ namespace StatCraft.ViewModels.Windows
                 UnWireNode(SelectedBuild);
             if (value != null)
                 WireNode(value);
-        }
 
-        partial void OnSelectedBuildChanged(BuildNode? value)
-        {
-            OnPropertyChanged(nameof(UnusedAttributes));
-            OnPropertyChanged(nameof(HasUnusedAttributes));
-        }
-
-        private void RaiseUnusedAttributesChanged(object? sender, EventArgs e)
-        {
-            OnPropertyChanged(nameof(UnusedAttributes));
-            OnPropertyChanged(nameof(HasUnusedAttributes));
+            AttributeValuesSelect.Object = value;
         }
 
         private void WireNode(BuildNode node)
         {
-            node.AttributeValues.CollectionChanged += RaiseUnusedAttributesChanged;
-            node.AttributeValues.CollectionChanged += StaticAttributeValuesChanged;
             node.PropertyChanged += NodePropertyChanged;
             foreach (AttributeDefinition attr in node.Details)
                 WireDetail(attr);
-            foreach (AttributeValue attr in node.AttributeValues)
-                WireStaticValue(node, attr);
         }
         private void UnWireNode(BuildNode node)
         {
-            node.AttributeValues.CollectionChanged -= RaiseUnusedAttributesChanged;
-            node.AttributeValues.CollectionChanged -= StaticAttributeValuesChanged;
             node.PropertyChanged -= NodePropertyChanged;
             foreach (AttributeDefinition attr in node.Details)
                 UnWireDetail(attr);
-            foreach (AttributeValue attr in node.AttributeValues)
-                UnWireStaticValue(node, attr);
         }
 
         private void NodePropertyChanged(object? s, PropertyChangedEventArgs e)
@@ -356,47 +341,22 @@ namespace StatCraft.ViewModels.Windows
                     ApplyFilters();
             }
         }
-        private void StaticAttributeValuesChanged(object? s, NotifyCollectionChangedEventArgs e)
-        {
-            if (SelectedBuild == null)
-                return;
-            if (e.OldItems != null)
-            {
-                foreach (AttributeValue value in e.OldItems.OfType<AttributeValue>())
-                {
-                    UnWireStaticValue(SelectedBuild, value);
-                    _buildRepo.SaveStaticAttribute(SelectedBuild.Id, value.Definition.Id, null);
-                }
-            }
-            if (e.NewItems != null)
-            {
-                foreach (AttributeValue value in e.NewItems.OfType<AttributeValue>())
-                {
-                    WireStaticValue(SelectedBuild, value);
-                    _buildRepo.SaveStaticAttribute(SelectedBuild.Id, value.Definition.Id, value.Serialize());
-                }
-            }
-        }
-        private void UnWireStaticValue(BuildNode map, AttributeValue value)
-        {
-            value.PropertyChanged -= ValuePropertyChanged;
-        }
-        private void WireStaticValue(BuildNode map, AttributeValue value)
-        {
-            value.PropertyChanged += ValuePropertyChanged;
-        }
-        private void ValuePropertyChanged(object? s, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName == nameof(AttributeValue.HasValue))
-                return;
-            if (SelectedBuild == null)
-                return;
-            if (s is not AttributeValue value)
-                return;
 
-            // Serialize() returns null when unset, and SaveValue deletes the row for null — that
-            // absence is what "no value" actually is in the database.
-            _buildRepo.SaveStaticAttribute(SelectedBuild.Id, value.Definition.Id, value.Serialize());
+        private void AttributeValueDeleted(object? s, AttributeValue value)
+        {
+            if (s is not BuildNode build)
+                return; //TODO: log this, it's unexpected
+
+            // SaveValue deletes if value is null
+            _buildRepo.SaveStaticAttribute(build.Id, value.Definition.Id, null);
+            ApplyFilters();
+        }
+        private void AttributeValueChanged(object? s, AttributeValue value)
+        {
+            if (s is not BuildNode build)
+                return; //TODO: log this, it's unexpected
+
+            _buildRepo.SaveStaticAttribute(build.Id, value.Definition.Id, value.Serialize());
             ApplyFilters();
         }
 
