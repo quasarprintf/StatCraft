@@ -110,13 +110,13 @@ namespace StatCraft.ViewModels.Windows.AttributeComponents
         [RelayCommand]
         public void AddAttribute(AttributeDefinition definition) 
         {
-            Object?.AttributeValues.Add(definition.DefaultValue.Clone());
+            Object?.AddAttribute(definition);
         }
 
         [RelayCommand]
         public void RemoveAttribute(AttributeValue value)
         {
-            Object?.AttributeValues.Remove(value);
+            Object?.RemoveAttribute(value);
         }
         #endregion
     }

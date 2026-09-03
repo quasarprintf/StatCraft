@@ -52,13 +52,11 @@ namespace StatCraft.Models.GameData.Builds
             Children.CollectionChanged += (s,e) => OnPropertyChanged(nameof(HasChildren));
         }
 
-        [RelayCommand]
         public void AddAttribute(AttributeDefinition definition) 
         {
             AttributeValues.Add(definition.DefaultValue.Clone());
         }
 
-        [RelayCommand]
         public void RemoveAttribute(AttributeValue value)
         {
             AttributeValues.Remove(value);

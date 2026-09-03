@@ -11,13 +11,11 @@ namespace StatCraft.Models.GameData.Maps
         [ObservableProperty] private string _name = string.Empty;
         public ObservableCollection<AttributeValue> AttributeValues { get; } = [];
 
-        [RelayCommand]
         public void AddAttribute(AttributeDefinition definition) 
         {
             AttributeValues.Add(definition.DefaultValue.Clone());
         }
 
-        [RelayCommand]
         public void RemoveAttribute(AttributeValue value)
         {
             AttributeValues.Remove(value);
