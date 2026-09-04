@@ -107,63 +107,6 @@ namespace StatCraft.Services.DatabaseRepository
             }
         }
 
-        // Plain classes with settable properties, not positional records — Dapper's constructor-based
-        // materialization requires constructor parameter types to exactly match the raw column types,
-        // which bypasses both its numeric widening and our DateTimeOffsetTypeHandler. The property-setter
-        // path it uses for a parameterless-constructible type applies both correctly.
-        private class GameRow
-        {
-            public long Id { get; set; }
-            public int Sc2ProfileId { get; set; }
-            public int? MapId { get; set; }
-            public int GameLengthSeconds { get; set; }
-            public string ReplayPath { get; set; } = "";
-            public DateTimeOffset ReplayTimestamp { get; set; }
-            public decimal Win { get; set; }
-            public string PlayerName { get; set; } = "";
-            public string PlayerClan { get; set; } = "";
-            public long PlayerMmr { get; set; }
-            public char PlayerRace { get; set; }
-            public bool PlayerRandom { get; set; }
-            public string Notes { get; set; } = "";
-            public GameType GameType { get; set; }
-        }
-
-        // Only the columns needed to identify a game's map. The full Map — including its attribute
-        // values — is MapRepository's business; games just need something to display and group by.
-        private class MapRow
-        {
-            public long Id { get; set; }
-            public string Name { get; set; } = "";
-        }
-
-        private class GamePlayerRow
-        {
-            public long Id { get; set; }
-            public long GameId { get; set; }
-            public int Side { get; set; }
-            public string Name { get; set; } = "";
-            public string Clan { get; set; } = "";
-            public long Mmr { get; set; }
-            public long? MmrAfter { get; set; }
-            public char Race { get; set; }
-            public bool Random { get; set; }
-            public int? Color { get; set; }
-        }
-
-        private class GameBuildRow
-        {
-            public long GamePlayerId { get; set; }
-            public int BuildId { get; set; }
-        }
-
-        private class GameAttributeValueRow
-        {
-            public long GamePlayerId { get; set; }
-            public int BuildAttributeId { get; set; }
-            public string Value { get; set; } = "";
-        }
-
         internal List<GameData> GetGamesForProfile(int sc2ProfileId) => GetGamesForProfiles([sc2ProfileId]);
 
         // Loads and merges games across every given profile, ordered by when they were actually played
@@ -233,9 +176,9 @@ namespace StatCraft.Services.DatabaseRepository
                 foreach (GameBuildRow row in buildRows)
                     playersById[row.GamePlayerId].BuildIds.Add(row.BuildId);
 
-                IEnumerable<GameAttributeValueRow> attributeRows = conn.Query<GameAttributeValueRow>(
+                IEnumerable<BuildDetailValueRow> attributeRows = conn.Query<BuildDetailValueRow>(
                     $"SELECT GamePlayerId, BuildAttributeId, Value FROM BuildDetailValues WHERE GamePlayerId IN ({playerIdList})");
-                foreach (GameAttributeValueRow row in attributeRows)
+                foreach (BuildDetailValueRow row in attributeRows)
                     playersById[row.GamePlayerId].AttributeValues.Add(new GameAttributeValue { BuildAttributeId = row.BuildAttributeId, Value = row.Value });
             }
 
@@ -373,6 +316,63 @@ namespace StatCraft.Services.DatabaseRepository
             using SqliteConnection conn = OpenConnection();
             long count = conn.ExecuteScalar<long>("SELECT COUNT(*) FROM Games WHERE MapId = @mapId", new { mapId });
             return count > 0;
+        }
+
+        // Plain classes with settable properties, not positional records — Dapper's constructor-based
+        // materialization requires constructor parameter types to exactly match the raw column types,
+        // which bypasses both its numeric widening and our DateTimeOffsetTypeHandler. The property-setter
+        // path it uses for a parameterless-constructible type applies both correctly.
+        private class GameRow
+        {
+            public long Id { get; set; }
+            public int Sc2ProfileId { get; set; }
+            public int? MapId { get; set; }
+            public int GameLengthSeconds { get; set; }
+            public string ReplayPath { get; set; } = "";
+            public DateTimeOffset ReplayTimestamp { get; set; }
+            public decimal Win { get; set; }
+            public string PlayerName { get; set; } = "";
+            public string PlayerClan { get; set; } = "";
+            public long PlayerMmr { get; set; }
+            public char PlayerRace { get; set; }
+            public bool PlayerRandom { get; set; }
+            public string Notes { get; set; } = "";
+            public GameType GameType { get; set; }
+        }
+
+        // Only the columns needed to identify a game's map. The full Map — including its attribute
+        // values — is MapRepository's business; games just need something to display and group by.
+        private class MapRow
+        {
+            public long Id { get; set; }
+            public string Name { get; set; } = "";
+        }
+
+        private class GamePlayerRow
+        {
+            public long Id { get; set; }
+            public long GameId { get; set; }
+            public int Side { get; set; }
+            public string Name { get; set; } = "";
+            public string Clan { get; set; } = "";
+            public long Mmr { get; set; }
+            public long? MmrAfter { get; set; }
+            public char Race { get; set; }
+            public bool Random { get; set; }
+            public int? Color { get; set; }
+        }
+
+        private class GameBuildRow
+        {
+            public long GamePlayerId { get; set; }
+            public int BuildId { get; set; }
+        }
+
+        private class BuildDetailValueRow
+        {
+            public long GamePlayerId { get; set; }
+            public int BuildAttributeId { get; set; }
+            public string Value { get; set; } = "";
         }
     }
 }
