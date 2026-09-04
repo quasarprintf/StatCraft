@@ -166,7 +166,13 @@ namespace StatCraft.Services.BackgroundService
                 return;
 
             long? estimatedMmr = OpponentMmrEstimator.Estimate(replay.Player.Mmr, playerMmrChange, replay.Win);
-            if (estimatedMmr == null || Math.Abs(opponent.Mmr - estimatedMmr.Value) < 500)
+            if (estimatedMmr == null)
+                return;
+            long? estimatedMmrDiff = estimatedMmr.Value - replay.Player.Mmr;
+            long? parsedMmrDiff = opponent.Mmr - replay.Player.Mmr;
+            bool wrongMagnitude = Math.Abs(estimatedMmrDiff.Value) > Math.Abs(parsedMmrDiff.Value) * 2;
+            bool wrongSign = estimatedMmrDiff < 0 && parsedMmrDiff > 0 || estimatedMmrDiff > 0 && parsedMmrDiff < 0;
+            if (!wrongMagnitude && !wrongSign)
                 return;
 
             logger.LogInfo($"Opponent MMR {opponent.Mmr} looks implausible given a player MmrChange of {playerMmrChange:+#;-#;0}; correcting to Elo-estimated {estimatedMmr.Value}.", profile);
