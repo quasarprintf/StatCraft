@@ -59,7 +59,15 @@ namespace StatCraft.Services.DataParsing
                 PlayerRaces = races,
                 PlayerRandomRace = randomRace,
                 PlayerColorsArgb = colorsArgb,
-                PlayerMmrs = replay.Initdata!.UserInitialData.Select(d => d.ScaledRating).ToArray(),
+                // Gating this on HighestLeague == 0 (unranked) was tried and reverted: Unranked matchmaking
+                // uses its own real, internal MMR — just never shown as a league — so a player who's only
+                // ever played Unranked legitimately has HighestLeague == 0 *and* a genuine ScaledRating.
+                // Discarding it there would silently lose real data instead of just displaying a wrong
+                // number. The one thing actually verified wrong (observed on an unranked "barcode" player)
+                // is the rating itself being negative — real MMR, ranked or unranked, is never negative —
+                // so that's what's checked. Treated the same as an absent rating (null) rather than stored
+                // verbatim, collapsing to the same "no data" 0 that BuildPlayer already falls back to below.
+                PlayerMmrs = replay.Initdata!.UserInitialData.Select(d => d.ScaledRating is > 0 ? d.ScaledRating : null).ToArray(),
                 PlayerProfileIds = profileIds,
                 PlayerTeams = teamIds,
                 IsMatchmade = replay.Initdata?.GameDescription?.GameOptions?.Amm ?? false,

@@ -257,6 +257,15 @@ namespace StatCraft.Services.DatabaseRepository
             conn.Execute("UPDATE GamePlayers SET MmrAfter = @mmrAfter WHERE Id = @id", new { mmrAfter, id = gamePlayerId });
         }
 
+        // Overwrites a GamePlayer's own pre-game MMR — used by ReplayImportService's OpponentMmrEstimator
+        // correction, when a replay-parsed opponent MMR turns out to be implausible given the tracked
+        // player's own observed MmrChange for that same game.
+        public void UpdateGamePlayerMmr(int gamePlayerId, long mmr)
+        {
+            using SqliteConnection conn = OpenConnection();
+            conn.Execute("UPDATE GamePlayers SET Mmr = @mmr WHERE Id = @id", new { mmr, id = gamePlayerId });
+        }
+
         // Backfills a player's in-game color once ReplayDataExtractor.TryResolvePlayerColorAsync has
         // re-read it from the replay file, so the next load of this game finds it already in the
         // database instead of needing to re-parse the file again.
