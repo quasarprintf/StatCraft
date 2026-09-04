@@ -234,7 +234,7 @@ namespace StatCraft.Services.DatabaseRepository
                     playersById[row.GamePlayerId].BuildIds.Add(row.BuildId);
 
                 IEnumerable<GameAttributeValueRow> attributeRows = conn.Query<GameAttributeValueRow>(
-                    $"SELECT GamePlayerId, BuildAttributeId, Value FROM GameAttributeValues WHERE GamePlayerId IN ({playerIdList})");
+                    $"SELECT GamePlayerId, BuildAttributeId, Value FROM BuildDetailValues WHERE GamePlayerId IN ({playerIdList})");
                 foreach (GameAttributeValueRow row in attributeRows)
                     playersById[row.GamePlayerId].AttributeValues.Add(new GameAttributeValue { BuildAttributeId = row.BuildAttributeId, Value = row.Value });
             }
@@ -324,7 +324,7 @@ namespace StatCraft.Services.DatabaseRepository
         }
 
         // Cascades to GamePlayers (ON DELETE CASCADE), which in turn cascades to that game's
-        // GameBuilds/GameAttributeValues rows for every player — self, allies, and opponents alike.
+        // GameBuilds/BuildDetailValues rows for every player — self, allies, and opponents alike.
         public void DeleteGame(int gameId)
         {
             using SqliteConnection conn = OpenConnection();
@@ -335,7 +335,7 @@ namespace StatCraft.Services.DatabaseRepository
         {
             using SqliteConnection conn = OpenConnection();
             conn.Execute(@"
-                INSERT INTO GameAttributeValues (GamePlayerId, BuildAttributeId, Value)
+                INSERT INTO BuildDetailValues (GamePlayerId, BuildAttributeId, Value)
                 VALUES (@gamePlayerId, @buildAttributeId, @value)
                 ON CONFLICT(GamePlayerId, BuildAttributeId) DO UPDATE SET Value = @value",
                 new { gamePlayerId, buildAttributeId, value });
@@ -344,14 +344,14 @@ namespace StatCraft.Services.DatabaseRepository
         public void DeleteAttributeValue(int gamePlayerId, int buildAttributeId)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("DELETE FROM GameAttributeValues WHERE GamePlayerId = @gamePlayerId AND BuildAttributeId = @buildAttributeId",
+            conn.Execute("DELETE FROM BuildDetailValues WHERE GamePlayerId = @gamePlayerId AND BuildAttributeId = @buildAttributeId",
                 new { gamePlayerId, buildAttributeId });
         }
 
         // True if any GameBuilds row still points at one of these build node ids. Deleting a BuildNode
         // cascades to its whole subtree (BuildNodes.ParentId ON DELETE CASCADE), and each deleted node
         // cascades away any GameBuilds row referencing it (ON DELETE CASCADE) along with that player's
-        // recorded attribute values for it (via BuildDetailsAttributes -> GameAttributeValues) — so
+        // recorded attribute values for it (via BuildDetailsAttributes -> BuildDetailValues) — so
         // callers should pass every id in the subtree being deleted, not just the root.
         public bool IsAnyBuildReferenced(IEnumerable<int> buildNodeIds)
         {

@@ -17,7 +17,7 @@ using System.Threading.Tasks;
 namespace StatCraft.ViewModels.Windows.DataComponents
 {
     // Owns one player's build selection(s) and derived attribute editors within a game — reused for the
-    // session user as well as every ally/opponent, since GameBuilds/GameAttributeValues are tied to a
+    // session user as well as every ally/opponent, since GameBuilds/BuildDetailValues are tied to a
     // GamePlayer's own id, not to the game as a whole.
     public partial class PlayerBuildTrackerViewModel : ViewModelBase
     {
