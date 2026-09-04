@@ -15,10 +15,13 @@ namespace StatCraft.Services.DataParsing
         // divisor of 400 (400 * 2.2 = 880).
         private const double RatingScaleDivisor = 880.0;
 
-        // Best-effort default K-factor (per-game MMR-change magnitude cap) for an established player —
-        // not Blizzard-confirmed. Not valid for a player still in their placement matches, whose swings
-        // are known to be larger than this.
-        private const double KFactor = 32.0;
+        // K-factor (per-game MMR-change magnitude cap) for an established player, fit against 52 of the
+        // user's own real ranked 1v1 games (GameType=Ranked, MmrAfter known, excluding one confirmed-
+        // garbage opponent MMR) by solving K = actualChange / (win - expectedScore) per game and taking
+        // the median — 50 of the 52 games landed within a tight cluster (mean 43.42, stddev 2.61); the
+        // other 2 read as further undetected garbage opponent MMRs rather than real outliers. Not valid
+        // for a player still in their placement matches, whose swings are known to be larger than this.
+        private const double KFactor = 43.0;
 
         // Returns the estimated pre-game MMR for the opponent, or null if playerMmrChange/playerWin don't
         // correspond to a mathematically valid probability under these constants (e.g. a magnitude of

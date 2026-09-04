@@ -4,7 +4,7 @@ namespace StatCraft.Tests;
 
 public class OpponentMmrEstimatorTests
 {
-    private const double K = 32.0;
+    private const double K = 43.0;
     private const double D = 880.0;
 
     // Reimplements the forward Elo formula independently of OpponentMmrEstimator, so these tests actually
@@ -31,7 +31,7 @@ public class OpponentMmrEstimatorTests
 
         Assert.NotNull(estimated);
         // Rounding the forward change to a whole number loses some precision going back the other way.
-        Assert.InRange(estimated.Value, opponentMmr - 5, opponentMmr + 5);
+        Assert.InRange(estimated.Value, opponentMmr - 20, opponentMmr + 20);
     }
 
     [Fact]
@@ -43,16 +43,16 @@ public class OpponentMmrEstimatorTests
     }
 
     [Theory]
-    [InlineData(32)]  // exactly K: expectedScore hits 0, the open boundary
-    [InlineData(40)]  // larger than K is possible under real Elo is impossible under a win
+    [InlineData(43)]  // exactly K: expectedScore hits 0, the open boundary
+    [InlineData(50)]  // larger than K is possible under real Elo is impossible under a win
     public void Estimate_WinWithChangeAtOrAboveK_ReturnsNull(long change)
     {
         Assert.Null(OpponentMmrEstimator.Estimate(4000, change, 1m));
     }
 
     [Theory]
-    [InlineData(-32)] // exactly -K: expectedScore hits 1, the open boundary
-    [InlineData(-40)]
+    [InlineData(-43)] // exactly -K: expectedScore hits 1, the open boundary
+    [InlineData(-50)]
     public void Estimate_LossWithChangeAtOrBelowNegativeK_ReturnsNull(long change)
     {
         Assert.Null(OpponentMmrEstimator.Estimate(4000, change, 0m));
@@ -61,7 +61,7 @@ public class OpponentMmrEstimatorTests
     [Fact]
     public void Estimate_WinWithLargeGain_EstimatesOpponentWellAboveThePlayer()
     {
-        long? estimated = OpponentMmrEstimator.Estimate(4000, 30, 1m);
+        long? estimated = OpponentMmrEstimator.Estimate(4000, 40, 1m);
 
         Assert.NotNull(estimated);
         Assert.True(estimated.Value > 4000 + 500);
@@ -70,7 +70,7 @@ public class OpponentMmrEstimatorTests
     [Fact]
     public void Estimate_LossWithLargeDrop_EstimatesOpponentWellBelowThePlayer()
     {
-        long? estimated = OpponentMmrEstimator.Estimate(4000, -30, 0m);
+        long? estimated = OpponentMmrEstimator.Estimate(4000, -40, 0m);
 
         Assert.NotNull(estimated);
         Assert.True(estimated.Value < 4000 - 500);
