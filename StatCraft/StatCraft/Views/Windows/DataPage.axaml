@@ -157,7 +157,8 @@
                                         <StackPanel Orientation="Horizontal" Spacing="2">
                                             <TextBlock Text="(" VerticalAlignment="Center"/>
                                             <NumericUpDown Value="{Binding Mmr}" FormatString="0" ShowButtonSpinner="False" BorderThickness="0"
-                                                           MinWidth="36" Padding="0,8" VerticalAlignment="Center"/>
+                                                           MinWidth="36" Padding="0,8" VerticalAlignment="Center"
+                                                           LostFocus="OnOpponentMmrLostFocus"/>
                                             <TextBlock Text=") " VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding FormattedClan}" VerticalAlignment="Center"/>
                                             <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>

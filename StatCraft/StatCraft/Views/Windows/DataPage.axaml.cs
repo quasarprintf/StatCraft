@@ -165,6 +165,16 @@ namespace StatCraft.Views.Windows
         private static bool IsNotesColumn(DataGridColumn column) => column.Header as string == "Notes";
         private static bool IsBuildColumn(DataGridColumn column) => column.Header as string == "Build";
 
+        // OpponentRowViewModel.Mmr already resets itself to the resolved baseline when cleared (see
+        // OnMmrChanged), but NumericUpDown doesn't reliably re-pull its own bound Value back into its
+        // displayed Text after that round-trip, so clearing the box and blurring left it visibly blank.
+        // Forcing Value back from the view model here on blur re-syncs the display regardless.
+        private void OnOpponentMmrLostFocus(object? sender, RoutedEventArgs e)
+        {
+            if (sender is NumericUpDown { DataContext: OpponentRowViewModel opponent } numericUpDown)
+                numericUpDown.Value = opponent.Mmr;
+        }
+
         private void OnGamesGridCellPointerPressed(object? sender, DataGridCellPointerPressedEventArgs e)
         {
             //show build details when you select the build column, hide it when you select a different column
