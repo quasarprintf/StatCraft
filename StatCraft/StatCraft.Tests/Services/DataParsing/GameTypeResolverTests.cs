@@ -70,8 +70,8 @@ public class GameTypeResolverTests
         ReplayTimestamp = DateTimeOffset.UtcNow,
         Win = 1m,
         IsMatchmade = isMatchmade,
-        Player = new GamePlayer { Name = "Me", Clan = "", Mmr = selfMmr, Race = 'P', Random = false },
+        Player = new GamePlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = selfMmr }, Race = 'P', Random = false },
         Allies = [],
-        Opponents = [new GamePlayer { Name = "Foe", Clan = "", Mmr = 3100, Race = 'Z', Random = false }],
+        Opponents = [new GamePlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false }],
     };
 }

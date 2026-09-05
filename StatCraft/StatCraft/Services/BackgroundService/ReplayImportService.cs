@@ -131,14 +131,14 @@ namespace StatCraft.Services.BackgroundService
                     await Task.Delay(delay, CancellationToken.None);
 
                     long? currentMmr = await ladderService.GetCurrentMmrAsync(profile, ladderRace.Value, CancellationToken.None);
-                    if (currentMmr == null || currentMmr == replay.Player.Mmr)
+                    if (currentMmr == null || currentMmr == replay.Player.Mmr.ParsedMmr)
                         continue;
 
-                    long mmrChange = currentMmr.Value - replay.Player.Mmr;
+                    long mmrChange = currentMmr.Value - replay.Player.Mmr.ParsedMmr;
                     gameDataRepository.UpdateGamePlayerMmrAfter(gamePlayerId.Value, currentMmr.Value);
                     replay.Player.MmrAfter = currentMmr.Value;
 
-                    logger.LogInfo($"MMR after game resolved: {replay.Player.Mmr} -> {currentMmr.Value} ({mmrChange:+#;-#;0})", profile);
+                    logger.LogInfo($"MMR after game resolved: {replay.Player.Mmr.ParsedMmr} -> {currentMmr.Value} ({mmrChange:+#;-#;0})", profile);
 
                     TryCorrectOpponentMmr(replay, mmrChange, profile);
 
@@ -146,7 +146,7 @@ namespace StatCraft.Services.BackgroundService
                     return;
                 }
 
-                logger.LogInfo($"Post-game MMR never changed from {replay.Player.Mmr}; leaving it unknown.", profile);
+                logger.LogInfo($"Post-game MMR never changed from {replay.Player.Mmr.ParsedMmr}; leaving it unknown.", profile);
             }
             catch (Exception ex)
             {
@@ -157,29 +157,32 @@ namespace StatCraft.Services.BackgroundService
         // Only reachable for a rated 1v1 (see TrackMmrChange's own guard), so there's exactly one
         // opponent whose MMR the Elo formula can meaningfully judge and, if needed, re-estimate.
         // PredictedChange says what the tracked player's own MmrChange should have been, given the
-        // recorded opponent MMR — comparing that against what MmrChange actually was is a direct test of
-        // whether the recorded opponent MMR is trustworthy, since (per OpponentMmrEstimator's own fit
-        // against the user's real game history) every legitimate game lands within
+        // recorded (ParsedMmr) opponent MMR — comparing that against what MmrChange actually was is a
+        // direct test of whether the recorded opponent MMR is trustworthy, since (per OpponentMmrEstimator's
+        // own fit against the user's real game history) every legitimate game lands within
         // MaxPlausibleResidual of its own prediction; a replay-parsed opponent MMR can be garbage (see
         // ReplayDataExtractor's ScaledRating guard for a confirmed example) while still looking
         // superficially plausible on its own, which this catches where a simpler bounds check wouldn't.
+        // The estimate lands in EstimatedMmr, alongside ParsedMmr rather than overwriting it — every input
+        // into the estimation itself always reads ParsedMmr specifically, so a correction here can never
+        // feed back into a later one.
         private void TryCorrectOpponentMmr(ParsedReplayData replay, long playerMmrChange, Sc2Profile profile)
         {
             GamePlayer opponent = replay.Opponents[0];
             if (opponent.GamePlayerId == null)
                 return;
 
-            double predictedChange = OpponentMmrEstimator.PredictedChange(replay.Player.Mmr, opponent.Mmr, replay.Win);
+            double predictedChange = OpponentMmrEstimator.PredictedChange(replay.Player.Mmr.ParsedMmr, opponent.Mmr.ParsedMmr, replay.Win);
             if (Math.Abs(predictedChange - playerMmrChange) <= OpponentMmrEstimator.MaxPlausibleResidual)
                 return;
 
-            long? estimatedMmr = OpponentMmrEstimator.Estimate(replay.Player.Mmr, playerMmrChange, replay.Win);
+            long? estimatedMmr = OpponentMmrEstimator.Estimate(replay.Player.Mmr.ParsedMmr, playerMmrChange, replay.Win);
             if (estimatedMmr == null)
                 return;
 
-            logger.LogInfo($"Opponent MMR {opponent.Mmr} predicted a MmrChange of {predictedChange:0.#}, but the player's actual MmrChange was {playerMmrChange:+#;-#;0}; correcting to Elo-estimated {estimatedMmr.Value}.", profile);
-            gameDataRepository.UpdateGamePlayerMmr(opponent.GamePlayerId.Value, estimatedMmr.Value);
-            opponent.Mmr = estimatedMmr.Value;
+            logger.LogInfo($"Opponent MMR {opponent.Mmr.ParsedMmr} predicted a MmrChange of {predictedChange:0.#}, but the player's actual MmrChange was {playerMmrChange:+#;-#;0}; correcting to Elo-estimated {estimatedMmr.Value}.", profile);
+            gameDataRepository.UpdateGamePlayerEstimatedMmr(opponent.GamePlayerId.Value, estimatedMmr.Value);
+            opponent.Mmr.EstimatedMmr = estimatedMmr.Value;
         }
     }
 }

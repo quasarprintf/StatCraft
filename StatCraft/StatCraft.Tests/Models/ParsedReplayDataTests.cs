@@ -40,7 +40,7 @@ public class ParsedReplayDataTests
     }
 
     private static GamePlayer Player(string name, char race, long mmr = 3000) =>
-        new() { Name = name, Clan = "", Mmr = mmr, Race = race, Random = false };
+        new() { Name = name, Clan = "", Mmr = new PlayerMmr { ParsedMmr = mmr }, Race = race, Random = false };
 
     private static ParsedReplayData CreateReplay(long selfMmr = 3000, GamePlayer[]? allies = null, GamePlayer[]? opponents = null) => new()
     {

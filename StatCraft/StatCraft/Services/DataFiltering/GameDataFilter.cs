@@ -42,7 +42,7 @@ namespace StatCraft.Services.DataFiltering
             {
                 long min = criteria.MinOpponentMmr ?? long.MinValue;
                 long max = criteria.MaxOpponentMmr ?? long.MaxValue;
-                if (!replay.Opponents.Any(o => o.Mmr >= min && o.Mmr <= max))
+                if (!replay.Opponents.Any(o => o.Mmr.Mmr >= min && o.Mmr.Mmr <= max))
                     return false;
             }
 

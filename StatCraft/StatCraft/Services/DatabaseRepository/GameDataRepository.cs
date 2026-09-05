@@ -52,7 +52,7 @@ namespace StatCraft.Services.DatabaseRepository
                     win = (double)replay.Win,
                     playerName = replay.Player.Name,
                     playerClan = replay.Player.Clan,
-                    playerMmr = replay.Player.Mmr,
+                    playerMmr = replay.Player.Mmr.ParsedMmr,
                     gameType = (int)game.GameType,
                     playerRace = replay.Player.Race,
                     playerRandom = replay.Player.Random ? 1 : 0,
@@ -70,7 +70,7 @@ namespace StatCraft.Services.DatabaseRepository
                     side = SideSelf,
                     name = replay.Player.Name,
                     clan = replay.Player.Clan,
-                    mmr = replay.Player.Mmr,
+                    mmr = replay.Player.Mmr.ParsedMmr,
                     race = replay.Player.Race,
                     random = replay.Player.Random ? 1 : 0,
                     color = replay.Player.ColorArgb,
@@ -99,7 +99,7 @@ namespace StatCraft.Services.DatabaseRepository
                         sortOrder = i,
                         name = player.Name,
                         clan = player.Clan,
-                        mmr = player.Mmr,
+                        mmr = player.Mmr.ParsedMmr,
                         race = player.Race,
                         random = player.Random ? 1 : 0,
                         color = player.ColorArgb,
@@ -147,10 +147,20 @@ namespace StatCraft.Services.DatabaseRepository
             Dictionary<long, GamePlayer> selfPlayers = new(); // Games.Id -> self GamePlayer
             Dictionary<long, GamePlayer> playersById = new(); // GamePlayers.Id -> GamePlayer, every side
             IEnumerable<GamePlayerRow> playerRows = conn.Query<GamePlayerRow>(
-                $"SELECT Id, GameId, Side, Name, Clan, Mmr, MmrAfter, Race, Random, Color FROM GamePlayers WHERE GameId IN ({idList}) ORDER BY GameId, Side, SortOrder");
+                $"SELECT Id, GameId, Side, Name, Clan, Mmr, EstimatedMmr, OverrideMmr, MmrAfter, Race, Random, Color FROM GamePlayers WHERE GameId IN ({idList}) ORDER BY GameId, Side, SortOrder");
             foreach (GamePlayerRow row in playerRows)
             {
-                GamePlayer player = new() { GamePlayerId = (int)row.Id, Name = row.Name, Clan = row.Clan, Mmr = row.Mmr, MmrAfter = row.MmrAfter, Race = row.Race, Random = row.Random, ColorArgb = row.Color };
+                GamePlayer player = new()
+                {
+                    GamePlayerId = (int)row.Id,
+                    Name = row.Name,
+                    Clan = row.Clan,
+                    Mmr = new PlayerMmr { ParsedMmr = row.Mmr, EstimatedMmr = row.EstimatedMmr, OverrideMmr = row.OverrideMmr },
+                    MmrAfter = row.MmrAfter,
+                    Race = row.Race,
+                    Random = row.Random,
+                    ColorArgb = row.Color,
+                };
                 playersById[row.Id] = player;
 
                 if (row.Side == SideSelf)
@@ -192,7 +202,7 @@ namespace StatCraft.Services.DatabaseRepository
                 {
                     Name = row.PlayerName,
                     Clan = row.PlayerClan,
-                    Mmr = row.PlayerMmr,
+                    Mmr = new PlayerMmr { ParsedMmr = row.PlayerMmr },
                     Race = row.PlayerRace,
                     Random = row.PlayerRandom,
                 };
@@ -257,13 +267,13 @@ namespace StatCraft.Services.DatabaseRepository
             conn.Execute("UPDATE GamePlayers SET MmrAfter = @mmrAfter WHERE Id = @id", new { mmrAfter, id = gamePlayerId });
         }
 
-        // Overwrites a GamePlayer's own pre-game MMR — used by ReplayImportService's OpponentMmrEstimator
-        // correction, when a replay-parsed opponent MMR turns out to be implausible given the tracked
-        // player's own observed MmrChange for that same game.
-        public void UpdateGamePlayerMmr(int gamePlayerId, long mmr)
+        // Records an Elo-estimated MMR alongside (not overwriting) a GamePlayer's parsed one — used by
+        // ReplayImportService's OpponentMmrEstimator correction, when a replay-parsed opponent MMR turns
+        // out to be implausible given the tracked player's own observed MmrChange for that same game.
+        public void UpdateGamePlayerEstimatedMmr(int gamePlayerId, long estimatedMmr)
         {
             using SqliteConnection conn = OpenConnection();
-            conn.Execute("UPDATE GamePlayers SET Mmr = @mmr WHERE Id = @id", new { mmr, id = gamePlayerId });
+            conn.Execute("UPDATE GamePlayers SET EstimatedMmr = @estimatedMmr WHERE Id = @id", new { estimatedMmr, id = gamePlayerId });
         }
 
         // Backfills a player's in-game color once ReplayDataExtractor.TryResolvePlayerColorAsync has
@@ -365,6 +375,8 @@ namespace StatCraft.Services.DatabaseRepository
             public string Name { get; set; } = "";
             public string Clan { get; set; } = "";
             public long Mmr { get; set; }
+            public long? EstimatedMmr { get; set; }
+            public long? OverrideMmr { get; set; }
             public long? MmrAfter { get; set; }
             public char Race { get; set; }
             public bool Random { get; set; }

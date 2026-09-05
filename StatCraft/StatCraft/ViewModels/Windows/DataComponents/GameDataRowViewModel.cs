@@ -54,7 +54,7 @@ namespace StatCraft.ViewModels.Windows.DataComponents
             {
                 GamePlayer self = _game.ReplayData.Player;
                 if (self.MmrAfter is not { } after || self.MmrChange is not { } change)
-                    return [new ColoredCharacter(self.Mmr.ToString())];
+                    return [new ColoredCharacter(self.Mmr.Mmr.ToString())];
 
                 IBrush changeColor = change switch
                 {
@@ -104,7 +104,7 @@ namespace StatCraft.ViewModels.Windows.DataComponents
             // user edit and write straight back to the database (same reason as _notes below).
             _gameType = game.GameType;
             MatchupCharacters = BuildMatchupCharacters(replay);
-            OpponentName = string.Join(", ", replay.Opponents.Select(o => $"({o.Mmr}) {o.FormattedClan}{o.Name}"));
+            OpponentName = string.Join(", ", replay.Opponents.Select(o => $"({o.Mmr.Mmr}) {o.FormattedClan}{o.Name}"));
             _notes = game.Notes;
 
             // Allies share the self player's own opponents (same enemy team), so their build tree uses

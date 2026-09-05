@@ -11,8 +11,8 @@ namespace StatCraft.Models.GameData
         public required string Clan { get; set; }
         public string FormattedClan => string.IsNullOrWhiteSpace(Clan) ? "" : $"[{Clan}]";
         public required string Name { get; set; }
-        // MMR as recorded in the replay itself, i.e. going *into* the game.
-        public required long Mmr { get; set; }
+        // MMR going *into* the game — see PlayerMmr for how ParsedMmr/EstimatedMmr/OverrideMmr resolve.
+        public required PlayerMmr Mmr { get; set; }
 
         // MMR read back from the Battle.net ladder API shortly after the game, i.e. coming *out* of it.
         // Null whenever it couldn't be determined — no saved API credentials, the profile has no placed
@@ -21,7 +21,7 @@ namespace StatCraft.Models.GameData
         // retrievable without knowing their region/realm/profile ids.
         public long? MmrAfter { get; set; }
 
-        public long? MmrChange => MmrAfter.HasValue ? MmrAfter.Value - Mmr : null;
+        public long? MmrChange => MmrAfter.HasValue ? MmrAfter.Value - Mmr.Mmr : null;
         public required char Race { get; set; }
         public required bool Random { get; set; }
 

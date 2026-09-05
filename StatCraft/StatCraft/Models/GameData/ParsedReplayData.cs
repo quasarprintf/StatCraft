@@ -15,6 +15,6 @@ namespace StatCraft.Models.GameData
         public required GamePlayer[] Opponents { get; set; }
         public bool IsMatchmade { get; set; }
 
-        public bool IsRatedOneVsOne => Allies.Length == 0 && Opponents.Length == 1 && Player.Mmr > 0;
+        public bool IsRatedOneVsOne => Allies.Length == 0 && Opponents.Length == 1 && Player.Mmr.Mmr > 0;
     }
 }

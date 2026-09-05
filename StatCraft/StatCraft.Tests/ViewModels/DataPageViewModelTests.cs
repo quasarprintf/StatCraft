@@ -111,9 +111,9 @@ public class DataPageViewModelTests : IAsyncDisposable
             ReplayPath = Guid.NewGuid() + ".SC2Replay",
             ReplayTimestamp = DateTimeOffset.Now,
             Win = 1m,
-            Player = new GamePlayer { Name = "Me", Clan = "", Mmr = 3000, Race = 'Z', Random = false },
+            Player = new GamePlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false },
             Allies = [],
-            Opponents = [new GamePlayer { Name = "Foe", Clan = "", Mmr = 3100, Race = 'T', Random = false }],
+            Opponents = [new GamePlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'T', Random = false }],
         };
         GameData game = new() { ReplayData = replay };
         _gameDataRepository.InsertGame(game, _sc2ProfileId);

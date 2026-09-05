@@ -75,8 +75,8 @@ public class GameDataFilterTests
     public void Matches_MatchupPairs_OrsAcrossOpponents()
     {
         Map altitude = new() { Name = "Altitude LE" };
-        GamePlayer opponentZ = new() { Name = "A", Clan = "", Mmr = 3000, Race = 'Z', Random = false };
-        GamePlayer opponentP = new() { Name = "B", Clan = "", Mmr = 3000, Race = 'P', Random = false };
+        GamePlayer opponentZ = new() { Name = "A", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false };
+        GamePlayer opponentP = new() { Name = "B", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'P', Random = false };
         GameData game = CreateGame(map: altitude, selfRace: 'T', opponents: [opponentZ, opponentP]);
 
         // Only TvP is checked — should still match because one of the two opponents is Protoss.
@@ -91,7 +91,7 @@ public class GameDataFilterTests
     public void Matches_MatchupPairs_NoOpponentMatchesPlayerRacePair_ReturnsFalse()
     {
         Map altitude = new() { Name = "Altitude LE" };
-        GamePlayer opponentZ = new() { Name = "A", Clan = "", Mmr = 3000, Race = 'Z', Random = false };
+        GamePlayer opponentZ = new() { Name = "A", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false };
         GameData game = CreateGame(map: altitude, selfRace: 'T', opponents: [opponentZ]);
 
         GameFilterCriteria criteria = GameFilterCriteria.Empty with
@@ -105,8 +105,8 @@ public class GameDataFilterTests
     public void Matches_OpponentMmrRange_OrsAcrossOpponents()
     {
         Map altitude = new() { Name = "Altitude LE" };
-        GamePlayer low = new() { Name = "A", Clan = "", Mmr = 2000, Race = 'Z', Random = false };
-        GamePlayer high = new() { Name = "B", Clan = "", Mmr = 3500, Race = 'P', Random = false };
+        GamePlayer low = new() { Name = "A", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 2000 }, Race = 'Z', Random = false };
+        GamePlayer high = new() { Name = "B", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3500 }, Race = 'P', Random = false };
         GameData game = CreateGame(map: altitude, opponents: [low, high]);
 
         GameFilterCriteria criteria = GameFilterCriteria.Empty with { MinOpponentMmr = 3000, MaxOpponentMmr = 4000 };
@@ -117,7 +117,7 @@ public class GameDataFilterTests
     public void Matches_OpponentMmrRange_NoOpponentInRange_ReturnsFalse()
     {
         Map altitude = new() { Name = "Altitude LE" };
-        GamePlayer low = new() { Name = "A", Clan = "", Mmr = 2000, Race = 'Z', Random = false };
+        GamePlayer low = new() { Name = "A", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 2000 }, Race = 'Z', Random = false };
         GameData game = CreateGame(map: altitude, opponents: [low]);
 
         GameFilterCriteria criteria = GameFilterCriteria.Empty with { MinOpponentMmr = 3000, MaxOpponentMmr = 4000 };
@@ -182,11 +182,11 @@ public class GameDataFilterTests
             Win = win,
             Player = new GamePlayer
             {
-                Name = "Me", Clan = "", Mmr = 3000, Race = selfRace, Random = false,
+                Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = selfRace, Random = false,
                 BuildIds = selfBuildIds?.ToList() ?? [],
             },
             Allies = [],
-            Opponents = opponents ?? [new GamePlayer { Name = "Foe", Clan = "", Mmr = 3100, Race = 'Z', Random = false }],
+            Opponents = opponents ?? [new GamePlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false }],
         };
         return new GameData { Map = map, ReplayData = replay };
     }

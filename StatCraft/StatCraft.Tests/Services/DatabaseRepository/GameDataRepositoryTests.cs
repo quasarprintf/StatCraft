@@ -56,7 +56,7 @@ public class GameDataRepositoryTests : IDisposable
         Assert.Equal(new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero), loaded.ReplayData.ReplayTimestamp);
         Assert.Equal(1m, loaded.ReplayData.Win);
         Assert.Equal("Me", loaded.ReplayData.Player.Name);
-        Assert.Equal(3000, loaded.ReplayData.Player.Mmr);
+        Assert.Equal(3000, loaded.ReplayData.Player.Mmr.Mmr);
         Assert.Equal('T', loaded.ReplayData.Player.Race);
     }
 
@@ -78,8 +78,8 @@ public class GameDataRepositoryTests : IDisposable
     [Fact]
     public void InsertGame_PersistsAlliesAndOpponentsSeparately()
     {
-        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = 2900, Race = 'T', Random = false };
-        GamePlayer opponent = new() { Name = "Foe", Clan = "", Mmr = 3100, Race = 'Z', Random = false };
+        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 2900 }, Race = 'T', Random = false };
+        GamePlayer opponent = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false };
         GameData game = CreateGame(allies: [ally], opponents: [opponent]);
         _repository.InsertGame(game, _sc2ProfileId);
 
@@ -93,8 +93,8 @@ public class GameDataRepositoryTests : IDisposable
     [Fact]
     public void InsertGame_AllyAndOpponentGetTheirOwnDistinctGamePlayerId()
     {
-        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = 2900, Race = 'T', Random = false };
-        GamePlayer opponent = new() { Name = "Foe", Clan = "", Mmr = 3100, Race = 'Z', Random = false };
+        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 2900 }, Race = 'T', Random = false };
+        GamePlayer opponent = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false };
         GameData game = CreateGame(allies: [ally], opponents: [opponent]);
         _repository.InsertGame(game, _sc2ProfileId);
 
@@ -112,7 +112,7 @@ public class GameDataRepositoryTests : IDisposable
         BuildNode allyBuild = new() { Name = "Ally Build" };
         _buildRepository.InsertBuild(allyBuild, null, 1);
 
-        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = 2900, Race = 'T', Random = false };
+        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 2900 }, Race = 'T', Random = false };
         GameData game = CreateGame(allies: [ally]);
         _repository.InsertGame(game, _sc2ProfileId);
 
@@ -179,7 +179,7 @@ public class GameDataRepositoryTests : IDisposable
         _buildRepository.InsertBuild(build, null, 0);
         AttributeValue attr = InsertAttribute();
 
-        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = 2900, Race = 'T', Random = false };
+        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 2900 }, Race = 'T', Random = false };
         GameData game = CreateGame(allies: [ally]);
         _repository.InsertGame(game, _sc2ProfileId);
         _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [build.Id]);
@@ -287,7 +287,7 @@ public class GameDataRepositoryTests : IDisposable
     [Fact]
     public void UpdateGamePlayerMmrAfter_DoesNotTouchOtherPlayers()
     {
-        GamePlayer opponent = new() { Name = "Foe", Clan = "", Mmr = 3100, Race = 'Z', Random = false };
+        GamePlayer opponent = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false };
         GameData game = CreateGame(opponents: [opponent]);
         _repository.InsertGame(game, _sc2ProfileId);
 
@@ -511,9 +511,9 @@ public class GameDataRepositoryTests : IDisposable
             ReplayPath = replayPath,
             ReplayTimestamp = replayTimestamp ?? new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero),
             Win = win,
-            Player = new GamePlayer { Name = "Me", Clan = "", Mmr = 3000, Race = 'T', Random = false },
+            Player = new GamePlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'T', Random = false },
             Allies = allies ?? [],
-            Opponents = opponents ?? [new GamePlayer { Name = "Foe", Clan = "", Mmr = 3100, Race = 'Z', Random = false }],
+            Opponents = opponents ?? [new GamePlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false }],
         };
         return new GameData { Map = _mapRepository.GetOrCreateMap(mapName), ReplayData = replay };
     }

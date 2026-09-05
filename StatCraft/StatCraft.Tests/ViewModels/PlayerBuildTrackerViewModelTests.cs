@@ -295,7 +295,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void Construction_WithColorArgbAlreadySet_SetsNameColorFromIt()
     {
-        GamePlayer player = new() { Name = "Ally", Clan = "", Mmr = 3000, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) };
+        GamePlayer player = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) };
 
         PlayerBuildTrackerViewModel tracker = new(player, _gameDataRepository, null, _logger);
 
@@ -309,7 +309,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void Construction_WithNoColorArgbAndNoReplayToResolveFrom_LeavesNameColorNull()
     {
-        GamePlayer player = new() { Name = "Ally", Clan = "", Mmr = 3000, Race = 'Z', Random = false };
+        GamePlayer player = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false };
 
         PlayerBuildTrackerViewModel tracker = new(player, _gameDataRepository, null, _logger);
 
@@ -321,8 +321,8 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void Construction_WithUseTeamColorsOn_ColorsByAllyOpponentSideNotReplayColor()
     {
-        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = 3000, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) };
-        GamePlayer opponent = new() { Name = "Foe", Clan = "", Mmr = 3000, Race = 'T', Random = false, ColorArgb = unchecked((int)0xFF00FF00) };
+        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) };
+        GamePlayer opponent = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'T', Random = false, ColorArgb = unchecked((int)0xFF00FF00) };
 
         PlayerBuildTrackerViewModel allyTracker = new(ally, _gameDataRepository, null, _logger, useTeamColors: true, isAlly: true);
         PlayerBuildTrackerViewModel opponentTracker = new(opponent, _gameDataRepository, null, _logger, useTeamColors: true, isAlly: false);
@@ -337,7 +337,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void SetUseTeamColors_ToggledOffAfterOn_RestoresReplayColor()
     {
-        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = 3000, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) };
+        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) };
         PlayerBuildTrackerViewModel tracker = new(ally, _gameDataRepository, null, _logger, useTeamColors: true, isAlly: true);
         Assert.Same(AppColors.AllyYellow, tracker.NameColor);
 
@@ -355,9 +355,9 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
             ReplayPath = Guid.NewGuid() + ".SC2Replay",
             ReplayTimestamp = DateTimeOffset.UtcNow,
             Win = 1m,
-            Player = new GamePlayer { Name = "Me", Clan = "", Mmr = 3000, Race = 'Z', Random = false },
+            Player = new GamePlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false },
             Allies = [],
-            Opponents = [new GamePlayer { Name = "Foe", Clan = "", Mmr = 3100, Race = 'T', Random = false }],
+            Opponents = [new GamePlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'T', Random = false }],
         };
         return new GameData { ReplayData = replay };
     }

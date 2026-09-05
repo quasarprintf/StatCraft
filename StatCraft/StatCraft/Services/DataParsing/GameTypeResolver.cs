@@ -14,7 +14,7 @@ namespace StatCraft.Services.DataParsing
                 return GameType.Ranked; //TODO: re-evaluate default value of ranked
 
             //if mmr doesn't match ranked mmr, it must be unranked. Otherwise, assume ranked
-            return known == replay.Player.Mmr ? GameType.Ranked : GameType.Unranked;
+            return known == replay.Player.Mmr.ParsedMmr ? GameType.Ranked : GameType.Unranked;
         }
     }
 }

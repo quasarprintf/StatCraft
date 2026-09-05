@@ -68,9 +68,9 @@ public class GameDataRowViewModelTests : IDisposable
             ReplayPath = Guid.NewGuid() + ".SC2Replay",
             ReplayTimestamp = DateTimeOffset.UtcNow,
             Win = 1m,
-            Player = new GamePlayer { Name = "Me", Clan = "", Mmr = 3000, Race = 'Z', Random = false },
+            Player = new GamePlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false },
             Allies = [],
-            Opponents = [new GamePlayer { Name = "Foe", Clan = "", Mmr = 3100, Race = 'T', Random = false }],
+            Opponents = [new GamePlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'T', Random = false }],
         };
         return new GameData { ReplayData = replay };
     }

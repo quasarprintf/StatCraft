@@ -121,7 +121,7 @@ public class ReplayDataExtractorTests
 
         ParsedReplayData result = _extractor.Parse(raw, CreateProfile(100));
 
-        Assert.Equal(0, result.Player.Mmr);
+        Assert.Equal(0, result.Player.Mmr.ParsedMmr);
     }
 
     [Fact]
@@ -163,7 +163,7 @@ public class ReplayDataExtractorTests
         Assert.Equal("ABC", result.Player.Clan);
         Assert.Equal('Z', result.Player.Race);
         Assert.True(result.Player.Random);
-        Assert.Equal(3500, result.Player.Mmr);
+        Assert.Equal(3500, result.Player.Mmr.ParsedMmr);
     }
 
     // Each player's in-game color (see GamePlayer.ColorArgb) is what the Data tab's build tabs are

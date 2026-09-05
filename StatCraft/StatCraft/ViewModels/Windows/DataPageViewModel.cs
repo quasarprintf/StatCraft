@@ -240,7 +240,7 @@ namespace StatCraft.ViewModels.Windows
                 return;
 
             if (LadderRaceExtensions.FromPlayer(replay.Player.Race, replay.Player.Random) is { } race)
-                _mmrTracker.SeedBaselineIfAbsent(race, replay.Player.Mmr);
+                _mmrTracker.SeedBaselineIfAbsent(race, replay.Player.Mmr.Mmr);
         }
 
         // Arrives minutes after the game was imported, on a background polling task. The row's underlying

@@ -90,7 +90,7 @@ public class MatchupResolverTests
     {
         Name = "Opponent",
         Clan = "",
-        Mmr = 0,
+        Mmr = new PlayerMmr { ParsedMmr = 0 },
         Race = race,
         Random = false,
     };
