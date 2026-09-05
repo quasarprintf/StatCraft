@@ -2,31 +2,27 @@ using System;
 
 namespace StatCraft.Services.DataParsing
 {
-    // Estimates an opponent's pre-game MMR from the tracked player's own known MmrChange for that game,
-    // by inverting the standard Elo rating-update formula. Blizzard doesn't publish SC2's actual K-factor
-    // or rating-scale divisor, so the constants below are community-derived estimates, not confirmed
-    // values — treat Estimate's result as an approximation, useful for catching an opponent MMR that's
-    // wildly implausible (see ReplayDataExtractor's own ScaledRating guard for a confirmed example of
-    // replay-parsed MMR being garbage), not as ground truth to prefer over a plausible recorded value.
     internal static class OpponentMmrEstimator
     {
-        // Community-estimated SC2 rating-scale divisor (the "D" in 1 / (1 + 10^(diff/D))), from
-        // FluffyMaguro/SC2-MMR-Stats' observed ΔELO = ΔMMR / 2.2 conversion off the standard chess Elo
-        // divisor of 400 (400 * 2.2 = 880).
-        private const double RatingScaleDivisor = 880.0;
+        //TODO: low confidence in these values, revisit later
+        private const double RatingScaleDivisor = 840.0;
+        private const double KFactor = 43.5;
 
-        // K-factor (per-game MMR-change magnitude cap) for an established player, fit against 52 of the
-        // user's own real ranked 1v1 games (GameType=Ranked, MmrAfter known, excluding one confirmed-
-        // garbage opponent MMR) by solving K = actualChange / (win - expectedScore) per game and taking
-        // the median — 50 of the 52 games landed within a tight cluster (mean 43.42, stddev 2.61); the
-        // other 2 read as further undetected garbage opponent MMRs rather than real outliers. Not valid
-        // for a player still in their placement matches, whose swings are known to be larger than this.
-        private const double KFactor = 43.0;
+        internal const double MaxPlausibleResidual = 2.0;
 
-        // Returns the estimated pre-game MMR for the opponent, or null if playerMmrChange/playerWin don't
-        // correspond to a mathematically valid probability under these constants (e.g. a magnitude of
-        // change larger than KFactor itself allows) — callers should leave the recorded MMR alone in that
-        // case rather than guess further.
+        // What the tracked player's own MmrChange should have been, given the recorded opponent MMR under
+        // this Elo model — compare against their actual MmrChange (see MaxPlausibleResidual) to judge
+        // whether the recorded opponent MMR is trustworthy.
+        internal static double PredictedChange(long playerMmr, long opponentMmr, decimal playerWin)
+        {
+            double expectedScore = 1.0 / (1.0 + Math.Pow(10, (opponentMmr - playerMmr) / RatingScaleDivisor));
+            return KFactor * ((double)playerWin - expectedScore);
+        }
+
+        // Returns the estimated pre-game MMR for the opponent — the inverse of PredictedChange, solving
+        // for the opponent MMR that would have produced playerMmrChange exactly — or null if
+        // playerMmrChange/playerWin don't correspond to a mathematically valid probability under these
+        // constants (e.g. a magnitude of change larger than KFactor itself allows).
         internal static long? Estimate(long playerMmr, long playerMmrChange, decimal playerWin)
         {
             double expectedScore = (double)playerWin - playerMmrChange / KFactor;

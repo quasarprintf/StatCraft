@@ -4,8 +4,8 @@ namespace StatCraft.Tests;
 
 public class OpponentMmrEstimatorTests
 {
-    private const double K = 43.0;
-    private const double D = 880.0;
+    private const double K = 43.55;
+    private const double D = 850.0;
 
     // Reimplements the forward Elo formula independently of OpponentMmrEstimator, so these tests actually
     // pin the inverse relationship rather than just restating the implementation.
@@ -43,15 +43,15 @@ public class OpponentMmrEstimatorTests
     }
 
     [Theory]
-    [InlineData(43)]  // exactly K: expectedScore hits 0, the open boundary
-    [InlineData(50)]  // larger than K is possible under real Elo is impossible under a win
+    [InlineData(44)]  // above K: expectedScore would be <= 0, the open boundary
+    [InlineData(50)]
     public void Estimate_WinWithChangeAtOrAboveK_ReturnsNull(long change)
     {
         Assert.Null(OpponentMmrEstimator.Estimate(4000, change, 1m));
     }
 
     [Theory]
-    [InlineData(-43)] // exactly -K: expectedScore hits 1, the open boundary
+    [InlineData(-44)] // below -K: expectedScore would be >= 1, the open boundary
     [InlineData(-50)]
     public void Estimate_LossWithChangeAtOrBelowNegativeK_ReturnsNull(long change)
     {
@@ -74,5 +74,43 @@ public class OpponentMmrEstimatorTests
 
         Assert.NotNull(estimated);
         Assert.True(estimated.Value < 4000 - 500);
+    }
+
+    [Theory]
+    [InlineData(4000, 4000, 1)]
+    [InlineData(4000, 4500, 0)]
+    [InlineData(4000, 3500, 0.5)]
+    public void PredictedChange_MatchesIndependentForwardFormula(long playerMmr, long opponentMmr, decimal win)
+    {
+        double predicted = OpponentMmrEstimator.PredictedChange(playerMmr, opponentMmr, win);
+
+        Assert.InRange(predicted, ForwardMmrChange(playerMmr, opponentMmr, win) - 0.6, ForwardMmrChange(playerMmr, opponentMmr, win) + 0.6);
+    }
+
+    // PredictedChange and Estimate are meant to be inverses of each other: predicting from a known
+    // opponent MMR, then estimating back from that predicted change, should recover the same MMR.
+    [Theory]
+    [InlineData(4000, 4200, 1)]
+    [InlineData(4000, 3800, 0)]
+    [InlineData(5000, 5000, 0.5)]
+    public void PredictedChangeAndEstimate_AreConsistentInverses(long playerMmr, long opponentMmr, decimal win)
+    {
+        double predicted = OpponentMmrEstimator.PredictedChange(playerMmr, opponentMmr, win);
+
+        long? estimated = OpponentMmrEstimator.Estimate(playerMmr, (long)Math.Round(predicted), win);
+
+        Assert.NotNull(estimated);
+        Assert.InRange(estimated.Value, opponentMmr - 25, opponentMmr + 25);
+    }
+
+    [Fact]
+    public void PredictedChange_MatchingRecordedMmr_StaysWithinMaxPlausibleResidualOfActualChange()
+    {
+        // A game that actually played out exactly as this model predicts (no bad data) should never look
+        // suspicious — the same invariant OpponentMmrEstimator was fit to hold across 45 real games.
+        double predicted = OpponentMmrEstimator.PredictedChange(4000, 4200, 1m);
+        long actualChange = (long)Math.Round(predicted);
+
+        Assert.True(Math.Abs(predicted - actualChange) <= OpponentMmrEstimator.MaxPlausibleResidual);
     }
 }
