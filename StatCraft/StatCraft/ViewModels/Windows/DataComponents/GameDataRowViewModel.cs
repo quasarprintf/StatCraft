@@ -68,7 +68,7 @@ namespace StatCraft.ViewModels.Windows.DataComponents
         }
 
         public IReadOnlyList<ColoredCharacter> MatchupCharacters { get; }
-        public string OpponentName { get; }
+        public ObservableCollection<OpponentRowViewModel> Opponents { get; } = [];
 
         [ObservableProperty] private string _notes;
 
@@ -104,7 +104,8 @@ namespace StatCraft.ViewModels.Windows.DataComponents
             // user edit and write straight back to the database (same reason as _notes below).
             _gameType = game.GameType;
             MatchupCharacters = BuildMatchupCharacters(replay);
-            OpponentName = string.Join(", ", replay.Opponents.Select(o => $"({o.Mmr.Mmr}) {o.FormattedClan}{o.Name}"));
+            foreach (GamePlayer opponent in replay.Opponents)
+                Opponents.Add(new OpponentRowViewModel(opponent, repository));
             _notes = game.Notes;
 
             // Allies share the self player's own opponents (same enemy team), so their build tree uses

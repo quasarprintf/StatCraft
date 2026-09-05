@@ -141,7 +141,33 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Opponent" Binding="{Binding OpponentName}" IsReadOnly="True"/>
+                <!-- One section per opponent (team games have more than one), each showing name/clan and
+                     an editable MMR — see OpponentRowViewModel for how an edit is written to OverrideMmr. -->
+                <DataGridTemplateColumn Header="Opponent">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vmc:GameDataRowViewModel">
+                            <ItemsControl ItemsSource="{Binding Opponents}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <StackPanel Orientation="Vertical" Spacing="2"/>
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate x:DataType="vmc:OpponentRowViewModel">
+                                        <StackPanel Orientation="Horizontal" Spacing="2">
+                                            <TextBlock Text="(" VerticalAlignment="Center"/>
+                                            <NumericUpDown Value="{Binding Mmr}" FormatString="0" ShowButtonSpinner="False"
+                                                           Width="80" Padding="2,0" BorderThickness="0" VerticalAlignment="Center"/>
+                                            <TextBlock Text=") " VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding FormattedClan}" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Build" Binding="{Binding SelfTracker.SelectedBuildsSummary}" IsReadOnly="True" Width="*"/>
                 <DataGridTemplateColumn Header="Notes" Width="*">
                     <DataGridTemplateColumn.CellTemplate>

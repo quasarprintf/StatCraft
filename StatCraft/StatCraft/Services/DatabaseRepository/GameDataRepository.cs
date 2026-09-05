@@ -276,6 +276,15 @@ namespace StatCraft.Services.DatabaseRepository
             conn.Execute("UPDATE GamePlayers SET EstimatedMmr = @estimatedMmr WHERE Id = @id", new { estimatedMmr, id = gamePlayerId });
         }
 
+        // The Data tab's manual MMR correction (see OpponentRowViewModel) — takes priority over both
+        // EstimatedMmr and ParsedMmr. Null clears it, falling back to whichever of those two would
+        // otherwise apply.
+        public void UpdateGamePlayerOverrideMmr(int gamePlayerId, long? overrideMmr)
+        {
+            using SqliteConnection conn = OpenConnection();
+            conn.Execute("UPDATE GamePlayers SET OverrideMmr = @overrideMmr WHERE Id = @id", new { overrideMmr, id = gamePlayerId });
+        }
+
         // Backfills a player's in-game color once ReplayDataExtractor.TryResolvePlayerColorAsync has
         // re-read it from the replay file, so the next load of this game finds it already in the
         // database instead of needing to re-parse the file again.
