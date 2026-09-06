@@ -45,7 +45,7 @@ namespace StatCraft.Services.BackgroundService
                 logger.LogWarning($"Replay file could not be read: {filePath} ({ex.Message})", profile);
                 if (currentAttempt < 5)
                 {
-                    await Task.Delay((int)Math.Pow(2, currentAttempt));
+                    await Task.Delay(1000 * (int)Math.Pow(2, currentAttempt));
                     return await ImportReplay(filePath, profile, currentAttempt + 1);
                 }
                 return $"\"{Path.GetFileName(filePath)}\" couldn't be read — it may still be in use. Try again in a moment.";
