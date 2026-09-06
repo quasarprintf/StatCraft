@@ -7,6 +7,7 @@ using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
+using StatCraft.ViewModels.Windows.DataComponents.GameRow;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;

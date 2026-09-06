@@ -15,7 +15,7 @@
         </ItemsControl>
         <ItemsControl ItemsSource="{Binding AttributeGroups}">
             <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vmc:BuildDetailGroupViewModel">
+                <DataTemplate x:DataType="vmc:GameRow.BuildDetailGroupViewModel">
                     <StackPanel Margin="{Binding Margin}" Spacing="4" HorizontalAlignment="Left">
                         <Border BorderBrush="Gray" BorderThickness="0,0,0,1" Padding="0,0,0,2">
                             <TextBlock Text="{Binding BuildName}" FontWeight="Bold"/>
