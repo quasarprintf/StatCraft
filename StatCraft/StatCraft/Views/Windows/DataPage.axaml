@@ -116,6 +116,7 @@
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
                 <DataGridTextColumn Header="Map" Binding="{Binding MapName}" IsReadOnly="True"/>
+                <DataGridTextColumn Header="Length" Binding="{Binding GameLength}" IsReadOnly="True"/>
                 <DataGridTemplateColumn Header="Result">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vmc:GameDataRowViewModel">
@@ -124,20 +125,19 @@
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
-                <DataGridTemplateColumn Header="MMR(Δ)">
-                    <DataGridTemplateColumn.CellTemplate>
-                        <DataTemplate x:DataType="vmc:GameDataRowViewModel">
-                            <component:ColoredTextBlock Characters="{Binding MmrText}"
-                                                        VerticalAlignment="Center"/>
-                        </DataTemplate>
-                    </DataGridTemplateColumn.CellTemplate>
-                </DataGridTemplateColumn>
-                <DataGridTextColumn Header="Length" Binding="{Binding GameLength}" IsReadOnly="True"/>
                 <DataGridTemplateColumn Header="Matchup">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vmc:GameDataRowViewModel">
                             <component:ColoredTextBlock Characters="{Binding MatchupCharacters}"
                                                      VerticalAlignment="Center"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="MMR(Δ)">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vmc:GameDataRowViewModel">
+                            <component:ColoredTextBlock Characters="{Binding MmrText}"
+                                                        VerticalAlignment="Center"/>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
