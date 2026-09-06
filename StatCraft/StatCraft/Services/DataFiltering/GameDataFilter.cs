@@ -6,63 +6,62 @@ using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DataParsing;
 
-namespace StatCraft.Services.DataFiltering
+namespace StatCraft.Services.DataFiltering;
+
+// Every dimension is ANDed together; matchup/MMR/build each OR across the game's own
+// opponents/build list, since a game can have more than one opponent (team games).
+internal static class GameDataFilter
 {
-    // Every dimension is ANDed together; matchup/MMR/build each OR across the game's own
-    // opponents/build list, since a game can have more than one opponent (team games).
-    internal static class GameDataFilter
+    //TODO: refactor to use some kind of IFilter interface, instead of hardcoding all the filter logic here
+    internal static bool Matches(GameData game, GameFilterCriteria criteria)
     {
-        //TODO: refactor to use some kind of IFilter interface, instead of hardcoding all the filter logic here
-        internal static bool Matches(GameData game, GameFilterCriteria criteria)
+        ParsedReplayData replay = game.ReplayData;
+
+        DateOnly played = DateOnly.FromDateTime(replay.ReplayTimestamp.ToLocalTime().DateTime);
+        if (criteria.FromDate is { } from && played < from)
+            return false;
+        if (criteria.ToDate is { } to && played > to)
+            return false;
+
+        if (HasAny(criteria.Maps) && game.Map != null && !criteria.Maps!.Contains(game.Map))
+            return false;
+
+        if (HasAny(criteria.Outcomes) && !criteria.Outcomes!.Contains(GameOutcomeExtensions.FromWin(replay.Win)))
+            return false;
+
+        if (HasAny(criteria.MatchupPairs))
         {
-            ParsedReplayData replay = game.ReplayData;
-
-            DateOnly played = DateOnly.FromDateTime(replay.ReplayTimestamp.ToLocalTime().DateTime);
-            if (criteria.FromDate is { } from && played < from)
+            Race? selfRace = replay.Player.Race.AsRace();
+            bool anyMatch = selfRace != null && criteria.MatchupPairs!.Any(pair =>
+                pair.Player == selfRace && replay.Opponents.Any(o => o.Race.AsRace() == pair.Opponent));
+            if (!anyMatch)
                 return false;
-            if (criteria.ToDate is { } to && played > to)
-                return false;
-
-            if (HasAny(criteria.Maps) && game.Map != null && !criteria.Maps!.Contains(game.Map))
-                return false;
-
-            if (HasAny(criteria.Outcomes) && !criteria.Outcomes!.Contains(GameOutcomeExtensions.FromWin(replay.Win)))
-                return false;
-
-            if (HasAny(criteria.MatchupPairs))
-            {
-                Race? selfRace = replay.Player.Race.AsRace();
-                bool anyMatch = selfRace != null && criteria.MatchupPairs!.Any(pair =>
-                    pair.Player == selfRace && replay.Opponents.Any(o => o.Race.AsRace() == pair.Opponent));
-                if (!anyMatch)
-                    return false;
-            }
-
-            if (criteria.MinOpponentMmr != null || criteria.MaxOpponentMmr != null)
-            {
-                long min = criteria.MinOpponentMmr ?? long.MinValue;
-                long max = criteria.MaxOpponentMmr ?? long.MaxValue;
-                if (!replay.Opponents.Any(o => o.Mmr.Mmr >= min && o.Mmr.Mmr <= max))
-                    return false;
-            }
-
-            if (HasAny(criteria.BuildIds) && !replay.Player.BuildIds.Any(id => criteria.BuildIds!.Contains(id)))
-                return false;
-
-            return true;
         }
 
-        private static bool HasAny<T>(IReadOnlySet<T>? set) => set != null && set.Count > 0;
-
-        // A build node's own id plus every descendant id — checking a build in the filter should also
-        // match games where a more specific build beneath it was selected. Mirrors the same subtree
-        // collection already used elsewhere for build-deletion reference checks.
-        internal static IEnumerable<int> CollectSubtreeIds(BuildNode node)
+        if (criteria.MinOpponentMmr != null || criteria.MaxOpponentMmr != null)
         {
-            yield return node.Id;
-            foreach (BuildNode child in node.Children)
-                foreach (int id in CollectSubtreeIds(child))
-                    yield return id;
+            long min = criteria.MinOpponentMmr ?? long.MinValue;
+            long max = criteria.MaxOpponentMmr ?? long.MaxValue;
+            if (!replay.Opponents.Any(o => o.Mmr.Mmr >= min && o.Mmr.Mmr <= max))
+                return false;
         }
+
+        if (HasAny(criteria.BuildIds) && !replay.Player.BuildIds.Any(id => criteria.BuildIds!.Contains(id)))
+            return false;
+
+        return true;
+    }
+
+    private static bool HasAny<T>(IReadOnlySet<T>? set) => set != null && set.Count > 0;
+
+    // A build node's own id plus every descendant id — checking a build in the filter should also
+    // match games where a more specific build beneath it was selected. Mirrors the same subtree
+    // collection already used elsewhere for build-deletion reference checks.
+    internal static IEnumerable<int> CollectSubtreeIds(BuildNode node)
+    {
+        yield return node.Id;
+        foreach (BuildNode child in node.Children)
+            foreach (int id in CollectSubtreeIds(child))
+                yield return id;
     }
 }

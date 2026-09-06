@@ -8,155 +8,154 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 
-namespace StatCraft.ViewModels.Windows
+namespace StatCraft.ViewModels.Windows;
+
+public partial class AttributesPageViewModel : ViewModelBase
 {
-    public partial class AttributesPageViewModel : ViewModelBase
+    private readonly AttributeRepository _attributeRepo;
+
+    private readonly Dictionary<AttributeScope, ObservableCollection<AttributeDefinition>> _attributesByScope = new()
     {
-        private readonly AttributeRepository _attributeRepo;
+        [AttributeScope.Game] = [],
+        [AttributeScope.Build] = [],
+        [AttributeScope.Map] = [],
+    };
 
-        private readonly Dictionary<AttributeScope, ObservableCollection<AttributeDefinition>> _attributesByScope = new()
+    [NotifyPropertyChangedFor(nameof(Attributes))]
+    [NotifyPropertyChangedFor(nameof(SelectedGame))]
+    [NotifyPropertyChangedFor(nameof(SelectedBuild))]
+    [NotifyPropertyChangedFor(nameof(SelectedMap))]
+    [ObservableProperty] private AttributeScope _selectedScope;
+
+    public bool SelectedGame => _selectedScope == AttributeScope.Game;
+    public bool SelectedBuild => _selectedScope == AttributeScope.Build;
+    public bool SelectedMap => _selectedScope == AttributeScope.Map;
+
+    public ObservableCollection<AttributeDefinition> Attributes => _attributesByScope[SelectedScope];
+
+    public ObservableCollection<AttributeDefinition> FilteredAttributes { get; } = [];
+
+    [ObservableProperty] private string _nameFilter = "";
+    [ObservableProperty] private bool? _mandatoryFilter;
+
+    [NotifyPropertyChangedFor(nameof(SelectedAttributeValue))]
+    [ObservableProperty] private AttributeDefinition? _selectedAttribute;
+    public AttributeValue? SelectedAttributeValue => _selectedAttribute?.DefaultValue;
+
+    public AttributesPageViewModel(AttributeRepository attributeRepository)
+    {
+        _attributeRepo = attributeRepository;
+
+
+        var scopeGroups = _attributeRepo.GetAllAttributes().GroupBy(a => a.Scope);
+        foreach (var group in scopeGroups ) 
         {
-            [AttributeScope.Game] = [],
-            [AttributeScope.Build] = [],
-            [AttributeScope.Map] = [],
-        };
-
-        [NotifyPropertyChangedFor(nameof(Attributes))]
-        [NotifyPropertyChangedFor(nameof(SelectedGame))]
-        [NotifyPropertyChangedFor(nameof(SelectedBuild))]
-        [NotifyPropertyChangedFor(nameof(SelectedMap))]
-        [ObservableProperty] private AttributeScope _selectedScope;
-
-        public bool SelectedGame => _selectedScope == AttributeScope.Game;
-        public bool SelectedBuild => _selectedScope == AttributeScope.Build;
-        public bool SelectedMap => _selectedScope == AttributeScope.Map;
-
-        public ObservableCollection<AttributeDefinition> Attributes => _attributesByScope[SelectedScope];
-
-        public ObservableCollection<AttributeDefinition> FilteredAttributes { get; } = [];
-
-        [ObservableProperty] private string _nameFilter = "";
-        [ObservableProperty] private bool? _mandatoryFilter;
-
-        [NotifyPropertyChangedFor(nameof(SelectedAttributeValue))]
-        [ObservableProperty] private AttributeDefinition? _selectedAttribute;
-        public AttributeValue? SelectedAttributeValue => _selectedAttribute?.DefaultValue;
-
-        public AttributesPageViewModel(AttributeRepository attributeRepository)
-        {
-            _attributeRepo = attributeRepository;
-
-
-            var scopeGroups = _attributeRepo.GetAllAttributes().GroupBy(a => a.Scope);
-            foreach (var group in scopeGroups ) 
-            {
-                _attributesByScope[group.Key] = new ObservableCollection<AttributeDefinition>(group.ToArray());
-            }
-
-            SelectedScope = AttributeScope.Game;
+            _attributesByScope[group.Key] = new ObservableCollection<AttributeDefinition>(group.ToArray());
         }
 
-        partial void OnSelectedScopeChanged(AttributeScope value) => ApplyFilter();
+        SelectedScope = AttributeScope.Game;
+    }
 
-        partial void OnNameFilterChanged(string value) => ApplyFilter();
-        partial void OnMandatoryFilterChanged(bool? value) => ApplyFilter();
+    partial void OnSelectedScopeChanged(AttributeScope value) => ApplyFilter();
 
-        [RelayCommand]
-        public void SetScope(AttributeScope scope)
+    partial void OnNameFilterChanged(string value) => ApplyFilter();
+    partial void OnMandatoryFilterChanged(bool? value) => ApplyFilter();
+
+    [RelayCommand]
+    public void SetScope(AttributeScope scope)
+    {
+        SelectedScope = scope;
+    }
+
+    partial void OnSelectedAttributeChanging(AttributeDefinition? value)
+    {
+        if (SelectedAttribute != null)
+            UnWireAttribute(SelectedAttribute);
+        if (value != null)
+            WireAttribute(value);
+    }
+
+    [RelayCommand]
+    private void AddAttribute()
+    {
+        AttributeDefinition attribute = new(SelectedScope) { Name = "New Attribute" };
+        Attributes.Add(attribute);
+        ApplyFilter();
+        SelectedAttribute = attribute;
+
+        _attributeRepo.InsertAttribute(attribute, Attributes.Count);
+    }
+
+    [RelayCommand]
+    private void DeleteAttribute(AttributeDefinition attribute)
+    {
+        Attributes.Remove(attribute);
+        ApplyFilter();
+        if (SelectedAttribute == attribute)
+            SelectedAttribute = FilteredAttributes.FirstOrDefault();
+
+        _attributeRepo.DeleteAttribute(attribute.Id);
+    }
+
+    private void WireAttribute(AttributeDefinition attribute)
+    {
+        attribute.DefinitionChanged += OnAttributeEdited;
+        attribute.ValueOptionsChanged += OnAttributeValuesEdited;
+
+        attribute.DefaultValue.ValueChanged += OnDefaultValueEdited;
+    }
+    private void UnWireAttribute(AttributeDefinition attribute)
+    {
+        attribute.DefinitionChanged -= OnAttributeEdited;
+        attribute.ValueOptionsChanged -= OnAttributeValuesEdited;
+
+        attribute.DefaultValue.ValueChanged -= OnDefaultValueEdited;
+    }
+
+    private void OnAttributeEdited(object? sender, PropertyChangedEventArgs args)
+    {
+        _attributeRepo.UpdateAttribute(SelectedAttribute!);
+    }
+    private void OnAttributeValuesEdited(object? sender, CollectionChangeEventArgs args)
+    {
+        switch (args.Action)
         {
-            SelectedScope = scope;
+            case CollectionChangeAction.Add:
+                _attributeRepo.InsertValueOption(SelectedAttribute!.Id, (string)args.Element!);
+                return;
+            case CollectionChangeAction.Remove:
+                _attributeRepo.DeleteValueOption(SelectedAttribute!.Id, (string)args.Element!);
+                return;
         }
+    }
 
-        partial void OnSelectedAttributeChanging(AttributeDefinition? value)
-        {
-            if (SelectedAttribute != null)
-                UnWireAttribute(SelectedAttribute);
-            if (value != null)
-                WireAttribute(value);
-        }
-
-        [RelayCommand]
-        private void AddAttribute()
-        {
-            AttributeDefinition attribute = new(SelectedScope) { Name = "New Attribute" };
-            Attributes.Add(attribute);
-            ApplyFilter();
-            SelectedAttribute = attribute;
-
-            _attributeRepo.InsertAttribute(attribute, Attributes.Count);
-        }
-
-        [RelayCommand]
-        private void DeleteAttribute(AttributeDefinition attribute)
-        {
-            Attributes.Remove(attribute);
-            ApplyFilter();
-            if (SelectedAttribute == attribute)
-                SelectedAttribute = FilteredAttributes.FirstOrDefault();
-
-            _attributeRepo.DeleteAttribute(attribute.Id);
-        }
-
-        private void WireAttribute(AttributeDefinition attribute)
-        {
-            attribute.DefinitionChanged += OnAttributeEdited;
-            attribute.ValueOptionsChanged += OnAttributeValuesEdited;
-
-            attribute.DefaultValue.ValueChanged += OnDefaultValueEdited;
-        }
-        private void UnWireAttribute(AttributeDefinition attribute)
-        {
-            attribute.DefinitionChanged -= OnAttributeEdited;
-            attribute.ValueOptionsChanged -= OnAttributeValuesEdited;
-
-            attribute.DefaultValue.ValueChanged -= OnDefaultValueEdited;
-        }
-
-        private void OnAttributeEdited(object? sender, PropertyChangedEventArgs args)
-        {
+    private void OnDefaultValueEdited(object? sender, PropertyChangedEventArgs args)
+    {
+        if (args.PropertyName != nameof(AttributeValue.HasValue))
             _attributeRepo.UpdateAttribute(SelectedAttribute!);
-        }
-        private void OnAttributeValuesEdited(object? sender, CollectionChangeEventArgs args)
-        {
-            switch (args.Action)
-            {
-                case CollectionChangeAction.Add:
-                    _attributeRepo.InsertValueOption(SelectedAttribute!.Id, (string)args.Element!);
-                    return;
-                case CollectionChangeAction.Remove:
-                    _attributeRepo.DeleteValueOption(SelectedAttribute!.Id, (string)args.Element!);
-                    return;
-            }
-        }
+    }
 
-        private void OnDefaultValueEdited(object? sender, PropertyChangedEventArgs args)
+    private void ApplyFilter()
+    {
+        bool Matches(AttributeDefinition attribute)
         {
-            if (args.PropertyName != nameof(AttributeValue.HasValue))
-                _attributeRepo.UpdateAttribute(SelectedAttribute!);
-        }
-
-        private void ApplyFilter()
-        {
-            bool Matches(AttributeDefinition attribute)
-            {
-                if (MandatoryFilter != null && attribute.IsMandatory != MandatoryFilter)
-                    return false;
-                if (string.IsNullOrWhiteSpace(NameFilter))
-                    return true;
-                if (attribute.Name.Contains(NameFilter.Trim(), StringComparison.OrdinalIgnoreCase))
-                    return true;
+            if (MandatoryFilter != null && attribute.IsMandatory != MandatoryFilter)
                 return false;
-            }
-
-            List<AttributeDefinition> matching = Attributes.Where(Matches).ToList();
-
-            for (int i = FilteredAttributes.Count - 1; i >= 0; i--)
-                if (!matching.Contains(FilteredAttributes[i]))
-                    FilteredAttributes.RemoveAt(i);
-
-            for (int i = 0; i < matching.Count; i++)
-                if (!FilteredAttributes.Contains(matching[i]))
-                    FilteredAttributes.Insert(i, matching[i]);
+            if (string.IsNullOrWhiteSpace(NameFilter))
+                return true;
+            if (attribute.Name.Contains(NameFilter.Trim(), StringComparison.OrdinalIgnoreCase))
+                return true;
+            return false;
         }
+
+        List<AttributeDefinition> matching = Attributes.Where(Matches).ToList();
+
+        for (int i = FilteredAttributes.Count - 1; i >= 0; i--)
+            if (!matching.Contains(FilteredAttributes[i]))
+                FilteredAttributes.RemoveAt(i);
+
+        for (int i = 0; i < matching.Count; i++)
+            if (!FilteredAttributes.Contains(matching[i]))
+                FilteredAttributes.Insert(i, matching[i]);
     }
 }

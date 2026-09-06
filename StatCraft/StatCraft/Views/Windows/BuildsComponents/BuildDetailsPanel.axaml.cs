@@ -2,13 +2,12 @@ using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Threading;
 
-namespace StatCraft.Views.Windows.BuildsComponents
+namespace StatCraft.Views.Windows.BuildsComponents;
+
+public partial class BuildDetailsPanel : UserControl
 {
-    public partial class BuildDetailsPanel : UserControl
+    public BuildDetailsPanel()
     {
-        public BuildDetailsPanel()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
     }
 }

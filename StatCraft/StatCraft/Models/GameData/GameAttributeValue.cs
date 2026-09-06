@@ -1,8 +1,7 @@
-namespace StatCraft.Models.GameData
+namespace StatCraft.Models.GameData;
+
+internal class GameAttributeValue
 {
-    internal class GameAttributeValue
-    {
-        public required int BuildAttributeId { get; set; }
-        public required string Value { get; set; }
-    }
+    public required int BuildAttributeId { get; set; }
+    public required string Value { get; set; }
 }

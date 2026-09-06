@@ -4,76 +4,75 @@ using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace StatCraft.Services.BackgroundService
+namespace StatCraft.Services.BackgroundService;
+
+public class ReplayWatcherService(ILogger logger) : IAsyncDisposable
 {
-    public class ReplayWatcherService(ILogger logger) : IAsyncDisposable
+    private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(5));
+    private readonly HashSet<string> _knownFiles = new();
+    public string? WatchedFolderPath { get; private set; }
+    private CancellationTokenSource? _cts;
+    private Task? _loopTask;
+
+    internal event Action<string>? NewReplayFileFound;
+
+    public async Task Start(string folderPath)
     {
-        private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(5));
-        private readonly HashSet<string> _knownFiles = new();
-        public string? WatchedFolderPath { get; private set; }
-        private CancellationTokenSource? _cts;
-        private Task? _loopTask;
+        await Stop();
 
-        internal event Action<string>? NewReplayFileFound;
-
-        public async Task Start(string folderPath)
+        WatchedFolderPath = folderPath;
+        if (Directory.Exists(folderPath))
         {
-            await Stop();
-
-            WatchedFolderPath = folderPath;
-            if (Directory.Exists(folderPath))
-            {
-                foreach (string file in Directory.EnumerateFiles(folderPath))
-                    _knownFiles.Add(file);
-            }
-
-            _cts = new CancellationTokenSource();
-            _loopTask = RunLoopAsync(_cts.Token);
+            foreach (string file in Directory.EnumerateFiles(folderPath))
+                _knownFiles.Add(file);
         }
 
-        public async Task Stop()
+        _cts = new CancellationTokenSource();
+        _loopTask = RunLoopAsync(_cts.Token);
+    }
+
+    public async Task Stop()
+    {
+        _cts?.Cancel();
+        _cts?.Dispose();
+        _cts = null;
+        _knownFiles.Clear();
+        WatchedFolderPath = null;
+        if (_loopTask != null)
+            await _loopTask;
+    }
+
+    private async Task RunLoopAsync(CancellationToken cancellationToken)
+    {
+        try
         {
-            _cts?.Cancel();
-            _cts?.Dispose();
-            _cts = null;
-            _knownFiles.Clear();
-            WatchedFolderPath = null;
-            if (_loopTask != null)
-                await _loopTask;
+            while (await _timer.WaitForNextTickAsync(cancellationToken))
+                CheckNow();
         }
-
-        private async Task RunLoopAsync(CancellationToken cancellationToken)
+        catch (OperationCanceledException)
         {
-            try
-            {
-                while (await _timer.WaitForNextTickAsync(cancellationToken))
-                    CheckNow();
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected when Stop() cancels the loop.
-            }
+            // Expected when Stop() cancels the loop.
         }
+    }
 
-        public void CheckNow()
+    public void CheckNow()
+    {
+        if (WatchedFolderPath == null || !Directory.Exists(WatchedFolderPath))
+            return;
+
+        foreach (string file in Directory.EnumerateFiles(WatchedFolderPath))
         {
-            if (WatchedFolderPath == null || !Directory.Exists(WatchedFolderPath))
-                return;
-
-            foreach (string file in Directory.EnumerateFiles(WatchedFolderPath))
+            if (_knownFiles.Add(file))
             {
-                if (_knownFiles.Add(file))
-                {
-                    logger.LogInfo($"Replay file found: {file}");
-                    NewReplayFileFound?.Invoke(file);
-                }
+                logger.LogInfo($"Replay file found: {file}");
+                NewReplayFileFound?.Invoke(file);
             }
         }
+    }
 
-        public async ValueTask DisposeAsync()
-        {
-            await Stop();
-            _timer.Dispose();
-        }
+    public async ValueTask DisposeAsync()
+    {
+        await Stop();
+        _timer.Dispose();
     }
 }

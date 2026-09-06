@@ -1,12 +1,11 @@
 using Avalonia.Controls;
 
-namespace StatCraft.Views.Windows
+namespace StatCraft.Views.Windows;
+
+public partial class AnalyticsPage : UserControl
 {
-    public partial class AnalyticsPage : UserControl
+    public AnalyticsPage()
     {
-        public AnalyticsPage()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
     }
 }

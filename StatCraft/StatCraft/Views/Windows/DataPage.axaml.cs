@@ -21,305 +21,304 @@ using StatCraft.ViewModels.Windows.DataComponents.GameRow;
 using StatCraft.Views.Components;
 using StatCraft.Views.Windows.DataComponents;
 
-namespace StatCraft.Views.Windows
+namespace StatCraft.Views.Windows;
+
+public partial class DataPage : UserControl
 {
-    public partial class DataPage : UserControl
+    private DataPageViewModel ViewModel => (DataPageViewModel)DataContext!;
+
+    public DataPage()
     {
-        private DataPageViewModel ViewModel => (DataPageViewModel)DataContext!;
+        InitializeComponent();
 
-        public DataPage()
-        {
-            InitializeComponent();
+        DataPageViewModel vm = App.Services.GetRequiredService<DataPageViewModel>();
+        vm.SessionRequested += async () => await OnSessionRequestedAsync();
+        vm.DeleteGameConfirmationRequested += async row => await OnDeleteGameConfirmationRequestedAsync(row);
+        vm.ImportReplayRequested += async () => await OnImportReplayRequestedAsync();
+        vm.LaunchReplayFailed += async message => await OnLaunchReplayFailedAsync(message);
+        DataContext = vm;
 
-            DataPageViewModel vm = App.Services.GetRequiredService<DataPageViewModel>();
-            vm.SessionRequested += async () => await OnSessionRequestedAsync();
-            vm.DeleteGameConfirmationRequested += async row => await OnDeleteGameConfirmationRequestedAsync(row);
-            vm.ImportReplayRequested += async () => await OnImportReplayRequestedAsync();
-            vm.LaunchReplayFailed += async message => await OnLaunchReplayFailedAsync(message);
-            DataContext = vm;
+        GamesGrid.CellPointerPressed += OnGamesGridCellPointerPressed;
 
-            GamesGrid.CellPointerPressed += OnGamesGridCellPointerPressed;
+        // Rows are recycled as the grid scrolls, so a newly realised row has to be told whether it
+        // is the one currently showing its build details.
+        GamesGrid.LoadingRow += (_, e) => ApplyBuildDetailsVisibility(e.Row);
 
-            // Rows are recycled as the grid scrolls, so a newly realised row has to be told whether it
-            // is the one currently showing its build details.
-            GamesGrid.LoadingRow += (_, e) => ApplyBuildDetailsVisibility(e.Row);
-
-            //avalonia DataGrid scrolling breaks when build details are visible. It randomly jumps back to the top sometimes
-            //this is a convoluted workaround to make it usable.
-            //when build details are opened, snap that row to the top of the screen and lock scrolling.
-            GamesGrid.LayoutUpdated += (_, _) =>
-            {
-                if (_mainTableScrollLocked)
-                    SetMainTableScrollLocked(true);
-            };
-
-            //For some reason IsScrollChainingEnabled being set on the build details ScrollViewer doesn't prevent the PointerWheelChangedEvent from propagating to the DataGrid
-            //so need to handle it manually
-            GamesGrid.AddHandler(PointerWheelChangedEvent, OnGamesGridWheelChangedWhileLocked, RoutingStrategies.Tunnel);
-            GamesGrid.LoadingRowDetails += (_, e) =>
-            {
-                if (e.DetailsElement is ScrollViewer detailsScrollViewer)
-                {
-                    detailsScrollViewer.RemoveHandler(PointerWheelChangedEvent, OnRowDetailsScrollViewerWheelChanged);
-                    detailsScrollViewer.AddHandler(PointerWheelChangedEvent, OnRowDetailsScrollViewerWheelChanged,
-                        RoutingStrategies.Tunnel, handledEventsToo: true);
-                }
-            };
-        }
-
-        #region Avalonia DataGrid scrolling workaround
-
-        private bool _mainTableScrollLocked;
-        private int _scrollToTopAttempts;
-        private const int MaxScrollToTopAttempts = 20;
-        private int _scrollStepIndex;
-
-        #region scroll lock
-        private static void OnRowDetailsScrollViewerWheelChanged(object? sender, PointerWheelEventArgs e)
-        {
-            //this event will be killed by the DataGrid handler, so default scrolling won't occur
-            //so need to scroll manually
-            var scrollViewer = (ScrollViewer)sender!;
-            double maxY = Math.Max(0, scrollViewer.Extent.Height - scrollViewer.Viewport.Height);
-            double newY = Math.Clamp(scrollViewer.Offset.Y - e.Delta.Y * 50, 0, maxY);
-            scrollViewer.Offset = scrollViewer.Offset.WithY(newY);
-            e.Handled = true;
-        }
-
-        private void OnGamesGridWheelChangedWhileLocked(object? sender, PointerWheelEventArgs e)
+        //avalonia DataGrid scrolling breaks when build details are visible. It randomly jumps back to the top sometimes
+        //this is a convoluted workaround to make it usable.
+        //when build details are opened, snap that row to the top of the screen and lock scrolling.
+        GamesGrid.LayoutUpdated += (_, _) =>
         {
             if (_mainTableScrollLocked)
+                SetMainTableScrollLocked(true);
+        };
+
+        //For some reason IsScrollChainingEnabled being set on the build details ScrollViewer doesn't prevent the PointerWheelChangedEvent from propagating to the DataGrid
+        //so need to handle it manually
+        GamesGrid.AddHandler(PointerWheelChangedEvent, OnGamesGridWheelChangedWhileLocked, RoutingStrategies.Tunnel);
+        GamesGrid.LoadingRowDetails += (_, e) =>
+        {
+            if (e.DetailsElement is ScrollViewer detailsScrollViewer)
             {
-                //block scrolling on the main DataGrid. Allow it on the build details ScrollViewer
-                bool? targetingDataGrid = (e.Source as Visual)?.GetVisualAncestors().OfType<DataGridCell>().Any();
-                bool? targetingColumnHeader = (e.Source as Visual)?.GetVisualAncestors().OfType<DataGridColumnHeader>().Any();
-                if (targetingDataGrid == true || targetingColumnHeader == true)
-                    e.Handled = true;
+                detailsScrollViewer.RemoveHandler(PointerWheelChangedEvent, OnRowDetailsScrollViewerWheelChanged);
+                detailsScrollViewer.AddHandler(PointerWheelChangedEvent, OnRowDetailsScrollViewerWheelChanged,
+                    RoutingStrategies.Tunnel, handledEventsToo: true);
             }
-        }
+        };
+    }
 
-        private void SetMainTableScrollLocked(bool locked)
+    #region Avalonia DataGrid scrolling workaround
+
+    private bool _mainTableScrollLocked;
+    private int _scrollToTopAttempts;
+    private const int MaxScrollToTopAttempts = 20;
+    private int _scrollStepIndex;
+
+    #region scroll lock
+    private static void OnRowDetailsScrollViewerWheelChanged(object? sender, PointerWheelEventArgs e)
+    {
+        //this event will be killed by the DataGrid handler, so default scrolling won't occur
+        //so need to scroll manually
+        var scrollViewer = (ScrollViewer)sender!;
+        double maxY = Math.Max(0, scrollViewer.Extent.Height - scrollViewer.Viewport.Height);
+        double newY = Math.Clamp(scrollViewer.Offset.Y - e.Delta.Y * 50, 0, maxY);
+        scrollViewer.Offset = scrollViewer.Offset.WithY(newY);
+        e.Handled = true;
+    }
+
+    private void OnGamesGridWheelChangedWhileLocked(object? sender, PointerWheelEventArgs e)
+    {
+        if (_mainTableScrollLocked)
         {
-            _mainTableScrollLocked = locked;
-
-            ScrollBar? verticalScrollBar = GamesGrid.GetVisualDescendants().OfType<ScrollBar>().FirstOrDefault(s => s.Name == "PART_VerticalScrollbar");
-            if (verticalScrollBar != null)
-                verticalScrollBar.IsEnabled = !locked;
-
-            //re-sorting while a row's details are open would re-shuffle its position, breaking the alignment
-            GamesGrid.CanUserSortColumns = !locked;
+            //block scrolling on the main DataGrid. Allow it on the build details ScrollViewer
+            bool? targetingDataGrid = (e.Source as Visual)?.GetVisualAncestors().OfType<DataGridCell>().Any();
+            bool? targetingColumnHeader = (e.Source as Visual)?.GetVisualAncestors().OfType<DataGridColumnHeader>().Any();
+            if (targetingDataGrid == true || targetingColumnHeader == true)
+                e.Handled = true;
         }
-        #endregion
+    }
 
-        //DataGrid has a seizure sometimes if you try to scroll too far at once
-        //so iteratively scroll one row at a time instead of jumping straight to our destination
-        private void AdvanceIterativeScroll()
+    private void SetMainTableScrollLocked(bool locked)
+    {
+        _mainTableScrollLocked = locked;
+
+        ScrollBar? verticalScrollBar = GamesGrid.GetVisualDescendants().OfType<ScrollBar>().FirstOrDefault(s => s.Name == "PART_VerticalScrollbar");
+        if (verticalScrollBar != null)
+            verticalScrollBar.IsEnabled = !locked;
+
+        //re-sorting while a row's details are open would re-shuffle its position, breaking the alignment
+        GamesGrid.CanUserSortColumns = !locked;
+    }
+    #endregion
+
+    //DataGrid has a seizure sometimes if you try to scroll too far at once
+    //so iteratively scroll one row at a time instead of jumping straight to our destination
+    private void AdvanceIterativeScroll()
+    {
+        double? top = GetTopOfExpandedRow();
+        bool atTop = top < 1;
+
+        IList? items = GamesGrid.ItemsSource as IList;
+        int nextScrollIndex = _scrollStepIndex + 1;
+        if (nextScrollIndex >= items?.Count)
+            nextScrollIndex = items.Count - 1;
+        bool haveNextRow = items != null && nextScrollIndex > _scrollStepIndex;
+        _scrollStepIndex = nextScrollIndex;
+
+        if (atTop || !haveNextRow || ++_scrollToTopAttempts >= MaxScrollToTopAttempts)
         {
-            double? top = GetTopOfExpandedRow();
-            bool atTop = top < 1;
+            GamesGrid.UpdateLayout();
+            GamesGrid.ScrollIntoView(_buildDetailsItem, null);
 
-            IList? items = GamesGrid.ItemsSource as IList;
-            int nextScrollIndex = _scrollStepIndex + 1;
-            if (nextScrollIndex >= items?.Count)
-                nextScrollIndex = items.Count - 1;
-            bool haveNextRow = items != null && nextScrollIndex > _scrollStepIndex;
-            _scrollStepIndex = nextScrollIndex;
-
-            if (atTop || !haveNextRow || ++_scrollToTopAttempts >= MaxScrollToTopAttempts)
-            {
-                GamesGrid.UpdateLayout();
-                GamesGrid.ScrollIntoView(_buildDetailsItem, null);
-
-                //failed to scroll the target row to top of screen.
-                //fallback to unlocking scroll to avoid being trapped in a broken state.
-                if (_scrollToTopAttempts >= MaxScrollToTopAttempts)
-                    SetMainTableScrollLocked(false);
-            }
-            else
-            {
-                GamesGrid.UpdateLayout();
-                GamesGrid.ScrollIntoView(items![nextScrollIndex]!, null);
-                Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
-            }
+            //failed to scroll the target row to top of screen.
+            //fallback to unlocking scroll to avoid being trapped in a broken state.
+            if (_scrollToTopAttempts >= MaxScrollToTopAttempts)
+                SetMainTableScrollLocked(false);
         }
-
-        private double? GetTopOfExpandedRow()
+        else
         {
-            if (_buildDetailsItem == null) return 0;
-
-            DataGridRow? detailsRow = GamesGrid.GetVisualDescendants().OfType<DataGridRow>().FirstOrDefault(r => ReferenceEquals(r.DataContext, _buildDetailsItem));
-            if (detailsRow == null) return null;
-
-            DataGridRowsPresenter? rowsPresenter = GamesGrid.GetVisualDescendants().OfType<DataGridRowsPresenter>().FirstOrDefault();
-            if (rowsPresenter == null) return null;
-
-            double top = (detailsRow.TranslatePoint(new Point(0, 0), rowsPresenter) ?? default).Y;
-            return top;
-        }
-
-        #endregion
-
-        // The row whose build-selection details are currently open, or null when none are. Held as the
-        // row's view model rather than a DataGridRow because the containers are recycled.
-        private GameDataRowViewModel? _buildDetailsItem;
-
-        private static bool IsNotesColumn(DataGridColumn column) => column.Header as string == "Notes";
-        private static bool IsBuildColumn(DataGridColumn column) => column.Header as string == "Build";
-
-        // OpponentRowViewModel.Mmr already resets itself to the resolved baseline when cleared (see
-        // OnMmrChanged), but NumericUpDown doesn't reliably re-pull its own bound Value back into its
-        // displayed Text after that round-trip, so clearing the box and blurring left it visibly blank.
-        // Forcing Value back from the view model here on blur re-syncs the display regardless.
-        private void OnOpponentMmrLostFocus(object? sender, RoutedEventArgs e)
-        {
-            if (sender is NumericUpDown { DataContext: OpponentRowViewModel opponent } numericUpDown)
-                numericUpDown.Value = opponent.Mmr;
-        }
-
-        private void OnGamesGridCellPointerPressed(object? sender, DataGridCellPointerPressedEventArgs e)
-        {
-            //show build details when you select the build column, hide it when you select a different column
-            SetBuildDetailsItem(IsBuildColumn(e.Column) ? e.Row.DataContext : null);
-
-            if (IsNotesColumn(e.Column))
-            {
-                //notes column is a template column with a textbox. Clicking into the textbox doesn't select the row automatically
-                //manually set the row as selected so it gets highlighted as selected
-                GamesGrid.SelectedItem = e.Row.DataContext;
-                GamesGrid.CurrentColumn = e.Column;
-                GamesGrid.BeginEdit();
-            }
-        }
-
-        private void SetBuildDetailsItem(object? item)
-        {
-            if (ReferenceEquals(_buildDetailsItem, item))
-                return;
-
-            if (_buildDetailsItem != null)
-                _buildDetailsItem.RenderHeightChanged -= OnBuildDetailsHeightChanged;
-            
-            _buildDetailsItem = item as GameDataRowViewModel;
-            if (_buildDetailsItem != null)
-                _buildDetailsItem.RenderHeightChanged += OnBuildDetailsHeightChanged;
-
-            foreach (DataGridRow row in GamesGrid.GetVisualDescendants().OfType<DataGridRow>())
-                ApplyBuildDetailsVisibility(row);
-
-            SetMainTableScrollLocked(item != null);
-            _scrollToTopAttempts = 0;
-
-            if (item == null) return;
-
-            //dispatch scrolling so the build details section renders immediately.
-            //scrolling has to be done iteratively and can take a few hundred milliseconds, which is a noticeable delay
-            _scrollStepIndex = GamesGrid.ItemsSource is IList items ? items.IndexOf(item) : 0;
+            GamesGrid.UpdateLayout();
+            GamesGrid.ScrollIntoView(items![nextScrollIndex]!, null);
             Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
         }
-        private void OnBuildDetailsHeightChanged(object? sender, EventArgs e)
+    }
+
+    private double? GetTopOfExpandedRow()
+    {
+        if (_buildDetailsItem == null) return 0;
+
+        DataGridRow? detailsRow = GamesGrid.GetVisualDescendants().OfType<DataGridRow>().FirstOrDefault(r => ReferenceEquals(r.DataContext, _buildDetailsItem));
+        if (detailsRow == null) return null;
+
+        DataGridRowsPresenter? rowsPresenter = GamesGrid.GetVisualDescendants().OfType<DataGridRowsPresenter>().FirstOrDefault();
+        if (rowsPresenter == null) return null;
+
+        double top = (detailsRow.TranslatePoint(new Point(0, 0), rowsPresenter) ?? default).Y;
+        return top;
+    }
+
+    #endregion
+
+    // The row whose build-selection details are currently open, or null when none are. Held as the
+    // row's view model rather than a DataGridRow because the containers are recycled.
+    private GameDataRowViewModel? _buildDetailsItem;
+
+    private static bool IsNotesColumn(DataGridColumn column) => column.Header as string == "Notes";
+    private static bool IsBuildColumn(DataGridColumn column) => column.Header as string == "Build";
+
+    // OpponentRowViewModel.Mmr already resets itself to the resolved baseline when cleared (see
+    // OnMmrChanged), but NumericUpDown doesn't reliably re-pull its own bound Value back into its
+    // displayed Text after that round-trip, so clearing the box and blurring left it visibly blank.
+    // Forcing Value back from the view model here on blur re-syncs the display regardless.
+    private void OnOpponentMmrLostFocus(object? sender, RoutedEventArgs e)
+    {
+        if (sender is NumericUpDown { DataContext: OpponentRowViewModel opponent } numericUpDown)
+            numericUpDown.Value = opponent.Mmr;
+    }
+
+    private void OnGamesGridCellPointerPressed(object? sender, DataGridCellPointerPressedEventArgs e)
+    {
+        //show build details when you select the build column, hide it when you select a different column
+        SetBuildDetailsItem(IsBuildColumn(e.Column) ? e.Row.DataContext : null);
+
+        if (IsNotesColumn(e.Column))
         {
-            if (_buildDetailsItem != null)
-                Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
+            //notes column is a template column with a textbox. Clicking into the textbox doesn't select the row automatically
+            //manually set the row as selected so it gets highlighted as selected
+            GamesGrid.SelectedItem = e.Row.DataContext;
+            GamesGrid.CurrentColumn = e.Column;
+            GamesGrid.BeginEdit();
+        }
+    }
+
+    private void SetBuildDetailsItem(object? item)
+    {
+        if (ReferenceEquals(_buildDetailsItem, item))
+            return;
+
+        if (_buildDetailsItem != null)
+            _buildDetailsItem.RenderHeightChanged -= OnBuildDetailsHeightChanged;
+        
+        _buildDetailsItem = item as GameDataRowViewModel;
+        if (_buildDetailsItem != null)
+            _buildDetailsItem.RenderHeightChanged += OnBuildDetailsHeightChanged;
+
+        foreach (DataGridRow row in GamesGrid.GetVisualDescendants().OfType<DataGridRow>())
+            ApplyBuildDetailsVisibility(row);
+
+        SetMainTableScrollLocked(item != null);
+        _scrollToTopAttempts = 0;
+
+        if (item == null) return;
+
+        //dispatch scrolling so the build details section renders immediately.
+        //scrolling has to be done iteratively and can take a few hundred milliseconds, which is a noticeable delay
+        _scrollStepIndex = GamesGrid.ItemsSource is IList items ? items.IndexOf(item) : 0;
+        Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
+    }
+    private void OnBuildDetailsHeightChanged(object? sender, EventArgs e)
+    {
+        if (_buildDetailsItem != null)
+            Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
+    }
+
+    private void ApplyBuildDetailsVisibility(DataGridRow row) =>
+        row.AreDetailsVisible = _buildDetailsItem != null && ReferenceEquals(row.DataContext, _buildDetailsItem);
+
+    // TabControl detaches an inactive tab's content from the visual tree rather than just hiding
+    // it, so IsVisible never actually toggles on an existing instance when switching tabs.
+    // OnAttachedToVisualTree is the correct lifecycle hook for "this page just became active again."
+    protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+        ViewModel.NotifyActivated();
+        if (_buildDetailsItem != null)
+            Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
+    }
+
+    private async Task OnSessionRequestedAsync()
+    {
+        if (!(TopLevel.GetTopLevel(this) is Window owner)) return;
+
+        AccountPickerViewModel pickerVm = App.Services.GetRequiredService<AccountPickerViewModel>();
+        AccountPickerResult? pickerResult = await new AccountPickerWindow(pickerVm).ShowDialog<AccountPickerResult?>(owner);
+
+        if (pickerResult?.Outcome == AccountPickerOutcome.AccountSelected)
+        {
+            await ViewModel.SetActiveProfile(pickerResult.Profile);
+        }
+        else if (pickerResult?.Outcome == AccountPickerOutcome.LinkNew)
+        {
+            LinkAccountViewModel linkVm = App.Services.GetRequiredService<LinkAccountViewModel>();
+            Sc2Profile? linkedProfile = await new LinkAccountWindow(linkVm).ShowDialog<Sc2Profile?>(owner);
+            if (linkedProfile != null)
+                await ViewModel.SetActiveProfile(linkedProfile);
+        }
+    }
+
+    private async Task OnDeleteGameConfirmationRequestedAsync(GameDataRowViewModel row)
+    {
+        if (!(TopLevel.GetTopLevel(this) is Window owner)) return;
+
+        string message = $"Delete this recorded game ({row.MapName}, {row.PlayedAt})? This cannot be undone.";
+        bool confirmed = await new ConfirmationWindow(message).ShowDialog<bool>(owner);
+
+        if (confirmed)
+            ViewModel.ConfirmDeleteGame(row);
+    }
+
+    private async Task OnImportReplayRequestedAsync()
+    {
+        if (!(TopLevel.GetTopLevel(this) is Window owner)) return;
+
+        string? replayFolderPath = ViewModel.ReplayFolderPath;
+        IStorageFolder? suggestedFolder = replayFolderPath != null
+            ? await owner.StorageProvider.TryGetFolderFromPathAsync(replayFolderPath)
+            : null;
+
+        IReadOnlyList<IStorageFile> files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+        {
+            Title = "Select a replay to import",
+            AllowMultiple = false,
+            SuggestedStartLocation = suggestedFolder,
+            FileTypeFilter = [new FilePickerFileType("StarCraft II Replay") { Patterns = ["*.SC2Replay"] }],
+        });
+
+        if (files.Count == 0) return;
+
+        string? path = files[0].TryGetLocalPath();
+        if (path == null) return;
+
+        // The folder watcher only ever looks directly inside the watched folder (no subfolders), so a
+        // manual import is held to the same boundary rather than letting the user reach outside it.
+        if (replayFolderPath == null || !IsDirectlyInFolder(path, replayFolderPath))
+        {
+            string rejectionMessage = replayFolderPath == null
+                ? "No replay folder is currently being watched."
+                : $"\"{Path.GetFileName(path)}\" is not inside the current replay folder:\n{replayFolderPath}";
+            App.Services.GetRequiredService<ILogger>()
+                .LogWarning($"Rejected replay import: \"{path}\" is not directly inside the watched replay folder \"{replayFolderPath}\".");
+            await new MessageWindow("Import Failed", rejectionMessage).ShowDialog(owner);
+            return;
         }
 
-        private void ApplyBuildDetailsVisibility(DataGridRow row) =>
-            row.AreDetailsVisible = _buildDetailsItem != null && ReferenceEquals(row.DataContext, _buildDetailsItem);
+        string? error = await ViewModel.ImportReplayFile(path);
+        if (error != null)
+            await new MessageWindow("Import Failed", error).ShowDialog(owner);
+    }
 
-        // TabControl detaches an inactive tab's content from the visual tree rather than just hiding
-        // it, so IsVisible never actually toggles on an existing instance when switching tabs.
-        // OnAttachedToVisualTree is the correct lifecycle hook for "this page just became active again."
-        protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e)
-        {
-            base.OnAttachedToVisualTree(e);
-            ViewModel.NotifyActivated();
-            if (_buildDetailsItem != null)
-                Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
-        }
+    private async Task OnLaunchReplayFailedAsync(string message)
+    {
+        if (!(TopLevel.GetTopLevel(this) is Window owner)) return;
 
-        private async Task OnSessionRequestedAsync()
-        {
-            if (!(TopLevel.GetTopLevel(this) is Window owner)) return;
+        await new MessageWindow("Launch Failed", message).ShowDialog(owner);
+    }
 
-            AccountPickerViewModel pickerVm = App.Services.GetRequiredService<AccountPickerViewModel>();
-            AccountPickerResult? pickerResult = await new AccountPickerWindow(pickerVm).ShowDialog<AccountPickerResult?>(owner);
-
-            if (pickerResult?.Outcome == AccountPickerOutcome.AccountSelected)
-            {
-                await ViewModel.SetActiveProfile(pickerResult.Profile);
-            }
-            else if (pickerResult?.Outcome == AccountPickerOutcome.LinkNew)
-            {
-                LinkAccountViewModel linkVm = App.Services.GetRequiredService<LinkAccountViewModel>();
-                Sc2Profile? linkedProfile = await new LinkAccountWindow(linkVm).ShowDialog<Sc2Profile?>(owner);
-                if (linkedProfile != null)
-                    await ViewModel.SetActiveProfile(linkedProfile);
-            }
-        }
-
-        private async Task OnDeleteGameConfirmationRequestedAsync(GameDataRowViewModel row)
-        {
-            if (!(TopLevel.GetTopLevel(this) is Window owner)) return;
-
-            string message = $"Delete this recorded game ({row.MapName}, {row.PlayedAt})? This cannot be undone.";
-            bool confirmed = await new ConfirmationWindow(message).ShowDialog<bool>(owner);
-
-            if (confirmed)
-                ViewModel.ConfirmDeleteGame(row);
-        }
-
-        private async Task OnImportReplayRequestedAsync()
-        {
-            if (!(TopLevel.GetTopLevel(this) is Window owner)) return;
-
-            string? replayFolderPath = ViewModel.ReplayFolderPath;
-            IStorageFolder? suggestedFolder = replayFolderPath != null
-                ? await owner.StorageProvider.TryGetFolderFromPathAsync(replayFolderPath)
-                : null;
-
-            IReadOnlyList<IStorageFile> files = await owner.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
-            {
-                Title = "Select a replay to import",
-                AllowMultiple = false,
-                SuggestedStartLocation = suggestedFolder,
-                FileTypeFilter = [new FilePickerFileType("StarCraft II Replay") { Patterns = ["*.SC2Replay"] }],
-            });
-
-            if (files.Count == 0) return;
-
-            string? path = files[0].TryGetLocalPath();
-            if (path == null) return;
-
-            // The folder watcher only ever looks directly inside the watched folder (no subfolders), so a
-            // manual import is held to the same boundary rather than letting the user reach outside it.
-            if (replayFolderPath == null || !IsDirectlyInFolder(path, replayFolderPath))
-            {
-                string rejectionMessage = replayFolderPath == null
-                    ? "No replay folder is currently being watched."
-                    : $"\"{Path.GetFileName(path)}\" is not inside the current replay folder:\n{replayFolderPath}";
-                App.Services.GetRequiredService<ILogger>()
-                    .LogWarning($"Rejected replay import: \"{path}\" is not directly inside the watched replay folder \"{replayFolderPath}\".");
-                await new MessageWindow("Import Failed", rejectionMessage).ShowDialog(owner);
-                return;
-            }
-
-            string? error = await ViewModel.ImportReplayFile(path);
-            if (error != null)
-                await new MessageWindow("Import Failed", error).ShowDialog(owner);
-        }
-
-        private async Task OnLaunchReplayFailedAsync(string message)
-        {
-            if (!(TopLevel.GetTopLevel(this) is Window owner)) return;
-
-            await new MessageWindow("Launch Failed", message).ShowDialog(owner);
-        }
-
-        private static bool IsDirectlyInFolder(string filePath, string folderPath)
-        {
-            string? fileDirectory = Path.GetDirectoryName(Path.GetFullPath(filePath));
-            string normalizedFolder = Path.GetFullPath(folderPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-            return fileDirectory != null &&
-                string.Equals(fileDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), normalizedFolder, StringComparison.OrdinalIgnoreCase);
-        }
+    private static bool IsDirectlyInFolder(string filePath, string folderPath)
+    {
+        string? fileDirectory = Path.GetDirectoryName(Path.GetFullPath(filePath));
+        string normalizedFolder = Path.GetFullPath(folderPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        return fileDirectory != null &&
+            string.Equals(fileDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar), normalizedFolder, StringComparison.OrdinalIgnoreCase);
     }
 }

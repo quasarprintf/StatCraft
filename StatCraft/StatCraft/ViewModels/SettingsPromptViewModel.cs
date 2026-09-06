@@ -5,41 +5,40 @@ using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.Util;
 using StatCraft.Services.DatabaseRepository;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels;
+
+public partial class SettingsPromptViewModel : ViewModelBase
 {
-    public partial class SettingsPromptViewModel : ViewModelBase
+    private readonly SettingsRepository _settingsRepository;
+
+    public SettingsPromptViewModel(SettingsRepository settingsRepository)
     {
-        private readonly SettingsRepository _settingsRepository;
+        _settingsRepository = settingsRepository;
+    }
 
-        public SettingsPromptViewModel(SettingsRepository settingsRepository)
+    [NotifyCanExecuteChangedFor(nameof(ContinueCommand))]
+    [ObservableProperty] private string _baseReplayFolderPath = "";
+
+    [NotifyPropertyChangedFor(nameof(HasError))]
+    [ObservableProperty] private string _errorMessage = "";
+
+    public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
+
+    public event Action? Completed;
+
+    private bool CanContinue() => !string.IsNullOrWhiteSpace(BaseReplayFolderPath);
+
+    [RelayCommand(CanExecute = nameof(CanContinue))]
+    private void Continue()
+    {
+        if (!Directory.Exists(Path.Combine(BaseReplayFolderPath, "Accounts")))
         {
-            _settingsRepository = settingsRepository;
+            ErrorMessage = "This folder doesn't contain an \"Accounts\" subfolder. Select your StarCraft II replay folder.";
+            return;
         }
 
-        [NotifyCanExecuteChangedFor(nameof(ContinueCommand))]
-        [ObservableProperty] private string _baseReplayFolderPath = "";
-
-        [NotifyPropertyChangedFor(nameof(HasError))]
-        [ObservableProperty] private string _errorMessage = "";
-
-        public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
-
-        public event Action? Completed;
-
-        private bool CanContinue() => !string.IsNullOrWhiteSpace(BaseReplayFolderPath);
-
-        [RelayCommand(CanExecute = nameof(CanContinue))]
-        private void Continue()
-        {
-            if (!Directory.Exists(Path.Combine(BaseReplayFolderPath, "Accounts")))
-            {
-                ErrorMessage = "This folder doesn't contain an \"Accounts\" subfolder. Select your StarCraft II replay folder.";
-                return;
-            }
-
-            ErrorMessage = "";
-            _settingsRepository.Save(new AppSettingsData { BaseReplayFolderPath = BaseReplayFolderPath });
-            Completed?.Invoke();
-        }
+        ErrorMessage = "";
+        _settingsRepository.Save(new AppSettingsData { BaseReplayFolderPath = BaseReplayFolderPath });
+        Completed?.Invoke();
     }
 }

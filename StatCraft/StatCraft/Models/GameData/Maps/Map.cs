@@ -3,22 +3,21 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData.Attributes;
 
-namespace StatCraft.Models.GameData.Maps
+namespace StatCraft.Models.GameData.Maps;
+
+public partial class Map : ObservableObject, IAttributedObject
 {
-    public partial class Map : ObservableObject, IAttributedObject
+    public int Id { get; set; }
+    [ObservableProperty] private string _name = string.Empty;
+    public ObservableCollection<AttributeValue> AttributeValues { get; } = [];
+
+    public void AddAttribute(AttributeDefinition definition) 
     {
-        public int Id { get; set; }
-        [ObservableProperty] private string _name = string.Empty;
-        public ObservableCollection<AttributeValue> AttributeValues { get; } = [];
+        AttributeValues.Add(definition.DefaultValue.Clone());
+    }
 
-        public void AddAttribute(AttributeDefinition definition) 
-        {
-            AttributeValues.Add(definition.DefaultValue.Clone());
-        }
-
-        public void RemoveAttribute(AttributeValue value)
-        {
-            AttributeValues.Remove(value);
-        }
+    public void RemoveAttribute(AttributeValue value)
+    {
+        AttributeValues.Remove(value);
     }
 }

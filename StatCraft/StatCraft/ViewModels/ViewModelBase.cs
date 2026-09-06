@@ -1,8 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace StatCraft.ViewModels
+namespace StatCraft.ViewModels;
+
+public abstract class ViewModelBase : ObservableObject
 {
-    public abstract class ViewModelBase : ObservableObject
-    {
-    }
 }

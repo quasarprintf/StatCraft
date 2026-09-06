@@ -1,28 +1,27 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace StatCraft.Models.Battlenet
+namespace StatCraft.Models.Battlenet;
+
+public enum AuthFailureReason
 {
-    public enum AuthFailureReason
-    {
-        UserCancelled,
-        Timeout,
-        PortInUse,
-        StateMismatch,
-        TokenExchangeFailed,
-        UserInfoFailed,
-        BrowserLaunchFailed,
-    }
+    UserCancelled,
+    Timeout,
+    PortInUse,
+    StateMismatch,
+    TokenExchangeFailed,
+    UserInfoFailed,
+    BrowserLaunchFailed,
+}
 
-    public class BattleNetAuthException : Exception
-    {
-        public AuthFailureReason Reason { get; }
+public class BattleNetAuthException : Exception
+{
+    public AuthFailureReason Reason { get; }
 
-        public BattleNetAuthException(AuthFailureReason reason, string message, Exception? inner = null)
-            : base(message, inner)
-        {
-            Reason = reason;
-        }
+    public BattleNetAuthException(AuthFailureReason reason, string message, Exception? inner = null)
+        : base(message, inner)
+    {
+        Reason = reason;
     }
 }

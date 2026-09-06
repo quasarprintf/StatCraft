@@ -5,34 +5,33 @@ using Avalonia.Platform.Storage;
 using Microsoft.Extensions.DependencyInjection;
 using StatCraft.ViewModels.Windows;
 
-namespace StatCraft.Views.Windows
+namespace StatCraft.Views.Windows;
+
+public partial class SettingsPage : UserControl
 {
-    public partial class SettingsPage : UserControl
+    private SettingsPageViewModel ViewModel => (SettingsPageViewModel)DataContext!;
+
+    public SettingsPage()
     {
-        private SettingsPageViewModel ViewModel => (SettingsPageViewModel)DataContext!;
+        InitializeComponent();
+        DataContext = App.Services.GetRequiredService<SettingsPageViewModel>();
+    }
 
-        public SettingsPage()
+    private async void OnBrowseClick(object? sender, RoutedEventArgs e)
+    {
+        if (!(TopLevel.GetTopLevel(this) is Window owner)) return;
+
+        IReadOnlyList<IStorageFolder> folders = await owner.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            InitializeComponent();
-            DataContext = App.Services.GetRequiredService<SettingsPageViewModel>();
-        }
+            Title = "Select Replay Folder",
+            AllowMultiple = false,
+        });
 
-        private async void OnBrowseClick(object? sender, RoutedEventArgs e)
+        if (folders.Count > 0)
         {
-            if (!(TopLevel.GetTopLevel(this) is Window owner)) return;
-
-            IReadOnlyList<IStorageFolder> folders = await owner.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
-            {
-                Title = "Select Replay Folder",
-                AllowMultiple = false,
-            });
-
-            if (folders.Count > 0)
-            {
-                string? path = folders[0].TryGetLocalPath();
-                if (path != null)
-                    ViewModel.BaseReplayFolderPath = path;
-            }
+            string? path = folders[0].TryGetLocalPath();
+            if (path != null)
+                ViewModel.BaseReplayFolderPath = path;
         }
     }
 }

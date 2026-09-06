@@ -7,82 +7,81 @@ using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
 using StatCraft.Models.Util;
 
-namespace StatCraft.Services.BackgroundService
+namespace StatCraft.Services.BackgroundService;
+
+public interface ILogger : IAsyncDisposable
 {
-    public interface ILogger : IAsyncDisposable
+    void Log(LogRecord record);
+    void Log(LogLevel level, string message, params object[] context);
+    void LogInfo(string message, params object[] context);
+    void LogWarning(string message, params object[] context);
+    void LogError(string message, params object[] context);
+    void Flush();
+}
+public class LoggingService : ILogger
+{
+    private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(5));
+    private readonly ConcurrentQueue<LogRecord> _queue = new();
+    private readonly string _logDirectory;
+    private readonly CancellationTokenSource _cts = new();
+    private readonly Task _loopTask;
+    private bool _disposed;
+
+    public LoggingService(string logDirectory)
     {
-        void Log(LogRecord record);
-        void Log(LogLevel level, string message, params object[] context);
-        void LogInfo(string message, params object[] context);
-        void LogWarning(string message, params object[] context);
-        void LogError(string message, params object[] context);
-        void Flush();
+        _logDirectory = logDirectory;
+        _loopTask = RunLoopAsync(_cts.Token);
     }
-    public class LoggingService : ILogger
+
+    public void Log(LogRecord record) => _queue.Enqueue(record);
+    public void Log(LogLevel level, string message, params object[] context)
     {
-        private readonly PeriodicTimer _timer = new(TimeSpan.FromSeconds(5));
-        private readonly ConcurrentQueue<LogRecord> _queue = new();
-        private readonly string _logDirectory;
-        private readonly CancellationTokenSource _cts = new();
-        private readonly Task _loopTask;
-        private bool _disposed;
+        LogRecord record = new LogRecord { Timestamp = DateTimeOffset.Now, Level = level, Message = message };
+        foreach (object item in context)
+            record.AddContext(item);
+        Log(record);
+    }
 
-        public LoggingService(string logDirectory)
+    public void LogInfo(string message, params object[] context) => Log(LogLevel.Information, message, context);
+    public void LogWarning(string message, params object[] context) => Log(LogLevel.Warning, message, context);
+    public void LogError(string message, params object[] context) => Log(LogLevel.Error, message, context);
+
+    private async Task RunLoopAsync(CancellationToken cancellationToken)
+    {
+        try
         {
-            _logDirectory = logDirectory;
-            _loopTask = RunLoopAsync(_cts.Token);
+            while (await _timer.WaitForNextTickAsync(cancellationToken))
+                Flush();
         }
-
-        public void Log(LogRecord record) => _queue.Enqueue(record);
-        public void Log(LogLevel level, string message, params object[] context)
+        catch (OperationCanceledException)
         {
-            LogRecord record = new LogRecord { Timestamp = DateTimeOffset.Now, Level = level, Message = message };
-            foreach (object item in context)
-                record.AddContext(item);
-            Log(record);
+            // Expected when DisposeAsync() cancels the loop.
         }
+    }
 
-        public void LogInfo(string message, params object[] context) => Log(LogLevel.Information, message, context);
-        public void LogWarning(string message, params object[] context) => Log(LogLevel.Warning, message, context);
-        public void LogError(string message, params object[] context) => Log(LogLevel.Error, message, context);
+    public void Flush()
+    {
+        if (_queue.IsEmpty)
+            return;
 
-        private async Task RunLoopAsync(CancellationToken cancellationToken)
-        {
-            try
-            {
-                while (await _timer.WaitForNextTickAsync(cancellationToken))
-                    Flush();
-            }
-            catch (OperationCanceledException)
-            {
-                // Expected when DisposeAsync() cancels the loop.
-            }
-        }
+        List<string> lines = new();
+        while (_queue.TryDequeue(out LogRecord? record))
+            lines.Add($"{record.Timestamp:O} - [{record.Level}] - {string.Join(" | ", record.Context)} || {record.Message}");
 
-        public void Flush()
-        {
-            if (_queue.IsEmpty)
-                return;
+        Directory.CreateDirectory(_logDirectory);
+        string filePath = Path.Combine(_logDirectory, $"log-{DateTimeOffset.Now:yyyyMMdd}.txt");
+        File.AppendAllLines(filePath, lines);
+    }
 
-            List<string> lines = new();
-            while (_queue.TryDequeue(out LogRecord? record))
-                lines.Add($"{record.Timestamp:O} - [{record.Level}] - {string.Join(" | ", record.Context)} || {record.Message}");
+    public async ValueTask DisposeAsync()
+    {
+        if (_disposed) return;
+        _disposed = true;
 
-            Directory.CreateDirectory(_logDirectory);
-            string filePath = Path.Combine(_logDirectory, $"log-{DateTimeOffset.Now:yyyyMMdd}.txt");
-            File.AppendAllLines(filePath, lines);
-        }
-
-        public async ValueTask DisposeAsync()
-        {
-            if (_disposed) return;
-            _disposed = true;
-
-            _cts.Cancel();
-            _cts.Dispose();
-            await _loopTask;
-            Flush();
-            _timer.Dispose();
-        }
+        _cts.Cancel();
+        _cts.Dispose();
+        await _loopTask;
+        Flush();
+        _timer.Dispose();
     }
 }

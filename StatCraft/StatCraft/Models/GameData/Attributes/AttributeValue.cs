@@ -5,91 +5,90 @@ using System;
 using System.ComponentModel;
 using System.Linq;
 
-namespace StatCraft.Models.GameData.Attributes
+namespace StatCraft.Models.GameData.Attributes;
+
+public partial class AttributeValue : ObservableObject
 {
-    public partial class AttributeValue : ObservableObject
+    public event EventHandler<PropertyChangedEventArgs>? ValueChanged;
+
+    public AttributeDefinition Definition { get; }
+
+    [NotifyPropertyChangedFor(nameof(HasValue))]
+    [ObservableProperty] private decimal? _numericValue;
+
+    [NotifyPropertyChangedFor(nameof(HasValue))]
+    [ObservableProperty] private bool? _boolValue;
+
+    [NotifyPropertyChangedFor(nameof(HasValue))]
+    [ObservableProperty] private decimal? _percentValue;
+
+    [NotifyPropertyChangedFor(nameof(HasValue))]
+    [ObservableProperty] private string? _selectedValue;
+
+    // Only the slot matching the attribute's type counts — switching an attribute's type leaves the
+    // old slot populated, and that stale value must not read as "set".
+    public bool HasValue => Definition.Type switch
     {
-        public event EventHandler<PropertyChangedEventArgs>? ValueChanged;
+        AttributeType.Numeric => NumericValue.HasValue,
+        AttributeType.Bool => BoolValue.HasValue,
+        AttributeType.Percent => PercentValue.HasValue,
+        AttributeType.Values => !string.IsNullOrEmpty(SelectedValue),
+        _ => false,
+    };
 
-        public AttributeDefinition Definition { get; }
+    internal AttributeValue(AttributeDefinition attribute)
+    {
+        Definition = attribute;
+        Clear();
 
-        [NotifyPropertyChangedFor(nameof(HasValue))]
-        [ObservableProperty] private decimal? _numericValue;
+        PropertyChanged += (_, e) => ValueChanged?.Invoke(this, e);
+    }
 
-        [NotifyPropertyChangedFor(nameof(HasValue))]
-        [ObservableProperty] private bool? _boolValue;
+    // Returns null when unset, so callers persist by deleting the row rather than writing a value
+    // that would read back as 0/false.
+    internal string? Serialize() => HasValue
+        ? AttributeValueSerializer.Serialize(Definition.Type, NumericValue ?? 0m, BoolValue ?? false, PercentValue ?? 0m, SelectedValue)
+        : null;
 
-        [NotifyPropertyChangedFor(nameof(HasValue))]
-        [ObservableProperty] private decimal? _percentValue;
-
-        [NotifyPropertyChangedFor(nameof(HasValue))]
-        [ObservableProperty] private string? _selectedValue;
-
-        // Only the slot matching the attribute's type counts — switching an attribute's type leaves the
-        // old slot populated, and that stale value must not read as "set".
-        public bool HasValue => Definition.Type switch
+    internal void ApplyStoredValue(string stored)
+    {
+        AttributeValueSerializer.ParsedValue parsed = AttributeValueSerializer.Parse(Definition.Type, stored);
+        switch (Definition.Type)
         {
-            AttributeType.Numeric => NumericValue.HasValue,
-            AttributeType.Bool => BoolValue.HasValue,
-            AttributeType.Percent => PercentValue.HasValue,
-            AttributeType.Values => !string.IsNullOrEmpty(SelectedValue),
-            _ => false,
-        };
-
-        internal AttributeValue(AttributeDefinition attribute)
-        {
-            Definition = attribute;
-            Clear();
-
-            PropertyChanged += (_, e) => ValueChanged?.Invoke(this, e);
+            case AttributeType.Numeric: NumericValue = parsed.NumericValue; break;
+            case AttributeType.Bool: BoolValue = parsed.BoolValue; break;
+            case AttributeType.Percent: PercentValue = parsed.PercentValue; break;
+            case AttributeType.Values: SelectedValue = parsed.SelectedValue; break;
         }
+    }
 
-        // Returns null when unset, so callers persist by deleting the row rather than writing a value
-        // that would read back as 0/false.
-        internal string? Serialize() => HasValue
-            ? AttributeValueSerializer.Serialize(Definition.Type, NumericValue ?? 0m, BoolValue ?? false, PercentValue ?? 0m, SelectedValue)
-            : null;
-
-        internal void ApplyStoredValue(string stored)
+    [RelayCommand]
+    public void Clear()
+    {
+        if (Definition.IsNullable)
         {
-            AttributeValueSerializer.ParsedValue parsed = AttributeValueSerializer.Parse(Definition.Type, stored);
-            switch (Definition.Type)
+            NumericValue = null;
+            BoolValue = null;
+            PercentValue = null;
+            SelectedValue = null;
+        }
+        else
+        {
+            NumericValue = default(decimal);
+            BoolValue = default(bool);
+            PercentValue = default(decimal);
+            SelectedValue = Definition.ValueOptions.FirstOrDefault();
+        }
+    }
+
+    public AttributeValue Clone()
+    {
+        return new AttributeValue(Definition)
             {
-                case AttributeType.Numeric: NumericValue = parsed.NumericValue; break;
-                case AttributeType.Bool: BoolValue = parsed.BoolValue; break;
-                case AttributeType.Percent: PercentValue = parsed.PercentValue; break;
-                case AttributeType.Values: SelectedValue = parsed.SelectedValue; break;
-            }
-        }
-
-        [RelayCommand]
-        public void Clear()
-        {
-            if (Definition.IsNullable)
-            {
-                NumericValue = null;
-                BoolValue = null;
-                PercentValue = null;
-                SelectedValue = null;
-            }
-            else
-            {
-                NumericValue = default(decimal);
-                BoolValue = default(bool);
-                PercentValue = default(decimal);
-                SelectedValue = Definition.ValueOptions.FirstOrDefault();
-            }
-        }
-
-        public AttributeValue Clone()
-        {
-            return new AttributeValue(Definition)
-                {
-                    NumericValue = NumericValue,
-                    BoolValue = BoolValue,
-                    PercentValue = PercentValue,
-                    SelectedValue = SelectedValue,
-                };
-        }
+                NumericValue = NumericValue,
+                BoolValue = BoolValue,
+                PercentValue = PercentValue,
+                SelectedValue = SelectedValue,
+            };
     }
 }

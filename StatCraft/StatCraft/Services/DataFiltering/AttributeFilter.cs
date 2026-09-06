@@ -2,52 +2,51 @@ using System;
 using System.Collections.Generic;
 using StatCraft.Models.GameData.Attributes;
 
-namespace StatCraft.Services.DataFiltering
+namespace StatCraft.Services.DataFiltering;
+
+// filter logic for each attribute type
+internal static class AttributeFilter
 {
-    // filter logic for each attribute type
-    internal static class AttributeFilter
+    // Numeric and Percent attributes. Bounds are inclusive, and either end may be left open.
+    public static bool MatchesRange(AttributeValue value, decimal? min, decimal? max, bool includeUnset)
     {
-        // Numeric and Percent attributes. Bounds are inclusive, and either end may be left open.
-        public static bool MatchesRange(AttributeValue value, decimal? min, decimal? max, bool includeUnset)
-        {
-            if (!value.HasValue)
-                return includeUnset;
+        if (!value.HasValue)
+            return includeUnset;
 
-            if (min == null && max == null)
-                return true;
+        if (min == null && max == null)
+            return true;
 
-            decimal actual = value.Definition.Type == AttributeType.Percent
-                ? value.PercentValue ?? 0m
-                : value.NumericValue ?? 0m;
-            return (min == null || actual >= min) && (max == null || actual <= max);
-        }
+        decimal actual = value.Definition.Type == AttributeType.Percent
+            ? value.PercentValue ?? 0m
+            : value.NumericValue ?? 0m;
+        return (min == null || actual >= min) && (max == null || actual <= max);
+    }
 
-        // Values attributes: does the map's selected option appear among the checked ones? `actual` is
-        // only read once hasValue has ruled out the unset case, so callers may pass any placeholder for
-        // an unset value.
-        public static bool MatchesSelection<T>(IReadOnlySet<T> checkedValues, bool hasValue, T actual, bool includeUnset)
-        {
-            if (!hasValue)
-                return includeUnset;
+    // Values attributes: does the map's selected option appear among the checked ones? `actual` is
+    // only read once hasValue has ruled out the unset case, so callers may pass any placeholder for
+    // an unset value.
+    public static bool MatchesSelection<T>(IReadOnlySet<T> checkedValues, bool hasValue, T actual, bool includeUnset)
+    {
+        if (!hasValue)
+            return includeUnset;
 
-            if (checkedValues.Count == 0)
-                return true;
+        if (checkedValues.Count == 0)
+            return true;
 
-            return checkedValues.Contains(actual);
-        }
+        return checkedValues.Contains(actual);
+    }
 
-        // Bool attributes. A three-state checkbox rather than a checked-values set: null means no
-        // constraint on this dimension (matches both true and false), otherwise the map's value must
-        // equal it exactly.
-        public static bool MatchesBool(AttributeValue value, bool? filterValue, bool includeUnset)
-        {
-            if (!value.HasValue)
-                return includeUnset;
+    // Bool attributes. A three-state checkbox rather than a checked-values set: null means no
+    // constraint on this dimension (matches both true and false), otherwise the map's value must
+    // equal it exactly.
+    public static bool MatchesBool(AttributeValue value, bool? filterValue, bool includeUnset)
+    {
+        if (!value.HasValue)
+            return includeUnset;
 
-            if (filterValue == null)
-                return true;
+        if (filterValue == null)
+            return true;
 
-            return value.BoolValue == filterValue;
-        }
+        return value.BoolValue == filterValue;
     }
 }

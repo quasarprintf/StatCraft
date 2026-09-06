@@ -9,182 +9,181 @@ using StatCraft.Models.Battlenet;
 using StatCraft.Services.BattlenetApi;
 using StatCraft.Services.DatabaseRepository;
 
-namespace StatCraft.ViewModels.Windows.DataComponents
+namespace StatCraft.ViewModels.Windows.DataComponents;
+
+public enum LinkAccountStage { EnterCredentials, Connecting, SelectingProfile, Failed }
+
+public partial class LinkAccountViewModel : ViewModelBase
 {
-    public enum LinkAccountStage { EnterCredentials, Connecting, SelectingProfile, Failed }
+    // Shared with BlizzardAppTokenProvider, which reads the same saved credentials to mint app
+    // tokens for the ladder endpoints — these keys must not drift apart.
+    private const string ClientIdSettingKey = BlizzardAppTokenProvider.ClientIdSettingKey;
+    private const string ClientSecretSettingKey = BlizzardAppTokenProvider.ClientSecretSettingKey;
 
-    public partial class LinkAccountViewModel : ViewModelBase
+    private readonly AccountRepository _accountRepository;
+    private readonly TokenProtector _tokenProtector;
+    private readonly BattleNetAuthService _authService;
+    private readonly StarCraft2ProfileService _sc2ProfileService;
+    private CancellationTokenSource? _linkCts;
+
+    public LinkAccountViewModel(
+        AccountRepository accountRepository,
+        TokenProtector tokenProtector,
+        BattleNetAuthService authService,
+        StarCraft2ProfileService sc2ProfileService)
     {
-        // Shared with BlizzardAppTokenProvider, which reads the same saved credentials to mint app
-        // tokens for the ladder endpoints — these keys must not drift apart.
-        private const string ClientIdSettingKey = BlizzardAppTokenProvider.ClientIdSettingKey;
-        private const string ClientSecretSettingKey = BlizzardAppTokenProvider.ClientSecretSettingKey;
+        _accountRepository = accountRepository;
+        _tokenProtector = tokenProtector;
+        _authService = authService;
+        _sc2ProfileService = sc2ProfileService;
+    }
 
-        private readonly AccountRepository _accountRepository;
-        private readonly TokenProtector _tokenProtector;
-        private readonly BattleNetAuthService _authService;
-        private readonly StarCraft2ProfileService _sc2ProfileService;
-        private CancellationTokenSource? _linkCts;
+    [NotifyPropertyChangedFor(nameof(IsEnterCredentials), nameof(IsConnecting), nameof(IsSelectingProfile), nameof(IsFailed))]
+    [ObservableProperty] private LinkAccountStage _stage;
 
-        public LinkAccountViewModel(
-            AccountRepository accountRepository,
-            TokenProtector tokenProtector,
-            BattleNetAuthService authService,
-            StarCraft2ProfileService sc2ProfileService)
+    public bool IsEnterCredentials => Stage == LinkAccountStage.EnterCredentials;
+    public bool IsConnecting => Stage == LinkAccountStage.Connecting;
+    public bool IsSelectingProfile => Stage == LinkAccountStage.SelectingProfile;
+    public bool IsFailed => Stage == LinkAccountStage.Failed;
+
+    [NotifyCanExecuteChangedFor(nameof(SubmitCredentialsCommand))]
+    [ObservableProperty] private string _clientId = "";
+
+    [NotifyCanExecuteChangedFor(nameof(SubmitCredentialsCommand))]
+    [ObservableProperty] private string _clientSecret = "";
+
+    [ObservableProperty] private string _statusMessage = "";
+
+    public ObservableCollection<Sc2Profile> Sc2Profiles { get; } = [];
+
+    [NotifyCanExecuteChangedFor(nameof(ConfirmProfileCommand))]
+    [ObservableProperty] private Sc2Profile? _selectedSc2Profile;
+
+    public Sc2Profile? LinkedProfile { get; private set; }
+
+    public event Action<bool>? Closed;
+
+    public async Task InitializeAsync()
+    {
+        string? clientId = _accountRepository.GetSetting(ClientIdSettingKey);
+        string? encryptedSecretB64 = _accountRepository.GetSetting(ClientSecretSettingKey);
+
+        if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(encryptedSecretB64))
         {
-            _accountRepository = accountRepository;
-            _tokenProtector = tokenProtector;
-            _authService = authService;
-            _sc2ProfileService = sc2ProfileService;
+            Stage = LinkAccountStage.EnterCredentials;
+            return;
         }
 
-        [NotifyPropertyChangedFor(nameof(IsEnterCredentials), nameof(IsConnecting), nameof(IsSelectingProfile), nameof(IsFailed))]
-        [ObservableProperty] private LinkAccountStage _stage;
+        ClientId = clientId;
+        ClientSecret = _tokenProtector.Decrypt(Convert.FromBase64String(encryptedSecretB64));
+        await StartLinkingAsync();
+    }
 
-        public bool IsEnterCredentials => Stage == LinkAccountStage.EnterCredentials;
-        public bool IsConnecting => Stage == LinkAccountStage.Connecting;
-        public bool IsSelectingProfile => Stage == LinkAccountStage.SelectingProfile;
-        public bool IsFailed => Stage == LinkAccountStage.Failed;
+    private bool CanSubmitCredentials() => !string.IsNullOrWhiteSpace(ClientId) && !string.IsNullOrWhiteSpace(ClientSecret);
 
-        [NotifyCanExecuteChangedFor(nameof(SubmitCredentialsCommand))]
-        [ObservableProperty] private string _clientId = "";
+    [RelayCommand(CanExecute = nameof(CanSubmitCredentials))]
+    private async Task SubmitCredentials()
+    {
+        _accountRepository.SetSetting(ClientIdSettingKey, ClientId);
+        _accountRepository.SetSetting(ClientSecretSettingKey, Convert.ToBase64String(_tokenProtector.Encrypt(ClientSecret)));
+        await StartLinkingAsync();
+    }
 
-        [NotifyCanExecuteChangedFor(nameof(SubmitCredentialsCommand))]
-        [ObservableProperty] private string _clientSecret = "";
+    private async Task StartLinkingAsync()
+    {
+        Stage = LinkAccountStage.Connecting;
+        _linkCts = new CancellationTokenSource();
 
-        [ObservableProperty] private string _statusMessage = "";
-
-        public ObservableCollection<Sc2Profile> Sc2Profiles { get; } = [];
-
-        [NotifyCanExecuteChangedFor(nameof(ConfirmProfileCommand))]
-        [ObservableProperty] private Sc2Profile? _selectedSc2Profile;
-
-        public Sc2Profile? LinkedProfile { get; private set; }
-
-        public event Action<bool>? Closed;
-
-        public async Task InitializeAsync()
+        try
         {
-            string? clientId = _accountRepository.GetSetting(ClientIdSettingKey);
-            string? encryptedSecretB64 = _accountRepository.GetSetting(ClientSecretSettingKey);
+            BattleNetTokenResult result = await _authService.LinkAccountAsync(ClientId, ClientSecret, _linkCts.Token);
+            List<Sc2Profile> fetchedProfiles = await _sc2ProfileService.GetProfilesAsync(result.AccountSub, result.AccessToken, _linkCts.Token);
 
-            if (string.IsNullOrEmpty(clientId) || string.IsNullOrEmpty(encryptedSecretB64))
+            if (fetchedProfiles.Count == 0)
             {
-                Stage = LinkAccountStage.EnterCredentials;
+                StatusMessage = "No StarCraft II profiles were found on this Battle.net account.";
+                Stage = LinkAccountStage.Failed;
                 return;
             }
 
-            ClientId = clientId;
-            ClientSecret = _tokenProtector.Decrypt(Convert.FromBase64String(encryptedSecretB64));
-            await StartLinkingAsync();
-        }
+            byte[] encryptedAccessToken = _tokenProtector.Encrypt(result.AccessToken);
+            byte[]? encryptedRefreshToken = result.RefreshToken == null ? null : _tokenProtector.Encrypt(result.RefreshToken);
 
-        private bool CanSubmitCredentials() => !string.IsNullOrWhiteSpace(ClientId) && !string.IsNullOrWhiteSpace(ClientSecret);
-
-        [RelayCommand(CanExecute = nameof(CanSubmitCredentials))]
-        private async Task SubmitCredentials()
-        {
-            _accountRepository.SetSetting(ClientIdSettingKey, ClientId);
-            _accountRepository.SetSetting(ClientSecretSettingKey, Convert.ToBase64String(_tokenProtector.Encrypt(ClientSecret)));
-            await StartLinkingAsync();
-        }
-
-        private async Task StartLinkingAsync()
-        {
-            Stage = LinkAccountStage.Connecting;
-            _linkCts = new CancellationTokenSource();
-
-            try
+            BattleNetAccount? account = _accountRepository.FindByAccountSub(result.AccountSub);
+            if (account == null)
             {
-                BattleNetTokenResult result = await _authService.LinkAccountAsync(ClientId, ClientSecret, _linkCts.Token);
-                List<Sc2Profile> fetchedProfiles = await _sc2ProfileService.GetProfilesAsync(result.AccountSub, result.AccessToken, _linkCts.Token);
-
-                if (fetchedProfiles.Count == 0)
+                account = new BattleNetAccount
                 {
-                    StatusMessage = "No StarCraft II profiles were found on this Battle.net account.";
-                    Stage = LinkAccountStage.Failed;
-                    return;
-                }
-
-                byte[] encryptedAccessToken = _tokenProtector.Encrypt(result.AccessToken);
-                byte[]? encryptedRefreshToken = result.RefreshToken == null ? null : _tokenProtector.Encrypt(result.RefreshToken);
-
-                BattleNetAccount? account = _accountRepository.FindByAccountSub(result.AccountSub);
-                if (account == null)
-                {
-                    account = new BattleNetAccount
-                    {
-                        BattleTag = result.BattleTag,
-                        AccountSub = result.AccountSub,
-                        EncryptedAccessToken = encryptedAccessToken,
-                        EncryptedRefreshToken = encryptedRefreshToken,
-                        TokenExpiresAtUtc = result.ExpiresAtUtc,
-                        CreatedAtUtc = DateTimeOffset.UtcNow,
-                    };
-                    _accountRepository.InsertAccount(account);
-                }
-                else
-                {
-                    _accountRepository.UpdateAccountTokens(account.Id, encryptedAccessToken, encryptedRefreshToken, result.ExpiresAtUtc, result.BattleTag);
-                    account.BattleTag = result.BattleTag;
-                    account.EncryptedAccessToken = encryptedAccessToken;
-                    account.EncryptedRefreshToken = encryptedRefreshToken;
-                    account.TokenExpiresAtUtc = result.ExpiresAtUtc;
-                }
-
-                Sc2Profiles.Clear();
-                foreach (Sc2Profile profile in fetchedProfiles)
-                {
-                    profile.BattleNetAccountId = account.Id;
-                    profile.Account = account;
-                    _accountRepository.UpsertProfile(profile);
-                    Sc2Profiles.Add(profile);
-                }
-
-                SelectedSc2Profile = Sc2Profiles[0];
-                Stage = LinkAccountStage.SelectingProfile;
+                    BattleTag = result.BattleTag,
+                    AccountSub = result.AccountSub,
+                    EncryptedAccessToken = encryptedAccessToken,
+                    EncryptedRefreshToken = encryptedRefreshToken,
+                    TokenExpiresAtUtc = result.ExpiresAtUtc,
+                    CreatedAtUtc = DateTimeOffset.UtcNow,
+                };
+                _accountRepository.InsertAccount(account);
             }
-            catch (BattleNetAuthException ex) when (ex.Reason == AuthFailureReason.UserCancelled)
+            else
             {
-                Stage = LinkAccountStage.EnterCredentials;
+                _accountRepository.UpdateAccountTokens(account.Id, encryptedAccessToken, encryptedRefreshToken, result.ExpiresAtUtc, result.BattleTag);
+                account.BattleTag = result.BattleTag;
+                account.EncryptedAccessToken = encryptedAccessToken;
+                account.EncryptedRefreshToken = encryptedRefreshToken;
+                account.TokenExpiresAtUtc = result.ExpiresAtUtc;
             }
-            catch (BattleNetAuthException ex)
+
+            Sc2Profiles.Clear();
+            foreach (Sc2Profile profile in fetchedProfiles)
             {
-                StatusMessage = ex.Message;
-                Stage = LinkAccountStage.Failed;
+                profile.BattleNetAccountId = account.Id;
+                profile.Account = account;
+                _accountRepository.UpsertProfile(profile);
+                Sc2Profiles.Add(profile);
             }
-            catch (Exception)
-            {
-                StatusMessage = "An unexpected error occurred while linking the account.";
-                Stage = LinkAccountStage.Failed;
-            }
+
+            SelectedSc2Profile = Sc2Profiles[0];
+            Stage = LinkAccountStage.SelectingProfile;
         }
-
-        private bool CanConfirmProfile() => SelectedSc2Profile != null;
-
-        [RelayCommand(CanExecute = nameof(CanConfirmProfile))]
-        private void ConfirmProfile()
+        catch (BattleNetAuthException ex) when (ex.Reason == AuthFailureReason.UserCancelled)
         {
-            ConfirmProfile(SelectedSc2Profile);
+            Stage = LinkAccountStage.EnterCredentials;
         }
-
-        public void ConfirmProfile(Sc2Profile? profile)
+        catch (BattleNetAuthException ex)
         {
-            if (profile == null) return;
-            LinkedProfile = profile;
-            Closed?.Invoke(true);
+            StatusMessage = ex.Message;
+            Stage = LinkAccountStage.Failed;
         }
-
-        [RelayCommand]
-        private void CancelLinking()
+        catch (Exception)
         {
-            _linkCts?.Cancel();
+            StatusMessage = "An unexpected error occurred while linking the account.";
+            Stage = LinkAccountStage.Failed;
         }
-
-        [RelayCommand]
-        private async Task Retry() => await StartLinkingAsync();
-
-        [RelayCommand]
-        private void Close() => Closed?.Invoke(false);
     }
+
+    private bool CanConfirmProfile() => SelectedSc2Profile != null;
+
+    [RelayCommand(CanExecute = nameof(CanConfirmProfile))]
+    private void ConfirmProfile()
+    {
+        ConfirmProfile(SelectedSc2Profile);
+    }
+
+    public void ConfirmProfile(Sc2Profile? profile)
+    {
+        if (profile == null) return;
+        LinkedProfile = profile;
+        Closed?.Invoke(true);
+    }
+
+    [RelayCommand]
+    private void CancelLinking()
+    {
+        _linkCts?.Cancel();
+    }
+
+    [RelayCommand]
+    private async Task Retry() => await StartLinkingAsync();
+
+    [RelayCommand]
+    private void Close() => Closed?.Invoke(false);
 }

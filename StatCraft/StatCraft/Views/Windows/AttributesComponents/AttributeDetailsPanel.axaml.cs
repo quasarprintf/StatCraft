@@ -1,12 +1,11 @@
 using Avalonia.Controls;
 
-namespace StatCraft.Views.Windows.AttributesComponents
+namespace StatCraft.Views.Windows.AttributesComponents;
+
+public partial class AttributeDetailsPanel : UserControl
 {
-    public partial class AttributeDetailsPanel : UserControl
+    public AttributeDetailsPanel()
     {
-        public AttributeDetailsPanel()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
     }
 }

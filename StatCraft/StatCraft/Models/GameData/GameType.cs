@@ -1,4 +1,3 @@
-namespace StatCraft.Models.GameData
-{
-    public enum GameType { Ranked, Unranked, Custom }
-}
+namespace StatCraft.Models.GameData;
+
+public enum GameType { Ranked, Unranked, Custom }
