@@ -60,6 +60,30 @@ public class GameDataRowViewModelTests : IDisposable
         Assert.Equal("Lost to a cheese rush", secondRow.Notes);
     }
 
+    // Reproduces a real-session bug report: an opponent's MMR was replay-parsed as garbage, corrected
+    // via OpponentMmrEstimator once the tracked player's post-game MMR resolved (see
+    // ReplayImportService.TryCorrectOpponentMmr), and the DB updated correctly — but the Data page kept
+    // showing the original parsed value instead of the estimate. The underlying GamePlayer.Mmr is
+    // mutated in place rather than replaced, so OpponentRowViewModel has to notice the change itself
+    // (via PlayerMmr.MmrChanged) rather than being reconstructed.
+    [Fact]
+    public void OpponentMmrIsCorrectedAfterRowIsBuilt_DisplayedMmrUpdates()
+    {
+        GameData game = CreateGame();
+        _gameDataRepository.InsertGame(game, _sc2ProfileId);
+
+        GameDataRowViewModel row = new(game, _gameDataRepository, "Player", (_, _) => null, _logger, _replayDataExtractor);
+        OpponentRowViewModel opponentRow = Assert.Single(row.Opponents);
+        Assert.Equal(3100, opponentRow.Mmr);
+
+        // Simulates TryCorrectOpponentMmr discarding the replay-parsed 3100 as implausible and storing
+        // an Elo-estimated value instead, minutes after the row was already constructed and displayed.
+        GamePlayer opponent = game.ReplayData.Opponents[0];
+        opponent.Mmr.EstimatedMmr = 3400;
+
+        Assert.Equal(3400, opponentRow.Mmr);
+    }
+
     private static GameData CreateGame()
     {
         ParsedReplayData replay = new()
