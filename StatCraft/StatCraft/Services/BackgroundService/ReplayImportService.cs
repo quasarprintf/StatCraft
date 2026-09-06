@@ -32,7 +32,7 @@ namespace StatCraft.Services.BackgroundService
         internal event Action<GameData>? GameMmrUpdated;
 
         // Returns null on success, or a user-facing message describing why the replay was rejected.
-        public async Task<string?> ImportReplay(string filePath, Sc2Profile profile)
+        public async Task<string?> ImportReplay(string filePath, Sc2Profile profile, int currentAttempt = 0)
         {
             try
             {
@@ -43,6 +43,11 @@ namespace StatCraft.Services.BackgroundService
                 // Expected rather than exceptional: the watcher reports a file the moment it appears in
                 // the folder, which can be while StarCraft II is still writing it.
                 logger.LogWarning($"Replay file could not be read: {filePath} ({ex.Message})", profile);
+                if (currentAttempt < 5)
+                {
+                    await Task.Delay((int)Math.Pow(2, currentAttempt));
+                    return await ImportReplay(filePath, profile, currentAttempt + 1);
+                }
                 return $"\"{Path.GetFileName(filePath)}\" couldn't be read — it may still be in use. Try again in a moment.";
             }
             catch (DecodeException ex)
