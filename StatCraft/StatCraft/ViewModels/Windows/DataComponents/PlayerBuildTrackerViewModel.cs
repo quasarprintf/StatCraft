@@ -43,7 +43,7 @@ namespace StatCraft.ViewModels.Windows.DataComponents
         // Slots are always [...persisted selections, one trailing blank] — selecting a build in the
         // trailing slot appends a new blank after it, and clearing a non-trailing slot removes it.
         public ObservableCollection<BuildSelectionSlotViewModel> BuildSlots { get; } = [];
-        public ObservableCollection<AttributeGroupViewModel> AttributeGroups { get; } = [];
+        public ObservableCollection<BuildDetailGroupViewModel> AttributeGroups { get; } = [];
 
         internal PlayerBuildTrackerViewModel(GamePlayer player, GameDataRepository repository, ObservableCollection<BuildNode>? buildTree, ILogger logger,
             ReplayDataExtractor? replayDataExtractor = null, string? replayPath = null, bool useTeamColors = false, bool isAlly = false)
@@ -381,7 +381,7 @@ namespace StatCraft.ViewModels.Windows.DataComponents
                     groupEditors.Add(editor);
                 }
 
-                AttributeGroups.Add(new AttributeGroupViewModel(node.Name, depth, groupEditors));
+                AttributeGroups.Add(new BuildDetailGroupViewModel(node.Name, depth, groupEditors));
             }
         }
     }
