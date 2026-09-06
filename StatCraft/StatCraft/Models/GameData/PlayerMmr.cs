@@ -1,3 +1,6 @@
+using CommunityToolkit.Mvvm.ComponentModel;
+using System;
+
 namespace StatCraft.Models.GameData
 {
     // A GamePlayer's MMR going into the game, from up to three sources in priority order. ParsedMmr is
@@ -7,9 +10,42 @@ namespace StatCraft.Models.GameData
     // isn't populated by anything yet — a future manual-correction path.
     internal class PlayerMmr
     {
-        public required long ParsedMmr { get; set; }
-        public long? EstimatedMmr { get; set; }
-        public long? OverrideMmr { get; set; }
+        public event EventHandler? MmrChanged;
+        public required long ParsedMmr 
+        { 
+            get => field;
+            set
+            {
+                if (field == value)
+                    return;
+                field = value;
+                if (EstimatedMmr == null && OverrideMmr == null)
+                    MmrChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+        public long? EstimatedMmr 
+        {
+            get => field;
+            set
+            {
+                if (field == value)
+                    return;
+                field = value;
+                if (OverrideMmr == null)
+                    MmrChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
+        public long? OverrideMmr 
+        { 
+            get => field;
+            set
+            {
+                if (field == value)
+                    return;
+                field = value;
+                MmrChanged?.Invoke(this, EventArgs.Empty);
+            }
+        }
 
         public long Mmr => OverrideMmr ?? EstimatedMmr ?? ParsedMmr;
     }

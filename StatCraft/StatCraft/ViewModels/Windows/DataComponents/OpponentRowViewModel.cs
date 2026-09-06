@@ -1,6 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Models.GameData;
 using StatCraft.Services.DatabaseRepository;
+using System;
 
 namespace StatCraft.ViewModels.Windows.DataComponents
 {
@@ -26,6 +27,12 @@ namespace StatCraft.ViewModels.Windows.DataComponents
             _player = player;
             _repository = repository;
             _mmr = player.Mmr.Mmr;
+            _player.Mmr.MmrChanged += PlayerMmrChanged;
+        }
+
+        private void PlayerMmrChanged(object? sender, EventArgs e)
+        {
+            Mmr = _player.Mmr.Mmr;
         }
 
         partial void OnMmrChanged(decimal? value)
