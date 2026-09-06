@@ -48,6 +48,8 @@ public class DataPageViewModelTests : IAsyncDisposable
         mapRepository.Initialize();
         _gameDataRepository = new GameDataRepository(_dbPath);
         _gameDataRepository.Initialize();
+        AttributeRepository attributeRepository = new(_dbPath);
+        attributeRepository.Initialize();
 
         BattleNetAccount account = new()
         {
@@ -67,7 +69,7 @@ public class DataPageViewModelTests : IAsyncDisposable
             mapRepository, ladderService);
 
         _viewModel = new DataPageViewModel(_settingsRepository, _replayWatcherService, replayImportService,
-            accountRepository, buildRepository, _gameDataRepository, ladderService, new MockLogger(), replayDataExtractor);
+            accountRepository, buildRepository, _gameDataRepository, attributeRepository, ladderService, new MockLogger(), replayDataExtractor);
     }
 
     // The "Use Team Colors" setting can be toggled mid-session — already-visible rows must pick it up
