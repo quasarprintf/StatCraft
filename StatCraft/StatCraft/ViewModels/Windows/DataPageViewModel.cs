@@ -34,6 +34,7 @@ public partial class DataPageViewModel : ViewModelBase
     private readonly AccountRepository _accountRepo;
     private readonly BuildRepository _buildRepo;
     private readonly GameDataRepository _gameDataRepo;
+    private readonly AttributeRepository _attributeRepo;
     private readonly SessionMmrTracker _mmrTracker;
     private readonly ILogger _logger;
     private readonly ReplayDataExtractor _replayDataExtractor;
@@ -48,7 +49,7 @@ public partial class DataPageViewModel : ViewModelBase
 
     public DataPageViewModel(SettingsRepository settingsRepository, ReplayWatcherService replayWatcherService,
         ReplayImportService replayImportService, AccountRepository accountRepository, BuildRepository buildRepository,
-        GameDataRepository gameDataRepository, Sc2LadderService ladderService, ILogger logger, ReplayDataExtractor replayDataExtractor)
+        GameDataRepository gameDataRepository, AttributeRepository attributeRepository, Sc2LadderService ladderService, ILogger logger, ReplayDataExtractor replayDataExtractor)
     {
         _settingsRepo = settingsRepository;
         _replayWatcherService = replayWatcherService;
@@ -56,6 +57,7 @@ public partial class DataPageViewModel : ViewModelBase
         _accountRepo = accountRepository;
         _buildRepo = buildRepository;
         _gameDataRepo = gameDataRepository;
+        _attributeRepo = attributeRepository;
         _logger = logger;
         _replayDataExtractor = replayDataExtractor;
         _mmrTracker = new SessionMmrTracker(ladderService);
@@ -375,7 +377,7 @@ public partial class DataPageViewModel : ViewModelBase
     }
 
     private GameDataRowViewModel WrapGame(GameData game) =>
-        new GameDataRowViewModel(game, _gameDataRepo, ResolveProfileLabel(game.Sc2ProfileId), GetBuildTree, _logger, _replayDataExtractor,
+        new GameDataRowViewModel(game, _gameDataRepo, _attributeRepo, ResolveProfileLabel(game.Sc2ProfileId), GetBuildTree, _logger, _replayDataExtractor,
             _settingsRepo.Load().UseTeamColors);
 
     private string ResolveProfileLabel(int sc2ProfileId) =>

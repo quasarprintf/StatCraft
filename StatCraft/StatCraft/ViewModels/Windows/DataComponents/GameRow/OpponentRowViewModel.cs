@@ -16,10 +16,7 @@ public partial class OpponentRowViewModel : ViewModelBase
     public string Name => _player.Name;
     public string FormattedClan => _player.FormattedClan;
 
-    // Editable. Typing a value other than the current EstimatedMmr ?? ParsedMmr baseline records it
-    // as OverrideMmr; clearing the field — or typing that same baseline value back in — removes the
-    // override, and the field snaps back to showing the baseline again (blank is only ever a
-    // transient editing gesture, never a stored state).
+    //mmr currently being displayed, not guaranteed to match player.mmr
     [ObservableProperty] private decimal? _mmr;
 
     internal OpponentRowViewModel(GamePlayer player, GameDataRepository repository)

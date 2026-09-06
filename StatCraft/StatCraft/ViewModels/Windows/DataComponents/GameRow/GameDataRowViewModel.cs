@@ -1,16 +1,18 @@
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Linq;
 using Avalonia.Media;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
 using StatCraft.Styles;
+using StatCraft.ViewModels.Windows.AttributeComponents;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace StatCraft.ViewModels.Windows.DataComponents.GameRow;
 
@@ -20,7 +22,11 @@ namespace StatCraft.ViewModels.Windows.DataComponents.GameRow;
 public partial class GameDataRowViewModel : ViewModelBase
 {
     public event EventHandler? RenderHeightChanged;
+    [ObservableProperty] private bool _buildsVisible;
+    [ObservableProperty] private bool _attributesVisible;
 
+    private readonly GameDataRepository _repository;
+    private readonly AttributeRepository _attributeRepo;
     private readonly GameData _game;
     public int GameId => _game.GameId!.Value;
     public string ReplayPath => _game.ReplayData.ReplayPath;
@@ -67,26 +73,30 @@ public partial class GameDataRowViewModel : ViewModelBase
         }
     }
 
+    [ObservableProperty] private string _notes;
     public IReadOnlyList<ColoredCharacter> MatchupCharacters { get; }
     public ObservableCollection<OpponentRowViewModel> Opponents { get; } = [];
 
-    [ObservableProperty] private string _notes;
-
-    // Left side of the row-details split: the session user's own build selection.
     public PlayerBuildTrackerViewModel SelfTracker { get; }
-
-    // Right side: one tab per ally/opponent, each with their own build selection.
     public ObservableCollection<PlayerBuildTrackerViewModel> OtherPlayers { get; } = [];
+    public AttributeValuesSelectViewModel AttributeValuesSelect { get; set; }
+    public string AttributesSummary => ""; //TODO
 
-    private readonly GameDataRepository _repository;
-
-    internal GameDataRowViewModel(GameData game, GameDataRepository repository, string profileLabel,
+    internal GameDataRowViewModel(GameData game, GameDataRepository repository, AttributeRepository attributeRepository, string profileLabel,
         Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree, ILogger logger, ReplayDataExtractor replayDataExtractor,
         bool useTeamColors = false)
     {
         _game = game;
         _repository = repository;
+        _attributeRepo = attributeRepository;
         ProfileLabel = profileLabel;
+
+        //TODO: I don't like caching all attributes separately in each row. Find a way to centralize this
+        ObservableCollection<AttributeDefinition> allAttributes = new ObservableCollection<AttributeDefinition>(_attributeRepo.GetAllAttributes(AttributeScope.Game));
+        AttributeValuesSelect = new AttributeValuesSelectViewModel(allAttributes);
+        AttributeValuesSelect.ValueChanged += AttributeValueChanged;
+        AttributeValuesSelect.ValueDeleted += AttributeValueDeleted;
+        AttributeValuesSelect.Object = game;
 
         ParsedReplayData replay = game.ReplayData;
         MapName = game.Map?.Name ?? "";
@@ -134,21 +144,42 @@ public partial class GameDataRowViewModel : ViewModelBase
         }
     }
 
+    partial void OnBuildsVisibleChanged(bool value)
+    {
+        RenderHeightChanged?.Invoke(this, EventArgs.Empty);
+    }
+    partial void OnAttributesVisibleChanged(bool value)
+    {
+        RenderHeightChanged?.Invoke(this, EventArgs.Empty);
+    }
+    private void AttributeValueDeleted(object? s, AttributeValue value)
+    {
+        if (s is not GameData game)
+            return; //TODO: log this, it's unexpected
+
+        // SaveValue deletes if value is null
+        //TODO: implement CRUD methods for game attributes
+        //_repository.SaveValue(game.Id, value.Definition.Id, null);
+        RenderHeightChanged?.Invoke(this, EventArgs.Empty);
+    }
+    private void AttributeValueChanged(object? s, AttributeValue value)
+    {
+        if (s is not GameData game)
+            return; //TODO: log this, it's unexpected
+
+        //TODO: implement CRUD methods for game attributes
+        //_repository.SaveValue(game.Id, value.Definition.Id, value.Serialize());
+        RenderHeightChanged?.Invoke(this, EventArgs.Empty);
+    }
+
     partial void OnNotesChanged(string value)
     {
-        // Kept on the underlying GameData too, so anything re-reading it in this session (filters,
-        // re-wrapped rows) sees the edit rather than the value the game was first loaded with — same
-        // reason as OnGameTypeChanged below. Without this, a filter change after typing notes rebuilds
-        // this row from the still-stale _game.Notes and the edit looks like it silently vanished, even
-        // though it was correctly persisted to the DB the whole time.
         _game.Notes = value;
         _repository.UpdateGameNotes(_game.GameId!.Value, value);
     }
 
     partial void OnGameTypeChanged(GameType value)
     {
-        // Kept on the underlying GameData too, so anything re-reading it in this session (filters,
-        // re-wrapped rows) sees the override rather than the original inference.
         _game.GameType = value;
         _repository.UpdateGameType(_game.GameId!.Value, value);
     }

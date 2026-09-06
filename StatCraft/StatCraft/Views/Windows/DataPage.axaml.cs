@@ -71,7 +71,7 @@ public partial class DataPage : UserControl
 
     private bool _mainTableScrollLocked;
     private int _scrollToTopAttempts;
-    private const int MaxScrollToTopAttempts = 20;
+    private const int MaxScrollToTopAttempts = 30;
     private int _scrollStepIndex;
 
     #region scroll lock
@@ -165,6 +165,7 @@ public partial class DataPage : UserControl
 
     private static bool IsNotesColumn(DataGridColumn column) => column.Header as string == "Notes";
     private static bool IsBuildColumn(DataGridColumn column) => column.Header as string == "Build";
+    private static bool IsAttributesColumn(DataGridColumn column) => column.Header as string == "Attributes";
 
     // OpponentRowViewModel.Mmr already resets itself to the resolved baseline when cleared (see
     // OnMmrChanged), but NumericUpDown doesn't reliably re-pull its own bound Value back into its
@@ -179,7 +180,7 @@ public partial class DataPage : UserControl
     private void OnGamesGridCellPointerPressed(object? sender, DataGridCellPointerPressedEventArgs e)
     {
         //show build details when you select the build column, hide it when you select a different column
-        SetBuildDetailsItem(IsBuildColumn(e.Column) ? e.Row.DataContext : null);
+        SetRowDetailsItem(IsBuildColumn(e.Column), IsAttributesColumn(e.Column), e.Row.DataContext);
 
         if (IsNotesColumn(e.Column))
         {
@@ -191,9 +192,12 @@ public partial class DataPage : UserControl
         }
     }
 
-    private void SetBuildDetailsItem(object? item)
+    private void SetRowDetailsItem(bool isBuilds, bool isAttributes, object? item)
     {
-        if (ReferenceEquals(_buildDetailsItem, item))
+        if (!isBuilds && !isAttributes)
+            item = null;
+        //TODO: clean up this condition
+        if (ReferenceEquals(_buildDetailsItem, item) && (_buildDetailsItem == null || (_buildDetailsItem.BuildsVisible == isBuilds && _buildDetailsItem.AttributesVisible == isAttributes)))
             return;
 
         if (_buildDetailsItem != null)
@@ -201,7 +205,11 @@ public partial class DataPage : UserControl
         
         _buildDetailsItem = item as GameDataRowViewModel;
         if (_buildDetailsItem != null)
+        {
+            _buildDetailsItem.BuildsVisible = isBuilds;
+            _buildDetailsItem.AttributesVisible = isAttributes;
             _buildDetailsItem.RenderHeightChanged += OnBuildDetailsHeightChanged;
+        }
 
         foreach (DataGridRow row in GamesGrid.GetVisualDescendants().OfType<DataGridRow>())
             ApplyBuildDetailsVisibility(row);
