@@ -22,7 +22,7 @@ using StatCraft.Services.DataParsing;
 using StatCraft.Models.Analytics;
 using StatCraft.ViewModels.Windows.DataComponents;
 using StatCraft.ViewModels.Windows.DataComponents.GameRow;
-using StatCraft.ViewModels.Windows.DataComponents.Filters;
+using StatCraft.ViewModels.Windows.Filters;
 
 namespace StatCraft.ViewModels.Windows
 {

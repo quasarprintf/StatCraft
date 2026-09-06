@@ -5,8 +5,7 @@ using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
-using StatCraft.ViewModels.Windows.DataComponents;
-using StatCraft.ViewModels.Windows.DataComponents.Filters;
+using StatCraft.ViewModels.Windows.Filters;
 
 namespace StatCraft.Tests;
 

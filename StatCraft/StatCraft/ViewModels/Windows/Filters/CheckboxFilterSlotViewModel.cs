@@ -3,7 +3,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace StatCraft.ViewModels.Windows.DataComponents.Filters;
+namespace StatCraft.ViewModels.Windows.Filters;
 
 // Non-generic base is what the filter bar's shared extra-filter-row DataTemplate binds against
 // (Title/ShowSearch/SearchText/RemoveCommand, plus a loosely-typed Options view) so Avalonia can

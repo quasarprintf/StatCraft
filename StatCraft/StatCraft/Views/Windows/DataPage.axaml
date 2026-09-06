@@ -48,7 +48,7 @@
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.DataTemplates>
-                        <DataTemplate x:DataType="vmc:Filters.CheckboxFilterSlotViewModel">
+                        <DataTemplate x:DataType="vmw:Filters.CheckboxFilterSlotViewModel">
                             <StackPanel Classes="filterSlot">
                                 <local:CheckboxFilterDropdown Header="{Binding Title}" Options="{Binding Options}"
                                                                ShowSearch="{Binding ShowSearch}" SearchText="{Binding SearchText}"
@@ -56,7 +56,7 @@
                                 <Button Classes="removeFilter" Command="{Binding RemoveCommand}"/>
                             </StackPanel>
                         </DataTemplate>
-                        <DataTemplate x:DataType="vmc:Filters.NumericRangeFilterSlotViewModel">
+                        <DataTemplate x:DataType="vmw:Filters.NumericRangeFilterSlotViewModel">
                             <StackPanel Classes="filterSlot">
                                 <TextBlock Text="{Binding Title}" VerticalAlignment="Center"/>
                                 <NumericUpDown Value="{Binding Min}" Width="60" PlaceholderText="Min" FormatString="0" ShowButtonSpinner="False"/>
@@ -73,7 +73,7 @@
                 <Button.Flyout>
                     <MenuFlyout ItemsSource="{Binding Filters.HiddenExtraFilterSlots}" Placement="BottomEdgeAlignedRight">
                         <MenuFlyout.ItemContainerTheme>
-                            <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmc:Filters.FilterSlotViewModel">
+                            <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmw:Filters.FilterSlotViewModel">
                                 <Setter Property="Header" Value="{Binding Title}"/>
                                 <Setter Property="Command" Value="{Binding AddCommand}"/>
                             </ControlTheme>

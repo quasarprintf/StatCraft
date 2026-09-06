@@ -16,7 +16,7 @@
                     <Button.Flyout>
                         <MenuFlyout ItemsSource="{Binding HiddenFilterSlots}" Placement="BottomEdgeAlignedRight">
                             <MenuFlyout.ItemContainerTheme>
-                                <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmc:Filters.FilterSlotViewModel">
+                                <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmw:Filters.FilterSlotViewModel">
                                     <Setter Property="Header" Value="{Binding Title}"/>
                                     <Setter Property="Command" Value="{Binding AddCommand}"/>
                                 </ControlTheme>
@@ -38,7 +38,7 @@
                      pane is far narrower than the Data tab's horizontal bar, and a single-line layout
                      pushes the remove button off the edge. -->
                 <ItemsControl.DataTemplates>
-                    <DataTemplate x:DataType="vmc:Filters.CheckboxFilterSlotViewModel">
+                    <DataTemplate x:DataType="vmw:Filters.CheckboxFilterSlotViewModel">
                         <StackPanel Spacing="2">
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
@@ -51,7 +51,7 @@
                             <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
                         </StackPanel>
                     </DataTemplate>
-                    <DataTemplate x:DataType="vmc:Filters.BoolFilterSlotViewModel">
+                    <DataTemplate x:DataType="vmw:Filters.BoolFilterSlotViewModel">
                         <StackPanel Spacing="2">
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
@@ -64,7 +64,7 @@
                             <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
                         </StackPanel>
                     </DataTemplate>
-                    <DataTemplate x:DataType="vmc:Filters.NumericRangeFilterSlotViewModel">
+                    <DataTemplate x:DataType="vmw:Filters.NumericRangeFilterSlotViewModel">
                         <StackPanel Spacing="2">
                             <Grid ColumnDefinitions="*,Auto">
                                 <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"

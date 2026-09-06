@@ -1,8 +1,7 @@
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.ViewModels.Windows;
-using StatCraft.ViewModels.Windows.DataComponents;
-using StatCraft.ViewModels.Windows.DataComponents.Filters;
+using StatCraft.ViewModels.Windows.Filters;
 
 namespace StatCraft.Tests;
 

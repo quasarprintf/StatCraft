@@ -1,6 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:vmc="using:StatCraft.ViewModels.Windows.DataComponents"
+             xmlns:vmw="using:StatCraft.ViewModels.Windows"
              xmlns:local="using:StatCraft.Views.Windows.DataComponents"
              x:Class="StatCraft.Views.Windows.DataComponents.CheckboxFilterDropdown"
              x:Name="Root">
@@ -23,7 +23,7 @@
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vmc:Filters.CheckboxFilterOptionViewModel">
+                                <DataTemplate x:DataType="vmw:Filters.CheckboxFilterOptionViewModel">
                                     <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}">
                                         <CheckBox.IsVisible>
                                             <MultiBinding Converter="{x:Static local:CheckboxFilterDropdown.LabelContainsSearchConverter}">

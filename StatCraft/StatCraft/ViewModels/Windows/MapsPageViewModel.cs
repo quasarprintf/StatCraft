@@ -11,8 +11,7 @@ using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
 using StatCraft.ViewModels.Windows.AttributeComponents;
-using StatCraft.ViewModels.Windows.DataComponents;
-using StatCraft.ViewModels.Windows.DataComponents.Filters;
+using StatCraft.ViewModels.Windows.Filters;
 
 namespace StatCraft.ViewModels.Windows
 {
