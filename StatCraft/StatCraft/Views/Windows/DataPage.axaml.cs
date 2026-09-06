@@ -160,7 +160,7 @@ namespace StatCraft.Views.Windows
 
         // The row whose build-selection details are currently open, or null when none are. Held as the
         // row's view model rather than a DataGridRow because the containers are recycled.
-        private object? _buildDetailsItem;
+        private GameDataRowViewModel? _buildDetailsItem;
 
         private static bool IsNotesColumn(DataGridColumn column) => column.Header as string == "Notes";
         private static bool IsBuildColumn(DataGridColumn column) => column.Header as string == "Build";
@@ -195,7 +195,13 @@ namespace StatCraft.Views.Windows
             if (ReferenceEquals(_buildDetailsItem, item))
                 return;
 
-            _buildDetailsItem = item;
+            if (_buildDetailsItem != null)
+                _buildDetailsItem.RenderHeightChanged -= OnBuildDetailsHeightChanged;
+            
+            _buildDetailsItem = item as GameDataRowViewModel;
+            if (_buildDetailsItem != null)
+                _buildDetailsItem.RenderHeightChanged += OnBuildDetailsHeightChanged;
+
             foreach (DataGridRow row in GamesGrid.GetVisualDescendants().OfType<DataGridRow>())
                 ApplyBuildDetailsVisibility(row);
 
@@ -209,6 +215,11 @@ namespace StatCraft.Views.Windows
             _scrollStepIndex = GamesGrid.ItemsSource is IList items ? items.IndexOf(item) : 0;
             Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
         }
+        private void OnBuildDetailsHeightChanged(object? sender, EventArgs e)
+        {
+            if (_buildDetailsItem != null)
+                Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
+        }
 
         private void ApplyBuildDetailsVisibility(DataGridRow row) =>
             row.AreDetailsVisible = _buildDetailsItem != null && ReferenceEquals(row.DataContext, _buildDetailsItem);
@@ -220,6 +231,8 @@ namespace StatCraft.Views.Windows
         {
             base.OnAttachedToVisualTree(e);
             ViewModel.NotifyActivated();
+            if (_buildDetailsItem != null)
+                Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
         }
 
         private async Task OnSessionRequestedAsync()

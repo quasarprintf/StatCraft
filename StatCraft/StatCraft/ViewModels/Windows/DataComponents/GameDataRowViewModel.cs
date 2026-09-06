@@ -19,10 +19,10 @@ namespace StatCraft.ViewModels.Windows.DataComponents
     // through a public property.
     public partial class GameDataRowViewModel : ViewModelBase
     {
+        public event EventHandler? RenderHeightChanged;
+
         private readonly GameData _game;
-
         public int GameId => _game.GameId!.Value;
-
         public string ReplayPath => _game.ReplayData.ReplayPath;
 
         // Which profile this game belongs to — meaningful once the Data tab's profile filter can merge
@@ -116,18 +116,21 @@ namespace StatCraft.ViewModels.Windows.DataComponents
 
             ObservableCollection<BuildNode>? selfBuildTree = getBuildTree(replay.Player.Race.AsRace(), selfSideMatchups);
             SelfTracker = new PlayerBuildTrackerViewModel(replay.Player, repository, selfBuildTree, logger, useTeamColors: useTeamColors);
+            SelfTracker.BuildSlots.CollectionChanged += (_,_) => RenderHeightChanged?.Invoke(this, EventArgs.Empty);
 
             foreach (GamePlayer ally in replay.Allies)
             {
                 ObservableCollection<BuildNode>? buildTree = getBuildTree(ally.Race.AsRace(), selfSideMatchups);
                 var buildTracker = new PlayerBuildTrackerViewModel(ally, repository, buildTree, logger, replayDataExtractor, replay.ReplayPath, useTeamColors, isAlly: true);
                 OtherPlayers.Add(buildTracker);
+                buildTracker.BuildSlots.CollectionChanged += (_,_) => RenderHeightChanged?.Invoke(this, EventArgs.Empty);
             }
             foreach (GamePlayer opponent in replay.Opponents)
             {
                 ObservableCollection<BuildNode>? buildTree = getBuildTree(opponent.Race.AsRace(), opponentSideMatchups);
                 var buildTracker = new PlayerBuildTrackerViewModel(opponent, repository, buildTree, logger, replayDataExtractor, replay.ReplayPath, useTeamColors, isAlly: false);
                 OtherPlayers.Add(buildTracker);
+                buildTracker.BuildSlots.CollectionChanged += (_,_) => RenderHeightChanged?.Invoke(this, EventArgs.Empty);
             }
         }
 
