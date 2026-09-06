@@ -17,6 +17,7 @@ using StatCraft.Models.Battlenet;
 using StatCraft.Services.BackgroundService;
 using StatCraft.ViewModels.Windows;
 using StatCraft.ViewModels.Windows.DataComponents;
+using StatCraft.ViewModels.Windows.DataComponents.GameRow;
 using StatCraft.Views.Components;
 using StatCraft.Views.Windows.DataComponents;
 

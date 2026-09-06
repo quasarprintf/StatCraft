@@ -3,7 +3,7 @@
              xmlns:vmc="using:StatCraft.ViewModels.Windows.DataComponents"
              xmlns:builds="using:StatCraft.Models.GameData.Builds"
              x:Class="StatCraft.Views.Windows.DataComponents.BuildPathPicker"
-             x:DataType="vmc:BuildSelectionSlotViewModel">
+             x:DataType="vmc:GameRow.BuildSelectionSlotViewModel">
     <UserControl.Styles>
         <Style Selector="MenuItem" x:DataType="builds:BuildNode">
             <Setter Property="Header" Value="{Binding Name}"/>

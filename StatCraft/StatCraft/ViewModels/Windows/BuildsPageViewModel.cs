@@ -8,6 +8,7 @@ using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
 using StatCraft.ViewModels.Windows.AttributeComponents;
 using StatCraft.ViewModels.Windows.DataComponents;
+using StatCraft.ViewModels.Windows.DataComponents.Filters;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;

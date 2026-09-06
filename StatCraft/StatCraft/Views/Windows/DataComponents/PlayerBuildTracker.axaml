@@ -4,11 +4,11 @@
              xmlns:vmc="using:StatCraft.ViewModels.Windows.DataComponents"
              xmlns:local="using:StatCraft.Views.Windows.DataComponents"
              x:Class="StatCraft.Views.Windows.DataComponents.PlayerBuildTracker"
-             x:DataType="vmc:PlayerBuildTrackerViewModel">
+             x:DataType="vmc:GameRow.PlayerBuildTrackerViewModel">
     <StackPanel Spacing="8">
         <ItemsControl ItemsSource="{Binding BuildSlots}">
             <ItemsControl.ItemTemplate>
-                <DataTemplate x:DataType="vmc:BuildSelectionSlotViewModel">
+                <DataTemplate x:DataType="vmc:GameRow.BuildSelectionSlotViewModel">
                     <local:BuildPathPicker Width="300" HorizontalAlignment="Left" Margin="0,0,0,4"/>
                 </DataTemplate>
             </ItemsControl.ItemTemplate>

@@ -59,7 +59,7 @@
                         <Button.Flyout>
                             <MenuFlyout ItemsSource="{Binding HiddenFilterSlots}" Placement="BottomEdgeAlignedRight">
                                 <MenuFlyout.ItemContainerTheme>
-                                    <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmc:FilterSlotViewModel">
+                                    <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmc:Filters.FilterSlotViewModel">
                                         <Setter Property="Header" Value="{Binding Title}"/>
                                         <Setter Property="Command" Value="{Binding AddCommand}"/>
                                     </ControlTheme>
@@ -79,7 +79,7 @@
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.DataTemplates>
-                        <DataTemplate x:DataType="vmc:CheckboxFilterSlotViewModel">
+                        <DataTemplate x:DataType="vmc:Filters.CheckboxFilterSlotViewModel">
                             <StackPanel Spacing="2">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
@@ -92,7 +92,7 @@
                                 <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
                             </StackPanel>
                         </DataTemplate>
-                        <DataTemplate x:DataType="vmc:BoolFilterSlotViewModel">
+                        <DataTemplate x:DataType="vmc:Filters.BoolFilterSlotViewModel">
                             <StackPanel Spacing="2">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
@@ -105,7 +105,7 @@
                                 <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
                             </StackPanel>
                         </DataTemplate>
-                        <DataTemplate x:DataType="vmc:NumericRangeFilterSlotViewModel">
+                        <DataTemplate x:DataType="vmc:Filters.NumericRangeFilterSlotViewModel">
                             <StackPanel Spacing="2">
                                 <Grid ColumnDefinitions="*,Auto">
                                     <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"

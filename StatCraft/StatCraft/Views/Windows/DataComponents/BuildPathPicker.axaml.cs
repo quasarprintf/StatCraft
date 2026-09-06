@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.BackgroundService;
 using StatCraft.ViewModels.Windows.DataComponents;
+using StatCraft.ViewModels.Windows.DataComponents.GameRow;
 
 namespace StatCraft.Views.Windows.DataComponents
 {

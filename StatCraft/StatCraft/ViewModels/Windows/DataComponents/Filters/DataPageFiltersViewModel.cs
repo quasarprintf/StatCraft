@@ -10,202 +10,201 @@ using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Models.GameData.Maps;
 
-namespace StatCraft.ViewModels.Windows.DataComponents
+namespace StatCraft.ViewModels.Windows.DataComponents.Filters;
+
+// Owns every filter dimension on the Data tab's filter bar. Player profile and date range are
+// always visible; the other five are "extra filters" that can be added/removed via the bar's
+// dropdown, each remembering its own on/off state independently of whether it currently constrains
+// anything (an added-but-empty filter is inactive, same as a hidden one).
+public partial class DataPageFiltersViewModel : ViewModelBase
 {
-    // Owns every filter dimension on the Data tab's filter bar. Player profile and date range are
-    // always visible; the other five are "extra filters" that can be added/removed via the bar's
-    // dropdown, each remembering its own on/off state independently of whether it currently constrains
-    // anything (an added-but-empty filter is inactive, same as a hidden one).
-    public partial class DataPageFiltersViewModel : ViewModelBase
+    // Set while SetSingleActiveProfile is bulk-updating state on a session start, so that update
+    // doesn't trigger its own reload — the caller (DataPageViewModel.SetActiveProfile) always issues
+    // exactly one explicit reload right afterward.
+    private bool _suppressChangeEvents;
+
+    public CheckboxFilterSlotViewModel<Sc2Profile> ProfileSlot { get; }
+
+    // DateTime (not DateTimeOffset) because Calendar.SelectedDate — which CompactDatePicker wraps —
+    // is DateTime?.
+    [ObservableProperty] private DateTime? _fromDate;
+    [ObservableProperty] private DateTime? _toDate;
+
+    public CheckboxFilterSlotViewModel<Map> MapSlot { get; }
+    public CheckboxFilterSlotViewModel<(Race, Race)> MatchupSlot { get; }
+    // Internal, not public, because GameOutcome itself is internal — this stays consistent with the
+    // same-assembly-only visibility of the type it filters on.
+    public CheckboxFilterSlotViewModel<GameOutcome> OutcomeSlot { get; }
+    public NumericRangeFilterSlotViewModel MmrSlot { get; }
+    public CheckboxFilterSlotViewModel<BuildNode> BuildSlot { get; }
+
+    // Fixed display order for both the bar itself and the "+ Filters" add-dropdown.
+    public IReadOnlyList<FilterSlotViewModel> ExtraFilterSlots { get; }
+    public IEnumerable<FilterSlotViewModel> VisibleExtraFilterSlots => ExtraFilterSlots.Where(s => s.IsVisible);
+    public IEnumerable<FilterSlotViewModel> HiddenExtraFilterSlots => ExtraFilterSlots.Where(s => !s.IsVisible);
+
+    // Checking/unchecking a profile changes which games need to be loaded from the database at all;
+    // every other filter change only needs to re-filter the already-loaded set in memory.
+    public event Action? ProfileSelectionChanged;
+    public event Action? OtherFiltersChanged;
+
+    internal DataPageFiltersViewModel(BuildRepository buildRepository)
     {
-        // Set while SetSingleActiveProfile is bulk-updating state on a session start, so that update
-        // doesn't trigger its own reload — the caller (DataPageViewModel.SetActiveProfile) always issues
-        // exactly one explicit reload right afterward.
-        private bool _suppressChangeEvents;
-
-        public CheckboxFilterSlotViewModel<Sc2Profile> ProfileSlot { get; }
-
-        // DateTime (not DateTimeOffset) because Calendar.SelectedDate — which CompactDatePicker wraps —
-        // is DateTime?.
-        [ObservableProperty] private DateTime? _fromDate;
-        [ObservableProperty] private DateTime? _toDate;
-
-        public CheckboxFilterSlotViewModel<Map> MapSlot { get; }
-        public CheckboxFilterSlotViewModel<(Race, Race)> MatchupSlot { get; }
-        // Internal, not public, because GameOutcome itself is internal — this stays consistent with the
-        // same-assembly-only visibility of the type it filters on.
-        public CheckboxFilterSlotViewModel<GameOutcome> OutcomeSlot { get; }
-        public NumericRangeFilterSlotViewModel MmrSlot { get; }
-        public CheckboxFilterSlotViewModel<BuildNode> BuildSlot { get; }
-
-        // Fixed display order for both the bar itself and the "+ Filters" add-dropdown.
-        public IReadOnlyList<FilterSlotViewModel> ExtraFilterSlots { get; }
-        public IEnumerable<FilterSlotViewModel> VisibleExtraFilterSlots => ExtraFilterSlots.Where(s => s.IsVisible);
-        public IEnumerable<FilterSlotViewModel> HiddenExtraFilterSlots => ExtraFilterSlots.Where(s => !s.IsVisible);
-
-        // Checking/unchecking a profile changes which games need to be loaded from the database at all;
-        // every other filter change only needs to re-filter the already-loaded set in memory.
-        public event Action? ProfileSelectionChanged;
-        public event Action? OtherFiltersChanged;
-
-        internal DataPageFiltersViewModel(BuildRepository buildRepository)
+        ProfileSlot = new CheckboxFilterSlotViewModel<Sc2Profile>("Profile", [], showSearch: true);
+        // Checking/unchecking a profile requires a database reload, unlike every other checkbox
+        // filter, so it's wired to ProfileSelectionChanged instead of joining the ExtraFilterSlots
+        // loop below (which is also how it stays permanently visible, with no Add/Remove).
+        ProfileSlot.Changed += () =>
         {
-            ProfileSlot = new CheckboxFilterSlotViewModel<Sc2Profile>("Profile", [], showSearch: true);
-            // Checking/unchecking a profile requires a database reload, unlike every other checkbox
-            // filter, so it's wired to ProfileSelectionChanged instead of joining the ExtraFilterSlots
-            // loop below (which is also how it stays permanently visible, with no Add/Remove).
-            ProfileSlot.Changed += () =>
+            if (!_suppressChangeEvents)
+                ProfileSelectionChanged?.Invoke();
+        };
+
+        MapSlot = new CheckboxFilterSlotViewModel<Map>("Map", [], showSearch: true);
+        MatchupSlot = new CheckboxFilterSlotViewModel<(Race, Race)>("Matchup", BuildMatchupOptions(), columns: 3);
+        OutcomeSlot = new CheckboxFilterSlotViewModel<GameOutcome>("Outcome", BuildOutcomeOptions());
+        MmrSlot = new NumericRangeFilterSlotViewModel("Opponent MMR");
+        BuildSlot = new CheckboxFilterSlotViewModel<BuildNode>("Build", BuildBuildOptions(buildRepository));
+
+        ExtraFilterSlots = [MapSlot, MatchupSlot, OutcomeSlot, MmrSlot, BuildSlot];
+        foreach (FilterSlotViewModel slot in ExtraFilterSlots)
+        {
+            // Only a visibility toggle (Add/Remove) should rebuild the filter bar's own item list —
+            // rebuilding on every criteria edit too would tear down and recreate the ItemsControl's
+            // containers on every keystroke/checkbox click, stealing focus from whatever the user is
+            // actively interacting with.
+            slot.VisibilityChanged += () =>
+            {
+                OnPropertyChanged(nameof(VisibleExtraFilterSlots));
+                OnPropertyChanged(nameof(HiddenExtraFilterSlots));
+            };
+            slot.Changed += () =>
             {
                 if (!_suppressChangeEvents)
-                    ProfileSelectionChanged?.Invoke();
+                    OtherFiltersChanged?.Invoke();
             };
+        }
+    }
 
-            MapSlot = new CheckboxFilterSlotViewModel<Map>("Map", [], showSearch: true);
-            MatchupSlot = new CheckboxFilterSlotViewModel<(Race, Race)>("Matchup", BuildMatchupOptions(), columns: 3);
-            OutcomeSlot = new CheckboxFilterSlotViewModel<GameOutcome>("Outcome", BuildOutcomeOptions());
-            MmrSlot = new NumericRangeFilterSlotViewModel("Opponent MMR");
-            BuildSlot = new CheckboxFilterSlotViewModel<BuildNode>("Build", BuildBuildOptions(buildRepository));
+    partial void OnFromDateChanged(DateTime? value)
+    {
+        if (!_suppressChangeEvents)
+            OtherFiltersChanged?.Invoke();
+    }
 
-            ExtraFilterSlots = [MapSlot, MatchupSlot, OutcomeSlot, MmrSlot, BuildSlot];
-            foreach (FilterSlotViewModel slot in ExtraFilterSlots)
+    partial void OnToDateChanged(DateTime? value)
+    {
+        if (!_suppressChangeEvents)
+            OtherFiltersChanged?.Invoke();
+    }
+
+    // Rebuilds the profile checkbox list (e.g. after linking a new account), preserving checked
+    // state by profile id across the rebuild.
+    internal void RefreshProfileOptions(IReadOnlyList<Sc2Profile> profiles)
+    {
+        HashSet<int> previouslyChecked = ProfileSlot.Options.Where(o => o.IsChecked).Select(o => o.Value.Id).ToHashSet();
+
+        IEnumerable<CheckboxFilterOptionViewModel<Sc2Profile>> newOptions = profiles
+            .Select(p => new CheckboxFilterOptionViewModel<Sc2Profile>(p, p.DisplayName) { IsChecked = previouslyChecked.Contains(p.Id) });
+        ProfileSlot.ReplaceOptions(newOptions);
+    }
+
+    // Rebuilds the map filter's option list from the currently-loaded games' distinct map names,
+    // preserving checked state by map name across the rebuild.
+    internal void RefreshMapOptions(IEnumerable<Map> distinctMapNames)
+    {
+        HashSet<int> previouslyChecked = MapSlot.Options.Where(o => o.IsChecked).Select(o => o.Value.Id).ToHashSet();
+
+        IEnumerable<CheckboxFilterOptionViewModel<Map>> newOptions = distinctMapNames
+            .OrderBy(m => m.Name)
+            .Select(m => new CheckboxFilterOptionViewModel<Map>(m, m.Name) { IsChecked = previouslyChecked.Contains(m.Id) });
+        MapSlot.ReplaceOptions(newOptions);
+    }
+
+    // Collapses the profile filter to just the given profile and resets the date range to today —
+    // called every time a session starts. Deliberately silent: the caller always follows this with
+    // its own single explicit reload, so no intermediate event should fire here.
+    internal void SetSingleActiveProfile(Sc2Profile profile)
+    {
+        _suppressChangeEvents = true;
+        try
+        {
+            List<CheckboxFilterOptionViewModel<Sc2Profile>> options = ProfileSlot.Options.ToList();
+            if (options.All(o => o.Value.Id != profile.Id))
             {
-                // Only a visibility toggle (Add/Remove) should rebuild the filter bar's own item list —
-                // rebuilding on every criteria edit too would tear down and recreate the ItemsControl's
-                // containers on every keystroke/checkbox click, stealing focus from whatever the user is
-                // actively interacting with.
-                slot.VisibilityChanged += () =>
-                {
-                    OnPropertyChanged(nameof(VisibleExtraFilterSlots));
-                    OnPropertyChanged(nameof(HiddenExtraFilterSlots));
-                };
-                slot.Changed += () =>
-                {
-                    if (!_suppressChangeEvents)
-                        OtherFiltersChanged?.Invoke();
-                };
+                options.Add(new CheckboxFilterOptionViewModel<Sc2Profile>(profile, profile.DisplayName));
+                ProfileSlot.ReplaceOptions(options);
             }
-        }
 
-        partial void OnFromDateChanged(DateTime? value)
+            foreach (CheckboxFilterOptionViewModel<Sc2Profile> option in ProfileSlot.Options)
+                option.IsChecked = option.Value.Id == profile.Id;
+
+            DateTime today = DateTime.Today;
+            FromDate = today;
+            ToDate = today;
+        }
+        finally
         {
-            if (!_suppressChangeEvents)
-                OtherFiltersChanged?.Invoke();
+            _suppressChangeEvents = false;
         }
+    }
 
-        partial void OnToDateChanged(DateTime? value)
-        {
-            if (!_suppressChangeEvents)
-                OtherFiltersChanged?.Invoke();
-        }
+    internal GameFilterCriteria BuildCriteria()
+    {
+        DateOnly? fromDate = FromDate.HasValue ? DateOnly.FromDateTime(FromDate.Value.Date) : null;
+        DateOnly? toDate = ToDate.HasValue ? DateOnly.FromDateTime(ToDate.Value.Date) : null;
 
-        // Rebuilds the profile checkbox list (e.g. after linking a new account), preserving checked
-        // state by profile id across the rebuild.
-        internal void RefreshProfileOptions(IReadOnlyList<Sc2Profile> profiles)
-        {
-            HashSet<int> previouslyChecked = ProfileSlot.Options.Where(o => o.IsChecked).Select(o => o.Value.Id).ToHashSet();
+        return new GameFilterCriteria(
+            fromDate,
+            toDate,
+            ToSet(MapSlot),
+            ToSet(MatchupSlot),
+            ToSet(OutcomeSlot),
+            (long?)MmrSlot.Min,
+            (long?)MmrSlot.Max,
+            ToBuildIdSet(BuildSlot));
+    }
 
-            IEnumerable<CheckboxFilterOptionViewModel<Sc2Profile>> newOptions = profiles
-                .Select(p => new CheckboxFilterOptionViewModel<Sc2Profile>(p, p.DisplayName) { IsChecked = previouslyChecked.Contains(p.Id) });
-            ProfileSlot.ReplaceOptions(newOptions);
-        }
+    private static IReadOnlySet<T> ToSet<T>(CheckboxFilterSlotViewModel<T> slot) =>
+        slot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
 
-        // Rebuilds the map filter's option list from the currently-loaded games' distinct map names,
-        // preserving checked state by map name across the rebuild.
-        internal void RefreshMapOptions(IEnumerable<Map> distinctMapNames)
-        {
-            HashSet<int> previouslyChecked = MapSlot.Options.Where(o => o.IsChecked).Select(o => o.Value.Id).ToHashSet();
+    private static IReadOnlySet<int> ToBuildIdSet(CheckboxFilterSlotViewModel<BuildNode> slot) =>
+        slot.Options
+            .Where(o => o.IsChecked)
+            .SelectMany(o => GameDataFilter.CollectSubtreeIds(o.Value))
+            .ToHashSet();
 
-            IEnumerable<CheckboxFilterOptionViewModel<Map>> newOptions = distinctMapNames
-                .OrderBy(m => m.Name)
-                .Select(m => new CheckboxFilterOptionViewModel<Map>(m, m.Name) { IsChecked = previouslyChecked.Contains(m.Id) });
-            MapSlot.ReplaceOptions(newOptions);
-        }
+    private static List<CheckboxFilterOptionViewModel<(Race, Race)>> BuildMatchupOptions()
+    {
+        List<CheckboxFilterOptionViewModel<(Race, Race)>> options = new();
+        foreach (Race opponentRace in Enum.GetValues<Race>())
+            foreach (Race playerRace in Enum.GetValues<Race>())
+                options.Add(new CheckboxFilterOptionViewModel<(Race, Race)>((playerRace, opponentRace), $"{playerRace.Display()}v{opponentRace.Display()}"));
+        return options;
+    }
 
-        // Collapses the profile filter to just the given profile and resets the date range to today —
-        // called every time a session starts. Deliberately silent: the caller always follows this with
-        // its own single explicit reload, so no intermediate event should fire here.
-        internal void SetSingleActiveProfile(Sc2Profile profile)
-        {
-            _suppressChangeEvents = true;
-            try
-            {
-                List<CheckboxFilterOptionViewModel<Sc2Profile>> options = ProfileSlot.Options.ToList();
-                if (options.All(o => o.Value.Id != profile.Id))
-                {
-                    options.Add(new CheckboxFilterOptionViewModel<Sc2Profile>(profile, profile.DisplayName));
-                    ProfileSlot.ReplaceOptions(options);
-                }
+    private static List<CheckboxFilterOptionViewModel<GameOutcome>> BuildOutcomeOptions() =>
+        Enum.GetValues<GameOutcome>()
+            .Select(outcome => new CheckboxFilterOptionViewModel<GameOutcome>(outcome, outcome.ToString()))
+            .ToList();
 
-                foreach (CheckboxFilterOptionViewModel<Sc2Profile> option in ProfileSlot.Options)
-                    option.IsChecked = option.Value.Id == profile.Id;
+    // Every build across every race, grouped by race (Z, T, P) and flattened depth-first with an
+    // indentation prefix so the tree structure is still legible in a flat checkbox list.
+    private static List<CheckboxFilterOptionViewModel<BuildNode>> BuildBuildOptions(BuildRepository buildRepository)
+    {
+        List<BuildNode> allNodes = buildRepository.GetAllBuilds();
+        List<CheckboxFilterOptionViewModel<BuildNode>> options = new();
+        foreach (Race race in Enum.GetValues<Race>())
+            foreach (BuildNode root in allNodes.Where(n => n.PlayerRace == race))
+                AddBuildOption(root, 0, options);
+        return options;
+    }
 
-                DateTime today = DateTime.Today;
-                FromDate = today;
-                ToDate = today;
-            }
-            finally
-            {
-                _suppressChangeEvents = false;
-            }
-        }
-
-        internal GameFilterCriteria BuildCriteria()
-        {
-            DateOnly? fromDate = FromDate.HasValue ? DateOnly.FromDateTime(FromDate.Value.Date) : null;
-            DateOnly? toDate = ToDate.HasValue ? DateOnly.FromDateTime(ToDate.Value.Date) : null;
-
-            return new GameFilterCriteria(
-                fromDate,
-                toDate,
-                ToSet(MapSlot),
-                ToSet(MatchupSlot),
-                ToSet(OutcomeSlot),
-                (long?)MmrSlot.Min,
-                (long?)MmrSlot.Max,
-                ToBuildIdSet(BuildSlot));
-        }
-
-        private static IReadOnlySet<T> ToSet<T>(CheckboxFilterSlotViewModel<T> slot) =>
-            slot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
-
-        private static IReadOnlySet<int> ToBuildIdSet(CheckboxFilterSlotViewModel<BuildNode> slot) =>
-            slot.Options
-                .Where(o => o.IsChecked)
-                .SelectMany(o => GameDataFilter.CollectSubtreeIds(o.Value))
-                .ToHashSet();
-
-        private static List<CheckboxFilterOptionViewModel<(Race, Race)>> BuildMatchupOptions()
-        {
-            List<CheckboxFilterOptionViewModel<(Race, Race)>> options = new();
-            foreach (Race opponentRace in Enum.GetValues<Race>())
-                foreach (Race playerRace in Enum.GetValues<Race>())
-                    options.Add(new CheckboxFilterOptionViewModel<(Race, Race)>((playerRace, opponentRace), $"{playerRace.Display()}v{opponentRace.Display()}"));
-            return options;
-        }
-
-        private static List<CheckboxFilterOptionViewModel<GameOutcome>> BuildOutcomeOptions() =>
-            Enum.GetValues<GameOutcome>()
-                .Select(outcome => new CheckboxFilterOptionViewModel<GameOutcome>(outcome, outcome.ToString()))
-                .ToList();
-
-        // Every build across every race, grouped by race (Z, T, P) and flattened depth-first with an
-        // indentation prefix so the tree structure is still legible in a flat checkbox list.
-        private static List<CheckboxFilterOptionViewModel<BuildNode>> BuildBuildOptions(BuildRepository buildRepository)
-        {
-            List<BuildNode> allNodes = buildRepository.GetAllBuilds();
-            List<CheckboxFilterOptionViewModel<BuildNode>> options = new();
-            foreach (Race race in Enum.GetValues<Race>())
-                foreach (BuildNode root in allNodes.Where(n => n.PlayerRace == race))
-                    AddBuildOption(root, 0, options);
-            return options;
-        }
-
-        private static void AddBuildOption(BuildNode node, int depth, List<CheckboxFilterOptionViewModel<BuildNode>> options)
-        {
-            string label = depth == 0 ? $"{node.PlayerRace.Display()} — {node.Name}" : new string(' ', depth * 2) + node.Name;
-            options.Add(new CheckboxFilterOptionViewModel<BuildNode>(node, label));
-            foreach (BuildNode child in node.Children)
-                AddBuildOption(child, depth + 1, options);
-        }
+    private static void AddBuildOption(BuildNode node, int depth, List<CheckboxFilterOptionViewModel<BuildNode>> options)
+    {
+        string label = depth == 0 ? $"{node.PlayerRace.Display()} — {node.Name}" : new string(' ', depth * 2) + node.Name;
+        options.Add(new CheckboxFilterOptionViewModel<BuildNode>(node, label));
+        foreach (BuildNode child in node.Children)
+            AddBuildOption(child, depth + 1, options);
     }
 }

@@ -6,6 +6,7 @@ using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
 using StatCraft.Tests.Mocks;
 using StatCraft.ViewModels.Windows.DataComponents;
+using StatCraft.ViewModels.Windows.DataComponents.GameRow;
 using System.Collections.ObjectModel;
 
 namespace StatCraft.Tests;
