@@ -5,6 +5,7 @@ using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
+using StatCraft.Services.Factories;
 using StatCraft.ViewModels.Windows.AttributeComponents;
 using StatCraft.ViewModels.Windows.Filters;
 using System;
@@ -33,6 +34,9 @@ public partial class BuildsPageViewModel : ViewModelBase
     private readonly BuildRepository _buildRepo;
     private readonly AttributeRepository _attributeRepo;
     private readonly GameDataRepository _gameDataRepo;
+
+    private readonly FilterSlotFactory _filterSlotFactory;
+
     private readonly HashSet<Race> _loadedPlayerRaces = [];
 
     [NotifyPropertyChangedFor(nameof(Builds))]
@@ -55,11 +59,14 @@ public partial class BuildsPageViewModel : ViewModelBase
     public ObservableCollection<FilterSlotViewModel> VisibleFilterSlots { get; } = [];
     public ObservableCollection<FilterSlotViewModel> HiddenFilterSlots { get; } = [];
 
-    public BuildsPageViewModel(BuildRepository buildRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository)
+    public BuildsPageViewModel(BuildRepository buildRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository, FilterSlotFactory filterSlotFactory)
     {
         _buildRepo = buildRepository;
         _attributeRepo = attributeRepository;
         _gameDataRepo = gameDataRepository;
+
+        _filterSlotFactory = filterSlotFactory;
+
         PlayerRaceOptions = Enum.GetValues<Race>()
             .Select(r => new RaceOption(r) { IsSelected = r == PlayerRace })
             .ToList();
@@ -556,7 +563,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     #region filters
     private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
     {
-        FilterSlotViewModel slot = CreateSlot(attribute);
+        FilterSlotViewModel slot = _filterSlotFactory.CreateFromDefinition(attribute);
         slot.IsVisible = isVisible;
         slot.VisibilityChanged += () => OnSlotVisibilityChanged(slot);
         slot.Changed += ApplyFilters;
@@ -572,21 +579,6 @@ public partial class BuildsPageViewModel : ViewModelBase
         slot.Changed -= ApplyFilters;
         VisibleFilterSlots.Remove(slot);
         HiddenFilterSlots.Remove(slot);
-    }
-    private static FilterSlotViewModel CreateSlot(AttributeDefinition attribute)
-    {
-        switch (attribute.Type)
-        {
-            case AttributeType.Bool:
-                return new BoolFilterSlotViewModel(attribute.Name);
-            case AttributeType.Values:
-                var checkboxFilters = attribute.ValueOptions.Select(o => new CheckboxFilterOptionViewModel<string>(o, o));
-                return new CheckboxFilterSlotViewModel<string>(attribute.Name, checkboxFilters, showSearch: true);
-            case AttributeType.Numeric:
-            case AttributeType.Percent:
-            default:
-                return new NumericRangeFilterSlotViewModel(attribute.Name);
-        }
     }
 
     // Moves a slot between the visible/hidden collections when its own IsVisible flips — via the

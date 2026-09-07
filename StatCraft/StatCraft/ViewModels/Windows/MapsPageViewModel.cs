@@ -1,17 +1,18 @@
-using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Collections.Specialized;
-using System.ComponentModel;
-using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
+using StatCraft.Services.Factories;
 using StatCraft.ViewModels.Windows.AttributeComponents;
 using StatCraft.ViewModels.Windows.Filters;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
+using System.Linq;
 
 namespace StatCraft.ViewModels.Windows;
 
@@ -20,6 +21,8 @@ public partial class MapsPageViewModel : ViewModelBase
     private readonly MapRepository _mapRepo;
     private readonly AttributeRepository _attributeRepo;
     private readonly GameDataRepository _gameDataRepo;
+
+    private readonly FilterSlotFactory _filterSlotFactory;
 
     private readonly List<Map> _allMaps = [];
     public ObservableCollection<Map> FilteredMaps { get; } = [];
@@ -36,11 +39,13 @@ public partial class MapsPageViewModel : ViewModelBase
     // Raised instead of deleting when the map still has games recorded on it
     public event Action<Map>? DeleteBlocked;
 
-    public MapsPageViewModel(MapRepository mapRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository)
+    public MapsPageViewModel(MapRepository mapRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository, FilterSlotFactory filterSlotFactory)
     {
         _mapRepo = mapRepository;
         _attributeRepo = attributeRepository;
         _gameDataRepo = gameDataRepository;
+
+        _filterSlotFactory = filterSlotFactory;
 
         foreach (AttributeDefinition attribute in _attributeRepo.GetAllAttributes(AttributeScope.Map))
             AllAttributes.Add(attribute);
@@ -289,7 +294,7 @@ public partial class MapsPageViewModel : ViewModelBase
     #region filters
     private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
     {
-        FilterSlotViewModel slot = CreateSlot(attribute);
+        FilterSlotViewModel slot = _filterSlotFactory.CreateFromDefinition(attribute);
         slot.IsVisible = isVisible;
         slot.VisibilityChanged += () => OnSlotVisibilityChanged(slot);
         slot.Changed += ApplyFilters;
@@ -305,21 +310,6 @@ public partial class MapsPageViewModel : ViewModelBase
         slot.Changed -= ApplyFilters;
         VisibleFilterSlots.Remove(slot);
         HiddenFilterSlots.Remove(slot);
-    }
-    private static FilterSlotViewModel CreateSlot(AttributeDefinition attribute)
-    {
-        switch (attribute.Type)
-        {
-            case AttributeType.Bool:
-                return new BoolFilterSlotViewModel(attribute.Name);
-            case AttributeType.Values:
-                var checkboxFilters = attribute.ValueOptions.Select(o => new CheckboxFilterOptionViewModel<string>(o, o));
-                return new CheckboxFilterSlotViewModel<string>(attribute.Name, checkboxFilters, showSearch: true);
-            case AttributeType.Numeric:
-            case AttributeType.Percent:
-            default:
-                return new NumericRangeFilterSlotViewModel(attribute.Name);
-        }
     }
 
     // Moves a slot between the visible/hidden collections when its own IsVisible flips — via the

@@ -6,7 +6,6 @@ using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
-using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.BackgroundService;
 using StatCraft.Services.BattlenetApi;

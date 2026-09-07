@@ -19,6 +19,7 @@ using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DataParsing;
 using StatCraft.Models.Util;
+using StatCraft.Services.Factories;
 
 namespace StatCraft;
 
@@ -121,40 +122,40 @@ public partial class App : Application
 
         ServiceCollection services = new ServiceCollection();
 
+        //sql repositories
         services.AddSingleton<BuildRepository>(sp =>
         {
             BuildRepository repository = new BuildRepository(dbPath, sp.GetRequiredService<ILogger>());
             repository.Initialize();
             return repository;
         });
-
         services.AddSingleton<AccountRepository>(sp =>
         {
             AccountRepository repository = new AccountRepository(dbPath, sp.GetRequiredService<ILogger>());
             repository.Initialize();
             return repository;
         });
-
         services.AddSingleton<AttributeRepository>(sp =>
         {
             AttributeRepository repository = new AttributeRepository(dbPath, sp.GetRequiredService<ILogger>());
             repository.Initialize();
             return repository;
         });
-
         services.AddSingleton<MapRepository>(sp =>
         {
             MapRepository repository = new MapRepository(dbPath, sp.GetRequiredService<ILogger>());
             repository.Initialize();
             return repository;
         });
-
         services.AddSingleton<GameDataRepository>(sp =>
         {
             GameDataRepository repository = new GameDataRepository(dbPath, sp.GetRequiredService<ILogger>());
             repository.Initialize();
             return repository;
         });
+
+        //factories
+        services.AddSingleton<FilterSlotFactory>();
 
         services.AddSingleton<TokenProtector>(_ =>
         {
