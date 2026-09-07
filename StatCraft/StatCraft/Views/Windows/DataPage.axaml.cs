@@ -196,8 +196,9 @@ public partial class DataPage : UserControl
     {
         if (!isBuilds && !isAttributes)
             item = null;
-        //TODO: clean up this condition
-        if (ReferenceEquals(_buildDetailsItem, item) && (_buildDetailsItem == null || (_buildDetailsItem.BuildsVisible == isBuilds && _buildDetailsItem.AttributesVisible == isAttributes)))
+
+        bool visibilityChanged = _buildDetailsItem?.BuildsVisible != isBuilds || _buildDetailsItem?.AttributesVisible != isAttributes;
+        if (_buildDetailsItem == item && (_buildDetailsItem == null || !visibilityChanged))
             return;
 
         if (_buildDetailsItem != null)
