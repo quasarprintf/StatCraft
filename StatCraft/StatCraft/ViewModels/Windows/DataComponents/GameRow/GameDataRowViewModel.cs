@@ -26,7 +26,6 @@ public partial class GameDataRowViewModel : ViewModelBase
     [ObservableProperty] private bool _attributesVisible;
 
     private readonly GameDataRepository _repository;
-    private readonly AttributeRepository _attributeRepo;
     private readonly GameData _game;
     public int GameId => _game.GameId!.Value;
     public string ReplayPath => _game.ReplayData.ReplayPath;
@@ -82,17 +81,14 @@ public partial class GameDataRowViewModel : ViewModelBase
     public AttributeValuesSelectViewModel AttributeValuesSelect { get; set; }
     public string AttributesSummary => ""; //TODO
 
-    internal GameDataRowViewModel(GameData game, GameDataRepository repository, AttributeRepository attributeRepository, string profileLabel,
+    internal GameDataRowViewModel(GameData game, GameDataRepository repository, ObservableCollection<AttributeDefinition> allAttributes, string profileLabel,
         Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree, ILogger logger, ReplayDataExtractor replayDataExtractor,
         bool useTeamColors = false)
     {
         _game = game;
         _repository = repository;
-        _attributeRepo = attributeRepository;
         ProfileLabel = profileLabel;
 
-        //TODO: I don't like caching all attributes separately in each row. Find a way to centralize this
-        ObservableCollection<AttributeDefinition> allAttributes = new ObservableCollection<AttributeDefinition>(_attributeRepo.GetAllAttributes(AttributeScope.Game));
         AttributeValuesSelect = new AttributeValuesSelectViewModel(allAttributes);
         AttributeValuesSelect.ValueChanged += AttributeValueChanged;
         AttributeValuesSelect.ValueDeleted += AttributeValueDeleted;

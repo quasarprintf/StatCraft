@@ -1,3 +1,21 @@
+using Avalonia.Threading;
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
+using StatCraft.Models.Analytics;
+using StatCraft.Models.Battlenet;
+using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Attributes;
+using StatCraft.Models.GameData.Builds;
+using StatCraft.Models.GameData.Maps;
+using StatCraft.Models.GameData.Race;
+using StatCraft.Services.BackgroundService;
+using StatCraft.Services.BattlenetApi;
+using StatCraft.Services.DatabaseRepository;
+using StatCraft.Services.DataFiltering;
+using StatCraft.Services.DataParsing;
+using StatCraft.ViewModels.Windows.DataComponents;
+using StatCraft.ViewModels.Windows.DataComponents.GameRow;
+using StatCraft.ViewModels.Windows.Filters;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -5,25 +23,8 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading.Tasks;
-using Avalonia.Threading;
-using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using StatCraft.Models.Battlenet;
-using StatCraft.Models.GameData;
-using StatCraft.Models.GameData.Attributes;
-using StatCraft.Models.GameData.Builds;
-using StatCraft.Models.GameData.Race;
 using System.Threading;
-using StatCraft.Services.BackgroundService;
-using StatCraft.Services.BattlenetApi;
-using StatCraft.Services.DatabaseRepository;
-using StatCraft.Services.DataFiltering;
-using StatCraft.Services.DataParsing;
-using StatCraft.Models.Analytics;
-using StatCraft.ViewModels.Windows.DataComponents;
-using StatCraft.ViewModels.Windows.DataComponents.GameRow;
-using StatCraft.ViewModels.Windows.Filters;
+using System.Threading.Tasks;
 
 namespace StatCraft.ViewModels.Windows;
 
@@ -41,11 +42,13 @@ public partial class DataPageViewModel : ViewModelBase
     private readonly ReplayDataExtractor _replayDataExtractor;
     private readonly Dictionary<(Race Player, Matchups Opponent), ObservableCollection<BuildNode>> _buildTreeCache = new();
     private bool _buildTreeCacheDirty;
+    private bool _attributesCacheDirty;
 
     // The profile-scoped superset before the other (in-memory) filter dimensions are applied —
     // Games is always a filtered projection of this, never populated directly.
     private List<GameData> _loadedGames = [];
 
+    public ObservableCollection<AttributeDefinition> GameAttributes { get; } = [];
     public DataPageFiltersViewModel Filters { get; }
 
     public DataPageViewModel(SettingsRepository settingsRepository, ReplayWatcherService replayWatcherService,
@@ -67,6 +70,10 @@ public partial class DataPageViewModel : ViewModelBase
         _replayImportService.GameMmrUpdated += OnGameMmrUpdated;
         _buildRepo.BuildsChanged += OnBuildsChanged;
         _settingsRepo.SettingsChanged += OnSettingsChanged;
+
+        foreach (AttributeDefinition attribute in _attributeRepo.GetAllAttributes(AttributeScope.Game))
+            GameAttributes.Add(attribute);
+        _attributeRepo.AttributesChanged += OnAttributesChanged;
 
         Filters = new DataPageFiltersViewModel(buildRepository);
         Filters.ProfileSelectionChanged += async () => await ReloadGamesFromDatabase();
@@ -282,6 +289,7 @@ public partial class DataPageViewModel : ViewModelBase
     // tab. Just remember a reload is owed, and pay for it once when the user actually comes back
     // to the Data tab (see NotifyActivated).
     private void OnBuildsChanged() => _buildTreeCacheDirty = true;
+    private void OnAttributesChanged() => _attributesCacheDirty = true;
 
     // Called by DataPage's code-behind when the Data tab becomes visible.
     public void NotifyActivated()
@@ -289,11 +297,124 @@ public partial class DataPageViewModel : ViewModelBase
         if (ActiveProfile != null)
             Filters.RefreshProfileOptions(_accountRepo.GetAllProfiles());
 
-        if (!_buildTreeCacheDirty)
-            return;
+        if (_buildTreeCacheDirty)
+            RefreshBuildTreeCache();
+        if (_attributesCacheDirty)
+            RefreshAttributesCache();
 
         _buildTreeCacheDirty = false;
-        RefreshBuildTreeCache();
+        _attributesCacheDirty = false;
+    }
+
+    private void RefreshAttributesCache()
+    {
+        List<AttributeDefinition> dbAttributes = _attributeRepo.GetAllAttributes(AttributeScope.Game);
+        Dictionary<int, AttributeDefinition> dbById = dbAttributes.ToDictionary(a => a.Id);
+
+        //sync deleted attributes
+        foreach (AttributeDefinition cachedAttr in GameAttributes.Where(a => !dbById.ContainsKey(a.Id)).ToList())
+        {
+            GameAttributes.Remove(cachedAttr);
+
+            foreach (GameData game in _loadedGames)
+            {
+                AttributeValue? value = game.AttributeValues.FirstOrDefault(v => v.Definition.Id == cachedAttr.Id);
+                if (value != null)
+                    game.AttributeValues.Remove(value);
+            }
+
+            //TODO: filter by game attribute
+            //RemoveFilterSlot(cachedAttr);
+        }
+
+        //sync edited attributes
+        foreach (AttributeDefinition cachedAttr in GameAttributes)
+        {
+            AttributeDefinition dbAttr = dbById[cachedAttr.Id];
+
+            if (cachedAttr.Name != dbAttr.Name)
+            {
+                cachedAttr.Name = dbAttr.Name;
+                //TODO: filter by game attribute
+                //if (_slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? slot))
+                //    slot.Title = dbAttr.Name;
+            }
+
+            if (cachedAttr.Type != dbAttr.Type)
+            {
+                cachedAttr.Type = dbAttr.Type;
+                //TODO: filter by game attribute
+                // Numeric/Percent vs. Bool vs. Values are different FilterSlotViewModel subclasses,
+                // so the slot itself has to be replaced rather than patched — but only for this one
+                // attribute, and preserving whether it was actually showing.
+                //bool wasVisible = _slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? old) && old.IsVisible;
+                //RemoveFilterSlot(cachedAttr);
+                //AddFilterSlot(cachedAttr, wasVisible);
+            }
+
+            if (dbAttr.IsMandatory != cachedAttr.IsMandatory)
+            {
+                cachedAttr.IsMandatory = dbAttr.IsMandatory;
+                List<GameData> gamesToSave = new List<GameData>();
+                if (dbAttr.IsMandatory)
+                {
+                    // Defined for every game with default value
+                    foreach (GameData game in _loadedGames)
+                    {
+                        if (!game.AttributeValues.Any(a => a.Definition.Id == dbAttr.Id))
+                        {
+                            game.AttributeValues.Add(cachedAttr.DefaultValue.Clone());
+                            gamesToSave.Add(game);
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (GameData game in _loadedGames)
+                    {
+                        AttributeValue? value = game.AttributeValues.FirstOrDefault(v => v.Definition.Id == cachedAttr.Id);
+                        if (value != null && !value.HasValue)
+                        {
+                            game.AttributeValues.Remove(value);
+                            gamesToSave.Add(game);
+                        }
+                    }
+                }
+                _gameDataRepo.SaveGameAttributeValues(gamesToSave, dbAttr.Id);
+            }
+
+            //TODO: filter by game attribute
+            //SyncValueOptions(cachedAttr, dbAttr.ValueOptions);
+
+            if (dbAttr.DefaultValue.HasValue)
+                cachedAttr.DefaultValue.ApplyStoredValue(dbAttr.DefaultValue.Serialize()!);
+            else
+                cachedAttr.DefaultValue.Clear();
+        }
+
+        //sync new attributes
+        HashSet<int> knownIds = GameAttributes.Select(a => a.Id).ToHashSet();
+        foreach (AttributeDefinition dbAttr in dbAttributes.Where(a => !knownIds.Contains(a.Id)))
+        {
+            GameAttributes.Add(dbAttr);
+
+            if (dbAttr.IsMandatory)
+            {
+                // Defined for every game at once, and unset on all of them until populated by user.
+                List<GameData> gamesToSave = new List<GameData>();
+                foreach (GameData game in _loadedGames)
+                {
+                    game.AttributeValues.Add(dbAttr.DefaultValue.Clone());
+                    gamesToSave.Add(game);
+                }
+                _gameDataRepo.SaveGameAttributeValues(gamesToSave, dbAttr.Id);
+            }
+
+            //TODO: filter by game attribute
+            //AddFilterSlot(dbAttr);
+        }
+
+        ApplyFilters();
     }
 
     // Refresh every cached matchup tree in place, so any GameDataRowViewModel/BuildPathPicker
@@ -378,7 +499,7 @@ public partial class DataPageViewModel : ViewModelBase
     }
 
     private GameDataRowViewModel WrapGame(GameData game) =>
-        new GameDataRowViewModel(game, _gameDataRepo, _attributeRepo, ResolveProfileLabel(game.Sc2ProfileId), GetBuildTree, _logger, _replayDataExtractor,
+        new GameDataRowViewModel(game, _gameDataRepo, GameAttributes, ResolveProfileLabel(game.Sc2ProfileId), GetBuildTree, _logger, _replayDataExtractor,
             _settingsRepo.Load().UseTeamColors);
 
     private string ResolveProfileLabel(int sc2ProfileId) =>
