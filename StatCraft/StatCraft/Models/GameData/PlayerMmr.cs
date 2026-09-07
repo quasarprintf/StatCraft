@@ -8,7 +8,7 @@ namespace StatCraft.Models.GameData;
 // set instead, alongside it, whenever OpponentMmrEstimator judges ParsedMmr implausible given the
 // tracked player's own observed MmrChange (see ReplayImportService.TryCorrectOpponentMmr). OverrideMmr
 // isn't populated by anything yet — a future manual-correction path.
-internal class PlayerMmr
+public class PlayerMmr
 {
     public event EventHandler? MmrChanged;
     public required long ParsedMmr 

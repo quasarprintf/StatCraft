@@ -386,6 +386,41 @@ public partial class GameDataRepository : SqliteRepository
                 new { gameId, attributeId, value });
         }
     }
+    public void SaveGameAttributeValues(List<GameData> games, int gameAttributeId)
+    {
+        if (games.Count == 0)
+            return;
+
+        List<int> deleteGameIds = new List<int>();
+        Dictionary<int, string> setValues = new Dictionary<int, string>();
+        foreach (var game in games)
+        {
+            if (game.GameId == null)
+                continue;
+            AttributeValue? value = game.AttributeValues.FirstOrDefault(v => v.Definition.Id == gameAttributeId);
+            if (value == null || !value.HasValue)
+                deleteGameIds.Add(game.GameId.Value);
+            else
+                setValues[game.GameId.Value] = value.Serialize()!;
+        }
+
+        using SqliteConnection conn = OpenConnection();
+
+        if (deleteGameIds.Count > 0)
+        {
+            conn.Execute("DELETE FROM GameAttributeValues WHERE GameId IN @gameIds AND AttributeId = @gameAttributeId",
+                new { gameIds = deleteGameIds, gameAttributeId });
+        }
+        if (setValues.Count > 0)
+        {
+            var rows = setValues.Select(kvp => new { gameId = kvp.Key, gameAttributeId, value = kvp.Value });
+            conn.Execute(@"
+                    INSERT INTO GameAttributeValues (GameId, AttributeId, Value)
+                    VALUES (@gameId, @gameAttributeId, @value)
+                    ON CONFLICT(GameId, AttributeId) DO UPDATE SET Value = @value",
+                rows);
+        }
+    }
 
     // True if any GameBuilds row still points at one of these build node ids. Deleting a BuildNode
     // cascades to its whole subtree (BuildNodes.ParentId ON DELETE CASCADE), and each deleted node

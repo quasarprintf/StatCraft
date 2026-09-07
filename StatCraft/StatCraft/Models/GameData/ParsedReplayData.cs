@@ -4,7 +4,7 @@ using System.Text;
 
 namespace StatCraft.Models.GameData;
 
-internal class ParsedReplayData
+public class ParsedReplayData
 {
     public int GameLengthSeconds { get; set; }
     public required string ReplayPath { get; set; }

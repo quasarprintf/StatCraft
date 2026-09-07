@@ -4,7 +4,7 @@ using System.Text;
 
 namespace StatCraft.Models.GameData;
 
-internal class GamePlayer
+public class GamePlayer
 {
     public int? GamePlayerId { get; set; }
 

@@ -5,7 +5,7 @@ using System.Collections.ObjectModel;
 
 namespace StatCraft.Models.GameData;
 
-internal class GameData : IAttributedObject
+public class GameData : IAttributedObject
 {
     public int? GameId { get; set; }
     public int Sc2ProfileId { get; set; }
