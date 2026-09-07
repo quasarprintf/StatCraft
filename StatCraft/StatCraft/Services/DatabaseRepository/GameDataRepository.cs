@@ -219,10 +219,10 @@ public partial class GameDataRepository : SqliteRepository
             foreach (GameBuildRow row in buildRows)
                 playersById[row.GamePlayerId].BuildIds.Add(row.BuildId);
 
-            IEnumerable<BuildDetailValueRow> attributeRows = conn.Query<BuildDetailValueRow>(
+            IEnumerable<BuildDetailValueRow> buildDetailValueRows = conn.Query<BuildDetailValueRow>(
                 $"SELECT GamePlayerId, BuildAttributeId, Value FROM BuildDetailValues WHERE GamePlayerId IN ({playerIdList})");
-            foreach (BuildDetailValueRow row in attributeRows)
-                playersById[row.GamePlayerId].AttributeValues.Add(new GameAttributeValue { BuildAttributeId = row.BuildAttributeId, Value = row.Value });
+            foreach (BuildDetailValueRow row in buildDetailValueRows)
+                playersById[row.GamePlayerId].BuildDetailValues.Add(new BuildDetailValue { BuildAttributeId = row.BuildAttributeId, Value = row.Value });
         }
 
         List<GameData> games = new();
@@ -347,21 +347,21 @@ public partial class GameDataRepository : SqliteRepository
         conn.Execute("DELETE FROM Games WHERE Id = @id", new { id = gameId });
     }
 
-    public void UpsertAttributeValue(int gamePlayerId, int buildAttributeId, string value)
+    public void UpsertBuildDetailValue(int gamePlayerId, int buildDetailAttributeId, string value)
     {
         using SqliteConnection conn = OpenConnection();
         conn.Execute(@"
                 INSERT INTO BuildDetailValues (GamePlayerId, BuildAttributeId, Value)
-                VALUES (@gamePlayerId, @buildAttributeId, @value)
+                VALUES (@gamePlayerId, @buildDetailAttributeId, @value)
                 ON CONFLICT(GamePlayerId, BuildAttributeId) DO UPDATE SET Value = @value",
-            new { gamePlayerId, buildAttributeId, value });
+            new { gamePlayerId, buildDetailAttributeId, value });
     }
 
-    public void DeleteAttributeValue(int gamePlayerId, int buildAttributeId)
+    public void DeleteBuildDetailValue(int gamePlayerId, int buildDetailAttributeId)
     {
         using SqliteConnection conn = OpenConnection();
-        conn.Execute("DELETE FROM BuildDetailValues WHERE GamePlayerId = @gamePlayerId AND BuildAttributeId = @buildAttributeId",
-            new { gamePlayerId, buildAttributeId });
+        conn.Execute("DELETE FROM BuildDetailValues WHERE GamePlayerId = @gamePlayerId AND BuildAttributeId = @buildDetailAttributeId",
+            new { gamePlayerId, buildDetailAttributeId });
     }
 
     // Game-scoped attribute value (see GameData/AttributeValuesSelectViewModel) — named distinctly from

@@ -432,7 +432,7 @@ public partial class DataPageViewModel : ViewModelBase
         }
 
         foreach (GameDataRowViewModel row in Games)
-            row.RefreshAttributeEditors();
+            row.RefreshDetailEditors();
     }
 
     // Re-queries the database for every currently-checked profile — the only filter dimension that

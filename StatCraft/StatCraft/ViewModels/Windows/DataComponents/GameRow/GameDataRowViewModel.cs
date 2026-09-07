@@ -182,11 +182,11 @@ public partial class GameDataRowViewModel : ViewModelBase
     // changing any selection — called after DataPageViewModel reloads the cached build tree, so an
     // attribute added to (or removed from) a selected build or one of its ancestors on the Builds tab
     // is picked up here on the Data tab too.
-    public void RefreshAttributeEditors()
+    public void RefreshDetailEditors()
     {
-        SelfTracker.RefreshAttributeEditors();
+        SelfTracker.RefreshDetailEditors();
         foreach (PlayerBuildTrackerViewModel other in OtherPlayers)
-            other.RefreshAttributeEditors();
+            other.RefreshDetailEditors();
     }
 
     // Called once the post-game MMR poll resolves, since the underlying GamePlayer is mutated

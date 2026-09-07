@@ -32,5 +32,5 @@ public class GamePlayer
     public int? ColorArgb { get; set; }
 
     public List<int> BuildIds { get; set; } = [];
-    public List<GameAttributeValue> AttributeValues { get; set; } = [];
+    public List<BuildDetailValue> BuildDetailValues { get; set; } = [];
 }

@@ -382,7 +382,7 @@ public partial class BuildsPageViewModel : ViewModelBase
         if (s is not AttributeDefinition definition)
             return;
         if (e.PropertyName == nameof(AttributeDefinition.Name) || e.PropertyName == nameof(AttributeDefinition.Type))
-                _buildRepo.UpdateAttribute(definition.DefaultValue);
+                _buildRepo.UpdateBuildDetailAttribute(definition.DefaultValue);
     }
     private void DetailPropertyChanged(object? s, PropertyChangedEventArgs e)
     {
@@ -390,7 +390,7 @@ public partial class BuildsPageViewModel : ViewModelBase
             return;
         if (e.PropertyName == nameof(AttributeValue.NumericValue) || e.PropertyName == nameof(AttributeValue.BoolValue)
                 || e.PropertyName == nameof(AttributeValue.PercentValue) || e.PropertyName == nameof(AttributeValue.SelectedValue))
-                _buildRepo.UpdateAttribute(attr);
+                _buildRepo.UpdateBuildDetailAttribute(attr);
     }
     private void DetailDefinitionOptionsChanged(object? s, CollectionChangeEventArgs e)
     {
@@ -399,10 +399,10 @@ public partial class BuildsPageViewModel : ViewModelBase
         switch (e.Action)
         {
             case CollectionChangeAction.Add:
-                _buildRepo.InsertValueOption(definition.Id, (string)e.Element!);
+                _buildRepo.InsertBuildDetailValueOption(definition.Id, (string)e.Element!);
                 return;
             case CollectionChangeAction.Remove:
-                _buildRepo.DeleteValueOption(definition.Id, (string)e.Element!);
+                _buildRepo.DeleteBuildDetailValueOption(definition.Id, (string)e.Element!);
                 return;
         }
     }
@@ -546,18 +546,18 @@ public partial class BuildsPageViewModel : ViewModelBase
         if (SelectedBuild == null) return;
         AttributeDefinition definition = new AttributeDefinition(AttributeScope.BuildDetail);
         AttributeValue attr = definition.DefaultValue;
-        _buildRepo.InsertAttribute(attr, SelectedBuild.Id, SelectedBuild.Details.Count);
+        _buildRepo.InsertBuildDetailAttribute(attr, SelectedBuild.Id, SelectedBuild.Details.Count);
         WireDetail(definition);
         SelectedBuild.Details.Add(definition);
     }
 
     [RelayCommand]
-    public void RemoveDetail(AttributeDefinition attribute)
+    public void RemoveDetail(AttributeDefinition detail)
     {
         if (SelectedBuild == null) return;
-        _buildRepo.DeleteAttribute(attribute.Id);
-        UnWireDetail(attribute);
-        SelectedBuild.Details.Remove(attribute);
+        _buildRepo.DeleteBuildDetailAttribute(detail.Id);
+        UnWireDetail(detail);
+        SelectedBuild.Details.Remove(detail);
     }
 
     #region filters

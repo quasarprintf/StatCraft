@@ -13,7 +13,7 @@
                 </DataTemplate>
             </ItemsControl.ItemTemplate>
         </ItemsControl>
-        <ItemsControl ItemsSource="{Binding AttributeGroups}">
+        <ItemsControl ItemsSource="{Binding DetailGroups}">
             <ItemsControl.ItemTemplate>
                 <DataTemplate x:DataType="vmc:GameRow.BuildDetailGroupViewModel">
                     <StackPanel Margin="{Binding Margin}" Spacing="4" HorizontalAlignment="Left">
@@ -21,7 +21,7 @@
                             <TextBlock Text="{Binding BuildName}" FontWeight="Bold"/>
                         </Border>
                         <Border BorderBrush="Gray" BorderThickness="1,0,0,0" Padding="8,0,0,0">
-                            <ItemsControl ItemsSource="{Binding Attributes}">
+                            <ItemsControl ItemsSource="{Binding Values}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate x:DataType="Attr:AttributeValue">
                                         <Grid ColumnDefinitions="140,*" Margin="0,0,0,4">

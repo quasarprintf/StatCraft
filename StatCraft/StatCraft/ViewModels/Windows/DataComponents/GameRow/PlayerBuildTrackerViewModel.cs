@@ -44,7 +44,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     // Slots are always [...persisted selections, one trailing blank] — selecting a build in the
     // trailing slot appends a new blank after it, and clearing a non-trailing slot removes it.
     public ObservableCollection<BuildSelectionSlotViewModel> BuildSlots { get; } = [];
-    public ObservableCollection<BuildDetailGroupViewModel> AttributeGroups { get; } = [];
+    public ObservableCollection<BuildDetailGroupViewModel> DetailGroups { get; } = [];
 
     internal PlayerBuildTrackerViewModel(GamePlayer player, GameDataRepository repository, ObservableCollection<BuildNode>? buildTree, ILogger logger,
         ReplayDataExtractor? replayDataExtractor = null, string? replayPath = null, bool useTeamColors = false, bool isAlly = false)
@@ -84,7 +84,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
         }
 
         UpdateSelectedBuildsSummary();
-        RebuildAttributeEditors();
+        RebuildDetailEditors();
     }
 
     // Best-effort: an old replay that's since been moved or deleted just leaves NameColor null
@@ -171,7 +171,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
         TryUpdateGameBuilds(buildIds);
 
         UpdateSelectedBuildsSummary();
-        RebuildAttributeEditors();
+        RebuildDetailEditors();
     }
 
     // The four DB writes below are all "best effort, keep the in-memory state as the source of
@@ -190,11 +190,11 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
         }
     }
 
-    private void TryUpsertAttributeValue(int buildAttributeId, string value)
+    private void TryUpsertDetailValue(int buildAttributeId, string value)
     {
         try
         {
-            _repository.UpsertAttributeValue(_player.GamePlayerId!.Value, buildAttributeId, value);
+            _repository.UpsertBuildDetailValue(_player.GamePlayerId!.Value, buildAttributeId, value);
         }
         catch (Exception ex)
         {
@@ -202,11 +202,11 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
         }
     }
 
-    private void TryDeleteAttributeValue(int buildAttributeId)
+    private void TryDeleteDetailValue(int buildAttributeId)
     {
         try
         {
-            _repository.DeleteAttributeValue(_player.GamePlayerId!.Value, buildAttributeId);
+            _repository.DeleteBuildDetailValue(_player.GamePlayerId!.Value, buildAttributeId);
         }
         catch (Exception ex)
         {
@@ -311,7 +311,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     // selection — called after DataPageViewModel reloads the cached build tree, so an attribute
     // added to (or removed from) a selected build or one of its ancestors on the Builds tab is
     // picked up here on the Data tab too.
-    public void RefreshAttributeEditors() => RebuildAttributeEditors();
+    public void RefreshDetailEditors() => RebuildDetailEditors();
 
     // Deduplicated union of every selected build's root-to-leaf path, so a shared ancestor
     // contributes its attributes exactly once no matter how many selected builds pass through it.
@@ -319,9 +319,9 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     // build each attribute came from — Depth is each node's position within whichever selected
     // path first reached it, root being 0, which is what lets the view indent a nested build's
     // group further than its ancestor's.
-    private void RebuildAttributeEditors()
+    private void RebuildDetailEditors()
     {
-        List<int> oldIds = AttributeGroups.SelectMany(g => g.Attributes).Select(a => a.Definition.Id).ToList();
+        List<int> oldIds = DetailGroups.SelectMany(g => g.Values).Select(a => a.Definition.Id).ToList();
 
         List<(BuildNode Node, int Depth)> unionPath = new();
         HashSet<int> seen = new();
@@ -339,9 +339,9 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
         // Left every selected path: drop the stored value from the DB, but leave it in
         // _player.AttributeValues (in-memory) so re-selecting the build within this session restores it.
         foreach (int leftId in oldIds.Except(newIds))
-            TryDeleteAttributeValue(leftId);
+            TryDeleteDetailValue(leftId);
 
-        AttributeGroups.Clear();
+        DetailGroups.Clear();
         foreach ((BuildNode node, int depth) in unionPath)
         {
             if (node.Details.Count == 0)
@@ -351,7 +351,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
             foreach (AttributeDefinition template in node.Details)
             {
                 AttributeValue editor = template.DefaultValue.Clone();
-                GameAttributeValue? cached = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Id);
+                BuildDetailValue? cached = _player.BuildDetailValues.FirstOrDefault(v => v.BuildAttributeId == template.Id);
                 if (cached != null)
                 {
                     editor.ApplyStoredValue(cached.Value);
@@ -359,8 +359,8 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
                 else
                 {
                     string defaultValue = editor.Serialize() ?? "";
-                    _player.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Id, Value = defaultValue });
-                    TryUpsertAttributeValue(template.Id, defaultValue);
+                    _player.BuildDetailValues.Add(new BuildDetailValue { BuildAttributeId = template.Id, Value = defaultValue });
+                    TryUpsertDetailValue(template.Id, defaultValue);
                 }
 
                 editor.PropertyChanged += (_, e) =>
@@ -371,18 +371,18 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
                         or nameof(AttributeValue.SelectedValue))
                     {
                         string value = editor.Serialize() ?? "";
-                        GameAttributeValue? existing = _player.AttributeValues.FirstOrDefault(v => v.BuildAttributeId == template.Id);
+                        BuildDetailValue? existing = _player.BuildDetailValues.FirstOrDefault(v => v.BuildAttributeId == template.Id);
                         if (existing != null)
                             existing.Value = value;
                         else
-                            _player.AttributeValues.Add(new GameAttributeValue { BuildAttributeId = template.Id, Value = value });
-                        TryUpsertAttributeValue(template.Id, value);
+                            _player.BuildDetailValues.Add(new BuildDetailValue { BuildAttributeId = template.Id, Value = value });
+                        TryUpsertDetailValue(template.Id, value);
                     }
                 };
                 groupEditors.Add(editor);
             }
 
-            AttributeGroups.Add(new BuildDetailGroupViewModel(node.Name, depth, groupEditors));
+            DetailGroups.Add(new BuildDetailGroupViewModel(node.Name, depth, groupEditors));
         }
     }
 }

@@ -100,7 +100,7 @@ public class BuildRepositoryTests : IDisposable
     [InlineData(AttributeType.Bool)]
     [InlineData(AttributeType.Percent)]
     [InlineData(AttributeType.Values)]
-    public void InsertAttribute_DefaultValueRoundTripsForEachType(AttributeType type)
+    public void InsertBuildDetailAttribute_DefaultValueRoundTripsForEachType(AttributeType type)
     {
         BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
         _repository.InsertBuild(node, null, 0);
@@ -114,7 +114,7 @@ public class BuildRepositoryTests : IDisposable
             case AttributeType.Values: attr.SelectedValue = "Zealot"; break;
         }
 
-        _repository.InsertAttribute(attr, node.Id, 0);
+        _repository.InsertBuildDetailAttribute(attr, node.Id, 0);
 
         BuildNode loadedNode = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss));
         AttributeValue loadedAttr = Assert.Single(loadedNode.Details).DefaultValue;
@@ -131,14 +131,14 @@ public class BuildRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void InsertValueOption_ThenGetBuildsForPlayerRace_IncludesOption()
+    public void InsertBuildDetailValueOption_ThenGetBuildsForPlayerRace_IncludesOption()
     {
         BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
         _repository.InsertBuild(node, null, 0);
 
         AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Opening", Type = AttributeType.Values });
-        _repository.InsertAttribute(attr, node.Id, 0);
-        _repository.InsertValueOption(attr.Definition.Id, "Zealot");
+        _repository.InsertBuildDetailAttribute(attr, node.Id, 0);
+        _repository.InsertBuildDetailValueOption(attr.Definition.Id, "Zealot");
 
         BuildNode loadedNode = Assert.Single(_repository.GetBuildsForPlayerRace(Race.Protoss));
         AttributeValue loadedAttr = Assert.Single(loadedNode.Details).DefaultValue;
@@ -171,18 +171,18 @@ public class BuildRepositoryTests : IDisposable
     }
 
     [Fact]
-    public void UpdateAttribute_RaisesBuildsChanged()
+    public void UpdateBuildDetailAttribute_RaisesBuildsChanged()
     {
         BuildNode node = new BuildNode { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
         _repository.InsertBuild(node, null, 0);
         AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Supply", Type = AttributeType.Numeric });
-        _repository.InsertAttribute(attr, node.Id, 0);
+        _repository.InsertBuildDetailAttribute(attr, node.Id, 0);
 
         int raisedCount = 0;
         _repository.BuildsChanged += () => raisedCount++;
 
         attr.NumericValue = 20;
-        _repository.UpdateAttribute(attr);
+        _repository.UpdateBuildDetailAttribute(attr);
 
         Assert.Equal(1, raisedCount);
     }

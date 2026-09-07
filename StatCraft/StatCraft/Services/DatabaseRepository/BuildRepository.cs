@@ -60,26 +60,26 @@ public class BuildRepository : SqliteRepository
 
         if (nodeDict.Count > 0)
         {
-            Dictionary<long, AttributeValue> attrDict = new();
+            Dictionary<long, AttributeValue> buildDetailDefinitionsById = new();
             string nodeIds = string.Join(",", nodeDict.Keys);
 
-            List<BuildDetailsAttributeRow> attrRows = conn.Query<BuildDetailsAttributeRow>(
+            List<BuildDetailsAttributeRow> buildDetailAttributeRows = conn.Query<BuildDetailsAttributeRow>(
                 $"SELECT Id, BuildNodeId, Name, Type, DefaultValue, Scope FROM BuildDetailsAttributes WHERE BuildNodeId IN ({nodeIds}) ORDER BY SortOrder").ToList();
-            foreach (BuildDetailsAttributeRow row in attrRows)
+            foreach (BuildDetailsAttributeRow row in buildDetailAttributeRows)
             {
                 AttributeDefinition definition = new AttributeDefinition(row.Scope) { Id = (int)row.Id, Name = row.Name, Type = row.Type };
                 definition.DefaultValue.ApplyStoredValue(row.DefaultValue);
-                attrDict[row.Id] = definition.DefaultValue;
+                buildDetailDefinitionsById[row.Id] = definition.DefaultValue;
                 nodeDict[row.BuildNodeId].Details.Add(definition);
             }
 
-            if (attrDict.Count > 0)
+            if (buildDetailDefinitionsById.Count > 0)
             {
-                string attrIds = string.Join(",", attrDict.Keys);
-                List<ValueOptionRow> optionRows = conn.Query<ValueOptionRow>(
+                string attrIds = string.Join(",", buildDetailDefinitionsById.Keys);
+                List<BuildDetailValueOptionRow> optionRows = conn.Query<BuildDetailValueOptionRow>(
                     $"SELECT BuildAttributeId, Value FROM BuildDetailsAttributeValueOptions WHERE BuildAttributeId IN ({attrIds}) ORDER BY SortOrder").ToList();
-                foreach (ValueOptionRow row in optionRows)
-                    attrDict[row.BuildAttributeId].Definition.ValueOptions.Add(row.Value);
+                foreach (BuildDetailValueOptionRow row in optionRows)
+                    buildDetailDefinitionsById[row.BuildAttributeId].Definition.ValueOptions.Add(row.Value);
             }
 
             if (attributes.Count > 0)
@@ -144,7 +144,7 @@ public class BuildRepository : SqliteRepository
         BuildsChanged?.Invoke();
     }
 
-    public void InsertAttribute(AttributeValue attr, int buildNodeId, int sortOrder)
+    public void InsertBuildDetailAttribute(AttributeValue attr, int buildNodeId, int sortOrder)
     {
         using SqliteConnection conn = OpenConnection();
         attr.Definition.Id = (int)conn.ExecuteScalar<long>(@"
@@ -155,7 +155,7 @@ public class BuildRepository : SqliteRepository
         BuildsChanged?.Invoke();
     }
 
-    public void UpdateAttribute(AttributeValue attr)
+    public void UpdateBuildDetailAttribute(AttributeValue attr)
     {
         using SqliteConnection conn = OpenConnection();
         conn.Execute("UPDATE BuildDetailsAttributes SET Name = @name, Type = @type, DefaultValue = @defaultValue WHERE Id = @id",
@@ -163,28 +163,28 @@ public class BuildRepository : SqliteRepository
         BuildsChanged?.Invoke();
     }
 
-    public void DeleteAttribute(int id)
+    public void DeleteBuildDetailAttribute(int id)
     {
         using SqliteConnection conn = OpenConnection();
         conn.Execute("DELETE FROM BuildDetailsAttributes WHERE Id = @id", new { id });
         BuildsChanged?.Invoke();
     }
 
-    public void InsertValueOption(int attributeId, string value)
+    public void InsertBuildDetailValueOption(int buildDetailAttributeId, string value)
     {
         using SqliteConnection conn = OpenConnection();
         conn.Execute(@"
                 INSERT INTO BuildDetailsAttributeValueOptions (BuildAttributeId, Value, SortOrder)
                 VALUES (@attrId, @value, (SELECT COALESCE(MAX(SortOrder), -1) + 1 FROM BuildDetailsAttributeValueOptions WHERE BuildAttributeId = @attrId))",
-            new { attrId = attributeId, value });
+            new { attrId = buildDetailAttributeId, value });
         BuildsChanged?.Invoke();
     }
 
-    public void DeleteValueOption(int attributeId, string value)
+    public void DeleteBuildDetailValueOption(int buildDetailAttributeId, string value)
     {
         using SqliteConnection conn = OpenConnection();
         conn.Execute("DELETE FROM BuildDetailsAttributeValueOptions WHERE BuildAttributeId = @attrId AND Value = @value",
-            new { attrId = attributeId, value });
+            new { attrId = buildDetailAttributeId, value });
         BuildsChanged?.Invoke();
     }
 
@@ -268,7 +268,7 @@ public class BuildRepository : SqliteRepository
         public AttributeScope Scope { get; set; }
     }
 
-    private class ValueOptionRow
+    private class BuildDetailValueOptionRow
     {
         public long BuildAttributeId { get; set; }
         public string Value { get; set; } = "";
