@@ -79,7 +79,7 @@ public partial class GameDataRowViewModel : ViewModelBase
     public PlayerBuildTrackerViewModel SelfTracker { get; }
     public ObservableCollection<PlayerBuildTrackerViewModel> OtherPlayers { get; } = [];
     public AttributeValuesSelectViewModel AttributeValuesSelect { get; set; }
-    public string AttributesSummary => ""; //TODO
+    public string AttributesSummary => string.Join(", ", _game.AttributeValues.Select(v => v.Definition.Name));
 
     internal GameDataRowViewModel(GameData game, GameDataRepository repository, ObservableCollection<AttributeDefinition> allAttributes, string profileLabel,
         Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree, ILogger logger, ReplayDataExtractor replayDataExtractor,
@@ -155,6 +155,7 @@ public partial class GameDataRowViewModel : ViewModelBase
 
         // A null value deletes the row — see GameDataRepository.SaveGameAttributeValue.
         _repository.SaveGameAttributeValue(game.GameId!.Value, value.Definition.Id, null);
+        OnPropertyChanged(nameof(AttributesSummary));
         RenderHeightChanged?.Invoke(this, EventArgs.Empty);
     }
     private void AttributeValueChanged(object? s, AttributeValue value)
@@ -163,6 +164,7 @@ public partial class GameDataRowViewModel : ViewModelBase
             return; //TODO: log this, it's unexpected
 
         _repository.SaveGameAttributeValue(game.GameId!.Value, value.Definition.Id, value.Serialize());
+        OnPropertyChanged(nameof(AttributesSummary));
         RenderHeightChanged?.Invoke(this, EventArgs.Empty);
     }
 
