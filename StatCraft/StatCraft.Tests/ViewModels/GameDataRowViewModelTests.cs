@@ -1,5 +1,6 @@
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
@@ -15,7 +16,7 @@ public class GameDataRowViewModelTests : IDisposable
 {
     private readonly string _dbPath;
     private readonly GameDataRepository _gameDataRepository;
-    private readonly AttributeRepository _attributeRepository;
+    private readonly ObservableCollection<AttributeDefinition> _gameAttributes = [];
     private readonly MockLogger _logger = new();
     private readonly ReplayDataExtractor _replayDataExtractor = new();
     private readonly int _sc2ProfileId;
@@ -30,8 +31,6 @@ public class GameDataRowViewModelTests : IDisposable
         new MapRepository(_dbPath).Initialize();
         _gameDataRepository = new GameDataRepository(_dbPath);
         _gameDataRepository.Initialize();
-        _attributeRepository = new AttributeRepository(_dbPath);
-        _attributeRepository.Initialize();
 
         BattleNetAccount account = new()
         {
@@ -54,12 +53,12 @@ public class GameDataRowViewModelTests : IDisposable
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
-        GameDataRowViewModel firstRow = new(game, _gameDataRepository, _attributeRepository, "Player", (_, _) => null, _logger, _replayDataExtractor);
+        GameDataRowViewModel firstRow = new(game, _gameDataRepository, _gameAttributes, "Player", (_, _) => null, _logger, _replayDataExtractor);
         firstRow.Notes = "Lost to a cheese rush";
 
         // Simulates DataPageViewModel.WrapGame reconstructing every visible row from the same
         // underlying GameData after a filter change — the row instance is new, but the GameData isn't.
-        GameDataRowViewModel secondRow = new(game, _gameDataRepository, _attributeRepository, "Player", (_, _) => null, _logger, _replayDataExtractor);
+        GameDataRowViewModel secondRow = new(game, _gameDataRepository, _gameAttributes, "Player", (_, _) => null, _logger, _replayDataExtractor);
 
         Assert.Equal("Lost to a cheese rush", secondRow.Notes);
     }
@@ -76,7 +75,7 @@ public class GameDataRowViewModelTests : IDisposable
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
-        GameDataRowViewModel row = new(game, _gameDataRepository, _attributeRepository, "Player", (_, _) => null, _logger, _replayDataExtractor);
+        GameDataRowViewModel row = new(game, _gameDataRepository, _gameAttributes, "Player", (_, _) => null, _logger, _replayDataExtractor);
         OpponentRowViewModel opponentRow = Assert.Single(row.Opponents);
         Assert.Equal(3100, opponentRow.Mmr);
 
