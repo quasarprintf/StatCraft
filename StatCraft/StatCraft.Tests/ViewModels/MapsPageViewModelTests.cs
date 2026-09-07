@@ -1,5 +1,6 @@
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Services.DatabaseRepository;
+using StatCraft.Services.Factories;
 using StatCraft.ViewModels.Windows;
 using StatCraft.ViewModels.Windows.Filters;
 
@@ -11,6 +12,7 @@ public class MapsPageViewModelTests : IDisposable
     private readonly MapRepository _mapRepo;
     private readonly AttributeRepository _attributeRepo;
     private readonly GameDataRepository _gameDataRepo;
+    private readonly FilterSlotFactory _filterSlotFactory = new();
 
     public MapsPageViewModelTests()
     {
@@ -34,7 +36,7 @@ public class MapsPageViewModelTests : IDisposable
     public void NameFilter_IsCaseInsensitiveSubstringMatch(string filter, bool expected)
     {
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
 
         vm.NameFilter = filter;
 
@@ -48,7 +50,7 @@ public class MapsPageViewModelTests : IDisposable
     public void AttributeAddedElsewhere_AppearsHereAndOnEveryExistingMap()
     {
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
 
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Rush Distance", IsMandatory = true };
         _attributeRepo.InsertAttribute(attribute, 0);
@@ -63,7 +65,7 @@ public class MapsPageViewModelTests : IDisposable
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Doomed" };
         _attributeRepo.InsertAttribute(attribute, 0);
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
 
         _attributeRepo.DeleteAttribute(attribute.Id);
 
@@ -76,7 +78,7 @@ public class MapsPageViewModelTests : IDisposable
     [Fact]
     public void AttributeAddedElsewhereForADifferentScope_IsIgnored()
     {
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
 
         _attributeRepo.InsertAttribute(new(AttributeScope.Game) { Name = "Apm" }, 0);
 
@@ -94,7 +96,7 @@ public class MapsPageViewModelTests : IDisposable
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Rush Distance", Type = AttributeType.Numeric, IsMandatory = true };
         _attributeRepo.InsertAttribute(attribute, 0);
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
         AttributeDefinition held = Assert.Single(vm.AllAttributes);
         Assert.IsType<NumericRangeFilterSlotViewModel>(Assert.Single(vm.HiddenFilterSlots));
 
@@ -115,7 +117,7 @@ public class MapsPageViewModelTests : IDisposable
     {
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Old Name" };
         _attributeRepo.InsertAttribute(attribute, 0);
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
         AttributeDefinition held = Assert.Single(vm.AllAttributes);
 
         AttributeDefinition editedElsewhere = Assert.Single(_attributeRepo.GetAllAttributes(AttributeScope.Map));
@@ -131,7 +133,7 @@ public class MapsPageViewModelTests : IDisposable
     {
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
         _attributeRepo.InsertAttribute(attribute, 0);
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
         AttributeDefinition held = Assert.Single(vm.AllAttributes);
 
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
@@ -147,7 +149,7 @@ public class MapsPageViewModelTests : IDisposable
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
         _attributeRepo.InsertAttribute(attribute, 0);
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
         CheckboxFilterSlotViewModel<string> slot = Assert.IsType<CheckboxFilterSlotViewModel<string>>(Assert.Single(vm.HiddenFilterSlots));
         slot.Options.Single(o => o.Value == "Rush").IsChecked = true;
 
