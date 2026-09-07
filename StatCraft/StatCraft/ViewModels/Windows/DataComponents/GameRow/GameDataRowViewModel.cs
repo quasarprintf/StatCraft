@@ -79,7 +79,7 @@ public partial class GameDataRowViewModel : ViewModelBase
     public PlayerBuildTrackerViewModel SelfTracker { get; }
     public ObservableCollection<PlayerBuildTrackerViewModel> OtherPlayers { get; } = [];
     public AttributeValuesSelectViewModel AttributeValuesSelect { get; set; }
-    public string AttributesSummary => string.Join(", ", _game.AttributeValues.Select(v => v.Definition.Name));
+    public string AttributesSummary => string.Join(", ", _game.AttributeValues.Select(v => v.Definition).Where(d => !d.IsMandatory).Select(d => d.Name));
 
     internal GameDataRowViewModel(GameData game, GameDataRepository repository, ObservableCollection<AttributeDefinition> allAttributes, string profileLabel,
         Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree, ILogger logger, ReplayDataExtractor replayDataExtractor,
