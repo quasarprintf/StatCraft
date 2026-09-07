@@ -157,9 +157,8 @@ public partial class GameDataRowViewModel : ViewModelBase
         if (s is not GameData game)
             return; //TODO: log this, it's unexpected
 
-        // SaveValue deletes if value is null
-        //TODO: implement CRUD methods for game attributes
-        //_repository.SaveValue(game.Id, value.Definition.Id, null);
+        // A null value deletes the row — see GameDataRepository.SaveGameAttributeValue.
+        _repository.SaveGameAttributeValue(game.GameId!.Value, value.Definition.Id, null);
         RenderHeightChanged?.Invoke(this, EventArgs.Empty);
     }
     private void AttributeValueChanged(object? s, AttributeValue value)
@@ -167,8 +166,7 @@ public partial class GameDataRowViewModel : ViewModelBase
         if (s is not GameData game)
             return; //TODO: log this, it's unexpected
 
-        //TODO: implement CRUD methods for game attributes
-        //_repository.SaveValue(game.Id, value.Definition.Id, value.Serialize());
+        _repository.SaveGameAttributeValue(game.GameId!.Value, value.Definition.Id, value.Serialize());
         RenderHeightChanged?.Invoke(this, EventArgs.Empty);
     }
 

@@ -4,6 +4,7 @@ using System.Linq;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.BackgroundService;
 
@@ -107,12 +108,19 @@ public partial class GameDataRepository : SqliteRepository
         }
     }
 
-    internal List<GameData> GetGamesForProfile(int sc2ProfileId) => GetGamesForProfiles([sc2ProfileId]);
+    internal List<GameData> GetGamesForProfile(int sc2ProfileId, IReadOnlyCollection<AttributeDefinition>? gameAttributes = null) =>
+        GetGamesForProfiles([sc2ProfileId], gameAttributes);
 
     // Loads and merges games across every given profile, ordered by when they were actually played
     // rather than by Id — each profile has its own independent Id sequence, so merging by Id would
     // interleave profiles inconsistently.
-    internal List<GameData> GetGamesForProfiles(IReadOnlyCollection<int> sc2ProfileIds)
+    //
+    // gameAttributes mirrors MapRepository.GetAllMaps: taking the Game-scoped AttributeDefinitions as a
+    // parameter (rather than looking them up here) keeps a single source of truth for them, shared with
+    // whatever editor is displaying them. Left null — the default, so every pre-existing caller/test
+    // keeps working unchanged — each game's AttributeValues is simply left empty, same as before this
+    // parameter existed.
+    internal List<GameData> GetGamesForProfiles(IReadOnlyCollection<int> sc2ProfileIds, IReadOnlyCollection<AttributeDefinition>? gameAttributes = null)
     {
         if (sc2ProfileIds.Count == 0)
             return [];
@@ -140,6 +148,31 @@ public partial class GameDataRepository : SqliteRepository
                 $"SELECT Id, Name FROM Maps WHERE Id IN ({string.Join(",", mapIds)})");
             foreach (MapRow row in mapRows)
                 mapsById[(int)row.Id] = new Map { Id = (int)row.Id, Name = row.Name };
+        }
+
+        // Same idea as mapsById above for definition sharing: gameAttributes is the caller's own set of
+        // Game-scoped AttributeDefinitions, resolved against here rather than re-fetched, so every game
+        // and whatever's editing them agree on object identity. Left empty (no query at all) when the
+        // caller passed no definitions — every AttributeValue needs one to attach to, so there'd be
+        // nothing valid to build regardless.
+        Dictionary<long, List<AttributeValue>> gameAttributeValues = new();
+        if (gameAttributes is { Count: > 0 })
+        {
+            IEnumerable<GameAttributeValueRow> gameAttributeRows = conn.Query<GameAttributeValueRow>(
+                $"SELECT GameId, AttributeId, Value FROM GameAttributeValues WHERE GameId IN ({idList})");
+
+            Dictionary<int, AttributeDefinition> gameDefinitionMap = gameAttributes.ToDictionary(d => d.Id);
+            foreach (GameAttributeValueRow row in gameAttributeRows)
+            {
+                if (gameDefinitionMap.TryGetValue(row.AttributeId, out AttributeDefinition? definition))
+                {
+                    AttributeValue value = new(definition);
+                    value.ApplyStoredValue(row.Value);
+                    if (!gameAttributeValues.TryGetValue(row.GameId, out List<AttributeValue>? list))
+                        gameAttributeValues[row.GameId] = list = new();
+                    list.Add(value);
+                }
+            }
         }
 
         Dictionary<long, List<GamePlayer>> allies = new();
@@ -226,8 +259,20 @@ public partial class GameDataRepository : SqliteRepository
                 GameType = row.GameType,
                 ReplayData = replay,
                 Notes = row.Notes,
+                AttributeValues = gameAttributeValues.TryGetValue(row.Id, out List<AttributeValue>? values) ? new(values) : [],
             });
         }
+
+        // Same idea as MapRepository.GetAllMaps/BuildRepository: a mandatory attribute applies to every
+        // game even if it has no stored value yet, so it's backfilled here rather than left absent.
+        if (gameAttributes is { Count: > 0 })
+        {
+            foreach (AttributeDefinition definition in gameAttributes.Where(a => a.IsMandatory))
+                foreach (GameData game in games)
+                    if (!game.AttributeValues.Any(v => v.Definition == definition))
+                        game.AddAttribute(definition);
+        }
+
         return games;
     }
 
@@ -319,6 +364,29 @@ public partial class GameDataRepository : SqliteRepository
             new { gamePlayerId, buildAttributeId });
     }
 
+    // Game-scoped attribute value (see GameData/AttributeValuesSelectViewModel) — named distinctly from
+    // UpsertAttributeValue/DeleteAttributeValue above since those are GamePlayer/BuildDetailValues, a
+    // different table keyed differently, despite the deceptively similar (int, int, string) shape. A
+    // null value deletes the row rather than storing one, matching MapRepository.SaveValue: absence is
+    // how "unset" is represented, since the stored encoding can't distinguish an empty string from 0/false.
+    public void SaveGameAttributeValue(int gameId, int attributeId, string? value)
+    {
+        using SqliteConnection conn = OpenConnection();
+        if (value == null)
+        {
+            conn.Execute("DELETE FROM GameAttributeValues WHERE GameId = @gameId AND AttributeId = @attributeId",
+                new { gameId, attributeId });
+        }
+        else
+        {
+            conn.Execute(@"
+                    INSERT INTO GameAttributeValues (GameId, AttributeId, Value)
+                    VALUES (@gameId, @attributeId, @value)
+                    ON CONFLICT(GameId, AttributeId) DO UPDATE SET Value = @value",
+                new { gameId, attributeId, value });
+        }
+    }
+
     // True if any GameBuilds row still points at one of these build node ids. Deleting a BuildNode
     // cascades to its whole subtree (BuildNodes.ParentId ON DELETE CASCADE), and each deleted node
     // cascades away any GameBuilds row referencing it (ON DELETE CASCADE) along with that player's
@@ -402,6 +470,13 @@ public partial class GameDataRepository : SqliteRepository
     {
         public long GamePlayerId { get; set; }
         public int BuildAttributeId { get; set; }
+        public string Value { get; set; } = "";
+    }
+
+    private class GameAttributeValueRow
+    {
+        public long GameId { get; set; }
+        public int AttributeId { get; set; }
         public string Value { get; set; } = "";
     }
 }

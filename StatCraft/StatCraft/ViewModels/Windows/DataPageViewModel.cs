@@ -11,6 +11,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using System.Threading;
@@ -320,7 +321,7 @@ public partial class DataPageViewModel : ViewModelBase
     private async Task ReloadGamesFromDatabase()
     {
         List<int> profileIds = Filters.ProfileSlot.Options.Where(o => o.IsChecked).Select(o => o.Value.Id).ToList();
-        _loadedGames = profileIds.Count == 0 ? [] : _gameDataRepo.GetGamesForProfiles(profileIds);
+        _loadedGames = profileIds.Count == 0 ? [] : _gameDataRepo.GetGamesForProfiles(profileIds, _attributeRepo.GetAllAttributes(AttributeScope.Game));
         Filters.RefreshMapOptions(_loadedGames.Where(g => g.Map != null).Select(g => g.Map!).Distinct());
         ApplyFilters();
         await Task.CompletedTask;

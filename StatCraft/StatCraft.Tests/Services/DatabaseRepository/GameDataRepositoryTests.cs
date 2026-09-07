@@ -14,6 +14,7 @@ public class GameDataRepositoryTests : IDisposable
     private readonly BuildRepository _buildRepository;
     private readonly AccountRepository _accountRepository;
     private readonly MapRepository _mapRepository;
+    private readonly AttributeRepository _attributeRepository;
     private readonly int _sc2ProfileId;
 
     public GameDataRepositoryTests()
@@ -28,6 +29,8 @@ public class GameDataRepositoryTests : IDisposable
         // same ordering App.axaml.cs enforces through DI.
         _mapRepository = new MapRepository(_dbPath);
         _mapRepository.Initialize();
+        _attributeRepository = new AttributeRepository(_dbPath);
+        _attributeRepository.Initialize();
         _repository = new GameDataRepository(_dbPath);
         _repository.Initialize();
 
@@ -359,6 +362,81 @@ public class GameDataRepositoryTests : IDisposable
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         GameAttributeValue remaining = Assert.Single(loaded.ReplayData.Player.AttributeValues);
         Assert.Equal(attr2.Definition.Id, remaining.BuildAttributeId);
+    }
+
+    [Fact]
+    public void SaveGameAttributeValue_ThenGetGamesForProfileWithAttributes_ReturnsValue()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Game) { Name = "MVP", Type = AttributeType.Numeric };
+        _attributeRepository.InsertAttribute(attribute, 0);
+        GameData game = CreateGame();
+        _repository.InsertGame(game, _sc2ProfileId);
+
+        _repository.SaveGameAttributeValue(game.GameId!.Value, attribute.Id, "14");
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, [attribute]));
+        AttributeValue value = Assert.Single(loaded.AttributeValues);
+        Assert.Equal(attribute.Id, value.Definition.Id);
+        Assert.Equal(14m, value.NumericValue);
+    }
+
+    [Fact]
+    public void SaveGameAttributeValue_CalledTwice_OverwritesValue()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Game) { Name = "MVP", Type = AttributeType.Numeric };
+        _attributeRepository.InsertAttribute(attribute, 0);
+        GameData game = CreateGame();
+        _repository.InsertGame(game, _sc2ProfileId);
+
+        _repository.SaveGameAttributeValue(game.GameId!.Value, attribute.Id, "14");
+        _repository.SaveGameAttributeValue(game.GameId!.Value, attribute.Id, "16");
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, [attribute]));
+        AttributeValue value = Assert.Single(loaded.AttributeValues);
+        Assert.Equal(16m, value.NumericValue);
+    }
+
+    [Fact]
+    public void SaveGameAttributeValue_NullValue_DeletesTheRow()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Game) { Name = "MVP", Type = AttributeType.Numeric };
+        _attributeRepository.InsertAttribute(attribute, 0);
+        GameData game = CreateGame();
+        _repository.InsertGame(game, _sc2ProfileId);
+        _repository.SaveGameAttributeValue(game.GameId!.Value, attribute.Id, "14");
+
+        _repository.SaveGameAttributeValue(game.GameId!.Value, attribute.Id, null);
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, [attribute]));
+        Assert.Empty(loaded.AttributeValues);
+    }
+
+    // gameAttributes defaults to null so every pre-existing caller/test that doesn't care about
+    // game-level attributes keeps working unchanged — this pins that default explicitly.
+    [Fact]
+    public void GetGamesForProfile_WithoutGameAttributesArgument_LeavesAttributeValuesEmpty()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Game) { Name = "MVP", Type = AttributeType.Numeric };
+        _attributeRepository.InsertAttribute(attribute, 0);
+        GameData game = CreateGame();
+        _repository.InsertGame(game, _sc2ProfileId);
+        _repository.SaveGameAttributeValue(game.GameId!.Value, attribute.Id, "14");
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        Assert.Empty(loaded.AttributeValues);
+    }
+
+    [Fact]
+    public void GetGamesForProfile_MandatoryGameAttribute_IsBackfilledEvenWithoutAStoredValue()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Game) { Name = "MVP", Type = AttributeType.Bool, IsMandatory = true };
+        _attributeRepository.InsertAttribute(attribute, 0);
+        GameData game = CreateGame();
+        _repository.InsertGame(game, _sc2ProfileId);
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, [attribute]));
+        AttributeValue value = Assert.Single(loaded.AttributeValues);
+        Assert.Equal(attribute.Id, value.Definition.Id);
     }
 
     [Fact]
