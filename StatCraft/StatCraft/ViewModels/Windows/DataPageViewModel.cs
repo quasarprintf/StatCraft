@@ -419,7 +419,7 @@ public partial class DataPageViewModel : ViewModelBase
     // Refresh every cached matchup tree in place, so any GameDataRowViewModel/BuildPathPicker
     // holding a reference to one of these collections picks up the change automatically via its
     // own CollectionChanged notifications, without needing to touch existing rows individually.
-    // Reloading the tree data doesn't by itself refresh an already-selected build's attribute
+    // Reloading the tree data doesn't by itself refresh an already-selected build's detail
     // editors though (that list was built once, when the build was first selected), so each row
     // is asked to re-derive its own editors from the just-reloaded tree afterward.
     private void RefreshBuildTreeCache()

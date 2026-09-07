@@ -17,7 +17,7 @@ using System.Threading.Tasks;
 
 namespace StatCraft.ViewModels.Windows.DataComponents.GameRow;
 
-// Owns one player's build selection(s) and derived attribute editors within a game — reused for the
+// Owns one player's build selection(s) and derived detail editors within a game — reused for the
 // session user as well as every ally/opponent, since GameBuilds/BuildDetailValues are tied to a
 // GamePlayer's own id, not to the game as a whole.
 public partial class PlayerBuildTrackerViewModel : ViewModelBase
@@ -133,7 +133,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
         // Picking a build that's already covered by another selected slot adds nothing: an exact
         // duplicate would violate GameBuilds' UNIQUE(GamePlayerId, BuildId) constraint on persist, and
         // picking an ancestor of an already-selected build (e.g. selecting A when A->B is already
-        // selected elsewhere) is redundant, since B's own path already includes A's attributes.
+        // selected elsewhere) is redundant, since B's own path already includes A's details.
         // Revert instead of letting either through; reverting fires this handler again with the
         // (already-valid) previous value.
         if (slot.SelectedBuildNode != null && IsRedundantSelection(slot.SelectedBuildNode, slot))
@@ -175,7 +175,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     }
 
     // The four DB writes below are all "best effort, keep the in-memory state as the source of
-    // truth regardless" — e.g. a build/attribute referenced here having since been deleted (a
+    // truth regardless" — e.g. a build/detail referenced here having since been deleted (a
     // FOREIGN KEY violation) shouldn't leave the whole page unusable over one row failing to
     // persist. Logged so a real inconsistency is visible instead of just silently not saving.
     private void TryUpdateGameBuilds(List<int> buildIds)
@@ -221,7 +221,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
             FindPathOrLog(other.SelectedBuildNode).Any(n => n.Id == candidate.Id));
 
     // Clears the selection of any other slot whose selected build is a strict ancestor of slot's
-    // newly selected build — that ancestor's own attributes are already covered by slot's longer path.
+    // newly selected build — that ancestor's own details are already covered by slot's longer path.
     private void ClearSubsumedAncestorSlots(BuildSelectionSlotViewModel slot)
     {
         HashSet<int> ancestorIds = FindPathOrLog(slot.SelectedBuildNode!)
@@ -307,16 +307,16 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
         public List<TrieNode> Children { get; } = [];
     }
 
-    // Re-derives the attribute editors for the currently selected builds without changing any
-    // selection — called after DataPageViewModel reloads the cached build tree, so an attribute
+    // Re-derives the build detail editors for the currently selected builds without changing any
+    // selection — called after DataPageViewModel reloads the cached build tree, so a detail
     // added to (or removed from) a selected build or one of its ancestors on the Builds tab is
     // picked up here on the Data tab too.
     public void RefreshDetailEditors() => RebuildDetailEditors();
 
     // Deduplicated union of every selected build's root-to-leaf path, so a shared ancestor
-    // contributes its attributes exactly once no matter how many selected builds pass through it.
+    // contributes its details exactly once no matter how many selected builds pass through it.
     // Grouped by owning build (rather than flattened into one list) so the Data tab can show which
-    // build each attribute came from — Depth is each node's position within whichever selected
+    // build each detail came from — Depth is each node's position within whichever selected
     // path first reached it, root being 0, which is what lets the view indent a nested build's
     // group further than its ancestor's.
     private void RebuildDetailEditors()
@@ -336,8 +336,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
         }
         List<int> newIds = unionPath.SelectMany(p => p.Node.Details).Select(a => a.Id).ToList();
 
-        // Left every selected path: drop the stored value from the DB, but leave it in
-        // _player.AttributeValues (in-memory) so re-selecting the build within this session restores it.
+        // drop the stored value from the DB, but leave it in memory so re-selecting the build within this session restores it
         foreach (int leftId in oldIds.Except(newIds))
             TryDeleteDetailValue(leftId);
 

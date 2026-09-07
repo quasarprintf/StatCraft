@@ -209,7 +209,7 @@ public partial class GameDataRepository : SqliteRepository
         }
 
         // Every tracked player (not just the session user) can have their own build selections, so
-        // builds/attributes are fetched for every player loaded above, not just the self ones.
+        // builds/details are fetched for every player loaded above, not just the self ones.
         if (playersById.Count > 0)
         {
             string playerIdList = string.Join(",", playersById.Keys);
@@ -364,11 +364,8 @@ public partial class GameDataRepository : SqliteRepository
             new { gamePlayerId, buildDetailAttributeId });
     }
 
-    // Game-scoped attribute value (see GameData/AttributeValuesSelectViewModel) — named distinctly from
-    // UpsertAttributeValue/DeleteAttributeValue above since those are GamePlayer/BuildDetailValues, a
-    // different table keyed differently, despite the deceptively similar (int, int, string) shape. A
-    // null value deletes the row rather than storing one, matching MapRepository.SaveValue: absence is
-    // how "unset" is represented, since the stored encoding can't distinguish an empty string from 0/false.
+    // A null value deletes the row rather than storing one: absence is how "unset" is represented
+    // since the stored encoding can't distinguish an empty string from 0/false.
     public void SaveGameAttributeValue(int gameId, int attributeId, string? value)
     {
         using SqliteConnection conn = OpenConnection();
@@ -425,7 +422,7 @@ public partial class GameDataRepository : SqliteRepository
     // True if any GameBuilds row still points at one of these build node ids. Deleting a BuildNode
     // cascades to its whole subtree (BuildNodes.ParentId ON DELETE CASCADE), and each deleted node
     // cascades away any GameBuilds row referencing it (ON DELETE CASCADE) along with that player's
-    // recorded attribute values for it (via BuildDetailsAttributes -> BuildDetailValues) — so
+    // recorded build details values for it (via BuildDetailsAttributes -> BuildDetailValues) — so
     // callers should pass every id in the subtree being deleted, not just the root.
     public bool IsAnyBuildReferenced(IEnumerable<int> buildNodeIds)
     {

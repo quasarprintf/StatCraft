@@ -178,9 +178,9 @@ public partial class GameDataRowViewModel : ViewModelBase
         _repository.UpdateGameType(_game.GameId!.Value, value);
     }
 
-    // Re-derives every player's attribute editors for their currently selected builds without
-    // changing any selection — called after DataPageViewModel reloads the cached build tree, so an
-    // attribute added to (or removed from) a selected build or one of its ancestors on the Builds tab
+    // Re-derives every player's build detail editors for their currently selected builds without
+    // changing any selection — called after DataPageViewModel reloads the cached build tree, so a
+    // detail added to (or removed from) a selected build or one of its ancestors on the Builds tab
     // is picked up here on the Data tab too.
     public void RefreshDetailEditors()
     {

@@ -113,7 +113,7 @@ public class ReplayImportService(ILogger logger, ReplayDataExtractor replayDataE
         return GameTypeResolver.Resolve(replay, lastKnown);
     }
 
-    //poll battlenet api for ladder mmr until we see that mmr change. Attributes that change to the replay being parsed
+    //poll battlenet api for ladder mmr until we see that mmr change. Assumes found mmr change is from the replay being parsed
     private async Task TrackMmrChange(GameData game, Sc2Profile profile)
     {
         try

@@ -34,7 +34,7 @@ public partial class BuildsPage : UserControl
         if (!(TopLevel.GetTopLevel(this) is Window owner)) return;
 
         string message = $"\"{node.Name}\" has games recorded against it. Deleting it will remove " +
-            "that build from those games and erase their recorded attribute values for it. Delete anyway?";
+            "that build from those games and erase their recorded detail values for it. Delete anyway?";
         bool confirmed = await new ConfirmationWindow(message).ShowDialog<bool>(owner);
 
         if (confirmed)
