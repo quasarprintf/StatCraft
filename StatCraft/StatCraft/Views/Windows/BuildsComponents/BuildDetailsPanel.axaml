@@ -31,67 +31,73 @@
                             Padding="6,2" HorizontalAlignment="Right"/>
                 </DockPanel>
             </StackPanel>
-            <ScrollViewer DragDrop.AllowDrop="True" DragDrop.Drop="DetailDragDrop" DragDrop.DragOver="DetailDragOver">
-                <ItemsControl Name="DetailsList" ItemsSource="{Binding SelectedBuild.Details}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="Attr:AttributeDefinition">
-                            <StackPanel Margin="0,0,0,4">
-                                <!-- Main detail row -->
-                                <Grid ColumnDefinitions="Auto,*,120,Auto">
-                                    <TextBlock Grid.Column="0" Text="&#x2261;" PointerPressed="DetailDragPressed" Margin="0,0,4,0" HorizontalAlignment="Left" FontSize="20" />
-                                    <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="Name" Margin="0,0,4,0"/>
-                                    <ComboBox Grid.Column="2" SelectedItem="{Binding Type}"
-                                              ItemsSource="{x:Static Attr:AttributeDefinition.AllTypes}"
-                                              HorizontalAlignment="Stretch" Margin="0,0,4,0"/>
-                                    <Button Grid.Column="3" Content="✕"
-                                            Command="{Binding $parent[UserControl].((vmw:BuildsPageViewModel)DataContext).RemoveDetailCommand}"
-                                            CommandParameter="{Binding}"
-                                            Padding="6,2"/>
-                                </Grid>
-                                <!-- Default value editor -->
-                                <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0" IsVisible="{Binding !IsValues}">
-                                    <TextBlock Grid.Column="0" Text="Default:" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                    <NumericUpDown Grid.Column="1" Value="{Binding DefaultValue.NumericValue}"
-                                                   IsVisible="{Binding IsNumeric}"
-                                                   FormatString="0.##" HorizontalAlignment="Stretch"/>
-                                    <CheckBox Grid.Column="1" IsChecked="{Binding DefaultValue.BoolValue}"
-                                              IsVisible="{Binding IsBool}"/>
-                                    <NumericUpDown Grid.Column="1" Value="{Binding DefaultValue.PercentValue}"
-                                                   IsVisible="{Binding IsPercent}"
-                                                   Minimum="0" Maximum="100" FormatString="0.##'%'"
-                                                   HorizontalAlignment="Stretch"/>
-                                </Grid>
-                                <!-- Options editor (Values type only) -->
-                                <StackPanel IsVisible="{Binding IsValues}" Margin="16,4,0,0" Spacing="2">
-                                    <ItemsControl ItemsSource="{Binding ValueOptions}">
-                                        <ItemsControl.ItemTemplate>
-                                            <DataTemplate x:DataType="x:String">
-                                                <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,2">
-                                                    <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center"/>
-                                                    <Button Grid.Column="1" Content="✕" Padding="4,1"
-                                                            Command="{Binding $parent[ItemsControl].((Attr:AttributeDefinition)DataContext).RemoveOptionCommand}"
-                                                            CommandParameter="{Binding}"/>
-                                                </Grid>
-                                            </DataTemplate>
-                                        </ItemsControl.ItemTemplate>
-                                    </ItemsControl>
-                                    <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
-                                        <TextBox Grid.Column="0" Text="{Binding NewOptionText}"
-                                                 PlaceholderText="Add option..." Margin="0,0,4,0"/>
-                                        <Button Grid.Column="1" Content="+" Padding="6,2"
-                                                Command="{Binding AddOptionCommand}"/>
+            <ScrollViewer DragDrop.AllowDrop="True" DragDrop.Drop="DetailDragDrop" DragDrop.DragOver="DetailDragOver" DragDrop.DragLeave="DetailDragLeave">
+                <StackPanel Orientation="Vertical">
+                    <ItemsControl Name="DetailsList" ItemsSource="{Binding SelectedBuild.Details}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="Attr:AttributeDefinition">
+                                <StackPanel Margin="0,0,0,4">
+                                    <Border Name="DragLineTop" Height="3" Background="Gray" Margin="0,0,0,4" Opacity="0"
+                                            IsHitTestVisible="False" HorizontalAlignment="Stretch" VerticalAlignment="Top" />
+                                    <!-- Main detail row -->
+                                    <Grid ColumnDefinitions="Auto,*,120,Auto">
+                                        <TextBlock Grid.Column="0" Text="&#x2261;" PointerPressed="DetailDragPressed" Margin="0,0,4,0" HorizontalAlignment="Left" FontSize="20" />
+                                        <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="Name" Margin="0,0,4,0"/>
+                                        <ComboBox Grid.Column="2" SelectedItem="{Binding Type}"
+                                                  ItemsSource="{x:Static Attr:AttributeDefinition.AllTypes}"
+                                                  HorizontalAlignment="Stretch" Margin="0,0,4,0"/>
+                                        <Button Grid.Column="3" Content="✕"
+                                                Command="{Binding $parent[UserControl].((vmw:BuildsPageViewModel)DataContext).RemoveDetailCommand}"
+                                                CommandParameter="{Binding}"
+                                                Padding="6,2"/>
                                     </Grid>
-                                    <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0">
+                                    <!-- Default value editor -->
+                                    <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0" IsVisible="{Binding !IsValues}">
                                         <TextBlock Grid.Column="0" Text="Default:" VerticalAlignment="Center" Margin="0,0,4,0"/>
-                                        <ComboBox Grid.Column="1" ItemsSource="{Binding ValueOptions}"
-                                                  SelectedItem="{Binding DefaultValue.SelectedValue}"
-                                                  HorizontalAlignment="Stretch"/>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding DefaultValue.NumericValue}"
+                                                       IsVisible="{Binding IsNumeric}"
+                                                       FormatString="0.##" HorizontalAlignment="Stretch"/>
+                                        <CheckBox Grid.Column="1" IsChecked="{Binding DefaultValue.BoolValue}"
+                                                  IsVisible="{Binding IsBool}"/>
+                                        <NumericUpDown Grid.Column="1" Value="{Binding DefaultValue.PercentValue}"
+                                                       IsVisible="{Binding IsPercent}"
+                                                       Minimum="0" Maximum="100" FormatString="0.##'%'"
+                                                       HorizontalAlignment="Stretch"/>
                                     </Grid>
+                                    <!-- Options editor (Values type only) -->
+                                    <StackPanel IsVisible="{Binding IsValues}" Margin="16,4,0,0" Spacing="2">
+                                        <ItemsControl ItemsSource="{Binding ValueOptions}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="x:String">
+                                                    <Grid ColumnDefinitions="*,Auto" Margin="0,0,0,2">
+                                                        <TextBlock Grid.Column="0" Text="{Binding}" VerticalAlignment="Center"/>
+                                                        <Button Grid.Column="1" Content="✕" Padding="4,1"
+                                                                Command="{Binding $parent[ItemsControl].((Attr:AttributeDefinition)DataContext).RemoveOptionCommand}"
+                                                                CommandParameter="{Binding}"/>
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+                                            <TextBox Grid.Column="0" Text="{Binding NewOptionText}"
+                                                     PlaceholderText="Add option..." Margin="0,0,4,0"/>
+                                            <Button Grid.Column="1" Content="+" Padding="6,2"
+                                                    Command="{Binding AddOptionCommand}"/>
+                                        </Grid>
+                                        <Grid ColumnDefinitions="Auto,*" Margin="0,4,0,0">
+                                            <TextBlock Grid.Column="0" Text="Default:" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                            <ComboBox Grid.Column="1" ItemsSource="{Binding ValueOptions}"
+                                                      SelectedItem="{Binding DefaultValue.SelectedValue}"
+                                                      HorizontalAlignment="Stretch"/>
+                                        </Grid>
+                                    </StackPanel>
                                 </StackPanel>
-                            </StackPanel>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Border Name="DragLineBottom" Height="3" Background="Gray" Margin="0,0,0,4" Opacity="0"
+                            IsHitTestVisible="False" HorizontalAlignment="Stretch" VerticalAlignment="Bottom" />
+                </StackPanel>
             </ScrollViewer>
         </DockPanel>
 

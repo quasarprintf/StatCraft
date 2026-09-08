@@ -4,13 +4,16 @@ using Avalonia.Controls.Presenters;
 using Avalonia.Controls.Primitives;
 using Avalonia.Input;
 using Avalonia.Interactivity;
+using Avalonia.LogicalTree;
 using Avalonia.Threading;
 using Avalonia.VisualTree;
+using s2protocol.NET.Models;
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.ViewModels.Windows;
 using System.Collections;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace StatCraft.Views.Windows.BuildsComponents;
 
@@ -21,6 +24,8 @@ public partial class BuildDetailsPanel : UserControl
     {
         InitializeComponent();
     }
+
+    private Control? VisibleDragIndicator { get; set; }
 
     private async void DetailDragPressed(object? sender, PointerPressedEventArgs e)
     {
@@ -45,44 +50,76 @@ public partial class BuildDetailsPanel : UserControl
     }
     private void DetailDragDrop(object? sender, DragEventArgs e)
     {
-        DataFormat<AttributeDefinition> format = GetDragFormat();
-        AttributeDefinition? sourceAttribute = e.DataTransfer.TryGetValue(format);
-        if (sourceAttribute != null)
-        {
-            ObservableCollection<AttributeDefinition> details = _vm.SelectedBuild!.Details;
+        HideDragIndicator();
+        (int? sourceIndex, int? targetIndex, bool roundUp) = GetDragTarget(e);
+        if (sourceIndex == null || targetIndex == null)
+            return;
+        int? trueTargetIndex = RoundDragTarget(sourceIndex.Value, targetIndex.Value, roundUp);
+        if (trueTargetIndex == null) 
+            return;
+        if (trueTargetIndex > sourceIndex)
+            trueTargetIndex--;
 
-            Control? targetRow = GetDragTarget(e.GetPosition(DetailsList).Y, DetailsList, out bool roundUp);
-            if (targetRow == null)
-                return; //TODO: log this, shouldn't happen
-
-            if (!(targetRow?.DataContext is AttributeDefinition targetAttribute))
-                return; //TODO: log this, shouldn't happen
-
-            int sourceIndex = details.IndexOf(sourceAttribute);
-            int targetIndex = details.IndexOf(targetAttribute);
-
-            if (sourceIndex == -1 || targetIndex == -1)
-                return; //TODO: log this, shouldn't happen
-
-            int? trueTargetIndex = GetTrueDragTargetIndex(sourceIndex, targetIndex, roundUp);
-            if (trueTargetIndex == null)
-                return;
-
-            _vm.ChangeDetailIndex(sourceIndex, trueTargetIndex.Value);
-            e.DragEffects = DragDropEffects.Move;
-        }
+        _vm.ChangeDetailIndex(sourceIndex.Value, trueTargetIndex.Value);
+        e.DragEffects = DragDropEffects.Move;
     }
     private void DetailDragOver(object? sender, DragEventArgs e)
     {
-        DataFormat<AttributeDefinition> format = GetDragFormat();
-        if (e.DataTransfer.Contains(format))
+        (int? sourceIndex, int? targetIndex, bool roundUp) = GetDragTarget(e);
+        if (sourceIndex == null || targetIndex == null)
         {
-            e.DragEffects = DragDropEffects.Move;
-            e.Handled = true;
+            e.DragEffects = DragDropEffects.None;
+            HideDragIndicator();
+            return;
+        }
+        int? trueTargetIndex = RoundDragTarget(sourceIndex.Value, targetIndex.Value, roundUp);
+        if (trueTargetIndex == null)
+        {
+            HideDragIndicator();
+            return;
+        }
+
+        Control? newIndicator = null;
+        if (roundUp && trueTargetIndex == _vm.SelectedBuild!.Details.Count)
+        {
+            newIndicator = DragLineBottom;
         }
         else
         {
-            e.DragEffects = DragDropEffects.None;
+            Control container = DetailsList.ContainerFromIndex(trueTargetIndex.Value)!;
+            Control stackPanel = container.FindDescendantOfType<StackPanel>()!;
+            newIndicator = stackPanel.GetVisualChildren().FirstOrDefault(c => c.Name == "DragLineTop") as Control;
+        }
+
+        if (newIndicator == VisibleDragIndicator)
+            return;
+
+        HideDragIndicator();
+        VisibleDragIndicator = newIndicator;
+
+        if (VisibleDragIndicator != null)
+            VisibleDragIndicator.Opacity = 100;
+    }
+    private void DetailDragLeave(object? sender, DragEventArgs e)
+    {
+        e.Handled = true;
+        if (e.Source is ScrollContentPresenter container)
+        {
+            //avalonia is stupid and raises this when not actually leaving the control
+            //so check mouse region because fml
+            Point position = e.GetPosition(container);
+            if (container.Bounds.Contains(position))
+                return;
+
+            HideDragIndicator();
+        }
+    }
+    private void HideDragIndicator()
+    {
+        if (VisibleDragIndicator != null)
+        {
+            VisibleDragIndicator.Opacity = 0;
+            VisibleDragIndicator = null;
         }
     }
     private DataFormat<AttributeDefinition> GetDragFormat()
@@ -90,7 +127,31 @@ public partial class BuildDetailsPanel : UserControl
         return DataFormat.CreateInProcessFormat<AttributeDefinition>("DraggedRow");
     }
 
-    private Control? GetDragTarget(double yCoordinate, ItemsControl itemList, out bool belowCenter)
+    private (int? source, int? target, bool belowCenter) GetDragTarget(DragEventArgs e)
+    {
+        DataFormat<AttributeDefinition> format = GetDragFormat();
+        AttributeDefinition? sourceAttribute = e.DataTransfer.TryGetValue(format);
+        if (sourceAttribute == null)
+            return (null, null, false);
+
+        ObservableCollection<AttributeDefinition> details = _vm.SelectedBuild!.Details;
+
+        Control? targetRow = GetRowByY(e.GetPosition(DetailsList).Y, DetailsList, out bool belowCenter);
+        if (targetRow == null)
+            return (null, null, false); //TODO: log this, shouldn't happen
+
+        if (!(targetRow?.DataContext is AttributeDefinition targetAttribute))
+            return (null, null, false); //TODO: log this, shouldn't happen
+
+        int sourceIndex = details.IndexOf(sourceAttribute);
+        int targetIndex = details.IndexOf(targetAttribute);
+
+        if (sourceIndex == -1 || targetIndex == -1)
+            return (null, null, false); //TODO: log this, shouldn't happen
+
+        return (sourceIndex, targetIndex, belowCenter);
+    }
+    private Control? GetRowByY(double yCoordinate, ItemsControl itemList, out bool belowCenter)
     {
         //NOTE: linear scan works here because there will not be many detail rows.
         //If this logic is needed somewhere else, it should be extracted to a common location and converted to binary search
@@ -114,13 +175,11 @@ public partial class BuildDetailsPanel : UserControl
 
         return foundControl;
     }
-    private int? GetTrueDragTargetIndex(int sourceIndex, int targetIndex, bool roundUp)
+    private int? RoundDragTarget(int sourceIndex, int targetIndex, bool roundUp)
     {
         if (roundUp)
             targetIndex++;
-        if (sourceIndex < targetIndex)
-            targetIndex--;
-        if (sourceIndex == targetIndex)
+        if (sourceIndex == targetIndex || sourceIndex + 1 == targetIndex)
             return null;
 
         return targetIndex;
