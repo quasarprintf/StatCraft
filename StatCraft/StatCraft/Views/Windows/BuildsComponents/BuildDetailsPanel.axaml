@@ -31,8 +31,8 @@
                             Padding="6,2" HorizontalAlignment="Right"/>
                 </DockPanel>
             </StackPanel>
-            <ScrollViewer>
-                <ItemsControl ItemsSource="{Binding SelectedBuild.Details}" DragDrop.AllowDrop="True" DragDrop.Drop="DetailDragDrop">
+            <ScrollViewer DragDrop.AllowDrop="True" DragDrop.Drop="DetailDragDrop" DragDrop.DragOver="DetailDragOver">
+                <ItemsControl Name="DetailsList" ItemsSource="{Binding SelectedBuild.Details}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="Attr:AttributeDefinition">
                             <StackPanel Margin="0,0,0,4">
