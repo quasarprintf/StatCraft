@@ -27,8 +27,12 @@ public static class DatabaseMigrator
                 new SqlScriptOptions { RunGroupOrder = 1 })
             .WithScriptsEmbeddedInAssembly(
                 assembly,
+                s => s.Contains(".DatabaseScripts.RunOnce.Data."),
+                new SqlScriptOptions { RunGroupOrder = 2 })
+            .WithScriptsEmbeddedInAssembly(
+                assembly,
                 s => s.Contains(".DatabaseScripts.RunAlways."),
-                new SqlScriptOptions { RunGroupOrder = 2, ScriptType = ScriptType.RunAlways })
+                new SqlScriptOptions { RunGroupOrder = 3, ScriptType = ScriptType.RunAlways })
             .LogTo(new AppLoggerUpgradeLog(logger))
             .Build();
 

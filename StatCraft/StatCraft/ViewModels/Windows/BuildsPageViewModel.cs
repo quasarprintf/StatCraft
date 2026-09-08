@@ -564,7 +564,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     {
         if (SelectedBuild == null)
             return; //TODO: log this, it shouldn't happen
-        _buildRepo.DeleteBuildDetailAttribute(detail.Id);
+        _buildRepo.DeleteBuildDetailAttribute(SelectedBuild.Id, detail.Id);
         UnWireDetail(detail);
         SelectedBuild.Details.Remove(detail);
     }

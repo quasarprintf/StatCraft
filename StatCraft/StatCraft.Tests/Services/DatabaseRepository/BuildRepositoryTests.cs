@@ -273,7 +273,7 @@ public class BuildRepositoryTests : IDisposable
         BuildNode node = InsertBuildWithDetails(out int[] ids, "A", "B", "C", "D");
 
         // Delete B (SortOrder 1), leaving a gap: A=0, C=2, D=3 — never recompacted.
-        _repository.DeleteBuildDetailAttribute(ids[1]);
+        _repository.DeleteBuildDetailAttribute(node.Id, ids[1]);
 
         // UI list is now [A, C, D] at 0-based indices 0, 1, 2. Drag C (UI index 1) to before A (index 0).
         _repository.ChangeBuildDetailSortOrder(node.Id, sourceIndex: 1, targetIndex: 0);

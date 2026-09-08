@@ -191,10 +191,17 @@ public class BuildRepository : SqliteRepository
         BuildsChanged?.Invoke();
     }
 
-    public void DeleteBuildDetailAttribute(int id)
+    public void DeleteBuildDetailAttribute(int buildNodeId, int detailId)
     {
         using SqliteConnection conn = OpenConnection();
-        conn.Execute("DELETE FROM BuildDetailsAttributes WHERE Id = @id", new { id });
+        string query = """
+            UPDATE BuildDetailsAttributes
+                SET  SortOrder = SortOrder - 1
+                WHERE BuildNodeId = @buildNodeId
+                    AND SortOrder > (SELECT MAX(SortOrder) FROM BuildDetailsAttributes WHERE Id = @detailId);
+            DELETE FROM BuildDetailsAttributes WHERE Id = @detailId;
+            """;
+        conn.Execute(query, new { buildNodeId, detailId });
         BuildsChanged?.Invoke();
     }
 
