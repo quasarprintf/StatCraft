@@ -540,10 +540,18 @@ public partial class BuildsPageViewModel : ViewModelBase
         return false;
     }
 
+    public void ChangeDetailIndex(int sourceIndex, int targetIndex)
+    {
+        if (SelectedBuild == null)
+            return; //TODO: log this, it shouldn't happen
+        _buildRepo.ChangeBuildDetailSortOrder(SelectedBuild.Id, sourceIndex, targetIndex);
+        SelectedBuild.Details.Move(sourceIndex, targetIndex);
+    }
     [RelayCommand]
     public void AddDetail()
     {
-        if (SelectedBuild == null) return;
+        if (SelectedBuild == null) 
+            return; //TODO: log this, it shouldn't happen
         AttributeDefinition definition = new AttributeDefinition(AttributeScope.BuildDetail);
         AttributeValue attr = definition.DefaultValue;
         _buildRepo.InsertBuildDetailAttribute(attr, SelectedBuild.Id, SelectedBuild.Details.Count);
@@ -554,7 +562,8 @@ public partial class BuildsPageViewModel : ViewModelBase
     [RelayCommand]
     public void RemoveDetail(AttributeDefinition detail)
     {
-        if (SelectedBuild == null) return;
+        if (SelectedBuild == null)
+            return; //TODO: log this, it shouldn't happen
         _buildRepo.DeleteBuildDetailAttribute(detail.Id);
         UnWireDetail(detail);
         SelectedBuild.Details.Remove(detail);

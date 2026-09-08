@@ -32,17 +32,18 @@
                 </DockPanel>
             </StackPanel>
             <ScrollViewer>
-                <ItemsControl ItemsSource="{Binding SelectedBuild.Details}">
+                <ItemsControl ItemsSource="{Binding SelectedBuild.Details}" DragDrop.AllowDrop="True" DragDrop.Drop="DetailDragDrop">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="Attr:AttributeDefinition">
                             <StackPanel Margin="0,0,0,4">
                                 <!-- Main detail row -->
-                                <Grid ColumnDefinitions="*,120,Auto">
-                                    <TextBox Grid.Column="0" Text="{Binding Name}" PlaceholderText="Name" Margin="0,0,4,0"/>
-                                    <ComboBox Grid.Column="1" SelectedItem="{Binding Type}"
+                                <Grid ColumnDefinitions="Auto,*,120,Auto">
+                                    <TextBlock Grid.Column="0" Text="&#x2261;" PointerPressed="DetailDragPressed" Margin="0,0,4,0" HorizontalAlignment="Left" FontSize="20" />
+                                    <TextBox Grid.Column="1" Text="{Binding Name}" PlaceholderText="Name" Margin="0,0,4,0"/>
+                                    <ComboBox Grid.Column="2" SelectedItem="{Binding Type}"
                                               ItemsSource="{x:Static Attr:AttributeDefinition.AllTypes}"
                                               HorizontalAlignment="Stretch" Margin="0,0,4,0"/>
-                                    <Button Grid.Column="2" Content="✕"
+                                    <Button Grid.Column="3" Content="✕"
                                             Command="{Binding $parent[UserControl].((vmw:BuildsPageViewModel)DataContext).RemoveDetailCommand}"
                                             CommandParameter="{Binding}"
                                             Padding="6,2"/>

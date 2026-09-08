@@ -163,6 +163,34 @@ public class BuildRepository : SqliteRepository
         BuildsChanged?.Invoke();
     }
 
+    public void ChangeBuildDetailSortOrder(int buildNodeId, int sourceIndex, int targetIndex)
+    {
+        using SqliteConnection conn = OpenConnection();
+        string query;
+        if (sourceIndex > targetIndex)
+        {
+            query = """
+                    UPDATE BuildDetailsAttributes
+                        SET SortOrder = IIF(SortOrder = @sourceIndex, @targetIndex, SortOrder + 1)
+                        WHERE BuildNodeId = @buildNodeId
+                            AND SortOrder >= @targetIndex
+                            AND SortOrder <= @sourceIndex
+                    """;
+        }
+        else
+        {
+            query = """
+                    UPDATE BuildDetailsAttributes
+                        SET SortOrder = IIF(SortOrder = @sourceIndex, @targetIndex, SortOrder - 1)
+                        WHERE BuildNodeId = @buildNodeId
+                            AND SortOrder <= @targetIndex
+                            AND SortOrder >= @sourceIndex
+                    """;
+        }
+        conn.Execute(query, new { buildNodeId, sourceIndex, targetIndex });
+        BuildsChanged?.Invoke();
+    }
+
     public void DeleteBuildDetailAttribute(int id)
     {
         using SqliteConnection conn = OpenConnection();
