@@ -187,6 +187,120 @@ public class BuildRepositoryTests : IDisposable
         Assert.Equal(1, raisedCount);
     }
 
+    #region ChangeBuildDetailSortOrder
+
+    [Fact]
+    public void ChangeBuildDetailSortOrder_MovingEarlier_ShiftsIntermediateDetailsRightByOne()
+    {
+        BuildNode node = InsertBuildWithDetails(out int[] ids, "A", "B", "C", "D");
+
+        // Drag D (index 3) to the front (index 0).
+        _repository.ChangeBuildDetailSortOrder(node.Id, sourceIndex: 3, targetIndex: 0);
+
+        Assert.Equal(["D", "A", "B", "C"], LoadDetailNamesInOrder(node.Id));
+    }
+
+    [Fact]
+    public void ChangeBuildDetailSortOrder_MovingLater_ShiftsIntermediateDetailsLeftByOne()
+    {
+        BuildNode node = InsertBuildWithDetails(out int[] ids, "A", "B", "C", "D");
+
+        // Drag A (index 0) to the end (index 3).
+        _repository.ChangeBuildDetailSortOrder(node.Id, sourceIndex: 0, targetIndex: 3);
+
+        Assert.Equal(["B", "C", "D", "A"], LoadDetailNamesInOrder(node.Id));
+    }
+
+    [Fact]
+    public void ChangeBuildDetailSortOrder_AdjacentSwapForward_SwapsOnlyThoseTwo()
+    {
+        BuildNode node = InsertBuildWithDetails(out int[] ids, "A", "B", "C", "D");
+
+        // Drag B (index 1) to index 2 — should swap with C, leaving A and D untouched.
+        _repository.ChangeBuildDetailSortOrder(node.Id, sourceIndex: 1, targetIndex: 2);
+
+        Assert.Equal(["A", "C", "B", "D"], LoadDetailNamesInOrder(node.Id));
+    }
+
+    [Fact]
+    public void ChangeBuildDetailSortOrder_AdjacentSwapBackward_SwapsOnlyThoseTwo()
+    {
+        BuildNode node = InsertBuildWithDetails(out int[] ids, "A", "B", "C", "D");
+
+        // Drag C (index 2) to index 1 — should swap with B, leaving A and D untouched.
+        _repository.ChangeBuildDetailSortOrder(node.Id, sourceIndex: 2, targetIndex: 1);
+
+        Assert.Equal(["A", "C", "B", "D"], LoadDetailNamesInOrder(node.Id));
+    }
+
+    [Fact]
+    public void ChangeBuildDetailSortOrder_OnlyAffectsTheTargetedBuildNode()
+    {
+        BuildNode nodeA = InsertBuildWithDetails(out int[] idsA, "A1", "A2", "A3");
+        BuildNode nodeB = InsertBuildWithDetails(out int[] idsB, "B1", "B2", "B3");
+
+        _repository.ChangeBuildDetailSortOrder(nodeA.Id, sourceIndex: 2, targetIndex: 0);
+
+        Assert.Equal(["A3", "A1", "A2"], LoadDetailNamesInOrder(nodeA.Id));
+        Assert.Equal(["B1", "B2", "B3"], LoadDetailNamesInOrder(nodeB.Id));
+    }
+
+    [Fact]
+    public void ChangeBuildDetailSortOrder_RaisesBuildsChanged()
+    {
+        BuildNode node = InsertBuildWithDetails(out int[] ids, "A", "B");
+
+        int raisedCount = 0;
+        _repository.BuildsChanged += () => raisedCount++;
+
+        _repository.ChangeBuildDetailSortOrder(node.Id, sourceIndex: 0, targetIndex: 1);
+
+        Assert.Equal(1, raisedCount);
+    }
+
+    // KNOWN BUG, deliberately left failing: DeleteBuildDetailAttribute never recompacts the survivors'
+    // SortOrder, so once any detail has been deleted from a build, SortOrder is no longer a dense
+    // 0-based sequence — but ChangeBuildDetailSortOrder's sourceIndex/targetIndex come from the UI
+    // list's plain 0-based position (ObservableCollection.IndexOf), which then no longer lines up with
+    // the real SortOrder values. The drag silently targets the wrong row (or none at all) while the
+    // UI's own in-memory Details.Move() still reorders optimistically, so the screen shows the drag
+    // succeeding while the persisted order is actually left wrong and desynced from what's displayed.
+    // Mirrors InsertValueOption_AfterAnEarlierOptionWasDeleted_StillSortsAfterSurvivors above, which
+    // pinned the same class of bug already fixed for AttributeValueOptions but not yet here.
+    [Fact]
+    public void ChangeBuildDetailSortOrder_AfterAnEarlierDetailWasDeleted_MovesTheCorrectRow()
+    {
+        BuildNode node = InsertBuildWithDetails(out int[] ids, "A", "B", "C", "D");
+
+        // Delete B (SortOrder 1), leaving a gap: A=0, C=2, D=3 — never recompacted.
+        _repository.DeleteBuildDetailAttribute(ids[1]);
+
+        // UI list is now [A, C, D] at 0-based indices 0, 1, 2. Drag C (UI index 1) to before A (index 0).
+        _repository.ChangeBuildDetailSortOrder(node.Id, sourceIndex: 1, targetIndex: 0);
+
+        Assert.Equal(["C", "A", "D"], LoadDetailNamesInOrder(node.Id));
+    }
+
+    private BuildNode InsertBuildWithDetails(out int[] detailIds, params string[] names)
+    {
+        BuildNode node = new() { Name = "Build", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
+        _repository.InsertBuild(node, null, 0);
+
+        detailIds = new int[names.Length];
+        for (int i = 0; i < names.Length; i++)
+        {
+            AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = names[i], Type = AttributeType.Numeric });
+            _repository.InsertBuildDetailAttribute(attr, node.Id, i);
+            detailIds[i] = attr.Definition.Id;
+        }
+        return node;
+    }
+
+    private List<string> LoadDetailNamesInOrder(int buildNodeId) =>
+        _repository.GetAllBuilds().Single(n => n.Id == buildNodeId).Details.Select(d => d.Name).ToList();
+
+    #endregion
+
     // Static attributes (Scope.Build) are only loaded when definitions are passed in — omitting them
     // (as most tests above do) must leave StaticAttributes empty rather than throwing or guessing.
     [Fact]
