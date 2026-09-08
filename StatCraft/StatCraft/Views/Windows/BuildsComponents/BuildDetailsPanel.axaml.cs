@@ -102,7 +102,7 @@ public partial class BuildDetailsPanel : UserControl
             //avalonia is stupid and raises this when not actually leaving the control
             //so check mouse region because fml
             Point position = e.GetPosition(container);
-            if (container.Bounds.Contains(position))
+            if (new Rect(container.Bounds.Size).Contains(position))
                 return;
 
             HideDragIndicator();
