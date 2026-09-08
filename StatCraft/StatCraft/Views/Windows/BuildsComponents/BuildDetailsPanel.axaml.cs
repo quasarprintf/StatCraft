@@ -1,15 +1,9 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
-using Avalonia.Controls.Primitives;
 using Avalonia.Input;
-using Avalonia.Interactivity;
-using Avalonia.LogicalTree;
-using Avalonia.Threading;
 using Avalonia.VisualTree;
-using s2protocol.NET.Models;
 using StatCraft.Models.GameData.Attributes;
-using StatCraft.Models.GameData.Builds;
 using StatCraft.ViewModels.Windows;
 using System.Collections;
 using System.Collections.ObjectModel;
