@@ -1,10 +1,9 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
-             xmlns:vmc="using:StatCraft.ViewModels.Windows.DataComponents"
              xmlns:maps="using:StatCraft.Models.GameData.Maps"
              xmlns:local="using:StatCraft.Views.Windows.MapsComponents"
-             xmlns:data="using:StatCraft.Views.Windows.DataComponents"
+             xmlns:filters="using:StatCraft.Views.Components.Filters"
              x:Class="StatCraft.Views.Windows.MapsPage"
              x:DataType="vmw:MapsPageViewModel">
     <Grid ColumnDefinitions="240,4,*">
@@ -39,45 +38,13 @@
                      pushes the remove button off the edge. -->
                 <ItemsControl.DataTemplates>
                     <DataTemplate x:DataType="vmw:Filters.CheckboxFilterSlotViewModel">
-                        <StackPanel Spacing="2">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
-                                           TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
-                                <Button Grid.Column="1" Classes="removeFilter" Command="{Binding RemoveCommand}"/>
-                            </Grid>
-                            <data:CheckboxFilterDropdown Header="{Binding Title}" Options="{Binding Options}"
-                                                          ShowSearch="{Binding ShowSearch}" SearchText="{Binding SearchText}"
-                                                          Columns="{Binding Columns}" HorizontalAlignment="Left"/>
-                            <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
-                        </StackPanel>
+                        <filters:CheckboxFilter/>
                     </DataTemplate>
                     <DataTemplate x:DataType="vmw:Filters.BoolFilterSlotViewModel">
-                        <StackPanel Spacing="2">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
-                                           TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
-                                <Button Grid.Column="1" Classes="removeFilter" Command="{Binding RemoveCommand}"/>
-                            </Grid>
-                            <!-- Three-state: checked/unchecked pick true/false, indeterminate (the
-                                 attribute's own starting state) means no constraint on this dimension. -->
-                            <CheckBox IsChecked="{Binding Value}" IsThreeState="True"/>
-                            <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
-                        </StackPanel>
+                        <filters:BoolFilter/>
                     </DataTemplate>
                     <DataTemplate x:DataType="vmw:Filters.NumericRangeFilterSlotViewModel">
-                        <StackPanel Spacing="2">
-                            <Grid ColumnDefinitions="*,Auto">
-                                <TextBlock Grid.Column="0" Text="{Binding Title}" VerticalAlignment="Center"
-                                           TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
-                                <Button Grid.Column="1" Classes="removeFilter" Command="{Binding RemoveCommand}"/>
-                            </Grid>
-                            <StackPanel Classes="filterSlot">
-                                <NumericUpDown Value="{Binding Min}" Width="90" PlaceholderText="Min" FormatString="0.##" ShowButtonSpinner="False"/>
-                                <TextBlock Text="-" VerticalAlignment="Center"/>
-                                <NumericUpDown Value="{Binding Max}" Width="90" PlaceholderText="Max" FormatString="0.##" ShowButtonSpinner="False"/>
-                            </StackPanel>
-                            <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
-                        </StackPanel>
+                        <filters:NumericRangeFilter/>
                     </DataTemplate>
                 </ItemsControl.DataTemplates>
             </ItemsControl>

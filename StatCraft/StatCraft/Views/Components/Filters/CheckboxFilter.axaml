@@ -1,0 +1,25 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vmw="using:StatCraft.ViewModels.Windows"
+             xmlns:local="using:StatCraft.Views.Components.Filters"
+             xmlns:data="using:StatCraft.Views.Windows.DataComponents"
+             x:Class="StatCraft.Views.Components.Filters.CheckboxFilter"
+             x:DataType="vmw:Filters.CheckboxFilterSlotViewModel"
+             x:Name="Root">
+    <Panel>
+        <StackPanel Classes="filterSlot" IsVisible="{Binding Inline, ElementName=Root}">
+            <data:CheckboxFilterDropdown Header="{Binding Title}" Options="{Binding Options}"
+                                           ShowSearch="{Binding ShowSearch}" SearchText="{Binding SearchText}"
+                                           Columns="{Binding Columns}"/>
+            <Button Classes="removeFilter" Command="{Binding RemoveCommand}"/>
+        </StackPanel>
+
+        <StackPanel Spacing="2" IsVisible="{Binding !Inline, ElementName=Root}">
+            <local:FilterSlotHeader/>
+            <data:CheckboxFilterDropdown Header="{Binding Title}" Options="{Binding Options}"
+                                          ShowSearch="{Binding ShowSearch}" SearchText="{Binding SearchText}"
+                                          Columns="{Binding Columns}" HorizontalAlignment="Left"/>
+            <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
+        </StackPanel>
+    </Panel>
+</UserControl>

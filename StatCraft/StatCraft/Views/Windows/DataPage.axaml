@@ -5,6 +5,7 @@
              xmlns:vmc="using:StatCraft.ViewModels.Windows.DataComponents"
              xmlns:local="using:StatCraft.Views.Windows.DataComponents"
              xmlns:component="using:StatCraft.Views.Components"
+             xmlns:filters="using:StatCraft.Views.Components.Filters"
               x:Class="StatCraft.Views.Windows.DataPage"
              x:DataType="vmw:DataPageViewModel">
     <DockPanel>
@@ -50,21 +51,10 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.DataTemplates>
                         <DataTemplate x:DataType="vmw:Filters.CheckboxFilterSlotViewModel">
-                            <StackPanel Classes="filterSlot">
-                                <local:CheckboxFilterDropdown Header="{Binding Title}" Options="{Binding Options}"
-                                                               ShowSearch="{Binding ShowSearch}" SearchText="{Binding SearchText}"
-                                                               Columns="{Binding Columns}"/>
-                                <Button Classes="removeFilter" Command="{Binding RemoveCommand}"/>
-                            </StackPanel>
+                            <filters:CheckboxFilter Inline="True"/>
                         </DataTemplate>
                         <DataTemplate x:DataType="vmw:Filters.NumericRangeFilterSlotViewModel">
-                            <StackPanel Classes="filterSlot">
-                                <TextBlock Text="{Binding Title}" VerticalAlignment="Center"/>
-                                <NumericUpDown Value="{Binding Min}" Width="60" PlaceholderText="Min" FormatString="0" ShowButtonSpinner="False"/>
-                                <TextBlock Text="-" VerticalAlignment="Center"/>
-                                <NumericUpDown Value="{Binding Max}" Width="60" PlaceholderText="Max" FormatString="0" ShowButtonSpinner="False"/>
-                                <Button Classes="removeFilter" Command="{Binding RemoveCommand}"/>
-                            </StackPanel>
+                            <filters:NumericRangeFilter Inline="True"/>
                         </DataTemplate>
                     </ItemsControl.DataTemplates>
                 </ItemsControl>
