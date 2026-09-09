@@ -65,7 +65,12 @@
                     <MenuFlyout ItemsSource="{Binding Filters.HiddenExtraFilterSlots}" Placement="BottomEdgeAlignedRight">
                         <MenuFlyout.ItemContainerTheme>
                             <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmw:Filters.FilterMenuItemViewModel">
+                                <!-- Submenus are misaligned by default for some reason. Shift up to fix -->
+                                <Style Selector="^ /template/ Popup">
+                                    <Setter Property="VerticalOffset" Value="-5"/>
+                                </Style>
                                 <Setter Property="Header" Value="{Binding DisplayText}"/>
+                                <Setter Property="ItemsSource" Value="{Binding SubMenuItems}"/>
                                 <Setter Property="Command" Value="{Binding Filter.AddCommand}"/>
                             </ControlTheme>
                         </MenuFlyout.ItemContainerTheme>

@@ -9,6 +9,10 @@ using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Models.GameData.Maps;
+using System.Collections.ObjectModel;
+using StatCraft.Models.GameData.Attributes;
+using StatCraft.Services.Factories;
+using System.Collections.Specialized;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 
@@ -22,6 +26,8 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     // doesn't trigger its own reload — the caller (DataPageViewModel.SetActiveProfile) always issues
     // exactly one explicit reload right afterward.
     private bool _suppressChangeEvents;
+
+    private FilterSlotFactory _filterSlotFactory;
 
     public CheckboxFilterSlotViewModel<Sc2Profile> ProfileSlot { get; }
 
@@ -37,6 +43,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public CheckboxFilterSlotViewModel<GameOutcome> OutcomeSlot { get; }
     public NumericRangeFilterSlotViewModel MmrSlot { get; }
     public CheckboxFilterSlotViewModel<BuildNode> BuildSlot { get; }
+    public ObservableCollection<FilterMenuItemViewModel> GameAttributeSlots { get; private set; }
 
     // Fixed display order for both the bar itself and the "+ Filters" add-dropdown.
     public IReadOnlyList<FilterMenuItemViewModel> ExtraFilterSlots { get; }
@@ -48,8 +55,10 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public event Action? ProfileSelectionChanged;
     public event Action? OtherFiltersChanged;
 
-    internal DataPageFiltersViewModel(BuildRepository buildRepository)
+    internal DataPageFiltersViewModel(BuildRepository buildRepository, ObservableCollection<AttributeDefinition> gameAttributes, FilterSlotFactory filterSlotFactory)
     {
+        _filterSlotFactory = filterSlotFactory;
+
         ProfileSlot = new CheckboxFilterSlotViewModel<Sc2Profile>("Profile", [], showSearch: true);
         // Checking/unchecking a profile requires a database reload, unlike every other checkbox
         // filter, so it's wired to ProfileSelectionChanged instead of joining the ExtraFilterSlots
@@ -66,13 +75,22 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         MmrSlot = new NumericRangeFilterSlotViewModel("Opponent MMR") { AllowIncludeUnset=false };
         BuildSlot = new CheckboxFilterSlotViewModel<BuildNode>("Build", BuildBuildOptions(buildRepository)) { AllowIncludeUnset=false };
 
+        GameAttributeSlots = new ObservableCollection<FilterMenuItemViewModel>();
+        foreach (var attribute in gameAttributes)
+        {
+            FilterSlotViewModel filterSlot = _filterSlotFactory.CreateFromDefinition(attribute);
+            GameAttributeSlots.Add(new FilterMenuItemViewModel(filterSlot));
+        }
+        gameAttributes.CollectionChanged += GameAttributesChanged;
+
         ExtraFilterSlots = 
         [
             new FilterMenuItemViewModel(MapSlot),
             new FilterMenuItemViewModel(MatchupSlot), 
             new FilterMenuItemViewModel(OutcomeSlot),
             new FilterMenuItemViewModel(MmrSlot),
-            new FilterMenuItemViewModel(BuildSlot)
+            new FilterMenuItemViewModel(BuildSlot),
+            new FilterMenuItemViewModel(GameAttributeSlots, "Game Attributes")
         ];
         foreach (FilterMenuItemViewModel slot in ExtraFilterSlots)
         {
@@ -126,6 +144,26 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             .OrderBy(m => m.Name)
             .Select(m => new CheckboxFilterOptionViewModel<Map>(m, m.Name) { IsChecked = previouslyChecked.Contains(m.Id) });
         MapSlot.ReplaceOptions(newOptions);
+    }
+
+    private void GameAttributesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems != null)
+        {
+            for (int i = e.NewStartingIndex; i < e.NewItems.Count + e.NewStartingIndex; ++i) 
+            {
+                AttributeDefinition attribute = (AttributeDefinition)e.NewItems[i]!;
+                FilterSlotViewModel filterSlot = _filterSlotFactory.CreateFromDefinition(attribute);
+                GameAttributeSlots.Insert(i, new FilterMenuItemViewModel(filterSlot));
+            }
+        }
+        if (e.OldItems != null)
+        {
+            for (int i = e.OldStartingIndex; i < e.OldItems.Count + e.OldStartingIndex; ++i) 
+            {
+                GameAttributeSlots.RemoveAt(i);
+            }
+        }
     }
 
     // Collapses the profile filter to just the given profile and resets the date range to today —
