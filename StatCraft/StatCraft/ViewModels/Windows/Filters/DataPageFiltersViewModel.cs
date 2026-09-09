@@ -73,7 +73,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             // rebuilding on every criteria edit too would tear down and recreate the ItemsControl's
             // containers on every keystroke/checkbox click, stealing focus from whatever the user is
             // actively interacting with.
-            slot.VisibilityChanged += () =>
+            slot.IsAppliedChanged += () =>
             {
                 OnPropertyChanged(nameof(VisibleExtraFilterSlots));
                 OnPropertyChanged(nameof(HiddenExtraFilterSlots));
