@@ -1,14 +1,14 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
-             xmlns:data="using:StatCraft.Views.Windows.DataComponents"
+             xmlns:local="using:StatCraft.Views.Components.Filters"
              x:Class="StatCraft.Views.Components.Filters.CheckboxFilter"
              x:DataType="vmw:Filters.CheckboxFilterSlotViewModel"
              x:Name="Root">
     <StackPanel Spacing="2" VerticalAlignment="Center">
         <Grid ColumnDefinitions="Auto,*">
             <Button Grid.Column="0" Classes="removeFilter" Command="{Binding RemoveCommand}"/>
-            <data:CheckboxFilterDropdown Grid.Column="1" Header="{Binding Title}" Options="{Binding Options}"
+            <local:CheckboxFilterDropdown Grid.Column="1" Header="{Binding Title}" Options="{Binding Options}"
                                             ShowSearch="{Binding ShowSearch}" SearchText="{Binding SearchText}"
                                             Columns="{Binding Columns}" HorizontalAlignment="Left"/>
         </Grid>

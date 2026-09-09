@@ -1,8 +1,8 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
-             xmlns:local="using:StatCraft.Views.Windows.DataComponents"
-             x:Class="StatCraft.Views.Windows.DataComponents.CheckboxFilterDropdown"
+             xmlns:local="using:StatCraft.Views.Components.Filters"
+             x:Class="StatCraft.Views.Components.Filters.CheckboxFilterDropdown"
              x:Name="Root">
     <!-- Flyout content is hosted in a separate popup root, not a visual descendant of this control, so
          RelativeSource AncestorType lookups from inside it silently fail. ElementName bindings resolve
