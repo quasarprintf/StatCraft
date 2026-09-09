@@ -33,7 +33,7 @@ public abstract partial class FilterSlotViewModel : ViewModelBase
     // into a numeric range or checking an option (which also raises Changed) doesn't make the filter
     // bar's own ItemsControl think the set of visible slots changed and rebuild its item containers,
     // which would tear down and recreate whatever control the user is actively focused on/typing in.
-    public event Action? IsAppliedChanged;
+    public event EventHandler? IsAppliedChanged;
 
     protected FilterSlotViewModel(string title)
     {
@@ -46,7 +46,7 @@ public abstract partial class FilterSlotViewModel : ViewModelBase
 
     partial void OnIsAppliedChanged(bool value)
     {
-        IsAppliedChanged?.Invoke();
+        IsAppliedChanged?.Invoke(this, EventArgs.Empty);
         RaiseChanged();
     }
 

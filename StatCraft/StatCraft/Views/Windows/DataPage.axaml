@@ -6,7 +6,7 @@
              xmlns:local="using:StatCraft.Views.Windows.DataComponents"
              xmlns:component="using:StatCraft.Views.Components"
              xmlns:filters="using:StatCraft.Views.Components.Filters"
-              x:Class="StatCraft.Views.Windows.DataPage"
+             x:Class="StatCraft.Views.Windows.DataPage"
              x:DataType="vmw:DataPageViewModel">
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="8">
@@ -64,9 +64,9 @@
                 <Button.Flyout>
                     <MenuFlyout ItemsSource="{Binding Filters.HiddenExtraFilterSlots}" Placement="BottomEdgeAlignedRight">
                         <MenuFlyout.ItemContainerTheme>
-                            <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmw:Filters.FilterSlotViewModel">
-                                <Setter Property="Header" Value="{Binding Title}"/>
-                                <Setter Property="Command" Value="{Binding AddCommand}"/>
+                            <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmw:Filters.FilterMenuItemViewModel">
+                                <Setter Property="Header" Value="{Binding DisplayText}"/>
+                                <Setter Property="Command" Value="{Binding Filter.AddCommand}"/>
                             </ControlTheme>
                         </MenuFlyout.ItemContainerTheme>
                     </MenuFlyout>

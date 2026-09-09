@@ -575,7 +575,7 @@ public partial class BuildsPageViewModel : ViewModelBase
         FilterSlotViewModel slot = _filterSlotFactory.CreateFromDefinition(attribute);
         slot.IsApplied = isVisible;
         slot.AllowIncludeUnset = true;
-        slot.IsAppliedChanged += () => OnSlotVisibilityChanged(slot);
+        slot.IsAppliedChanged += (_,_) => OnSlotVisibilityChanged(slot);
         slot.Changed += ApplyFilters;
 
         _slotByAttribute[attribute] = slot;

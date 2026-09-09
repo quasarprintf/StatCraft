@@ -37,8 +37,8 @@ public class DataPageFiltersViewModelTests : IDisposable
         _filters.MapSlot.AddCommand.Execute(null);
 
         Assert.True(_filters.MapSlot.IsApplied);
-        Assert.Contains(_filters.MapSlot, _filters.VisibleExtraFilterSlots);
-        Assert.DoesNotContain(_filters.MapSlot, _filters.HiddenExtraFilterSlots);
+        Assert.Contains(_filters.MapSlot, _filters.VisibleExtraFilterSlots.Select(s => s.Filter));
+        Assert.DoesNotContain(_filters.MapSlot, _filters.HiddenExtraFilterSlots.Select(s => s.Filter));
     }
 
     [Fact]

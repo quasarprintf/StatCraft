@@ -39,9 +39,9 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public CheckboxFilterSlotViewModel<BuildNode> BuildSlot { get; }
 
     // Fixed display order for both the bar itself and the "+ Filters" add-dropdown.
-    public IReadOnlyList<FilterSlotViewModel> ExtraFilterSlots { get; }
-    public IEnumerable<FilterSlotViewModel> VisibleExtraFilterSlots => ExtraFilterSlots.Where(s => s.IsApplied);
-    public IEnumerable<FilterSlotViewModel> HiddenExtraFilterSlots => ExtraFilterSlots.Where(s => !s.IsApplied);
+    public IReadOnlyList<FilterMenuItemViewModel> ExtraFilterSlots { get; }
+    public IEnumerable<FilterSlotViewModel> VisibleExtraFilterSlots => ExtraFilterSlots.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
+    public IEnumerable<FilterMenuItemViewModel> HiddenExtraFilterSlots => ExtraFilterSlots.Where(s => !s.IsApplied);
 
     // Checking/unchecking a profile changes which games need to be loaded from the database at all;
     // every other filter change only needs to re-filter the already-loaded set in memory.
@@ -66,19 +66,26 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         MmrSlot = new NumericRangeFilterSlotViewModel("Opponent MMR") { AllowIncludeUnset=false };
         BuildSlot = new CheckboxFilterSlotViewModel<BuildNode>("Build", BuildBuildOptions(buildRepository)) { AllowIncludeUnset=false };
 
-        ExtraFilterSlots = [MapSlot, MatchupSlot, OutcomeSlot, MmrSlot, BuildSlot];
-        foreach (FilterSlotViewModel slot in ExtraFilterSlots)
+        ExtraFilterSlots = 
+        [
+            new FilterMenuItemViewModel(MapSlot),
+            new FilterMenuItemViewModel(MatchupSlot), 
+            new FilterMenuItemViewModel(OutcomeSlot),
+            new FilterMenuItemViewModel(MmrSlot),
+            new FilterMenuItemViewModel(BuildSlot)
+        ];
+        foreach (FilterMenuItemViewModel slot in ExtraFilterSlots)
         {
             // Only a visibility toggle (Add/Remove) should rebuild the filter bar's own item list —
             // rebuilding on every criteria edit too would tear down and recreate the ItemsControl's
             // containers on every keystroke/checkbox click, stealing focus from whatever the user is
             // actively interacting with.
-            slot.IsAppliedChanged += () =>
+            slot.IsAppliedChanged += (_,_) =>
             {
                 OnPropertyChanged(nameof(VisibleExtraFilterSlots));
                 OnPropertyChanged(nameof(HiddenExtraFilterSlots));
             };
-            slot.Changed += () =>
+            slot.Filter?.Changed += () =>
             {
                 if (!_suppressChangeEvents)
                     OtherFiltersChanged?.Invoke();
