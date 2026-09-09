@@ -39,9 +39,9 @@
             <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
                 <local:CheckboxFilterDropdown Header="{Binding Filters.ProfileSlot.Title}" Options="{Binding Filters.ProfileSlot.Options}"
                                                ShowSearch="{Binding Filters.ProfileSlot.ShowSearch}" SearchText="{Binding Filters.ProfileSlot.SearchText}"/>
-                <local:CompactDatePicker SelectedDate="{Binding Filters.FromDate}"/>
+                <component:CompactDatePicker SelectedDate="{Binding Filters.FromDate}"/>
                 <TextBlock Text="to" VerticalAlignment="Center"/>
-                <local:CompactDatePicker SelectedDate="{Binding Filters.ToDate}"/>
+                <component:CompactDatePicker SelectedDate="{Binding Filters.ToDate}"/>
 
                 <ItemsControl ItemsSource="{Binding Filters.VisibleExtraFilterSlots}">
                     <ItemsControl.ItemsPanel>
