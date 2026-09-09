@@ -8,15 +8,6 @@ namespace StatCraft.Views.Components.Filters;
 // whole numbers, since the only inline range is opponent MMR.
 public partial class NumericRangeFilter : UserControl
 {
-    public static readonly StyledProperty<bool> InlineProperty =
-        AvaloniaProperty.Register<NumericRangeFilter, bool>(nameof(Inline));
-
-    public bool Inline
-    {
-        get => GetValue(InlineProperty);
-        set => SetValue(InlineProperty, value);
-    }
-
     public NumericRangeFilter()
     {
         InitializeComponent();

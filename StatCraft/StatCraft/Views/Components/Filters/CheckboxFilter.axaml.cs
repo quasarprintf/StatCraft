@@ -8,15 +8,6 @@ namespace StatCraft.Views.Components.Filters;
 // orientation: only the stacked form carries a title/remove header and an "include unset" opt-in.
 public partial class CheckboxFilter : UserControl
 {
-    public static readonly StyledProperty<bool> InlineProperty =
-        AvaloniaProperty.Register<CheckboxFilter, bool>(nameof(Inline));
-
-    public bool Inline
-    {
-        get => GetValue(InlineProperty);
-        set => SetValue(InlineProperty, value);
-    }
-
     public CheckboxFilter()
     {
         InitializeComponent();

@@ -51,10 +51,10 @@
                     </ItemsControl.ItemsPanel>
                     <ItemsControl.DataTemplates>
                         <DataTemplate x:DataType="vmw:Filters.CheckboxFilterSlotViewModel">
-                            <filters:CheckboxFilter Inline="True"/>
+                            <filters:CheckboxFilter/>
                         </DataTemplate>
                         <DataTemplate x:DataType="vmw:Filters.NumericRangeFilterSlotViewModel">
-                            <filters:NumericRangeFilter Inline="True"/>
+                            <filters:NumericRangeFilter/>
                         </DataTemplate>
                     </ItemsControl.DataTemplates>
                 </ItemsControl>

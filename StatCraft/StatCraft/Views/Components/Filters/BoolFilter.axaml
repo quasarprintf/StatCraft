@@ -1,14 +1,17 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
-             xmlns:local="using:StatCraft.Views.Components.Filters"
              x:Class="StatCraft.Views.Components.Filters.BoolFilter"
              x:DataType="vmw:Filters.BoolFilterSlotViewModel">
-    <StackPanel Spacing="2">
-        <local:FilterSlotHeader/>
+    <StackPanel Spacing="2" VerticalAlignment="Center">
+        <Grid ColumnDefinitions="Auto,*">
+            <Button Grid.Column="0" Classes="removeFilter" Command="{Binding RemoveCommand}"/>
+            <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
+        </Grid>
         <!-- Three-state: checked/unchecked pick true/false, indeterminate (the
              attribute's own starting state) means no constraint on this dimension. -->
         <CheckBox IsChecked="{Binding Value}" IsThreeState="True"/>
-        <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" FontSize="11"/>
+        <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" IsVisible="{Binding AllowIncludeUnset}" FontSize="11"/>
     </StackPanel>
 </UserControl>

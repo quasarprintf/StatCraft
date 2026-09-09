@@ -22,6 +22,8 @@ public abstract partial class FilterSlotViewModel : ViewModelBase
     // dimensions all come from the replay and are never unset, so its templates simply don't show it.
     [ObservableProperty] private bool _includeUnset;
 
+    public bool AllowIncludeUnset { get; set; }
+
     // Raised whenever this slot's own criteria changes in a way that should affect which games are
     // shown — visibility toggling here, or (in each concrete subclass) its own selection/bounds.
     public event Action? Changed;

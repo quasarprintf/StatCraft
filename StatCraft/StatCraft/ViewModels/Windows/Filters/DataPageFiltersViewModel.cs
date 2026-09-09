@@ -60,11 +60,11 @@ public partial class DataPageFiltersViewModel : ViewModelBase
                 ProfileSelectionChanged?.Invoke();
         };
 
-        MapSlot = new CheckboxFilterSlotViewModel<Map>("Map", [], showSearch: true);
-        MatchupSlot = new CheckboxFilterSlotViewModel<(Race, Race)>("Matchup", BuildMatchupOptions(), columns: 3);
-        OutcomeSlot = new CheckboxFilterSlotViewModel<GameOutcome>("Outcome", BuildOutcomeOptions());
-        MmrSlot = new NumericRangeFilterSlotViewModel("Opponent MMR");
-        BuildSlot = new CheckboxFilterSlotViewModel<BuildNode>("Build", BuildBuildOptions(buildRepository));
+        MapSlot = new CheckboxFilterSlotViewModel<Map>("Map", [], showSearch: true) { AllowIncludeUnset=false };
+        MatchupSlot = new CheckboxFilterSlotViewModel<(Race, Race)>("Matchup", BuildMatchupOptions(), columns: 3) { AllowIncludeUnset=false };
+        OutcomeSlot = new CheckboxFilterSlotViewModel<GameOutcome>("Outcome", BuildOutcomeOptions()) { AllowIncludeUnset=false };
+        MmrSlot = new NumericRangeFilterSlotViewModel("Opponent MMR") { AllowIncludeUnset=false };
+        BuildSlot = new CheckboxFilterSlotViewModel<BuildNode>("Build", BuildBuildOptions(buildRepository)) { AllowIncludeUnset=false };
 
         ExtraFilterSlots = [MapSlot, MatchupSlot, OutcomeSlot, MmrSlot, BuildSlot];
         foreach (FilterSlotViewModel slot in ExtraFilterSlots)

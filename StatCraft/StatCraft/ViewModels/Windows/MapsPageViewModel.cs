@@ -296,6 +296,7 @@ public partial class MapsPageViewModel : ViewModelBase
     {
         FilterSlotViewModel slot = _filterSlotFactory.CreateFromDefinition(attribute);
         slot.IsVisible = isVisible;
+        slot.AllowIncludeUnset = true;
         slot.VisibilityChanged += () => OnSlotVisibilityChanged(slot);
         slot.Changed += ApplyFilters;
 
