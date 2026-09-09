@@ -26,7 +26,7 @@ public class DataPageFiltersViewModelTests : IDisposable
     [Fact]
     public void ExtraFilterSlots_AreHiddenByDefault()
     {
-        Assert.All(_filters.ExtraFilterSlots, slot => Assert.False(slot.IsVisible));
+        Assert.All(_filters.ExtraFilterSlots, slot => Assert.False(slot.IsApplied));
         Assert.Equal(5, _filters.HiddenExtraFilterSlots.Count());
         Assert.Empty(_filters.VisibleExtraFilterSlots);
     }
@@ -36,7 +36,7 @@ public class DataPageFiltersViewModelTests : IDisposable
     {
         _filters.MapSlot.AddCommand.Execute(null);
 
-        Assert.True(_filters.MapSlot.IsVisible);
+        Assert.True(_filters.MapSlot.IsApplied);
         Assert.Contains(_filters.MapSlot, _filters.VisibleExtraFilterSlots);
         Assert.DoesNotContain(_filters.MapSlot, _filters.HiddenExtraFilterSlots);
     }
@@ -53,7 +53,7 @@ public class DataPageFiltersViewModelTests : IDisposable
 
         _filters.MapSlot.RemoveCommand.Execute(null);
 
-        Assert.False(_filters.MapSlot.IsVisible);
+        Assert.False(_filters.MapSlot.IsApplied);
         Assert.All(_filters.MapSlot.Options, o => Assert.False(o.IsChecked));
     }
 
@@ -65,7 +65,7 @@ public class DataPageFiltersViewModelTests : IDisposable
 
         _filters.MmrSlot.RemoveCommand.Execute(null);
 
-        Assert.False(_filters.MmrSlot.IsVisible);
+        Assert.False(_filters.MmrSlot.IsApplied);
         Assert.Null(_filters.MmrSlot.Min);
         Assert.Null(_filters.MmrSlot.Max);
     }

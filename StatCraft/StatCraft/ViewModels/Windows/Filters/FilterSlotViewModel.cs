@@ -14,7 +14,7 @@ public abstract partial class FilterSlotViewModel : ViewModelBase
     // drop whatever criteria the user already entered.
     [ObservableProperty] private string _title = "";
 
-    [ObservableProperty] private bool _isVisible;
+    [ObservableProperty] private bool _isApplied;
 
     // Whether entities with no value at all for this dimension still pass. Only the Maps tab binds
     // it: a newly defined map attribute is unset on every map, so without an opt-in an attribute
@@ -44,7 +44,7 @@ public abstract partial class FilterSlotViewModel : ViewModelBase
     // hidden filter never silently keeps constraining results.
     public abstract void Clear();
 
-    partial void OnIsVisibleChanged(bool value)
+    partial void OnIsAppliedChanged(bool value)
     {
         VisibilityChanged?.Invoke();
         RaiseChanged();
@@ -53,12 +53,12 @@ public abstract partial class FilterSlotViewModel : ViewModelBase
     partial void OnIncludeUnsetChanged(bool value) => RaiseChanged();
 
     [RelayCommand]
-    private void Add() => IsVisible = true;
+    private void Add() => IsApplied = true;
 
     [RelayCommand]
     private void Remove()
     {
-        IsVisible = false;
+        IsApplied = false;
         IncludeUnset = false;
         Clear();
     }

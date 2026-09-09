@@ -40,8 +40,8 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
     // Fixed display order for both the bar itself and the "+ Filters" add-dropdown.
     public IReadOnlyList<FilterSlotViewModel> ExtraFilterSlots { get; }
-    public IEnumerable<FilterSlotViewModel> VisibleExtraFilterSlots => ExtraFilterSlots.Where(s => s.IsVisible);
-    public IEnumerable<FilterSlotViewModel> HiddenExtraFilterSlots => ExtraFilterSlots.Where(s => !s.IsVisible);
+    public IEnumerable<FilterSlotViewModel> VisibleExtraFilterSlots => ExtraFilterSlots.Where(s => s.IsApplied);
+    public IEnumerable<FilterSlotViewModel> HiddenExtraFilterSlots => ExtraFilterSlots.Where(s => !s.IsApplied);
 
     // Checking/unchecking a profile changes which games need to be loaded from the database at all;
     // every other filter change only needs to re-filter the already-loaded set in memory.

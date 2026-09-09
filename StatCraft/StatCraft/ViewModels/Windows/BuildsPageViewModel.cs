@@ -205,7 +205,7 @@ public partial class BuildsPageViewModel : ViewModelBase
                 // Numeric/Percent vs. Bool vs. Values are different FilterSlotViewModel subclasses,
                 // so the slot itself has to be replaced rather than patched — but only for this one
                 // attribute, and preserving whether it was actually showing.
-                bool wasVisible = _slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? old) && old.IsVisible;
+                bool wasVisible = _slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? old) && old.IsApplied;
                 RemoveFilterSlot(cachedAttr);
                 AddFilterSlot(cachedAttr, wasVisible);
             }
@@ -573,7 +573,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
     {
         FilterSlotViewModel slot = _filterSlotFactory.CreateFromDefinition(attribute);
-        slot.IsVisible = isVisible;
+        slot.IsApplied = isVisible;
         slot.AllowIncludeUnset = true;
         slot.VisibilityChanged += () => OnSlotVisibilityChanged(slot);
         slot.Changed += ApplyFilters;
@@ -595,7 +595,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     // Add/Remove commands the "+" menu and the filter's own ✕ button invoke.
     private void OnSlotVisibilityChanged(FilterSlotViewModel slot)
     {
-        if (slot.IsVisible)
+        if (slot.IsApplied)
         {
             HiddenFilterSlots.Remove(slot);
             if (!VisibleFilterSlots.Contains(slot))
@@ -644,7 +644,7 @@ public partial class BuildsPageViewModel : ViewModelBase
 
         foreach ((AttributeDefinition attribute, FilterSlotViewModel slot) in _slotByAttribute)
         {
-            if (!slot.IsVisible)
+            if (!slot.IsApplied)
                 continue;
 
             AttributeValue? value = node.AttributeValues.FirstOrDefault(v => v.Definition == attribute);
