@@ -1,4 +1,5 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using StatCraft.Services.DataFiltering;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 
@@ -19,5 +20,12 @@ public sealed class CheckboxFilterOptionViewModel<T> : CheckboxFilterOptionViewM
     {
         Value = value;
         Label = label;
+    }
+    public BoolFilter<T> GetFilter(bool? acceptNull = null)
+    {
+        return new BoolFilter<T>(o => o?.Equals(Value))
+        {
+            AcceptNull = acceptNull ?? false
+        };
     }
 }

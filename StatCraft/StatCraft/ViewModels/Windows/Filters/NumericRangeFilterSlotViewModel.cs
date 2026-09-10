@@ -1,4 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using StatCraft.Services.DataFiltering;
+using System;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 
@@ -14,6 +16,14 @@ public sealed partial class NumericRangeFilterSlotViewModel : FilterSlotViewMode
 
     internal NumericRangeFilterSlotViewModel(string title) : base(title)
     {
+    }
+
+    public DecimalFilter<T> GetFilter<T>(Func<T, decimal?> filteredPropertyMap)
+    {
+        return new DecimalFilter<T>(filteredPropertyMap)
+        {
+            AcceptNull = IncludeUnset
+        };
     }
 
     partial void OnMinChanged(decimal? value) => RaiseChanged();

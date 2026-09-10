@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
+using StatCraft.Services.DataFiltering;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 
@@ -39,6 +41,20 @@ public sealed partial class CheckboxFilterSlotViewModel<T> : CheckboxFilterSlotV
         : base(title, showSearch, columns)
     {
         ReplaceOptions(options);
+    }
+
+    public OrFilter<T> GetFilter(Func<T, bool> filteredPropertyMap)
+    {
+        List<BoolFilter<T>> selectedOptions = new List<BoolFilter<T>>();
+        foreach (var option in Options) 
+        {
+            if (option.IsChecked)
+                selectedOptions.Add(option.GetFilter());
+        }
+        return new OrFilter<T>(selectedOptions)
+        {
+            AcceptNull = IncludeUnset
+        };
     }
 
     // Rebuilds the option list (e.g. the map filter's options depend on which games are currently

@@ -1,4 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
+using StatCraft.Services.DataFiltering;
+using System;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 
@@ -11,6 +13,14 @@ public sealed partial class BoolFilterSlotViewModel : FilterSlotViewModel
 
     internal BoolFilterSlotViewModel(string title) : base(title)
     {
+    }
+
+    public BoolFilter<T> GetFilter<T>(Func<T, bool?> filteredPropertyMap)
+    {
+        return new BoolFilter<T>(filteredPropertyMap)
+        {
+            AcceptNull = IncludeUnset
+        };
     }
 
     partial void OnValueChanged(bool? value) => RaiseChanged();
