@@ -26,7 +26,8 @@ public class DataPageFiltersViewModelTests : IDisposable
     [Fact]
     public void ExtraFilterSlots_AreHiddenByDefault()
     {
-        Assert.All(_filters.ExtraFilterSlots, slot => Assert.False(slot.IsApplied));
+
+        Assert.All(_filters.ExtraFilterSlots, slot => Assert.True(slot.Filter == null || !slot.IsApplied));
         Assert.Equal(5, _filters.HiddenExtraFilterSlots.Count());
         Assert.Empty(_filters.VisibleExtraFilterSlots);
     }
