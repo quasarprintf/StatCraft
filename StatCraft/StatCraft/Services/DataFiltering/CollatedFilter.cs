@@ -8,8 +8,8 @@ public abstract class CollatedFilter<T,F> : IFilter<T>
 {
     public bool? AcceptNull { get; set; }
     public IReadOnlyCollection<IFilter<F>> Filters { get; set; }
-    protected Func<T,F> _filteredPropertyMap;
-    public CollatedFilter(IReadOnlyCollection<IFilter<F>> filters, Func<T,F> filteredPropertyMap)
+    protected Func<T,F?> _filteredPropertyMap;
+    public CollatedFilter(IReadOnlyCollection<IFilter<F>> filters, Func<T,F?> filteredPropertyMap)
     {
         Filters = filters;
         _filteredPropertyMap = filteredPropertyMap;

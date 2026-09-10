@@ -7,14 +7,14 @@ namespace StatCraft.Services.DataFiltering;
 
 public class OrFilter<T,F> : CollatedFilter<T,F>
 {
-    public OrFilter(IReadOnlyCollection<IFilter<F>> filters, Func<T,F> filteredPropertyMap) : base(filters, filteredPropertyMap)
+    public OrFilter(IReadOnlyCollection<IFilter<F>> filters, Func<T,F?> filteredPropertyMap) : base(filters, filteredPropertyMap)
     {
     }
     public override bool MatchesFilter(T candidate, bool? acceptNullOverride = null)
     {
         if (candidate == null)
             return false;
-        F mapped = _filteredPropertyMap(candidate);
+        F? mapped = _filteredPropertyMap(candidate);
         if (mapped == null)
             return acceptNullOverride ?? AcceptNull ?? false;
         if (Filters.Count == 0)

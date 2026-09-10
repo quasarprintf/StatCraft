@@ -43,7 +43,7 @@ public sealed partial class CheckboxFilterSlotViewModel<T> : CheckboxFilterSlotV
         ReplaceOptions(options);
     }
 
-    public OrFilter<F,F> GetFilter<F>(Func<F,T> filteredPropertyMap)
+    public OrFilter<F,F> GetFilter<F>(Func<F,T?> filteredPropertyMap)
     {
         //TODO: make a new SetMemberFilter so we can use constant time lookup instead of linear
         List<BoolFilter<F>> selectedOptions = new List<BoolFilter<F>>();

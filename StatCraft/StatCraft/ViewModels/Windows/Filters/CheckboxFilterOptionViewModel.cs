@@ -22,7 +22,7 @@ public sealed class CheckboxFilterOptionViewModel<T> : CheckboxFilterOptionViewM
         Value = value;
         Label = label;
     }
-    public BoolFilter<F> GetFilter<F>(Func<F,T> filteredPropertyMap, bool? acceptNull = null)
+    public BoolFilter<F> GetFilter<F>(Func<F,T?> filteredPropertyMap, bool? acceptNull = null)
     {
         return new BoolFilter<F>(o => filteredPropertyMap(o)?.Equals(Value))
         {
