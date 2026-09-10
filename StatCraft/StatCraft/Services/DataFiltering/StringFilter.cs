@@ -4,11 +4,7 @@ using System.Text;
 
 namespace StatCraft.Services.DataFiltering;
 
-public interface IStringFilter : IFilter
-{
-    public string? FilterValue { get; set; }
-}
-public class StringFilter<T> : IFilter<T>, IStringFilter
+public class StringFilter<T> : IFilter<T>
 {
     public bool MatchExact { get; set; }
     public bool? AcceptNull { get; set; }

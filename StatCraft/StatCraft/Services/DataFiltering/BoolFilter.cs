@@ -4,11 +4,7 @@ using System.Text;
 
 namespace StatCraft.Services.DataFiltering;
 
-public interface IBoolFilter : IFilter
-{
-    bool? FilterValue { get; set; }
-}
-public class BoolFilter<T> : IFilter<T>, IBoolFilter
+public class BoolFilter<T> : IFilter<T>
 {
     public bool? AcceptNull { get; set; }
     public bool? FilterValue { get; set; }

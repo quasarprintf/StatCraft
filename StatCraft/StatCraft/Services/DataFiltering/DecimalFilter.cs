@@ -4,11 +4,7 @@ using System.Text;
 
 namespace StatCraft.Services.DataFiltering;
 
-public interface IDecimalFilter : IFilter
-{
-    public decimal? FilterValue { get; set; }
-}
-public class DecimalFilter<T> : IFilter<T>, IDecimalFilter
+public class DecimalFilter<T> : IFilter<T>
 {
     private int _compareType;
     public bool? AcceptNull { get; set; }

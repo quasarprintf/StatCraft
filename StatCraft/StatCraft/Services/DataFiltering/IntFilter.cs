@@ -4,11 +4,7 @@ using System.Text;
 
 namespace StatCraft.Services.DataFiltering;
 
-public interface IIntFilter : IFilter
-{
-    int? FilterValue { get; set; }
-}
-public class IntFilter<T> : IFilter<T>, IIntFilter
+public class IntFilter<T> : IFilter<T>
 {
     private int _compareType;
     public bool? AcceptNull { get; set; }
