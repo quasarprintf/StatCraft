@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
+using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
@@ -620,67 +621,62 @@ public partial class BuildsPageViewModel : ViewModelBase
     // matching descendant nested under it, so RefreshFilterMatch folds descendants in too.
     private void ApplyFilters()
     {
+        AndFilter<BuildNode> filter = GetFilters();
         foreach (BuildNode root in Builds)
-            RefreshFilterMatch(root);
+            RefreshFilterMatch(root, filter);
     }
 
     // Post-order: a node matches if it satisfies the name box and every visible attribute filter
     // itself, or any descendant (transitively) does — so a match's whole ancestor chain stays
     // visible, even though those ancestors may not themselves pass the filter.
-    private bool RefreshFilterMatch(BuildNode node)
+    private bool RefreshFilterMatch(BuildNode node, IFilter<BuildNode> filter)
     {
         bool anyDescendantMatches = false;
         foreach (BuildNode child in node.Children)
-            anyDescendantMatches |= RefreshFilterMatch(child);
+            anyDescendantMatches |= RefreshFilterMatch(child, filter);
 
-        bool matches = Matches(node) || anyDescendantMatches;
+        bool matches = filter.MatchesFilter(node) || anyDescendantMatches;
         node.MatchesFilter = matches;
         return matches;
     }
-    private bool Matches(BuildNode node)
+    private AndFilter<BuildNode> GetFilters()
     {
-        if (!MatchesName(node, NameFilter))
-            return false;
-
+        List<IFilter<BuildNode>> filters = new List<IFilter<BuildNode>>();
+        StringFilter<BuildNode> nameFilter = new StringFilter<BuildNode>(m => m.Name)
+        {
+            FilterValue = NameFilter.Trim(),
+            MatchExact = false
+        };
+        filters.Add(nameFilter);
         foreach ((AttributeDefinition attribute, FilterSlotViewModel slot) in _slotByAttribute)
         {
             if (!slot.IsApplied)
                 continue;
-
-            AttributeValue? value = node.AttributeValues.FirstOrDefault(v => v.Definition == attribute);
-
-            if (!MatchesSlot(slot, value))
-                return false;
+            IFilter<AttributeValue> filter = SlotFilter(attribute, slot);
+            //TODO: is there a better less-hacky way to do this?
+            //wrap the filter in an AndFilter so we can have a null check on both the attribute and the attribute value
+            AndFilter<BuildNode, AttributeValue> wrappedFilter = new AndFilter<BuildNode, AttributeValue>([filter], b => b.GetAttributeByDefinitionId(attribute.Id));
+            filters.Add(wrappedFilter);
         }
-
-        return true;
+        return new AndFilter<BuildNode>(filters);
     }
-    private static bool MatchesName(BuildNode node, string? nameFilter)
+    private static IFilter<AttributeValue> SlotFilter(AttributeDefinition definition, FilterSlotViewModel slot)
     {
-        return string.IsNullOrWhiteSpace(nameFilter) || node.Name.Contains(nameFilter.Trim(), StringComparison.OrdinalIgnoreCase);
-    }
-    private static bool MatchesSlot(FilterSlotViewModel slot, AttributeValue? value)
-    {
-        if (value == null)
-            return slot.IncludeUnset;
+        int id = definition.Id;
         switch (slot)
         {
             case NumericRangeFilterSlotViewModel range:
-                if (value.Definition.Type == AttributeType.Numeric)
-                    return range.GetFilter<AttributeValue>(a => a.NumericValue).MatchesFilter(value);
+                if (definition.Type == AttributeType.Numeric)
+                    return range.GetFilter<AttributeValue>(a => a?.NumericValue);
                 else
-                    return range.GetFilter<AttributeValue>(a => a.PercentValue).MatchesFilter(value);
+                    return range.GetFilter<AttributeValue>(a => a?.PercentValue);
             case BoolFilterSlotViewModel boolSlot:
-                return boolSlot.GetFilter<AttributeValue>(a => a.BoolValue).MatchesFilter(value);
+                return boolSlot.GetFilter<AttributeValue>(a => a?.BoolValue);
             case CheckboxFilterSlotViewModel<string> strings:
-                return strings.GetFilter<AttributeValue>(a => a.SelectedValue ?? "").MatchesFilter(value);
+                return strings.GetFilter<AttributeValue>(a => a?.SelectedValue ?? "");
             default:
-                return true;
+                throw new NotImplementedException();
         }
-    }
-    private static IReadOnlySet<T> Checked<T>(CheckboxFilterSlotViewModel<T> slot)
-    {
-        return slot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
     }
     #endregion
 }
