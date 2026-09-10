@@ -376,7 +376,6 @@ public partial class MapsPageViewModel : ViewModelBase
     }
     private static IFilter<AttributeValue> SlotFilter(AttributeDefinition definition, FilterSlotViewModel slot)
     {
-        int id = definition.Id;
         switch (slot)
         {
             case NumericRangeFilterSlotViewModel range:

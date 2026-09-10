@@ -1,5 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 
@@ -9,10 +8,8 @@ public interface IStringFilter : IFilter
 {
     public string? FilterValue { get; set; }
 }
-public partial class StringFilter<T> : IFilter<T>
+public class StringFilter<T> : IFilter<T>, IStringFilter
 {
-    public event Action? FilterChanged;
-
     public bool MatchExact { get; set; }
     public bool? AcceptNull { get; set; }
     public string FilterValue { get; set; } = "";
