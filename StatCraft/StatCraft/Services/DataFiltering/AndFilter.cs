@@ -14,6 +14,8 @@ public class AndFilter<T> : CollatedFilter<T>
     }
     public override bool MatchesFilter(T candidate, bool? acceptNullOverride = null)
     {
+        if (Filters.Count == 0)
+            return true;
         if (acceptNullOverride == null)
             acceptNullOverride = AcceptNull;
         return Filters.Select(f => f.MatchesFilter(candidate, acceptNullOverride)).All(m => m);

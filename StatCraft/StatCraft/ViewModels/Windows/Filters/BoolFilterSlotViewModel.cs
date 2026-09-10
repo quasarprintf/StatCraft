@@ -19,7 +19,8 @@ public sealed partial class BoolFilterSlotViewModel : FilterSlotViewModel
     {
         return new BoolFilter<T>(filteredPropertyMap)
         {
-            AcceptNull = IncludeUnset
+            AcceptNull = IncludeUnset,
+            FilterValue = Value
         };
     }
 

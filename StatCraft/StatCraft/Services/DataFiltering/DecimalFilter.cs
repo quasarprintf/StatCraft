@@ -20,7 +20,7 @@ public partial class DecimalFilter<T> : IFilter<T>, IDecimalFilter
     {
         _filteredPropertyMap = filteredPropertyMap;
     }
-    public bool MatchesFilter(T filter, bool? acceptNullOverride)
+    public bool MatchesFilter(T filter, bool? acceptNullOverride = null)
     {
         if (acceptNullOverride == null)
             acceptNullOverride = AcceptNull;

@@ -18,9 +18,17 @@ public sealed partial class NumericRangeFilterSlotViewModel : FilterSlotViewMode
     {
     }
 
-    public DecimalFilter<T> GetFilter<T>(Func<T, decimal?> filteredPropertyMap)
+    public AndFilter<T> GetFilter<T>(Func<T, decimal?> filteredPropertyMap)
     {
-        return new DecimalFilter<T>(filteredPropertyMap)
+        DecimalFilter<T> lowerBound = new DecimalFilter<T>(filteredPropertyMap)
+        {
+            FilterValue = Min
+        }.SetMatchLowerBound();
+        DecimalFilter<T> upperBound = new DecimalFilter<T>(filteredPropertyMap)
+        {
+            FilterValue = Max
+        }.SetMatchUpperBound();
+        return new AndFilter<T>([lowerBound, upperBound])
         {
             AcceptNull = IncludeUnset
         };

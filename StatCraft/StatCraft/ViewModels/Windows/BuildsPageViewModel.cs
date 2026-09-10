@@ -666,11 +666,14 @@ public partial class BuildsPageViewModel : ViewModelBase
         switch (slot)
         {
             case NumericRangeFilterSlotViewModel range:
-                return AttributeFilter.MatchesRange(value, range.Min, range.Max, range.IncludeUnset);
+                if (value.Definition.Type == AttributeType.Numeric)
+                    return range.GetFilter<AttributeValue>(a => a.NumericValue).MatchesFilter(value);
+                else
+                    return range.GetFilter<AttributeValue>(a => a.PercentValue).MatchesFilter(value);
             case BoolFilterSlotViewModel boolSlot:
-                return AttributeFilter.MatchesBool(value, boolSlot.Value, boolSlot.IncludeUnset);
+                return boolSlot.GetFilter<AttributeValue>(a => a.BoolValue).MatchesFilter(value);
             case CheckboxFilterSlotViewModel<string> strings:
-                return AttributeFilter.MatchesSelection(Checked(strings), value.HasValue, value.SelectedValue ?? "", strings.IncludeUnset);
+                return strings.GetFilter<AttributeValue>(a => a.SelectedValue ?? "").MatchesFilter(value);
             default:
                 return true;
         }

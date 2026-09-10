@@ -43,15 +43,15 @@ public sealed partial class CheckboxFilterSlotViewModel<T> : CheckboxFilterSlotV
         ReplaceOptions(options);
     }
 
-    public OrFilter<T> GetFilter(Func<T, bool> filteredPropertyMap)
+    public OrFilter<F> GetFilter<F>(Func<F,T> filteredPropertyMap)
     {
-        List<BoolFilter<T>> selectedOptions = new List<BoolFilter<T>>();
-        foreach (var option in Options) 
+        List<BoolFilter<F>> selectedOptions = new List<BoolFilter<F>>();
+        foreach (var option in Options)
         {
             if (option.IsChecked)
-                selectedOptions.Add(option.GetFilter());
+                selectedOptions.Add(option.GetFilter(filteredPropertyMap));
         }
-        return new OrFilter<T>(selectedOptions)
+        return new OrFilter<F>(selectedOptions)
         {
             AcceptNull = IncludeUnset
         };
