@@ -644,7 +644,8 @@ public partial class BuildsPageViewModel : ViewModelBase
         StringFilter<BuildNode> nameFilter = new StringFilter<BuildNode>(m => m.Name)
         {
             FilterValue = NameFilter.Trim(),
-            MatchExact = false
+            MatchExact = false,
+            AcceptNull = string.IsNullOrWhiteSpace(NameFilter)
         };
         filters.Add(nameFilter);
         foreach ((AttributeDefinition attribute, FilterSlotViewModel slot) in _slotByAttribute)
@@ -671,7 +672,7 @@ public partial class BuildsPageViewModel : ViewModelBase
             case BoolFilterSlotViewModel boolSlot:
                 return boolSlot.GetFilter<AttributeValue>(a => a?.BoolValue);
             case CheckboxFilterSlotViewModel<string> strings:
-                return strings.GetFilter<AttributeValue>(a => a?.SelectedValue ?? "");
+                return strings.GetFilter<AttributeValue>(a => a?.SelectedValue);
             default:
                 throw new NotImplementedException();
         }

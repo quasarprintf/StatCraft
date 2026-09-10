@@ -28,7 +28,7 @@ public partial class DecimalFilter<T> : IFilter<T>, IDecimalFilter
             return acceptNullOverride ?? AcceptNull ?? false;
         if (FilterValue == null)
             return true;
-        int compareValue = FilterValue.Value.CompareTo(mapped);
+        int compareValue = FilterValue.Value.CompareTo(mapped.Value);
         return compareValue == 0 || compareValue == _compareType;
     }
 

@@ -359,7 +359,8 @@ public partial class MapsPageViewModel : ViewModelBase
         StringFilter<Map> nameFilter = new StringFilter<Map>(m => m.Name)
         {
             FilterValue = NameFilter.Trim(),
-            MatchExact = false
+            MatchExact = false,
+            AcceptNull = string.IsNullOrWhiteSpace(NameFilter)
         };
         filters.Add(nameFilter);
         foreach ((AttributeDefinition attribute, FilterSlotViewModel slot) in _slotByAttribute)
@@ -386,7 +387,7 @@ public partial class MapsPageViewModel : ViewModelBase
             case BoolFilterSlotViewModel boolSlot:
                 return boolSlot.GetFilter<AttributeValue>(a => a?.BoolValue);
             case CheckboxFilterSlotViewModel<string> strings:
-                return strings.GetFilter<AttributeValue>(a => a?.SelectedValue ?? "");
+                return strings.GetFilter<AttributeValue>(a => a?.SelectedValue);
             default:
                 throw new NotImplementedException();
         }
