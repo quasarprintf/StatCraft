@@ -20,7 +20,7 @@ public class DataPageFiltersViewModelTests : IDisposable
         _dbPath = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid() + ".db");
         _buildRepository = new BuildRepository(_dbPath);
         _buildRepository.Initialize();
-        _filters = new DataPageFiltersViewModel(_buildRepository);
+        _filters = new DataPageFiltersViewModel(_buildRepository, new System.Collections.ObjectModel.ObservableCollection<Models.GameData.Attributes.AttributeDefinition>(), new StatCraft.Services.Factories.FilterSlotFactory());
     }
 
     [Fact]
@@ -162,7 +162,7 @@ public class DataPageFiltersViewModelTests : IDisposable
         BuildNode child = new() { Name = "Child", PlayerRace = Race.Terran };
         _buildRepository.InsertBuild(child, parent.Id, 0);
 
-        DataPageFiltersViewModel filters = new(_buildRepository);
+        DataPageFiltersViewModel filters = new(_buildRepository, new System.Collections.ObjectModel.ObservableCollection<Models.GameData.Attributes.AttributeDefinition>(), new StatCraft.Services.Factories.FilterSlotFactory());
         CheckboxFilterOptionViewModel<BuildNode> parentOption = filters.BuildSlot.Options.Single(o => o.Label.Contains("Parent"));
         parentOption.IsChecked = true;
 
