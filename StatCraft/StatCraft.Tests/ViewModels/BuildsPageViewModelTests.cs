@@ -91,22 +91,42 @@ public class BuildsPageViewModelTests : IDisposable
         Assert.False(_vm.SelectedBuild.MatchesFilter);
     }
 
-    // FAILING — the Builds half of the "Include unset" regression. A build loaded without a stored value
-    // for the attribute has no AttributeValue row, and GetFilters wraps each slot's filter in an AndFilter
-    // whose AcceptNull is never set, so the wrapper rejects the build before the inner filter (the one
-    // carrying IncludeUnset) is consulted. Setting AcceptNull = slot.IncludeUnset on the wrapper is the fix.
+    // Case 1 (see the three-case note in MapsPageViewModelTests): a build with no value row for the
+    // attribute doesn't participate in that dimension, so applying the filter excludes it outright and
+    // IncludeUnset must not rescue it. A non-mandatory attribute is only backfilled onto builds when it
+    // is mandatory (BuildsPageViewModel's new-attribute sync), which is how a build ends up here.
     [Fact]
-    public void IncludeUnset_BoolAttribute_KeepsABuildWithNoStoredValue()
+    public void AppliedBoolFilter_ExcludesABuildWithNoValueRow_EvenWithIncludeUnset()
     {
         AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Cheese", Type = AttributeType.Bool };
         _attributeRepo.InsertAttribute(attribute, 0);
         BoolFilterSlotViewModel slot = Assert.IsType<BoolFilterSlotViewModel>(_vm.HiddenFilterSlots.Single(s => s.Title == "Cheese"));
+        Assert.DoesNotContain(_vm.SelectedBuild!.AttributeValues, v => v.Definition.Id == attribute.Id);
 
         slot.IsApplied = true;
         slot.IncludeUnset = true;
         slot.Value = true;
 
-        Assert.True(_vm.SelectedBuild!.MatchesFilter);
+        Assert.False(_vm.SelectedBuild.MatchesFilter);
+    }
+
+    // Case 2: a mandatory attribute is backfilled onto every build with an empty value, so those builds
+    // do have a row and IncludeUnset decides for them.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void IncludeUnset_BoolAttribute_DecidesABuildWhoseValueRowIsUnset(bool includeUnset)
+    {
+        AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Cheese", Type = AttributeType.Bool, IsMandatory = true };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        BoolFilterSlotViewModel slot = Assert.IsType<BoolFilterSlotViewModel>(_vm.HiddenFilterSlots.Single(s => s.Title == "Cheese"));
+        Assert.Contains(_vm.SelectedBuild!.AttributeValues, v => v.Definition.Id == attribute.Id);
+
+        slot.IsApplied = true;
+        slot.IncludeUnset = includeUnset;
+        slot.Value = true;
+
+        Assert.Equal(includeUnset, _vm.SelectedBuild.MatchesFilter);
     }
 
     private void AddDetail(string name)

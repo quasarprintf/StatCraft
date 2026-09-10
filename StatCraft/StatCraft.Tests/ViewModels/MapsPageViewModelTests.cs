@@ -161,8 +161,17 @@ public class MapsPageViewModelTests : IDisposable
         Assert.False(slot.Options.Single(o => o.Value == "Macro").IsChecked);
     }
 
-    // The happy path through the DataFiltering rewrite: a map whose value is one of the checked options
-    // stays, one whose value is not is dropped.
+    // An applied attribute filter sorts maps into three cases, and only the middle one is IncludeUnset's
+    // business:
+    //   1. no value row for the attribute at all — the map doesn't participate in that dimension, so
+    //      applying the filter excludes it outright, IncludeUnset or not
+    //   2. a value row with nothing set in it — IncludeUnset decides
+    //   3. a value row with a value — the value has to match
+    // Case 1 arises for any map loaded from the DB that never had this attribute saved; case 2 for one
+    // created through the page, which gets a row per attribute up front.
+
+    // The happy path through the DataFiltering rewrite (case 3): a map whose value is one of the checked
+    // options stays, one whose value is not is dropped.
     [Theory]
     [InlineData("Rush", true)]
     [InlineData("Macro", false)]
@@ -193,9 +202,9 @@ public class MapsPageViewModelTests : IDisposable
         Assert.DoesNotContain(map, vm.FilteredMaps);
     }
 
-    // A map that has a value row for the attribute, just with nothing selected in it. This is the case
-    // the a?.SelectedValue fix addressed — the mapped value now reaches the filter as null rather than
-    // as "", so IncludeUnset is consulted.
+    // A map that has a value row for the attribute, just with nothing set in it — case 2 below, so
+    // IncludeUnset decides. This is what the a?.SelectedValue fix addressed: the mapped value now
+    // reaches the filter as null rather than as "", so IncludeUnset is actually consulted.
     [Fact]
     public void IncludeUnset_ValuesAttribute_KeepsAMapWhoseValueRowIsUnset()
     {
@@ -210,15 +219,45 @@ public class MapsPageViewModelTests : IDisposable
         Assert.Contains(map, vm.FilteredMaps);
     }
 
-    // FAILING — pins the remaining half of the "Include unset" regression. A map loaded from the DB only
-    // materialises AttributeValue rows that were actually saved (see MapRepository.GetAllMaps), so a map
-    // that never had this attribute set has no row at all. GetFilters wraps each slot's filter in an
-    // AndFilter whose AcceptNull is never set, so that map is rejected by the wrapper before the inner
-    // filter — the one carrying IncludeUnset — is ever consulted. Setting AcceptNull = slot.IncludeUnset
-    // on the wrapper is the fix. The deleted AttributeFilterTests pinned this as
-    // MatchesSelection_UnsetValueWithCheckedOptions_FollowsIncludeUnset.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void IncludeUnset_BoolAttribute_DecidesAMapWhoseValueRowIsUnset(bool includeUnset)
+    {
+        MapsPageViewModel vm = AttributeVm("Ramped", AttributeType.Bool);
+        BoolFilterSlotViewModel slot = Assert.IsType<BoolFilterSlotViewModel>(Assert.Single(vm.HiddenFilterSlots));
+        Map map = AddMapWithValueRows(vm);
+
+        slot.IsApplied = true;
+        slot.IncludeUnset = includeUnset;
+        slot.Value = true;
+
+        Assert.Equal(includeUnset, vm.FilteredMaps.Contains(map));
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void IncludeUnset_NumericAttribute_DecidesAMapWhoseValueRowIsUnset(bool includeUnset)
+    {
+        MapsPageViewModel vm = AttributeVm("Rush Distance", AttributeType.Numeric);
+        NumericRangeFilterSlotViewModel slot = Assert.IsType<NumericRangeFilterSlotViewModel>(Assert.Single(vm.HiddenFilterSlots));
+        Map map = AddMapWithValueRows(vm);
+
+        slot.IsApplied = true;
+        slot.IncludeUnset = includeUnset;
+        slot.Min = 10;
+
+        Assert.Equal(includeUnset, vm.FilteredMaps.Contains(map));
+    }
+
+    // Case 1, and deliberately NOT the same as case 2: a map with no value row for the attribute at all
+    // doesn't participate in that dimension, so applying the filter excludes it outright. IncludeUnset
+    // only speaks to a map that has the attribute but hasn't had a value put in it yet, so it must not
+    // rescue this map. Maps loaded from the DB only carry rows for values that were actually saved (see
+    // MapRepository.GetAllMaps), which is how a map ends up here.
     [Fact]
-    public void IncludeUnset_ValuesAttribute_KeepsAMapLoadedWithNoStoredValue()
+    public void AppliedValuesFilter_ExcludesAMapWithNoValueRow_EvenWithIncludeUnset()
     {
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
         _attributeRepo.InsertAttribute(attribute, 0);
@@ -226,46 +265,41 @@ public class MapsPageViewModelTests : IDisposable
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
         MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
         CheckboxFilterSlotViewModel<string> slot = Assert.IsType<CheckboxFilterSlotViewModel<string>>(Assert.Single(vm.HiddenFilterSlots));
+        Assert.Empty(vm.FilteredMaps.Single().AttributeValues);
 
         slot.IsApplied = true;
         slot.IncludeUnset = true;
         slot.Options.Single(o => o.Value == "Rush").IsChecked = true;
 
-        Assert.Contains(vm.FilteredMaps, m => m.Name == "Altitude LE");
+        Assert.Empty(vm.FilteredMaps);
     }
 
-    // FAILING — same wrapper bug, bool attribute. Was MatchesBool_UnsetValueWithFilterSet_FollowsIncludeUnset.
     [Fact]
-    public void IncludeUnset_BoolAttribute_KeepsAMapLoadedWithNoStoredValue()
+    public void AppliedBoolFilter_ExcludesAMapWithNoValueRow_EvenWithIncludeUnset()
     {
-        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Ramped", Type = AttributeType.Bool };
-        _attributeRepo.InsertAttribute(attribute, 0);
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
+        MapsPageViewModel vm = AttributeVm("Ramped", AttributeType.Bool);
         BoolFilterSlotViewModel slot = Assert.IsType<BoolFilterSlotViewModel>(Assert.Single(vm.HiddenFilterSlots));
 
         slot.IsApplied = true;
         slot.IncludeUnset = true;
         slot.Value = true;
 
-        Assert.Contains(vm.FilteredMaps, m => m.Name == "Altitude LE");
+        Assert.Empty(vm.FilteredMaps);
     }
 
-    // FAILING — same wrapper bug, numeric attribute. Was MatchesRange_UnsetValueWithActiveBounds_FollowsIncludeUnset.
     [Fact]
-    public void IncludeUnset_NumericAttribute_KeepsAMapLoadedWithNoStoredValue()
+    public void AppliedNumericFilter_ExcludesAMapWithNoValueRow_EvenWithIncludeUnset()
     {
-        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Rush Distance", Type = AttributeType.Numeric };
-        _attributeRepo.InsertAttribute(attribute, 0);
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
+        MapsPageViewModel vm = AttributeVm("Rush Distance", AttributeType.Numeric);
         NumericRangeFilterSlotViewModel slot = Assert.IsType<NumericRangeFilterSlotViewModel>(Assert.Single(vm.HiddenFilterSlots));
 
         slot.IsApplied = true;
         slot.IncludeUnset = true;
         slot.Min = 10;
 
-        Assert.Contains(vm.FilteredMaps, m => m.Name == "Altitude LE");
+        Assert.Empty(vm.FilteredMaps);
     }
 
     // Guards the whitespace-name fix: StringFilter treats a blank candidate as "no value", so without
@@ -305,6 +339,12 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertAttribute(attribute, 0);
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
         _attributeRepo.InsertValueOption(attribute.Id, "Macro");
+        return new MapsPageViewModel(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
+    }
+
+    private MapsPageViewModel AttributeVm(string name, AttributeType type)
+    {
+        _attributeRepo.InsertAttribute(new(AttributeScope.Map) { Name = name, Type = type }, 0);
         return new MapsPageViewModel(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
     }
 
