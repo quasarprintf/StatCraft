@@ -341,60 +341,56 @@ public partial class MapsPageViewModel : ViewModelBase
     // selection survives a filter change that still includes the selected map.
     private void ApplyFilters()
     {
-        List<Map> matching = _allMaps.Where(Matches).ToList();
+        AndFilter<Map> filter = GetFilters();
 
+        List<Map> matching = _allMaps.Where(m => filter.MatchesFilter(m)).ToList();
+
+        //TODO: figure out why this is modifying FilteredMaps instead of reassigning it
         for (int i = FilteredMaps.Count - 1; i >= 0; i--)
             if (!matching.Contains(FilteredMaps[i]))
                 FilteredMaps.RemoveAt(i);
-
         for (int i = 0; i < matching.Count; i++)
             if (!FilteredMaps.Contains(matching[i]))
                 FilteredMaps.Insert(i, matching[i]);
     }
-    private bool Matches(Map map)
+    private AndFilter<Map> GetFilters()
     {
-        if (!MatchesName(map, NameFilter))
-            return false;
-
+        List<IFilter<Map>> filters = new List<IFilter<Map>>();
+        StringFilter<Map> nameFilter = new StringFilter<Map>(m => m.Name)
+        {
+            FilterValue = NameFilter.Trim(),
+            MatchExact = false
+        };
+        filters.Add(nameFilter);
         foreach ((AttributeDefinition attribute, FilterSlotViewModel slot) in _slotByAttribute)
         {
             if (!slot.IsApplied)
                 continue;
-
-            AttributeValue? value = map.AttributeValues.FirstOrDefault(v => v.Definition == attribute);
-
-            if (!MatchesSlot(slot, value))
-                return false;
+            IFilter<AttributeValue> filter = SlotFilter(attribute, slot);
+            //TODO: is there a better less-hacky way to do this?
+            //wrap the filter in an AndFilter so we can have a null check on both the attribute and the attribute value
+            AndFilter<Map, AttributeValue> wrappedFilter = new AndFilter<Map, AttributeValue>([filter], m => m.GetAttributeByDefinitionId(attribute.Id));
+            filters.Add(wrappedFilter);
         }
-
-        return true;
+        return new AndFilter<Map>(filters);
     }
-    private static bool MatchesName(Map map, string? nameFilter)
+    private static IFilter<AttributeValue> SlotFilter(AttributeDefinition definition, FilterSlotViewModel slot)
     {
-        return string.IsNullOrWhiteSpace(nameFilter) || map.Name.Contains(nameFilter.Trim(), StringComparison.OrdinalIgnoreCase);
-    }
-    private static bool MatchesSlot(FilterSlotViewModel slot, AttributeValue? value)
-    {
-        if (value == null)
-            return slot.IncludeUnset;
+        int id = definition.Id;
         switch (slot)
         {
             case NumericRangeFilterSlotViewModel range:
-                if (value.Definition.Type == AttributeType.Numeric)
-                    return range.GetFilter<AttributeValue>(a => a.NumericValue).MatchesFilter(value);
+                if (definition.Type == AttributeType.Numeric)
+                    return range.GetFilter<AttributeValue>(a => a?.NumericValue);
                 else
-                    return range.GetFilter<AttributeValue>(a => a.PercentValue).MatchesFilter(value);
+                    return range.GetFilter<AttributeValue>(a => a?.PercentValue);
             case BoolFilterSlotViewModel boolSlot:
-                return boolSlot.GetFilter<AttributeValue>(a => a.BoolValue).MatchesFilter(value);
+                return boolSlot.GetFilter<AttributeValue>(a => a?.BoolValue);
             case CheckboxFilterSlotViewModel<string> strings:
-                return strings.GetFilter<AttributeValue>(a => a.SelectedValue ?? "").MatchesFilter(value);
+                return strings.GetFilter<AttributeValue>(a => a?.SelectedValue ?? "");
             default:
-                return true;
+                throw new NotImplementedException();
         }
-    }
-    private static IReadOnlySet<T> Checked<T>(CheckboxFilterSlotViewModel<T> slot)
-    {
-        return slot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
     }
     #endregion
 }

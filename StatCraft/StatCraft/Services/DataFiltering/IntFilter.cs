@@ -14,7 +14,7 @@ public partial class IntFilter<T> : IFilter<T>, IIntFilter
     public event Action? FilterChanged;
 
     private int _compareType;
-    public bool AcceptNull { get; set; }
+    public bool? AcceptNull { get; set; }
     public int? FilterValue { get; set; }
     private Func<T,int?> _filteredPropertyMap;
 
@@ -22,16 +22,17 @@ public partial class IntFilter<T> : IFilter<T>, IIntFilter
     {
         _filteredPropertyMap = filteredPropertyMap;
     }
-    public bool MatchesFilter(T filter, bool? acceptNullOverride = null)
+    public bool MatchesFilter(T candidate, bool? acceptNullOverride = null)
     {
-        if (acceptNullOverride == null)
-            acceptNullOverride = AcceptNull;
+        if (candidate == null)
+            return false;
+        int? mapped = _filteredPropertyMap(candidate);
+        if (mapped == null)
+            return acceptNullOverride ?? AcceptNull ?? false;
         if (FilterValue == null)
             return true;
-        int? property = _filteredPropertyMap(filter);
-        if (property == null)
-            return acceptNullOverride.Value;
-        return FilterValue.Value.CompareTo(property) == _compareType;
+        int compareValue = FilterValue.Value.CompareTo(mapped);
+        return compareValue == 0 || compareValue == _compareType;
     }
 
     public IntFilter<T> SetMatchExact()

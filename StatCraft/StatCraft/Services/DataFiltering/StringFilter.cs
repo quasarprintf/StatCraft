@@ -14,7 +14,7 @@ public partial class StringFilter<T> : IFilter<T>
     public event Action? FilterChanged;
 
     public bool MatchExact { get; set; }
-    public bool AcceptNull { get; set; }
+    public bool? AcceptNull { get; set; }
     public string FilterValue { get; set; } = "";
     private Func<T,string?> _filteredPropertyMap;
 
@@ -22,18 +22,18 @@ public partial class StringFilter<T> : IFilter<T>
     {
         _filteredPropertyMap = filteredPropertyMap;
     }
-    public bool MatchesFilter(T filter, bool? acceptNullOverride = null)
+    public bool MatchesFilter(T candidate, bool? acceptNullOverride = null)
     {
-        if (acceptNullOverride == null)
-            acceptNullOverride = AcceptNull;
+        if (candidate == null)
+            return false;
+        string? mapped = _filteredPropertyMap(candidate);
+        if (string.IsNullOrWhiteSpace(mapped))
+            return acceptNullOverride ?? AcceptNull ?? false;
         if (string.IsNullOrWhiteSpace(FilterValue))
             return true;
-        string? property = _filteredPropertyMap(filter);
-        if (string.IsNullOrWhiteSpace(property))
-            return acceptNullOverride.Value;
         if (MatchExact)
-            return property.Equals(FilterValue, StringComparison.OrdinalIgnoreCase);
+            return mapped.Equals(FilterValue, StringComparison.OrdinalIgnoreCase);
         else
-            return property.Contains(FilterValue, StringComparison.OrdinalIgnoreCase);
+            return mapped.Contains(FilterValue, StringComparison.OrdinalIgnoreCase);
     }
 }

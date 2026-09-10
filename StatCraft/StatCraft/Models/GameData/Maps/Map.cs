@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData.Attributes;
@@ -15,9 +16,13 @@ public partial class Map : ObservableObject, IAttributedObject
     {
         AttributeValues.Add(definition.DefaultValue.Clone());
     }
-
     public void RemoveAttribute(AttributeValue value)
     {
         AttributeValues.Remove(value);
+    }
+
+    public AttributeValue? GetAttributeByDefinitionId(int id)
+    {
+        return AttributeValues.FirstOrDefault(v => v.Definition.Id == id);
     }
 }

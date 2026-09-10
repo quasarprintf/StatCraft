@@ -6,7 +6,7 @@ namespace StatCraft.Services.DataFiltering;
 
 public interface IFilter
 {
-    bool AcceptNull { get; set; }
+    bool? AcceptNull { get; set; }
 }
 public interface IFilter<in T> : IFilter
 {
