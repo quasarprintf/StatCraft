@@ -8,10 +8,8 @@ public interface IIntFilter : IFilter
 {
     int? FilterValue { get; set; }
 }
-public partial class IntFilter<T> : IFilter<T>, IIntFilter
+public class IntFilter<T> : IFilter<T>, IIntFilter
 {
-    public event Action? FilterChanged;
-
     private int _compareType;
     public bool? AcceptNull { get; set; }
     public int? FilterValue { get; set; }

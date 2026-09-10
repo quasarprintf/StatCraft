@@ -10,8 +10,6 @@ public interface IBoolFilter : IFilter
 }
 public class BoolFilter<T> : IFilter<T>, IBoolFilter
 {
-    public event Action? FilterChanged;
-
     public bool? AcceptNull { get; set; }
     public bool? FilterValue { get; set; }
     private Func<T,bool?> _filteredPropertyMap;

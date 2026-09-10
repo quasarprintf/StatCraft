@@ -12,7 +12,7 @@ public class StringFilter<T> : IFilter<T>, IStringFilter
 {
     public bool MatchExact { get; set; }
     public bool? AcceptNull { get; set; }
-    public string FilterValue { get; set; } = "";
+    public string? FilterValue { get; set; }
     private Func<T,string?> _filteredPropertyMap;
 
     public StringFilter(Func<T,string?> filteredPropertyMap)

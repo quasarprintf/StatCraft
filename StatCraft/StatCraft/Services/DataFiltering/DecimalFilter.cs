@@ -8,7 +8,7 @@ public interface IDecimalFilter : IFilter
 {
     public decimal? FilterValue { get; set; }
 }
-public partial class DecimalFilter<T> : IFilter<T>, IDecimalFilter
+public class DecimalFilter<T> : IFilter<T>, IDecimalFilter
 {
     private int _compareType;
     public bool? AcceptNull { get; set; }
