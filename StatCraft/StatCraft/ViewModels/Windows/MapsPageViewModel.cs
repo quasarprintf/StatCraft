@@ -387,7 +387,7 @@ public partial class MapsPageViewModel : ViewModelBase
             case BoolFilterSlotViewModel boolSlot:
                 return boolSlot.GetFilter<AttributeValue>(a => a?.BoolValue);
             case CheckboxFilterSlotViewModel<string> strings:
-                return strings.GetFilter<AttributeValue>(a => a?.SelectedValue);
+                return strings.GetFilter<AttributeValue>(a => a.SelectedValue == null ? null : [a.SelectedValue]);
             default:
                 throw new NotImplementedException();
         }

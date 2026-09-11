@@ -43,17 +43,17 @@ public sealed partial class CheckboxFilterSlotViewModel<T> : CheckboxFilterSlotV
         ReplaceOptions(options);
     }
 
-    public OrFilter<F,F> GetFilter<F>(Func<F,T?> filteredPropertyMap)
+    public SetIntersectFilter<F,T> GetFilter<F>(Func<F,IEnumerable<T>?> filteredPropertyMap)
     {
-        //TODO: make a new SetMemberFilter so we can use constant time lookup instead of linear
-        List<BoolFilter<F>> selectedOptions = new List<BoolFilter<F>>();
+        HashSet<T> selectedOptions = new HashSet<T>();
         foreach (var option in Options)
         {
             if (option.IsChecked)
-                selectedOptions.Add(option.GetFilter(filteredPropertyMap));
+                selectedOptions.Add(option.Value);
         }
-        return new OrFilter<F,F>(selectedOptions, o => o)
+        return new SetIntersectFilter<F, T>(filteredPropertyMap)
         {
+            FilterValue = selectedOptions,
             AcceptNull = IncludeUnset
         };
     }
