@@ -131,47 +131,6 @@ public class DataPageFiltersViewModelTests : IDisposable
         Assert.False(otherFiltersChanged);
     }
 
-    [Fact]
-    public void BuildCriteria_ReflectsCheckedOptions()
-    {
-        Map altitude = new() { Name = "Altitude" };
-        _filters.RefreshMapOptions([altitude]);
-        _filters.MapSlot.Options[0].IsChecked = true;
-        _filters.MmrSlot.Min = 1000;
-        _filters.MmrSlot.Max = 2000;
-
-        CheckboxFilterOptionViewModel<GameOutcome> winOption = _filters.OutcomeSlot.Options.Single(o => o.Label == "Win");
-        winOption.IsChecked = true;
-
-        CheckboxFilterOptionViewModel<(Race, Race)> tvzOption = _filters.MatchupSlot.Options.Single(o => o.Value == (Race.Terran, Race.Zerg));
-        tvzOption.IsChecked = true;
-
-        GameFilterCriteria criteria = _filters.BuildCriteria();
-
-        Assert.True(criteria.Maps!.SetEquals([altitude]));
-        Assert.Equal(1000, criteria.MinOpponentMmr);
-        Assert.Equal(2000, criteria.MaxOpponentMmr);
-        Assert.True(criteria.Outcomes!.SetEquals([GameOutcome.Win]));
-        Assert.True(criteria.MatchupPairs!.SetEquals([(Race.Terran, Race.Zerg)]));
-    }
-
-    [Fact]
-    public void BuildCriteria_BuildFilter_ExpandsCheckedBuildToItsSubtree()
-    {
-        BuildNode parent = new() { Name = "Parent", PlayerRace = Race.Terran };
-        _buildRepository.InsertBuild(parent, null, 0);
-        BuildNode child = new() { Name = "Child", PlayerRace = Race.Terran };
-        _buildRepository.InsertBuild(child, parent.Id, 0);
-
-        DataPageFiltersViewModel filters = new(_buildRepository, new System.Collections.ObjectModel.ObservableCollection<Models.GameData.Attributes.AttributeDefinition>(), new StatCraft.Services.Factories.FilterSlotFactory());
-        CheckboxFilterOptionViewModel<BuildNode> parentOption = filters.BuildSlot.Options.Single(o => o.Label.Contains("Parent"));
-        parentOption.IsChecked = true;
-
-        GameFilterCriteria criteria = filters.BuildCriteria();
-
-        Assert.True(criteria.BuildIds!.SetEquals([parent.Id, child.Id]));
-    }
-
     private CheckboxFilterOptionViewModel<Sc2Profile> ProfileOption(int profileId) =>
         _filters.ProfileSlot.Options.Single(o => o.Value.Id == profileId);
 

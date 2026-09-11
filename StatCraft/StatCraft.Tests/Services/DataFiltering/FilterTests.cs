@@ -1,4 +1,5 @@
 using StatCraft.Services.DataFiltering;
+using StatCraft.Services.DataFiltering.CollatedFilter;
 
 namespace StatCraft.Tests;
 

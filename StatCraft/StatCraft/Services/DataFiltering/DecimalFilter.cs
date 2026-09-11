@@ -15,7 +15,7 @@ public class DecimalFilter<T> : IFilter<T>
     {
         _filteredPropertyMap = filteredPropertyMap;
     }
-    public bool MatchesFilter(T candidate, bool? acceptNullOverride = null)
+    public bool MatchesFilter(T? candidate, bool? acceptNullOverride = null)
     {
         if (candidate == null)
             return false;

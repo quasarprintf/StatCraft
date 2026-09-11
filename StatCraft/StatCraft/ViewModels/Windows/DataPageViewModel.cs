@@ -453,16 +453,16 @@ public partial class DataPageViewModel : ViewModelBase
 
     private void ApplyFilters()
     {
-        GameFilterCriteria criteria = Filters.BuildCriteria();
+        IFilter<GameData> filter = Filters.GetFilter();
         List<GameData> matching = _loadedGames
-            .Where(g => GameDataFilter.Matches(g, criteria))
+            .Where(g => filter.MatchesFilter(g))
             .OrderBy(g => g.ReplayData.ReplayTimestamp)
             .ToList();
 
         SyncGames(matching);
 
         // Derived from the same set the table shows, so the two can never disagree.
-        WinRateLabel = WinLossRecord.From(matching.Select(g => GameOutcomeExtensions.FromWin(g.ReplayData.Win))).Label;
+        WinRateLabel = WinLossRecord.From(matching.Select(g => g.ReplayData.Win.AsGameOutcome())).Label;
     }
 
     // Reconciles Games to exactly the rows in newOrder using targeted Remove/Insert/Move operations

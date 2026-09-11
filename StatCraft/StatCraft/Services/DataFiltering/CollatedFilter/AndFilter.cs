@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace StatCraft.Services.DataFiltering;
+namespace StatCraft.Services.DataFiltering.CollatedFilter;
 
 public class AndFilter<T,F> : CollatedFilter<T,F>
 {
     public AndFilter(IReadOnlyCollection<IFilter<F>> filters, Func<T,F?> filteredPropertyMap) : base(filters, filteredPropertyMap)
     {
     }
-    public override bool MatchesFilter(T candidate, bool? acceptNullOverride = null)
+    public override bool MatchesFilter(T? candidate, bool? acceptNullOverride = null)
     {
         if (candidate == null)
             return false;

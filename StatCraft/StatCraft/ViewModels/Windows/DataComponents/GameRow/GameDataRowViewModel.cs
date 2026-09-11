@@ -97,7 +97,7 @@ public partial class GameDataRowViewModel : ViewModelBase
         ParsedReplayData replay = game.ReplayData;
         MapName = game.Map?.Name ?? "";
         PlayedAt = replay.ReplayTimestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
-        GameOutcome outcome = GameOutcomeExtensions.FromWin(replay.Win);
+        GameOutcome outcome = replay.Win.AsGameOutcome();
         ResultLabel = outcome switch { GameOutcome.Win => "Win", GameOutcome.Loss => "Loss", _ => "Draw" };
         ResultColor = outcome switch
         {

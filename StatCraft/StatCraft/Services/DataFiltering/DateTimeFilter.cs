@@ -4,14 +4,14 @@ using System.Text;
 
 namespace StatCraft.Services.DataFiltering;
 
-public class IntFilter<T> : IFilter<T>
+public class DateTimeFilter<T> : IFilter<T>
 {
     private int _compareType;
     public bool? AcceptNull { get; set; }
-    public int? FilterValue { get; set; }
-    private Func<T,int?> _filteredPropertyMap;
+    public DateTime? FilterValue { get; set; }
+    private Func<T,DateTime?> _filteredPropertyMap;
 
-    public IntFilter(Func<T,int?> filteredPropertyMap)
+    public DateTimeFilter(Func<T,DateTime?> filteredPropertyMap)
     {
         _filteredPropertyMap = filteredPropertyMap;
     }
@@ -19,7 +19,7 @@ public class IntFilter<T> : IFilter<T>
     {
         if (candidate == null)
             return false;
-        int? mapped = _filteredPropertyMap(candidate);
+        DateTime? mapped = _filteredPropertyMap(candidate);
         if (mapped == null)
             return acceptNullOverride ?? AcceptNull ?? false;
         if (FilterValue == null)
@@ -28,17 +28,17 @@ public class IntFilter<T> : IFilter<T>
         return compareValue == 0 || compareValue == _compareType;
     }
 
-    public IntFilter<T> SetMatchExact()
+    public DateTimeFilter<T> SetMatchExact()
     {
         _compareType = 0;
         return this;
     }
-    public IntFilter<T> SetMatchLowerBound()
+    public DateTimeFilter<T> SetMatchLowerBound()
     {
         _compareType = -1;
         return this;
     }
-    public IntFilter<T> SetMatchUpperBound()
+    public DateTimeFilter<T> SetMatchUpperBound()
     {
         _compareType = 1;
         return this;

@@ -26,7 +26,7 @@ internal static class GameDataFilter
         if (HasAny(criteria.Maps) && game.Map != null && !criteria.Maps!.Contains(game.Map))
             return false;
 
-        if (HasAny(criteria.Outcomes) && !criteria.Outcomes!.Contains(GameOutcomeExtensions.FromWin(replay.Win)))
+        if (HasAny(criteria.Outcomes) && !criteria.Outcomes!.Contains(replay.Win.AsGameOutcome()))
             return false;
 
         if (HasAny(criteria.MatchupPairs))

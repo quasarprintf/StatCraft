@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace StatCraft.Services.DataFiltering;
+namespace StatCraft.Services.DataFiltering.CollatedFilter;
 
 public abstract class CollatedFilter<T,F> : IFilter<T>
 {
@@ -20,7 +20,7 @@ public abstract class CollatedFilter<T,F> : IFilter<T>
         _filteredPropertyMap = filteredPropertyMap;
     }
 
-    public abstract bool MatchesFilter(T candidate, bool? acceptNullOverride = null);
+    public abstract bool MatchesFilter(T? candidate, bool? acceptNullOverride = null);
 }
 
 public abstract class CollatedFilter<T> : CollatedFilter<T,T>

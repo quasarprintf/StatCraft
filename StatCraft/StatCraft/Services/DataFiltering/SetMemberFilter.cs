@@ -1,16 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace StatCraft.Services.DataFiltering;
 
-public class BoolFilter<T> : IFilter<T>
+public class SetMemberFilter<T,U> : IFilter<T>
 {
     public bool? AcceptNull { get; set; }
-    public bool? FilterValue { get; set; }
-    private Func<T,bool?> _filteredPropertyMap;
+    public HashSet<U>? FilterValue { get; set; }
+    private Func<T,U?> _filteredPropertyMap;
 
-    public BoolFilter(Func<T,bool?> filteredPropertyMap)
+    public SetMemberFilter(Func<T,U?> filteredPropertyMap)
     {
         _filteredPropertyMap = filteredPropertyMap;
     }
@@ -18,11 +19,11 @@ public class BoolFilter<T> : IFilter<T>
     {
         if (candidate == null)
             return false;
-        bool? mapped = _filteredPropertyMap(candidate);
+        U? mapped = _filteredPropertyMap(candidate);
         if (mapped == null)
             return acceptNullOverride ?? AcceptNull ?? false;
-        if (FilterValue == null)
+        if (FilterValue == null || FilterValue.Count == 0)
             return true;
-        return mapped == FilterValue;
+        return FilterValue.Contains(mapped);
     }
 }

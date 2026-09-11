@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Services.DataFiltering;
+using StatCraft.Services.DataFiltering.CollatedFilter;
 using System;
 
 namespace StatCraft.ViewModels.Windows.Filters;

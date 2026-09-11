@@ -13,6 +13,9 @@ using System.Collections.ObjectModel;
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Services.Factories;
 using System.Collections.Specialized;
+using StatCraft.Services.DataParsing;
+using StatCraft.Services.DataFiltering.CollatedFilter;
+using StatCraft.Services.DataFiltering.SequentialFilter;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 
@@ -194,24 +197,47 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         }
     }
 
-    internal GameFilterCriteria BuildCriteria()
+    public AndFilter<GameData> GetFilter()
     {
-        DateOnly? fromDate = FromDate.HasValue ? DateOnly.FromDateTime(FromDate.Value.Date) : null;
-        DateOnly? toDate = ToDate.HasValue ? DateOnly.FromDateTime(ToDate.Value.Date) : null;
+        List<IFilter<GameData>> appliedFilters = new List<IFilter<GameData>>();
+        DateTimeFilter<GameData> fromDateFilter = new DateTimeFilter<GameData>(g => g.ReplayData.ReplayTimestamp.ToLocalTime().DateTime.Date)
+        {
+            FilterValue = FromDate == null ? null : FromDate.Value.Date
+        }.SetMatchLowerBound();
+        DateTimeFilter<GameData> toDateFilter = new DateTimeFilter<GameData>(g => g.ReplayData.ReplayTimestamp.ToLocalTime().DateTime.Date)
+        {
+            FilterValue = ToDate == null ? null : ToDate.Value.Date
+        }.SetMatchUpperBound();
+        AndFilter<GameData> dateFilter = new AndFilter<GameData>([fromDateFilter, toDateFilter]);
+        appliedFilters.Add(dateFilter);
 
-        return new GameFilterCriteria(
-            fromDate,
-            toDate,
-            ToSet(MapSlot),
-            ToSet(MatchupSlot),
-            ToSet(OutcomeSlot),
-            (long?)MmrSlot.Min,
-            (long?)MmrSlot.Max,
-            ToBuildIdSet(BuildSlot));
+        if (MapSlot.IsApplied)
+            appliedFilters.Add(MapSlot.GetFilter<GameData>(g => [g.Map!])); //TODO: why is Map nullable?
+        if (MatchupSlot.IsApplied)
+            appliedFilters.Add(MatchupSlot.GetFilter<GameData>(GetGameMatchups));
+        if (OutcomeSlot.IsApplied)
+            appliedFilters.Add(OutcomeSlot.GetFilter<GameData>(g => [g.ReplayData.Win.AsGameOutcome()]));
+
+        if (MmrSlot.IsApplied)
+        {
+            AndFilter<PlayerMmr> singleMmrFilter = MmrSlot.GetFilter<PlayerMmr>(m => m.Mmr);
+            SequentialAnyFilter<GameData, PlayerMmr> mmrFilter = new SequentialAnyFilter<GameData, PlayerMmr>(singleMmrFilter, g => g.ReplayData.Opponents.Select(o => o.Mmr));
+            appliedFilters.Add(mmrFilter);
+        }
+
+        //TODO: build id's filter
+        //TODO: game attributes filter
+        //TODO: build attribute filter
+
+        AndFilter<GameData> collatedFilter = new AndFilter<GameData>(appliedFilters);
+
+        return collatedFilter;
     }
 
-    private static IReadOnlySet<T> ToSet<T>(CheckboxFilterSlotViewModel<T> slot) =>
-        slot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
+    private (Race,Race)[] GetGameMatchups(GameData game)
+    {
+        return game.ReplayData.Opponents.Select(o => (game.ReplayData.Player.Race.AsRace()!.Value, o.Race.AsRace()!.Value)).Distinct().ToArray();
+    }
 
     private static IReadOnlySet<int> ToBuildIdSet(CheckboxFilterSlotViewModel<BuildNode> slot) =>
         slot.Options

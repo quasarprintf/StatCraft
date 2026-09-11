@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Services.DataFiltering;
+using StatCraft.Services.DataFiltering.SequentialFilter;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 
@@ -43,7 +44,7 @@ public sealed partial class CheckboxFilterSlotViewModel<T> : CheckboxFilterSlotV
         ReplaceOptions(options);
     }
 
-    public SetIntersectFilter<F,T> GetFilter<F>(Func<F,IEnumerable<T>?> filteredPropertyMap)
+    public SequentialAllFilter<F,T> GetFilter<F>(Func<F,IEnumerable<T>?> filteredPropertyMap)
     {
         HashSet<T> selectedOptions = new HashSet<T>();
         foreach (var option in Options)
@@ -51,9 +52,13 @@ public sealed partial class CheckboxFilterSlotViewModel<T> : CheckboxFilterSlotV
             if (option.IsChecked)
                 selectedOptions.Add(option.Value);
         }
-        return new SetIntersectFilter<F, T>(filteredPropertyMap)
+        SetMemberFilter<T,T> memberFilter = new SetMemberFilter<T, T>(x => x)
         {
-            FilterValue = selectedOptions,
+            AcceptNull = IncludeUnset,
+            FilterValue = selectedOptions
+        };
+        return new SequentialAllFilter<F, T>(memberFilter, filteredPropertyMap)
+        {
             AcceptNull = IncludeUnset
         };
     }

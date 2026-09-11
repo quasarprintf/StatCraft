@@ -4,6 +4,8 @@ using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
+using StatCraft.Services.DataFiltering.CollatedFilter;
+using StatCraft.Services.DataFiltering.SequentialFilter;
 using StatCraft.Services.Factories;
 using StatCraft.ViewModels.Windows.AttributeComponents;
 using StatCraft.ViewModels.Windows.Filters;
@@ -368,9 +370,8 @@ public partial class MapsPageViewModel : ViewModelBase
             if (!slot.IsApplied)
                 continue;
             IFilter<AttributeValue> filter = SlotFilter(attribute, slot);
-            //TODO: is there a better less-hacky way to do this?
             //wrap the filter in an AndFilter so we can have a null check on both the attribute and the attribute value
-            AndFilter<Map, AttributeValue> wrappedFilter = new AndFilter<Map, AttributeValue>([filter], m => m.GetAttributeByDefinitionId(attribute.Id));
+            SequentialAllFilter<Map, AttributeValue> wrappedFilter = new SequentialAllFilter<Map, AttributeValue>(filter, m => [m.GetAttributeByDefinitionId(attribute.Id)]);
             filters.Add(wrappedFilter);
         }
         return new AndFilter<Map>(filters);
