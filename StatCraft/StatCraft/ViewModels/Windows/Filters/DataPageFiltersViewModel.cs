@@ -14,8 +14,8 @@ using StatCraft.Models.GameData.Attributes;
 using StatCraft.Services.Factories;
 using System.Collections.Specialized;
 using StatCraft.Services.DataParsing;
-using StatCraft.Services.DataFiltering.CollatedFilter;
-using StatCraft.Services.DataFiltering.SequentialFilter;
+using StatCraft.Services.DataFiltering.CollatedFilters;
+using StatCraft.Services.DataFiltering.SequentialFilters;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 

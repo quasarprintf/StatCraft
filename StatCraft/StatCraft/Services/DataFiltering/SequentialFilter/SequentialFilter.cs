@@ -1,11 +1,9 @@
-﻿using Avalonia.Controls.Primitives.PopupPositioning;
-using DbUp;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace StatCraft.Services.DataFiltering.SequentialFilter;
+namespace StatCraft.Services.DataFiltering.SequentialFilters;
 
 public abstract class SequentialFilter<T,F> : IFilter<T>
 {

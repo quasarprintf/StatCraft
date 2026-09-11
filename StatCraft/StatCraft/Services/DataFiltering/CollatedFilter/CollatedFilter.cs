@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace StatCraft.Services.DataFiltering.CollatedFilter;
+namespace StatCraft.Services.DataFiltering.CollatedFilters;
 
 public abstract class CollatedFilter<T,F> : IFilter<T>
 {

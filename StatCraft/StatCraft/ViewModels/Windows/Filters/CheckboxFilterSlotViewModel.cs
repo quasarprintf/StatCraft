@@ -4,7 +4,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Services.DataFiltering;
-using StatCraft.Services.DataFiltering.SequentialFilter;
+using StatCraft.Services.DataFiltering.SequentialFilters;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 

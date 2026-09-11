@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace StatCraft.Services.DataFiltering.CollatedFilter;
+namespace StatCraft.Services.DataFiltering.CollatedFilters;
 
 public class OrFilter<T,F> : CollatedFilter<T,F>
 {
