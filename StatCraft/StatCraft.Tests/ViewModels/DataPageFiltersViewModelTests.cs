@@ -5,6 +5,7 @@ using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
+using StatCraft.Services.DataParsing;
 using StatCraft.ViewModels.Windows.Filters;
 
 namespace StatCraft.Tests;
@@ -129,6 +130,56 @@ public class DataPageFiltersViewModelTests : IDisposable
 
         Assert.False(profileChanged);
         Assert.False(otherFiltersChanged);
+    }
+
+    // FAILING — pins a regression from moving the Games tab onto IFilter. A team game has one matchup
+    // per opponent, and it should match if ANY of them is checked (the old GameDataFilter ORed across
+    // opponents on purpose, same as MMR still does). CheckboxFilterSlotViewModel.GetFilter always wraps
+    // in a SequentialAllFilter, so every one of the game's matchups now has to be checked instead.
+    // The TvT row is the negative control: no opponent is Terran, so it must stay excluded after a fix.
+    [Theory]
+    [InlineData(Race.Protoss, true)]
+    [InlineData(Race.Zerg, true)]
+    [InlineData(Race.Terran, false)]
+    public void GetFilter_Matchup_TeamGame_MatchesWhenAnyOpponentsMatchupIsChecked(Race checkedOpponent, bool expected)
+    {
+        GameData game = CreateGame(selfRace: 'T', opponents: [Opponent('Z'), Opponent('P')]);
+        _filters.MatchupSlot.AddCommand.Execute(null);
+        _filters.MatchupSlot.Options.Single(o => o.Value == (Race.Terran, checkedOpponent)).IsChecked = true;
+
+        Assert.Equal(expected, _filters.GetFilter().MatchesFilter(game));
+    }
+
+    // Control for the test above: with a single opponent, "any" and "all" agree, so this passes either
+    // way — if it ever fails, the problem is the harness or another filter, not the matchup aggregation.
+    [Theory]
+    [InlineData(Race.Protoss, true)]
+    [InlineData(Race.Zerg, false)]
+    public void GetFilter_Matchup_OneVsOne_MatchesOnlyTheCheckedMatchup(Race checkedOpponent, bool expected)
+    {
+        GameData game = CreateGame(selfRace: 'T', opponents: [Opponent('P')]);
+        _filters.MatchupSlot.AddCommand.Execute(null);
+        _filters.MatchupSlot.Options.Single(o => o.Value == (Race.Terran, checkedOpponent)).IsChecked = true;
+
+        Assert.Equal(expected, _filters.GetFilter().MatchesFilter(game));
+    }
+
+    private static GamePlayer Opponent(char race) =>
+        new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = race, Random = false };
+
+    private static GameData CreateGame(char selfRace, GamePlayer[] opponents)
+    {
+        ParsedReplayData replay = new()
+        {
+            GameLengthSeconds = 600,
+            ReplayPath = "replay.SC2Replay",
+            ReplayTimestamp = new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero),
+            Win = 1m,
+            Player = new GamePlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = selfRace, Random = false, BuildIds = [] },
+            Allies = [],
+            Opponents = opponents,
+        };
+        return new GameData { Map = new Map { Name = "Altitude LE" }, ReplayData = replay };
     }
 
     private CheckboxFilterOptionViewModel<Sc2Profile> ProfileOption(int profileId) =>

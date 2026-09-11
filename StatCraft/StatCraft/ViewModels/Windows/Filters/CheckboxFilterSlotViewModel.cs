@@ -44,7 +44,7 @@ public sealed partial class CheckboxFilterSlotViewModel<T> : CheckboxFilterSlotV
         ReplaceOptions(options);
     }
 
-    public SequentialAllFilter<F,T> GetFilter<F>(Func<F,IEnumerable<T>?> filteredPropertyMap)
+    public SequentialAnyFilter<F,T> GetFilter<F>(Func<F,IEnumerable<T>?> filteredPropertyMap)
     {
         HashSet<T> selectedOptions = new HashSet<T>();
         foreach (var option in Options)
@@ -57,7 +57,7 @@ public sealed partial class CheckboxFilterSlotViewModel<T> : CheckboxFilterSlotV
             AcceptNull = IncludeUnset,
             FilterValue = selectedOptions
         };
-        return new SequentialAllFilter<F, T>(memberFilter, filteredPropertyMap)
+        return new SequentialAnyFilter<F, T>(memberFilter, filteredPropertyMap)
         {
             AcceptNull = IncludeUnset
         };
