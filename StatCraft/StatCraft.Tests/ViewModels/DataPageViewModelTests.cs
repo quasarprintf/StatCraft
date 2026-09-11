@@ -2,6 +2,8 @@ using System.Net.Http;
 using System.Threading;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Maps;
+using StatCraft.Models.GameData.Race;
 using StatCraft.Models.Util;
 using StatCraft.Services.BackgroundService;
 using StatCraft.Services.BattlenetApi;
@@ -26,6 +28,7 @@ public class DataPageViewModelTests : IAsyncDisposable
 {
     private readonly string _dbPath;
     private readonly GameDataRepository _gameDataRepository;
+    private readonly MapRepository _mapRepository;
     private readonly ReplayWatcherService _replayWatcherService;
     private readonly SettingsRepository _settingsRepository;
     private readonly DataPageViewModel _viewModel;
@@ -44,8 +47,8 @@ public class DataPageViewModelTests : IAsyncDisposable
         BuildRepository buildRepository = new(_dbPath);
         buildRepository.Initialize();
         // Before GameDataRepository, whose MapName -> MapId migration writes into the Maps table.
-        MapRepository mapRepository = new(_dbPath);
-        mapRepository.Initialize();
+        _mapRepository = new MapRepository(_dbPath);
+        _mapRepository.Initialize();
         _gameDataRepository = new GameDataRepository(_dbPath);
         _gameDataRepository.Initialize();
         AttributeRepository attributeRepository = new(_dbPath);
@@ -66,7 +69,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         Sc2LadderService ladderService = new(new HttpClient(), new StubTokenProvider(), new MockLogger());
         ReplayDataExtractor replayDataExtractor = new();
         ReplayImportService replayImportService = new(new MockLogger(), replayDataExtractor, _gameDataRepository,
-            mapRepository, ladderService);
+            _mapRepository, ladderService);
 
         _viewModel = new DataPageViewModel(_settingsRepository, _replayWatcherService, replayImportService,
             accountRepository, buildRepository, _gameDataRepository, attributeRepository, ladderService, new MockLogger(), new StatCraft.Services.Factories.FilterSlotFactory(), replayDataExtractor);
@@ -106,19 +109,177 @@ public class DataPageViewModelTests : IAsyncDisposable
         Assert.Same(originalRow, survivingRow);
     }
 
-    private GameData InsertGame()
+    #region Filtering (ported from GameDataFilterTests)
+
+    // These used to call GameDataFilter.Matches directly. The Games tab no longer uses it — ApplyFilters
+    // runs DataPageFiltersViewModel.GetFilter() — so they go through the page itself instead: insert
+    // games, load the profile, set the filters the way the filter bar would, and assert on what ends up
+    // in Games. That way they cover whatever the tab actually filters with, not a parallel implementation.
+
+    [Fact]
+    public async Task Filter_NothingApplied_ShowsEveryGame()
+    {
+        InsertGame(map: InsertMap("Altitude LE"));
+        InsertGame(map: InsertMap("Deathaura LE"), win: 0m);
+
+        await LoadGamesWithNoDateRange();
+
+        Assert.Equal(2, _viewModel.Games.Count);
+    }
+
+    [Theory]
+    [InlineData(15, true)]
+    [InlineData(10, false)]
+    [InlineData(20, false)]
+    public async Task Filter_DateRange_IsInclusiveOnBothEnds(int day, bool expected)
+    {
+        // Local noon, so the game sits squarely inside its calendar day in whatever timezone runs this.
+        InsertGame(playedAt: new DateTimeOffset(new DateTime(2026, 1, day, 12, 0, 0, DateTimeKind.Local)));
+        await LoadGamesWithNoDateRange();
+
+        _viewModel.Filters.FromDate = new DateTime(2026, 1, 15);
+        _viewModel.Filters.ToDate = new DateTime(2026, 1, 15);
+
+        Assert.Equal(expected, _viewModel.Games.Count == 1);
+    }
+
+    [Fact]
+    public async Task Filter_MapNotChecked_IsExcluded()
+    {
+        GameData altitudeGame = InsertGame(map: InsertMap("Altitude LE"));
+        // A second game on another map, so that map exists as an option to check.
+        InsertGame(map: InsertMap("Deathaura LE"));
+        await LoadGamesWithNoDateRange();
+
+        _viewModel.Filters.MapSlot.AddCommand.Execute(null);
+        _viewModel.Filters.MapSlot.Options.Single(o => o.Label == "Deathaura LE").IsChecked = true;
+
+        Assert.DoesNotContain(_viewModel.Games, r => r.GameId == altitudeGame.GameId);
+    }
+
+    [Fact]
+    public async Task Filter_MapChecked_IsKept()
+    {
+        GameData altitudeGame = InsertGame(map: InsertMap("Altitude LE"));
+        await LoadGamesWithNoDateRange();
+
+        _viewModel.Filters.MapSlot.AddCommand.Execute(null);
+        _viewModel.Filters.MapSlot.Options.Single(o => o.Label == "Altitude LE").IsChecked = true;
+
+        Assert.Contains(_viewModel.Games, r => r.GameId == altitudeGame.GameId);
+    }
+
+    [Theory]
+    [InlineData(GameOutcome.Loss, false)]
+    [InlineData(GameOutcome.Win, true)]
+    public async Task Filter_Outcome_KeepsOnlyCheckedOutcomes(GameOutcome checkedOutcome, bool expected)
+    {
+        InsertGame(win: 1m);
+        await LoadGamesWithNoDateRange();
+
+        _viewModel.Filters.OutcomeSlot.AddCommand.Execute(null);
+        _viewModel.Filters.OutcomeSlot.Options.Single(o => o.Value == checkedOutcome).IsChecked = true;
+
+        Assert.Equal(expected, _viewModel.Games.Count == 1);
+    }
+
+    // A team game has one matchup per opponent and should show if ANY of them is checked. Only TvP is
+    // checked here, but one of the two opponents is Protoss. Guards the fix for a regression where the
+    // matchup filter required every opponent's matchup to be checked (see also
+    // DataPageFiltersViewModelTests.GetFilter_Matchup_TeamGame_MatchesWhenAnyOpponentsMatchupIsChecked).
+    [Fact]
+    public async Task Filter_MatchupPairs_OrsAcrossOpponents()
+    {
+        InsertGame(selfRace: 'T', opponents: [Opponent('Z', 3000), Opponent('P', 3000)]);
+        await LoadGamesWithNoDateRange();
+
+        CheckMatchup(Race.Terran, Race.Protoss);
+
+        Assert.Single(_viewModel.Games);
+    }
+
+    [Fact]
+    public async Task Filter_MatchupPairs_NoOpponentMatchesTheCheckedPair_IsExcluded()
+    {
+        InsertGame(selfRace: 'T', opponents: [Opponent('Z', 3000)]);
+        await LoadGamesWithNoDateRange();
+
+        CheckMatchup(Race.Terran, Race.Protoss);
+
+        Assert.Empty(_viewModel.Games);
+    }
+
+    [Fact]
+    public async Task Filter_OpponentMmrRange_OrsAcrossOpponents()
+    {
+        InsertGame(opponents: [Opponent('Z', 2000), Opponent('P', 3500)]);
+        await LoadGamesWithNoDateRange();
+
+        SetOpponentMmrRange(3000, 4000);
+
+        Assert.Single(_viewModel.Games);
+    }
+
+    [Fact]
+    public async Task Filter_OpponentMmrRange_NoOpponentInRange_IsExcluded()
+    {
+        InsertGame(opponents: [Opponent('Z', 2000)]);
+        await LoadGamesWithNoDateRange();
+
+        SetOpponentMmrRange(3000, 4000);
+
+        Assert.Empty(_viewModel.Games);
+    }
+
+    // SetActiveProfile resets the date range to today, per spec. These tests set dates themselves (or
+    // want none), so they clear it rather than depend on the games happening to be dated today.
+    private async Task LoadGamesWithNoDateRange()
+    {
+        await _viewModel.SetActiveProfile(_profile);
+        _viewModel.Filters.FromDate = null;
+        _viewModel.Filters.ToDate = null;
+    }
+
+    private void CheckMatchup(Race self, Race opponent)
+    {
+        _viewModel.Filters.MatchupSlot.AddCommand.Execute(null);
+        _viewModel.Filters.MatchupSlot.Options.Single(o => o.Value == (self, opponent)).IsChecked = true;
+    }
+
+    private void SetOpponentMmrRange(decimal min, decimal max)
+    {
+        _viewModel.Filters.MmrSlot.AddCommand.Execute(null);
+        _viewModel.Filters.MmrSlot.Min = min;
+        _viewModel.Filters.MmrSlot.Max = max;
+    }
+
+    // Games store their map by id, so a game's map has to be a real row for it to come back on load.
+    private Map InsertMap(string name)
+    {
+        Map map = new() { Name = name };
+        _mapRepository.InsertMap(map);
+        return map;
+    }
+
+    private static GamePlayer Opponent(char race, long mmr) =>
+        new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = mmr }, Race = race, Random = false };
+
+    #endregion
+
+    private GameData InsertGame(Map? map = null, decimal win = 1m, char selfRace = 'Z',
+        GamePlayer[]? opponents = null, DateTimeOffset? playedAt = null)
     {
         ParsedReplayData replay = new()
         {
             GameLengthSeconds = 600,
             ReplayPath = Guid.NewGuid() + ".SC2Replay",
-            ReplayTimestamp = DateTimeOffset.Now,
-            Win = 1m,
-            Player = new GamePlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false },
+            ReplayTimestamp = playedAt ?? DateTimeOffset.Now,
+            Win = win,
+            Player = new GamePlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = selfRace, Random = false },
             Allies = [],
-            Opponents = [new GamePlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'T', Random = false }],
+            Opponents = opponents ?? [new GamePlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'T', Random = false }],
         };
-        GameData game = new() { ReplayData = replay };
+        GameData game = new() { Map = map, ReplayData = replay };
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
         return game;
     }

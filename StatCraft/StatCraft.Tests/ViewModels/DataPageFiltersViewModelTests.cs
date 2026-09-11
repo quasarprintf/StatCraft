@@ -132,11 +132,11 @@ public class DataPageFiltersViewModelTests : IDisposable
         Assert.False(otherFiltersChanged);
     }
 
-    // FAILING — pins a regression from moving the Games tab onto IFilter. A team game has one matchup
-    // per opponent, and it should match if ANY of them is checked (the old GameDataFilter ORed across
-    // opponents on purpose, same as MMR still does). CheckboxFilterSlotViewModel.GetFilter always wraps
-    // in a SequentialAllFilter, so every one of the game's matchups now has to be checked instead.
-    // The TvT row is the negative control: no opponent is Terran, so it must stay excluded after a fix.
+    // A team game has one matchup per opponent, and it should match if ANY of them is checked, the same
+    // way MMR ORs across opponents. Guards the fix for a regression from moving the Games tab onto
+    // IFilter, where CheckboxFilterSlotViewModel.GetFilter wrapped in a SequentialAllFilter and so
+    // required every one of the game's matchups to be checked. The TvT row is the negative control: no
+    // opponent is Terran, so it must stay excluded.
     [Theory]
     [InlineData(Race.Protoss, true)]
     [InlineData(Race.Zerg, true)]
