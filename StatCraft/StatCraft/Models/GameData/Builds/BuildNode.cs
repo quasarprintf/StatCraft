@@ -72,13 +72,25 @@ public partial class BuildNode : ObservableObject, IAttributedObject
         child.Parent = this;
         Children.Add(child);
     }
+    public void RemoveChild(BuildNode child)
+    {
+        if (!Children.Remove(child))
+            throw new Exception("attempting to remove child that doesn't exist");
+        child.Parent = null;
+    }
 
     public IEnumerable<BuildNode> EnumerateAncestors()
     {
-        if (Parent == null)
-            yield break;
-        yield return Parent;
-        foreach (var ancestor in Parent.EnumerateAncestors())
-            yield return ancestor;
+        BuildNode? currentParent = Parent;
+        while (currentParent != null)
+        {
+            yield return currentParent;
+            currentParent = currentParent.Parent;
+        }
+    }
+
+    public bool HasAncestor(BuildNode node)
+    {
+        return EnumerateAncestors().Contains(node);
     }
 }

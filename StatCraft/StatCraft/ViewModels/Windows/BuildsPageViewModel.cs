@@ -445,7 +445,7 @@ public partial class BuildsPageViewModel : ViewModelBase
 
         if (turningOn)
         {
-            BuildNode? parent = FindParent(Builds, SelectedBuild);
+            BuildNode? parent = SelectedBuild.Parent;
             if (parent != null && !parent.Matchups.HasFlag(flag))
                 return;
             SelectedBuild.Matchups |= flag;
@@ -487,7 +487,7 @@ public partial class BuildsPageViewModel : ViewModelBase
 
     private void PerformDelete(BuildNode node)
     {
-        bool needsReselect = SelectedBuild == node || (SelectedBuild != null && ContainsDescendant(node, SelectedBuild));
+        bool needsReselect = SelectedBuild == node || (SelectedBuild != null && SelectedBuild.HasAncestor(node));
         BuildNode? replacement = needsReselect ? FindReplacementSelection(node) : null;
 
         _buildRepo.DeleteBuild(node.Id);
@@ -507,7 +507,7 @@ public partial class BuildsPageViewModel : ViewModelBase
 
     private BuildNode? FindReplacementSelection(BuildNode node)
     {
-        BuildNode? parent = FindParent(Builds, node);
+        BuildNode? parent = node.Parent;
         if (parent != null) return parent;
 
         int index = Builds.IndexOf(node);
@@ -516,22 +516,12 @@ public partial class BuildsPageViewModel : ViewModelBase
         return Builds.Count > 1 ? Builds[1] : null;
     }
 
-    private static BuildNode? FindParent(ObservableCollection<BuildNode> nodes, BuildNode target)
+    private static void RemoveNode(ObservableCollection<BuildNode> nodes, BuildNode target)
     {
-        return target.Parent;
-    }
-
-    private static bool RemoveNode(ObservableCollection<BuildNode> nodes, BuildNode target)
-    {
-        if (nodes.Remove(target)) return true;
-        foreach (BuildNode node in nodes)
-            if (RemoveNode(node.Children, target)) return true;
-        return false;
-    }
-
-    private static bool ContainsDescendant(BuildNode root, BuildNode target)
-    {
-        return target.EnumerateAncestors().Contains(root);
+        if (target.Parent == null)
+            nodes.Remove(target);
+        else
+            target.Parent.RemoveChild(target);
     }
 
     public void ChangeDetailIndex(int sourceIndex, int targetIndex)
