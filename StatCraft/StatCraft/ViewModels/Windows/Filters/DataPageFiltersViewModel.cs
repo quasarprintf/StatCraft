@@ -165,7 +165,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     {
         if (e.NewItems != null)
         {
-            for (int i = e.NewStartingIndex; i < e.NewItems.Count + e.NewStartingIndex; ++i) 
+            for (int i = 0; i < e.NewItems.Count; ++i) 
             {
                 AttributeDefinition attribute = (AttributeDefinition)e.NewItems[i]!;
                 IFilterSlotViewModel<GameData> filterSlot = _filterSlotFactory.CreateFromDefinition<GameData>(attribute);
@@ -174,7 +174,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         }
         if (e.OldItems != null)
         {
-            for (int i = e.OldStartingIndex; i < e.OldItems.Count + e.OldStartingIndex; ++i) 
+            for (int i = 0; i < e.OldItems.Count; ++i) 
             {
                 GameAttributeSlots.RemoveAt(i);
             }
