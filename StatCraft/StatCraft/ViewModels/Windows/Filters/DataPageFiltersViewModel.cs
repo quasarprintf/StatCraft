@@ -82,7 +82,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         List<BuildNode> allBuilds = buildRepository.GetAllBuilds();
         Dictionary<int, BuildNode> buildsMap = allBuilds.SelectMany(b => b.EnumerateDescendants().Append(b)).ToDictionary(b => b.Id);
         BuildSlot = new CheckboxFilterSlotViewModel<GameData, BuildNode>("Build", BuildBuildOptions(allBuilds), 
-            g => g.ReplayData.Player.BuildIds.SelectMany(b => buildsMap[b].EnumerateAncestors().Append(buildsMap[b]))) 
+            g => g.ReplayData.Player.BuildIds.SelectMany(b => buildsMap.TryGetValue(b, out BuildNode? build) ? build.EnumerateAncestors().Append(build) : Enumerable.Empty<BuildNode>())) 
         { 
             AllowIncludeUnset=false 
         };
