@@ -32,7 +32,7 @@ public partial class MapsPageViewModel : ViewModelBase
     [ObservableProperty] private Map? _selectedMap;
 
     [ObservableProperty] private string _nameFilter = "";
-    private readonly Dictionary<AttributeDefinition, IFilterSlotViewModel> _slotByAttribute = [];
+    private readonly Dictionary<AttributeDefinition, IFilterSlotViewModel<Map>> _slotByAttribute = [];
     public ObservableCollection<IFilterSlotViewModel> VisibleFilterSlots { get; } = [];
     public ObservableCollection<IFilterSlotViewModel> HiddenFilterSlots { get; } = [];
 
@@ -135,7 +135,7 @@ public partial class MapsPageViewModel : ViewModelBase
             if (cachedAttr.Name != dbAttr.Name)
             {
                 cachedAttr.Name = dbAttr.Name;
-                if (_slotByAttribute.TryGetValue(cachedAttr, out IFilterSlotViewModel? slot))
+                if (_slotByAttribute.TryGetValue(cachedAttr, out IFilterSlotViewModel<Map>? slot))
                     slot.Title = dbAttr.Name;
             }
 
@@ -145,7 +145,7 @@ public partial class MapsPageViewModel : ViewModelBase
                 // Numeric/Percent vs. Bool vs. Values are different FilterSlotViewModel subclasses,
                 // so the slot itself has to be replaced rather than patched — but only for this one
                 // attribute, and preserving whether it was actually showing.
-                bool wasVisible = _slotByAttribute.TryGetValue(cachedAttr, out IFilterSlotViewModel? old) && old.IsApplied;
+                bool wasVisible = _slotByAttribute.TryGetValue(cachedAttr, out IFilterSlotViewModel<Map>? old) && old.IsApplied;
                 RemoveFilterSlot(cachedAttr);
                 AddFilterSlot(cachedAttr, wasVisible);
             }
@@ -237,7 +237,7 @@ public partial class MapsPageViewModel : ViewModelBase
         if (!changed)
             return;
 
-        if (_slotByAttribute.TryGetValue(attribute, out IFilterSlotViewModel? slot) &&
+        if (_slotByAttribute.TryGetValue(attribute, out IFilterSlotViewModel<Map>? slot) &&
             slot is CheckboxFilterSlotViewModel<Map, string> stringSlot)
         {
             HashSet<string> previouslyChecked = stringSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
@@ -297,7 +297,7 @@ public partial class MapsPageViewModel : ViewModelBase
     #region filters
     private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
     {
-        IFilterSlotViewModel slot = _filterSlotFactory.CreateFromDefinition(attribute);
+        IFilterSlotViewModel<Map> slot = _filterSlotFactory.CreateFromDefinition<Map>(attribute);
         slot.IsApplied = isVisible;
         slot.AllowIncludeUnset = true;
         slot.IsAppliedChanged += (_,_) => OnSlotVisibilityChanged(slot);
@@ -308,7 +308,7 @@ public partial class MapsPageViewModel : ViewModelBase
     }
     private void RemoveFilterSlot(AttributeDefinition attribute)
     {
-        if (!_slotByAttribute.Remove(attribute, out IFilterSlotViewModel? slot))
+        if (!_slotByAttribute.Remove(attribute, out IFilterSlotViewModel<Map>? slot))
             return;
 
         slot.Changed -= ApplyFilters;
@@ -366,27 +366,16 @@ public partial class MapsPageViewModel : ViewModelBase
             AcceptNull = string.IsNullOrWhiteSpace(NameFilter)
         };
         filters.Add(nameFilter);
-        foreach ((AttributeDefinition attribute, IFilterSlotViewModel slot) in _slotByAttribute)
+        foreach ((AttributeDefinition attribute, IFilterSlotViewModel<Map> slot) in _slotByAttribute)
         {
             if (!slot.IsApplied)
                 continue;
-            IFilter<Map> filter = SlotFilter(slot);
+            IFilter<Map> filter = slot.GetFilter();
             //wrap the filter in an AndFilter so we can have a null check on both the attribute and the attribute value
             //SequentialAllFilter<Map, AttributeValue> wrappedFilter = new SequentialAllFilter<Map, AttributeValue>(filter, m => [m.GetAttributeByDefinitionId(attribute.Id)]);
             filters.Add(filter);
         }
         return new AndFilter<Map>(filters);
-    }
-    private static IFilter<Map> SlotFilter(IFilterSlotViewModel slot)
-    {
-        Type slotType = slot.GetType();
-        MethodInfo? getFilterMethod = slotType.GetMethod(nameof(FilterSlotViewModel<,>.GetFilter));
-        if (getFilterMethod == null)
-            throw new NotImplementedException();
-        IFilter<Map>? returnValue = getFilterMethod.Invoke(slot, null) as IFilter<Map>;
-        if (returnValue == null)
-            throw new ArgumentException();
-        return returnValue;
     }
     #endregion
 }

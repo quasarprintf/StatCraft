@@ -59,7 +59,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     public AttributeValuesSelectViewModel AttributeValuesSelect { get; }
 
     [ObservableProperty] private string _nameFilter = "";
-    private readonly Dictionary<AttributeDefinition, IFilterSlotViewModel> _slotByAttribute = [];
+    private readonly Dictionary<AttributeDefinition, IFilterSlotViewModel<BuildNode>> _slotByAttribute = [];
     public ObservableCollection<IFilterSlotViewModel> VisibleFilterSlots { get; } = [];
     public ObservableCollection<IFilterSlotViewModel> HiddenFilterSlots { get; } = [];
 
@@ -199,7 +199,7 @@ public partial class BuildsPageViewModel : ViewModelBase
             if (cachedAttr.Name != dbAttr.Name)
             {
                 cachedAttr.Name = dbAttr.Name;
-                if (_slotByAttribute.TryGetValue(cachedAttr, out IFilterSlotViewModel? slot))
+                if (_slotByAttribute.TryGetValue(cachedAttr, out IFilterSlotViewModel<BuildNode>? slot))
                     slot.Title = dbAttr.Name;
             }
 
@@ -209,7 +209,7 @@ public partial class BuildsPageViewModel : ViewModelBase
                 // Numeric/Percent vs. Bool vs. Values are different FilterSlotViewModel subclasses,
                 // so the slot itself has to be replaced rather than patched — but only for this one
                 // attribute, and preserving whether it was actually showing.
-                bool wasVisible = _slotByAttribute.TryGetValue(cachedAttr, out IFilterSlotViewModel? old) && old.IsApplied;
+                bool wasVisible = _slotByAttribute.TryGetValue(cachedAttr, out IFilterSlotViewModel<BuildNode>? old) && old.IsApplied;
                 RemoveFilterSlot(cachedAttr);
                 AddFilterSlot(cachedAttr, wasVisible);
             }
@@ -300,8 +300,8 @@ public partial class BuildsPageViewModel : ViewModelBase
             return;
 
         //TODO: wtf is going on here
-        if (_slotByAttribute.TryGetValue(attribute, out IFilterSlotViewModel? slot) &&
-            slot is CheckboxFilterSlotViewModel<AttributeValue, string?> stringSlot)
+        if (_slotByAttribute.TryGetValue(attribute, out IFilterSlotViewModel<BuildNode>? slot) &&
+            slot is CheckboxFilterSlotViewModel<BuildNode, string?> stringSlot)
         {
             HashSet<string?> previouslyChecked = stringSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
             stringSlot.ReplaceOptions(attribute.ValueOptions
@@ -559,7 +559,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     #region filters
     private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
     {
-        IFilterSlotViewModel slot = _filterSlotFactory.CreateFromDefinition(attribute);
+        IFilterSlotViewModel<BuildNode> slot = _filterSlotFactory.CreateFromDefinition<BuildNode>(attribute);
         slot.IsApplied = isVisible;
         slot.AllowIncludeUnset = true;
         slot.IsAppliedChanged += (_,_) => OnSlotVisibilityChanged(slot);
@@ -570,7 +570,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     }
     private void RemoveFilterSlot(AttributeDefinition attribute)
     {
-        if (!_slotByAttribute.Remove(attribute, out IFilterSlotViewModel? slot))
+        if (!_slotByAttribute.Remove(attribute, out IFilterSlotViewModel<BuildNode>? slot))
             return;
 
         slot.Changed -= ApplyFilters;
@@ -635,27 +635,16 @@ public partial class BuildsPageViewModel : ViewModelBase
             AcceptNull = string.IsNullOrWhiteSpace(NameFilter)
         };
         filters.Add(nameFilter);
-        foreach ((AttributeDefinition attribute, IFilterSlotViewModel slot) in _slotByAttribute)
+        foreach ((AttributeDefinition attribute, IFilterSlotViewModel<BuildNode> slot) in _slotByAttribute)
         {
             if (!slot.IsApplied)
                 continue;
-            IFilter<BuildNode> filter = SlotFilter(slot);
+            IFilter<BuildNode> filter = slot.GetFilter();
             //wrap the filter in an AndFilter so we can have a null check on both the attribute and the attribute value
             //SequentialAllFilter<BuildNode, AttributeValue> wrappedFilter = new SequentialAllFilter<BuildNode, AttributeValue>(filter, b => [b.GetAttributeByDefinitionId(attribute.Id)]);
             filters.Add(filter);
         }
         return new AndFilter<BuildNode>(filters);
-    }
-    private static IFilter<BuildNode> SlotFilter(IFilterSlotViewModel slot)
-    {
-        Type slotType = slot.GetType();
-        MethodInfo? getFilterMethod = slotType.GetMethod(nameof(FilterSlotViewModel<,>.GetFilter));
-        if (getFilterMethod == null)
-            throw new NotImplementedException();
-        IFilter<BuildNode>? returnValue = getFilterMethod.Invoke(slot, null) as IFilter<BuildNode>;
-        if (returnValue == null)
-            throw new ArgumentException();
-        return returnValue;
     }
     #endregion
 }

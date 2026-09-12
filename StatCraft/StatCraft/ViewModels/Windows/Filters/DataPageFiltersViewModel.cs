@@ -47,12 +47,12 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public CheckboxFilterSlotViewModel<GameData, GameOutcome> OutcomeSlot { get; }
     public NumericRangeFilterSlotViewModel<PlayerMmr> MmrSlot { get; }
     public CheckboxFilterSlotViewModel<GameData, BuildNode> BuildSlot { get; }
-    public ObservableCollection<FilterMenuItemViewModel> GameAttributeSlots { get; private set; }
+    public ObservableCollection<FilterMenuItemViewModel<GameData>> GameAttributeSlots { get; private set; }
 
     // Fixed display order for both the bar itself and the "+ Filters" add-dropdown.
-    public IReadOnlyList<FilterMenuItemViewModel> ExtraFilterSlots { get; }
+    public IReadOnlyList<IFilterMenuItemViewModel> ExtraFilterSlots { get; }
     public IEnumerable<IFilterSlotViewModel> VisibleExtraFilterSlots => ExtraFilterSlots.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
-    public IEnumerable<FilterMenuItemViewModel> HiddenExtraFilterSlots => ExtraFilterSlots.Where(s => !s.IsApplied);
+    public IEnumerable<IFilterMenuItemViewModel> HiddenExtraFilterSlots => ExtraFilterSlots.Where(s => !s.IsApplied);
 
     // Checking/unchecking a profile changes which games need to be loaded from the database at all;
     // every other filter change only needs to re-filter the already-loaded set in memory.
@@ -87,24 +87,24 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             AllowIncludeUnset=false 
         };
 
-        GameAttributeSlots = new ObservableCollection<FilterMenuItemViewModel>();
+        GameAttributeSlots = new ObservableCollection<FilterMenuItemViewModel<GameData>>();
         foreach (var attribute in gameAttributes)
         {
-            IFilterSlotViewModel filterSlot = _filterSlotFactory.CreateFromDefinition(attribute);
-            GameAttributeSlots.Add(new FilterMenuItemViewModel(filterSlot));
+            IFilterSlotViewModel<GameData> filterSlot = _filterSlotFactory.CreateFromDefinition<GameData>(attribute);
+            GameAttributeSlots.Add(new FilterMenuItemViewModel<GameData>(filterSlot));
         }
         gameAttributes.CollectionChanged += GameAttributesChanged;
 
         ExtraFilterSlots = 
         [
-            new FilterMenuItemViewModel(MapSlot),
-            new FilterMenuItemViewModel(MatchupSlot), 
-            new FilterMenuItemViewModel(OutcomeSlot),
-            new FilterMenuItemViewModel(MmrSlot),
-            new FilterMenuItemViewModel(BuildSlot),
-            new FilterMenuItemViewModel(GameAttributeSlots, "Game Attributes")
+            new FilterMenuItemViewModel<GameData>(MapSlot),
+            new FilterMenuItemViewModel<GameData>(MatchupSlot), 
+            new FilterMenuItemViewModel<GameData>(OutcomeSlot),
+            new FilterMenuItemViewModel<PlayerMmr>(MmrSlot),
+            new FilterMenuItemViewModel<GameData>(BuildSlot),
+            new FilterMenuItemViewModel<GameData>(GameAttributeSlots, "Game Attributes")
         ];
-        foreach (FilterMenuItemViewModel slot in ExtraFilterSlots)
+        foreach (IFilterMenuItemViewModel slot in ExtraFilterSlots)
         {
             // Only a visibility toggle (Add/Remove) should rebuild the filter bar's own item list —
             // rebuilding on every criteria edit too would tear down and recreate the ItemsControl's
@@ -168,8 +168,8 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             for (int i = e.NewStartingIndex; i < e.NewItems.Count + e.NewStartingIndex; ++i) 
             {
                 AttributeDefinition attribute = (AttributeDefinition)e.NewItems[i]!;
-                IFilterSlotViewModel filterSlot = _filterSlotFactory.CreateFromDefinition(attribute);
-                GameAttributeSlots.Insert(i, new FilterMenuItemViewModel(filterSlot));
+                IFilterSlotViewModel<GameData> filterSlot = _filterSlotFactory.CreateFromDefinition<GameData>(attribute);
+                GameAttributeSlots.Insert(i, new FilterMenuItemViewModel<GameData>(filterSlot));
             }
         }
         if (e.OldItems != null)
@@ -250,7 +250,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             {
                 if (attributeFilterSlot.IsApplied)
                 {
-                    IFilter<GameData> attributeFilter = SlotFilter(attributeFilterSlot);
+                    IFilter<GameData> attributeFilter = attributeFilterSlot.GetFilter();
                     //var wrappedFilter = new SequentialAllFilter<GameData, AttributeValue>(attributeFilter, g => [g.GetAttributeByDefinitionId(attribute.Id)]);
                     appliedFilters.Add(attributeFilter);
                 }
@@ -261,18 +261,6 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         AndFilter<GameData> collatedFilter = new AndFilter<GameData>(appliedFilters);
 
         return collatedFilter;
-    }
-
-    private static IFilter<GameData> SlotFilter(IFilterSlotViewModel slot)
-    {
-        Type slotType = slot.GetType();
-        MethodInfo? getFilterMethod = slotType.GetMethod(nameof(FilterSlotViewModel<,>.GetFilter));
-        if (getFilterMethod == null)
-            throw new NotImplementedException();
-        IFilter<GameData>? returnValue = getFilterMethod.Invoke(slot, null) as IFilter<GameData>;
-        if (returnValue == null)
-            throw new ArgumentException();
-        return returnValue;
     }
 
     private (Race,Race)[] GetGameMatchups(GameData game)

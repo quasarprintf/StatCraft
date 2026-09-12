@@ -18,10 +18,15 @@ public interface IFilterSlotViewModel
     IRelayCommand RemoveCommand { get; }
 }
 
+public interface IFilterSlotViewModel<T> : IFilterSlotViewModel
+{
+    IFilter<T> GetFilter();
+}
+
 // One "extra filter" the Data tab's filter bar can show or hide. Two concrete subclasses (rather
 // than one class with a "kind" flag) so Avalonia's implicit per-x:DataType DataTemplate dispatch can
 // pick the right visual (checkbox dropdown vs. numeric range) automatically.
-public abstract partial class FilterSlotViewModel<T,F> : ViewModelBase, IFilterSlotViewModel
+public abstract partial class FilterSlotViewModel<T,F> : ViewModelBase, IFilterSlotViewModel<T>
 {
     public Func<T,F> FilteredPropertyMap { get; set; }
 
