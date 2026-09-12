@@ -20,7 +20,7 @@ public class BuildPathHelperTests
     {
         BuildNode child = new() { Id = 2, Name = "Child" };
         BuildNode root = new() { Id = 1, Name = "Root" };
-        root.Children.Add(child);
+        root.AddChild(child);
 
         List<BuildNode>? path = BuildPathHelper.FindPath([root], 2);
 
@@ -32,9 +32,9 @@ public class BuildPathHelperTests
     {
         BuildNode grandchild = new() { Id = 3, Name = "Grandchild" };
         BuildNode child = new() { Id = 2, Name = "Child" };
-        child.Children.Add(grandchild);
+        child.AddChild(grandchild);
         BuildNode root = new() { Id = 1, Name = "Root" };
-        root.Children.Add(child);
+        root.AddChild(child);
 
         List<BuildNode>? path = BuildPathHelper.FindPath([root], 3);
 
@@ -57,7 +57,7 @@ public class BuildPathHelperTests
         BuildNode firstRoot = new() { Id = 1, Name = "First" };
         BuildNode secondChild = new() { Id = 3, Name = "SecondChild" };
         BuildNode secondRoot = new() { Id = 2, Name = "Second" };
-        secondRoot.Children.Add(secondChild);
+        secondRoot.AddChild(secondChild);
 
         List<BuildNode>? path = BuildPathHelper.FindPath([firstRoot, secondRoot], 3);
 

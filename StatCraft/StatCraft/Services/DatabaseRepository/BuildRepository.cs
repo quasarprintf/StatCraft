@@ -104,7 +104,7 @@ public class BuildRepository : SqliteRepository
         {
             long? parentId = parentMap[id];
             if (parentId.HasValue && nodeDict.TryGetValue(parentId.Value, out BuildNode? parent))
-                parent.Children.Add(node);
+                parent.AddChild(node);
             else
                 roots.Add(node);
         }

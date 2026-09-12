@@ -27,7 +27,7 @@ public class GameDataFilterTests
     {
         BuildNode parent = new() { Id = 1 };
         BuildNode child = new() { Id = 2 };
-        parent.Children.Add(child);
+        parent.AddChild(child);
 
         // Criteria.BuildIds is expected to already be subtree-expanded by the time it reaches Matches
         // (mirrors DataPageFiltersViewModel.ToBuildIdSet), so build it via CollectSubtreeIds here.
@@ -54,8 +54,8 @@ public class GameDataFilterTests
         BuildNode root = new() { Id = 1 };
         BuildNode child = new() { Id = 2 };
         BuildNode grandchild = new() { Id = 3 };
-        child.Children.Add(grandchild);
-        root.Children.Add(child);
+        child.AddChild(grandchild);
+        root.AddChild(child);
 
         Assert.Equal([1, 2, 3], GameDataFilter.CollectSubtreeIds(root).OrderBy(id => id));
     }

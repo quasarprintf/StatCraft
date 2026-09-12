@@ -1,8 +1,8 @@
 using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Race;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 
@@ -11,6 +11,8 @@ namespace StatCraft.Models.GameData.Builds;
 public partial class BuildNode : ObservableObject, IAttributedObject
 {
     public int Id { get; set; }
+
+    public BuildNode? Parent { get; set; }
 
     [ObservableProperty] private string _name = string.Empty;
     [ObservableProperty] private string _description = string.Empty;
@@ -63,5 +65,20 @@ public partial class BuildNode : ObservableObject, IAttributedObject
     public AttributeValue? GetAttributeByDefinitionId(int id)
     {
         return AttributeValues.FirstOrDefault(v => v.Definition.Id == id);
+    }
+
+    public void AddChild(BuildNode child)
+    {
+        child.Parent = this;
+        Children.Add(child);
+    }
+
+    public IEnumerable<BuildNode> EnumerateAncestors()
+    {
+        if (Parent == null)
+            yield break;
+        yield return Parent;
+        foreach (var ancestor in Parent.EnumerateAncestors())
+            yield return ancestor;
     }
 }

@@ -429,7 +429,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     {
         BuildNode node = new BuildNode { Name = "New Build", PlayerRace = parent.PlayerRace, Matchups = parent.Matchups };
         _buildRepo.InsertBuild(node, parent.Id, parent.Children.Count);
-        parent.Children.Add(node);
+        parent.AddChild(node);
         parent.IsExpanded = true;
         RefreshOpponentFilter();
         SelectedBuild = node;
@@ -518,13 +518,7 @@ public partial class BuildsPageViewModel : ViewModelBase
 
     private static BuildNode? FindParent(ObservableCollection<BuildNode> nodes, BuildNode target)
     {
-        foreach (BuildNode n in nodes)
-        {
-            if (n.Children.Contains(target)) return n;
-            BuildNode? found = FindParent(n.Children, target);
-            if (found != null) return found;
-        }
-        return null;
+        return target.Parent;
     }
 
     private static bool RemoveNode(ObservableCollection<BuildNode> nodes, BuildNode target)
@@ -537,9 +531,7 @@ public partial class BuildsPageViewModel : ViewModelBase
 
     private static bool ContainsDescendant(BuildNode root, BuildNode target)
     {
-        foreach (BuildNode child in root.Children)
-            if (child == target || ContainsDescendant(child, target)) return true;
-        return false;
+        return target.EnumerateAncestors().Contains(root);
     }
 
     public void ChangeDetailIndex(int sourceIndex, int targetIndex)
