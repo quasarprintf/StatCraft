@@ -45,10 +45,6 @@ public abstract partial class FilterSlotViewModel<T,F> : ViewModelBase, IFilterS
     public event Action? Changed;
     protected void RaiseChanged() => Changed?.Invoke();
 
-    // Raised only when IsVisible itself toggles — deliberately separate from Changed so that typing
-    // into a numeric range or checking an option (which also raises Changed) doesn't make the filter
-    // bar's own ItemsControl think the set of visible slots changed and rebuild its item containers,
-    // which would tear down and recreate whatever control the user is actively focused on/typing in.
     public event EventHandler? IsAppliedChanged;
 
     protected FilterSlotViewModel(string title, Func<T,F> filteredPropertyMap)

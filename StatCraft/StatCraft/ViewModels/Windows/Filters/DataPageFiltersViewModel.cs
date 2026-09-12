@@ -78,9 +78,11 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         OutcomeSlot = new CheckboxFilterSlotViewModel<GameData, GameOutcome>("Outcome", BuildOutcomeOptions(), g => [g.ReplayData.Win.AsGameOutcome()]) { AllowIncludeUnset=false };
         MmrSlot = new NumericRangeFilterSlotViewModel<PlayerMmr>("Opponent MMR", m => m.Mmr) { AllowIncludeUnset=false };
 
+        //TODO: builds filter needs to be completely redesigned
         List<BuildNode> allBuilds = buildRepository.GetAllBuilds();
+        Dictionary<int, BuildNode> buildsMap = allBuilds.SelectMany(b => b.EnumerateDescendants().Append(b)).ToDictionary(b => b.Id);
         BuildSlot = new CheckboxFilterSlotViewModel<GameData, BuildNode>("Build", BuildBuildOptions(allBuilds), 
-            g => g.ReplayData.Player.BuildIds.SelectMany(b => allBuilds[b].EnumerateAncestors().Append(allBuilds[b]))) 
+            g => g.ReplayData.Player.BuildIds.SelectMany(b => buildsMap[b].EnumerateAncestors().Append(buildsMap[b]))) 
         { 
             AllowIncludeUnset=false 
         };

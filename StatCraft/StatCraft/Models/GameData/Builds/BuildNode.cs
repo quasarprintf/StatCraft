@@ -88,6 +88,15 @@ public partial class BuildNode : ObservableObject, IAttributedObject
             currentParent = currentParent.Parent;
         }
     }
+    public IEnumerable<BuildNode> EnumerateDescendants()
+    {
+        foreach (var child in Children)
+        {
+            yield return child;
+            foreach (var descendant in child.EnumerateDescendants())
+                yield return descendant;
+        }
+    }
 
     public bool HasAncestor(BuildNode node)
     {
