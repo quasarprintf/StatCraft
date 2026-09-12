@@ -225,7 +225,12 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             appliedFilters.Add(mmrFilter);
         }
 
-        //TODO: build id's filter
+        if (BuildSlot.IsApplied)
+        {
+            Dictionary<int, BuildNode> allBuilds = BuildSlot.Options.ToDictionary(o => o.Value.Id, o => o.Value);
+            SequentialAnyFilter<GameData, BuildNode> buildFilter = BuildSlot.GetFilter<GameData>(g => g.ReplayData.Player.BuildIds.SelectMany(b => allBuilds[b].EnumerateAncestors().Append(allBuilds[b])));
+            appliedFilters.Add(buildFilter);
+        }
         //TODO: game attributes filter
         //TODO: build attribute filter
 
