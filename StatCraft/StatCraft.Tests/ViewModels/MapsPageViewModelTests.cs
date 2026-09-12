@@ -99,7 +99,7 @@ public class MapsPageViewModelTests : IDisposable
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
         MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
         AttributeDefinition held = Assert.Single(vm.AllAttributes);
-        Assert.IsType<NumericRangeFilterSlotViewModel>(Assert.Single(vm.HiddenFilterSlots));
+        Assert.IsType<NumericRangeFilterSlotViewModel<Map>>(Assert.Single(vm.HiddenFilterSlots));
 
         AttributeDefinition editedElsewhere = Assert.Single(_attributeRepo.GetAllAttributes(AttributeScope.Map));
         editedElsewhere.Type = AttributeType.Bool;
@@ -110,7 +110,7 @@ public class MapsPageViewModelTests : IDisposable
         Assert.Same(held, Assert.Single(vm.FilteredMaps.Single().AttributeValues).Definition);
         // Numeric/Bool/Values are different FilterSlotViewModel subclasses, so the slot itself must be
         // swapped, not just have a property change underneath it.
-        Assert.IsType<BoolFilterSlotViewModel>(Assert.Single(vm.HiddenFilterSlots));
+        Assert.IsType<BoolFilterSlotViewModel<Map>>(Assert.Single(vm.HiddenFilterSlots));
     }
 
     [Fact]
@@ -151,7 +151,7 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertAttribute(attribute, 0);
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
         MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
-        CheckboxFilterSlotViewModel<string> slot = Assert.IsType<CheckboxFilterSlotViewModel<string>>(Assert.Single(vm.HiddenFilterSlots));
+        CheckboxFilterSlotViewModel<Map, string?> slot = Assert.IsType<CheckboxFilterSlotViewModel<Map, string?>>(Assert.Single(vm.HiddenFilterSlots));
         slot.Options.Single(o => o.Value == "Rush").IsChecked = true;
 
         _attributeRepo.InsertValueOption(attribute.Id, "Macro");
@@ -178,7 +178,7 @@ public class MapsPageViewModelTests : IDisposable
     public void CheckedOption_KeepsOnlyMapsHoldingThatValue(string mapValue, bool expected)
     {
         MapsPageViewModel vm = ValuesAttributeVm();
-        CheckboxFilterSlotViewModel<string> slot = Assert.IsType<CheckboxFilterSlotViewModel<string>>(Assert.Single(vm.HiddenFilterSlots));
+        CheckboxFilterSlotViewModel<Map, string?> slot = Assert.IsType<CheckboxFilterSlotViewModel<Map, string?>>(Assert.Single(vm.HiddenFilterSlots));
         Map map = AddMapWithValueRows(vm);
         map.AttributeValues.Single().SelectedValue = mapValue;
 
@@ -192,7 +192,7 @@ public class MapsPageViewModelTests : IDisposable
     public void AttributeFilterWithoutIncludeUnset_DropsAMapWhoseValueIsUnset()
     {
         MapsPageViewModel vm = ValuesAttributeVm();
-        CheckboxFilterSlotViewModel<string> slot = Assert.IsType<CheckboxFilterSlotViewModel<string>>(Assert.Single(vm.HiddenFilterSlots));
+        CheckboxFilterSlotViewModel<Map, string?> slot = Assert.IsType<CheckboxFilterSlotViewModel<Map, string?>>(Assert.Single(vm.HiddenFilterSlots));
         Map map = AddMapWithValueRows(vm);
 
         slot.IsApplied = true;
@@ -209,7 +209,7 @@ public class MapsPageViewModelTests : IDisposable
     public void IncludeUnset_ValuesAttribute_KeepsAMapWhoseValueRowIsUnset()
     {
         MapsPageViewModel vm = ValuesAttributeVm();
-        CheckboxFilterSlotViewModel<string> slot = Assert.IsType<CheckboxFilterSlotViewModel<string>>(Assert.Single(vm.HiddenFilterSlots));
+        CheckboxFilterSlotViewModel<Map, string?> slot = Assert.IsType<CheckboxFilterSlotViewModel<Map, string?>>(Assert.Single(vm.HiddenFilterSlots));
         Map map = AddMapWithValueRows(vm);
 
         slot.IsApplied = true;
@@ -225,7 +225,7 @@ public class MapsPageViewModelTests : IDisposable
     public void IncludeUnset_BoolAttribute_DecidesAMapWhoseValueRowIsUnset(bool includeUnset)
     {
         MapsPageViewModel vm = AttributeVm("Ramped", AttributeType.Bool);
-        BoolFilterSlotViewModel slot = Assert.IsType<BoolFilterSlotViewModel>(Assert.Single(vm.HiddenFilterSlots));
+        BoolFilterSlotViewModel<Map> slot = Assert.IsType<BoolFilterSlotViewModel<Map>>(Assert.Single(vm.HiddenFilterSlots));
         Map map = AddMapWithValueRows(vm);
 
         slot.IsApplied = true;
@@ -241,7 +241,7 @@ public class MapsPageViewModelTests : IDisposable
     public void IncludeUnset_NumericAttribute_DecidesAMapWhoseValueRowIsUnset(bool includeUnset)
     {
         MapsPageViewModel vm = AttributeVm("Rush Distance", AttributeType.Numeric);
-        NumericRangeFilterSlotViewModel slot = Assert.IsType<NumericRangeFilterSlotViewModel>(Assert.Single(vm.HiddenFilterSlots));
+        NumericRangeFilterSlotViewModel<Map> slot = Assert.IsType<NumericRangeFilterSlotViewModel<Map>>(Assert.Single(vm.HiddenFilterSlots));
         Map map = AddMapWithValueRows(vm);
 
         slot.IsApplied = true;
@@ -264,7 +264,7 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
         MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
-        CheckboxFilterSlotViewModel<string> slot = Assert.IsType<CheckboxFilterSlotViewModel<string>>(Assert.Single(vm.HiddenFilterSlots));
+        CheckboxFilterSlotViewModel<Map, string?> slot = Assert.IsType<CheckboxFilterSlotViewModel<Map, string?>>(Assert.Single(vm.HiddenFilterSlots));
         Assert.Empty(vm.FilteredMaps.Single().AttributeValues);
 
         slot.IsApplied = true;
@@ -279,7 +279,7 @@ public class MapsPageViewModelTests : IDisposable
     {
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
         MapsPageViewModel vm = AttributeVm("Ramped", AttributeType.Bool);
-        BoolFilterSlotViewModel slot = Assert.IsType<BoolFilterSlotViewModel>(Assert.Single(vm.HiddenFilterSlots));
+        BoolFilterSlotViewModel<Map> slot = Assert.IsType<BoolFilterSlotViewModel<Map>>(Assert.Single(vm.HiddenFilterSlots));
 
         slot.IsApplied = true;
         slot.IncludeUnset = true;
@@ -293,7 +293,7 @@ public class MapsPageViewModelTests : IDisposable
     {
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
         MapsPageViewModel vm = AttributeVm("Rush Distance", AttributeType.Numeric);
-        NumericRangeFilterSlotViewModel slot = Assert.IsType<NumericRangeFilterSlotViewModel>(Assert.Single(vm.HiddenFilterSlots));
+        NumericRangeFilterSlotViewModel<Map> slot = Assert.IsType<NumericRangeFilterSlotViewModel<Map>>(Assert.Single(vm.HiddenFilterSlots));
 
         slot.IsApplied = true;
         slot.IncludeUnset = true;

@@ -1,4 +1,5 @@
 using StatCraft.Models.GameData.Attributes;
+using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.Factories;
@@ -100,7 +101,7 @@ public class BuildsPageViewModelTests : IDisposable
     {
         AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Cheese", Type = AttributeType.Bool };
         _attributeRepo.InsertAttribute(attribute, 0);
-        BoolFilterSlotViewModel slot = Assert.IsType<BoolFilterSlotViewModel>(_vm.HiddenFilterSlots.Single(s => s.Title == "Cheese"));
+        BoolFilterSlotViewModel<BuildNode> slot = Assert.IsType<BoolFilterSlotViewModel<BuildNode>>(_vm.HiddenFilterSlots.Single(s => s.Title == "Cheese"));
         Assert.DoesNotContain(_vm.SelectedBuild!.AttributeValues, v => v.Definition.Id == attribute.Id);
 
         slot.IsApplied = true;
@@ -119,7 +120,7 @@ public class BuildsPageViewModelTests : IDisposable
     {
         AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Cheese", Type = AttributeType.Bool, IsMandatory = true };
         _attributeRepo.InsertAttribute(attribute, 0);
-        BoolFilterSlotViewModel slot = Assert.IsType<BoolFilterSlotViewModel>(_vm.HiddenFilterSlots.Single(s => s.Title == "Cheese"));
+        BoolFilterSlotViewModel<BuildNode> slot = Assert.IsType<BoolFilterSlotViewModel<BuildNode>>(_vm.HiddenFilterSlots.Single(s => s.Title == "Cheese"));
         Assert.Contains(_vm.SelectedBuild!.AttributeValues, v => v.Definition.Id == attribute.Id);
 
         slot.IsApplied = true;
