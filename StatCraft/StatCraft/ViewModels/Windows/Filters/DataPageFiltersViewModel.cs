@@ -169,14 +169,14 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             {
                 AttributeDefinition attribute = (AttributeDefinition)e.NewItems[i]!;
                 IFilterSlotViewModel<GameData> filterSlot = _filterSlotFactory.CreateFromDefinition<GameData>(attribute);
-                GameAttributeSlots.Insert(i, new FilterMenuItemViewModel<GameData>(filterSlot));
+                GameAttributeSlots.Insert(i + e.NewStartingIndex, new FilterMenuItemViewModel<GameData>(filterSlot));
             }
         }
         if (e.OldItems != null)
         {
             for (int i = 0; i < e.OldItems.Count; ++i) 
             {
-                GameAttributeSlots.RemoveAt(i);
+                GameAttributeSlots.RemoveAt(e.OldStartingIndex);
             }
         }
     }
