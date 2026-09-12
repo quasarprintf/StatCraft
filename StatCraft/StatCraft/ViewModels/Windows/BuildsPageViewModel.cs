@@ -559,7 +559,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     #region filters
     private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
     {
-        IFilterSlotViewModel slot = _filterSlotFactory.CreateFromDefinition<BuildNode>(attribute);
+        IFilterSlotViewModel slot = _filterSlotFactory.CreateFromDefinition(attribute);
         slot.IsApplied = isVisible;
         slot.AllowIncludeUnset = true;
         slot.IsAppliedChanged += (_,_) => OnSlotVisibilityChanged(slot);

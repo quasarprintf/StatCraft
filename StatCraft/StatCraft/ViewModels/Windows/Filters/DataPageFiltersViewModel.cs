@@ -90,7 +90,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         GameAttributeSlots = new ObservableCollection<FilterMenuItemViewModel>();
         foreach (var attribute in gameAttributes)
         {
-            IFilterSlotViewModel filterSlot = _filterSlotFactory.CreateFromDefinition<GameData>(attribute);
+            IFilterSlotViewModel filterSlot = _filterSlotFactory.CreateFromDefinition(attribute);
             GameAttributeSlots.Add(new FilterMenuItemViewModel(filterSlot));
         }
         gameAttributes.CollectionChanged += GameAttributesChanged;
@@ -168,7 +168,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             for (int i = e.NewStartingIndex; i < e.NewItems.Count + e.NewStartingIndex; ++i) 
             {
                 AttributeDefinition attribute = (AttributeDefinition)e.NewItems[i]!;
-                IFilterSlotViewModel filterSlot = _filterSlotFactory.CreateFromDefinition<GameData>(attribute);
+                IFilterSlotViewModel filterSlot = _filterSlotFactory.CreateFromDefinition(attribute);
                 GameAttributeSlots.Insert(i, new FilterMenuItemViewModel(filterSlot));
             }
         }

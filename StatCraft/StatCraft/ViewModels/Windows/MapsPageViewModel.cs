@@ -297,7 +297,7 @@ public partial class MapsPageViewModel : ViewModelBase
     #region filters
     private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
     {
-        IFilterSlotViewModel slot = _filterSlotFactory.CreateFromDefinition<Map>(attribute);
+        IFilterSlotViewModel slot = _filterSlotFactory.CreateFromDefinition(attribute);
         slot.IsApplied = isVisible;
         slot.AllowIncludeUnset = true;
         slot.IsAppliedChanged += (_,_) => OnSlotVisibilityChanged(slot);
