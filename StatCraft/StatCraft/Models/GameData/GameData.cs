@@ -2,6 +2,7 @@ using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Maps;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Linq;
 
 namespace StatCraft.Models.GameData;
 
@@ -25,5 +26,9 @@ public class GameData : IAttributedObject
     public void RemoveAttribute(AttributeValue value)
     {
         AttributeValues.Remove(value);
+    }
+    public AttributeValue? GetAttributeByDefinitionId(int id)
+    {
+        return AttributeValues.FirstOrDefault(v => v.Definition.Id == id);
     }
 }

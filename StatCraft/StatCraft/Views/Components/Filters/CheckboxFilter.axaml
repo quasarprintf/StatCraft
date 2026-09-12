@@ -3,7 +3,7 @@
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
              xmlns:local="using:StatCraft.Views.Components.Filters"
              x:Class="StatCraft.Views.Components.Filters.CheckboxFilter"
-             x:DataType="vmw:Filters.CheckboxFilterSlotViewModel"
+             x:DataType="vmw:Filters.ICheckboxFilterSlotViewModel"
              x:Name="Root">
     <StackPanel Spacing="2" VerticalAlignment="Center">
         <Grid ColumnDefinitions="Auto,*">

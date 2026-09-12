@@ -14,13 +14,13 @@ public partial class FilterMenuItemViewModel : ViewModelBase
     public event EventHandler? IsAppliedChanged;
     [ObservableProperty] private string _displayText;
     //should either have a Filter or SubMenuItems, but not both
-    public FilterSlotViewModel? Filter { get; private set; }
+    public IFilterSlotViewModel? Filter { get; private set; }
     public ObservableCollection<FilterMenuItemViewModel>? SubMenuItems { get; private set; }
     public bool IsApplied => Filter != null ? Filter.IsApplied : SubMenuItems!.All(i => i.IsApplied);
 
-    public IEnumerable<FilterSlotViewModel> ContainedFilters => Filter != null ? [Filter] : SubMenuItems!.SelectMany(i => i.ContainedFilters);
+    public IEnumerable<IFilterSlotViewModel> ContainedFilters => Filter != null ? [Filter] : SubMenuItems!.SelectMany(i => i.ContainedFilters);
 
-    public FilterMenuItemViewModel(FilterSlotViewModel filter)
+    public FilterMenuItemViewModel(IFilterSlotViewModel filter)
     {
         Filter = filter;
         _displayText = filter.Title;

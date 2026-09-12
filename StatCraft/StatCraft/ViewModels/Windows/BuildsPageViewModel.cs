@@ -2,6 +2,7 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
+using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
@@ -15,6 +16,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Reflection;
 
 namespace StatCraft.ViewModels.Windows;
 
@@ -57,9 +59,9 @@ public partial class BuildsPageViewModel : ViewModelBase
     public AttributeValuesSelectViewModel AttributeValuesSelect { get; }
 
     [ObservableProperty] private string _nameFilter = "";
-    private readonly Dictionary<AttributeDefinition, FilterSlotViewModel> _slotByAttribute = [];
-    public ObservableCollection<FilterSlotViewModel> VisibleFilterSlots { get; } = [];
-    public ObservableCollection<FilterSlotViewModel> HiddenFilterSlots { get; } = [];
+    private readonly Dictionary<AttributeDefinition, IFilterSlotViewModel> _slotByAttribute = [];
+    public ObservableCollection<IFilterSlotViewModel> VisibleFilterSlots { get; } = [];
+    public ObservableCollection<IFilterSlotViewModel> HiddenFilterSlots { get; } = [];
 
     public BuildsPageViewModel(BuildRepository buildRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository, FilterSlotFactory filterSlotFactory)
     {
@@ -197,7 +199,7 @@ public partial class BuildsPageViewModel : ViewModelBase
             if (cachedAttr.Name != dbAttr.Name)
             {
                 cachedAttr.Name = dbAttr.Name;
-                if (_slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? slot))
+                if (_slotByAttribute.TryGetValue(cachedAttr, out IFilterSlotViewModel? slot))
                     slot.Title = dbAttr.Name;
             }
 
@@ -207,7 +209,7 @@ public partial class BuildsPageViewModel : ViewModelBase
                 // Numeric/Percent vs. Bool vs. Values are different FilterSlotViewModel subclasses,
                 // so the slot itself has to be replaced rather than patched — but only for this one
                 // attribute, and preserving whether it was actually showing.
-                bool wasVisible = _slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? old) && old.IsApplied;
+                bool wasVisible = _slotByAttribute.TryGetValue(cachedAttr, out IFilterSlotViewModel? old) && old.IsApplied;
                 RemoveFilterSlot(cachedAttr);
                 AddFilterSlot(cachedAttr, wasVisible);
             }
@@ -297,12 +299,13 @@ public partial class BuildsPageViewModel : ViewModelBase
         if (!changed)
             return;
 
-        if (_slotByAttribute.TryGetValue(attribute, out FilterSlotViewModel? slot) &&
-            slot is CheckboxFilterSlotViewModel<string> stringSlot)
+        //TODO: wtf is going on here
+        if (_slotByAttribute.TryGetValue(attribute, out IFilterSlotViewModel? slot) &&
+            slot is CheckboxFilterSlotViewModel<AttributeValue, string?> stringSlot)
         {
-            HashSet<string> previouslyChecked = stringSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
+            HashSet<string?> previouslyChecked = stringSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
             stringSlot.ReplaceOptions(attribute.ValueOptions
-                .Select(o => new CheckboxFilterOptionViewModel<string>(o, o) { IsChecked = previouslyChecked.Contains(o) }));
+                .Select(o => new CheckboxFilterOptionViewModel<string?>(o, o) { IsChecked = previouslyChecked.Contains(o) }));
         }
     }
 
@@ -556,7 +559,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     #region filters
     private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
     {
-        FilterSlotViewModel slot = _filterSlotFactory.CreateFromDefinition(attribute);
+        IFilterSlotViewModel slot = _filterSlotFactory.CreateFromDefinition<BuildNode>(attribute);
         slot.IsApplied = isVisible;
         slot.AllowIncludeUnset = true;
         slot.IsAppliedChanged += (_,_) => OnSlotVisibilityChanged(slot);
@@ -567,7 +570,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     }
     private void RemoveFilterSlot(AttributeDefinition attribute)
     {
-        if (!_slotByAttribute.Remove(attribute, out FilterSlotViewModel? slot))
+        if (!_slotByAttribute.Remove(attribute, out IFilterSlotViewModel? slot))
             return;
 
         slot.Changed -= ApplyFilters;
@@ -577,7 +580,7 @@ public partial class BuildsPageViewModel : ViewModelBase
 
     // Moves a slot between the visible/hidden collections when its own IsVisible flips — via the
     // Add/Remove commands the "+" menu and the filter's own ✕ button invoke.
-    private void OnSlotVisibilityChanged(FilterSlotViewModel slot)
+    private void OnSlotVisibilityChanged(IFilterSlotViewModel slot)
     {
         if (slot.IsApplied)
         {
@@ -632,33 +635,27 @@ public partial class BuildsPageViewModel : ViewModelBase
             AcceptNull = string.IsNullOrWhiteSpace(NameFilter)
         };
         filters.Add(nameFilter);
-        foreach ((AttributeDefinition attribute, FilterSlotViewModel slot) in _slotByAttribute)
+        foreach ((AttributeDefinition attribute, IFilterSlotViewModel slot) in _slotByAttribute)
         {
             if (!slot.IsApplied)
                 continue;
-            IFilter<AttributeValue> filter = SlotFilter(attribute, slot);
+            IFilter<BuildNode> filter = SlotFilter(slot);
             //wrap the filter in an AndFilter so we can have a null check on both the attribute and the attribute value
-            SequentialAllFilter<BuildNode, AttributeValue> wrappedFilter = new SequentialAllFilter<BuildNode, AttributeValue>(filter, b => [b.GetAttributeByDefinitionId(attribute.Id)]);
-            filters.Add(wrappedFilter);
+            //SequentialAllFilter<BuildNode, AttributeValue> wrappedFilter = new SequentialAllFilter<BuildNode, AttributeValue>(filter, b => [b.GetAttributeByDefinitionId(attribute.Id)]);
+            filters.Add(filter);
         }
         return new AndFilter<BuildNode>(filters);
     }
-    private static IFilter<AttributeValue> SlotFilter(AttributeDefinition definition, FilterSlotViewModel slot)
+    private static IFilter<BuildNode> SlotFilter(IFilterSlotViewModel slot)
     {
-        switch (slot)
-        {
-            case NumericRangeFilterSlotViewModel range:
-                if (definition.Type == AttributeType.Numeric)
-                    return range.GetFilter<AttributeValue>(a => a?.NumericValue);
-                else
-                    return range.GetFilter<AttributeValue>(a => a?.PercentValue);
-            case BoolFilterSlotViewModel boolSlot:
-                return boolSlot.GetFilter<AttributeValue>(a => a?.BoolValue);
-            case CheckboxFilterSlotViewModel<string> strings:
-                return strings.GetFilter<AttributeValue>(a => a.SelectedValue == null ? null : [a.SelectedValue]);
-            default:
-                throw new NotImplementedException();
-        }
+        Type slotType = slot.GetType();
+        MethodInfo? getFilterMethod = slotType.GetMethod(nameof(FilterSlotViewModel<,>.GetFilter));
+        if (getFilterMethod == null)
+            throw new NotImplementedException();
+        IFilter<BuildNode>? returnValue = getFilterMethod.Invoke(slot, null) as IFilter<BuildNode>;
+        if (returnValue == null)
+            throw new ArgumentException();
+        return returnValue;
     }
     #endregion
 }

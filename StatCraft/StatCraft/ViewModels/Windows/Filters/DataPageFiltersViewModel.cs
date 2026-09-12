@@ -1,21 +1,22 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
+using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
-using StatCraft.Models.GameData.Maps;
-using System.Collections.ObjectModel;
-using StatCraft.Models.GameData.Attributes;
-using StatCraft.Services.Factories;
-using System.Collections.Specialized;
-using StatCraft.Services.DataParsing;
 using StatCraft.Services.DataFiltering.CollatedFilters;
 using StatCraft.Services.DataFiltering.SequentialFilters;
+using StatCraft.Services.DataParsing;
+using StatCraft.Services.Factories;
+using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Linq;
+using System.Reflection;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 
@@ -32,25 +33,25 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
     private FilterSlotFactory _filterSlotFactory;
 
-    public CheckboxFilterSlotViewModel<Sc2Profile> ProfileSlot { get; }
+    public CheckboxFilterSlotViewModel<Sc2Profile, Sc2Profile> ProfileSlot { get; }
 
     // DateTime (not DateTimeOffset) because Calendar.SelectedDate — which CompactDatePicker wraps —
     // is DateTime?.
     [ObservableProperty] private DateTime? _fromDate;
     [ObservableProperty] private DateTime? _toDate;
 
-    public CheckboxFilterSlotViewModel<Map> MapSlot { get; }
-    public CheckboxFilterSlotViewModel<(Race, Race)> MatchupSlot { get; }
+    public CheckboxFilterSlotViewModel<GameData, Map> MapSlot { get; }
+    public CheckboxFilterSlotViewModel<GameData, (Race, Race)> MatchupSlot { get; }
     // Internal, not public, because GameOutcome itself is internal — this stays consistent with the
     // same-assembly-only visibility of the type it filters on.
-    public CheckboxFilterSlotViewModel<GameOutcome> OutcomeSlot { get; }
-    public NumericRangeFilterSlotViewModel MmrSlot { get; }
-    public CheckboxFilterSlotViewModel<BuildNode> BuildSlot { get; }
+    public CheckboxFilterSlotViewModel<GameData, GameOutcome> OutcomeSlot { get; }
+    public NumericRangeFilterSlotViewModel<PlayerMmr> MmrSlot { get; }
+    public CheckboxFilterSlotViewModel<GameData, BuildNode> BuildSlot { get; }
     public ObservableCollection<FilterMenuItemViewModel> GameAttributeSlots { get; private set; }
 
     // Fixed display order for both the bar itself and the "+ Filters" add-dropdown.
     public IReadOnlyList<FilterMenuItemViewModel> ExtraFilterSlots { get; }
-    public IEnumerable<FilterSlotViewModel> VisibleExtraFilterSlots => ExtraFilterSlots.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
+    public IEnumerable<IFilterSlotViewModel> VisibleExtraFilterSlots => ExtraFilterSlots.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
     public IEnumerable<FilterMenuItemViewModel> HiddenExtraFilterSlots => ExtraFilterSlots.Where(s => !s.IsApplied);
 
     // Checking/unchecking a profile changes which games need to be loaded from the database at all;
@@ -62,7 +63,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     {
         _filterSlotFactory = filterSlotFactory;
 
-        ProfileSlot = new CheckboxFilterSlotViewModel<Sc2Profile>("Profile", [], showSearch: true);
+        ProfileSlot = new CheckboxFilterSlotViewModel<Sc2Profile, Sc2Profile>("Profile", [], p => [p], showSearch: true);
         // Checking/unchecking a profile requires a database reload, unlike every other checkbox
         // filter, so it's wired to ProfileSelectionChanged instead of joining the ExtraFilterSlots
         // loop below (which is also how it stays permanently visible, with no Add/Remove).
@@ -72,16 +73,22 @@ public partial class DataPageFiltersViewModel : ViewModelBase
                 ProfileSelectionChanged?.Invoke();
         };
 
-        MapSlot = new CheckboxFilterSlotViewModel<Map>("Map", [], showSearch: true) { AllowIncludeUnset=false };
-        MatchupSlot = new CheckboxFilterSlotViewModel<(Race, Race)>("Matchup", BuildMatchupOptions(), columns: 3) { AllowIncludeUnset=false };
-        OutcomeSlot = new CheckboxFilterSlotViewModel<GameOutcome>("Outcome", BuildOutcomeOptions()) { AllowIncludeUnset=false };
-        MmrSlot = new NumericRangeFilterSlotViewModel("Opponent MMR") { AllowIncludeUnset=false };
-        BuildSlot = new CheckboxFilterSlotViewModel<BuildNode>("Build", BuildBuildOptions(buildRepository)) { AllowIncludeUnset=false };
+        MapSlot = new CheckboxFilterSlotViewModel<GameData, Map>("Map", [], g => [g.Map!], showSearch: true) { AllowIncludeUnset=false }; //TODO: why is map nullable?
+        MatchupSlot = new CheckboxFilterSlotViewModel<GameData, (Race, Race)>("Matchup", BuildMatchupOptions(), GetGameMatchups, columns: 3) { AllowIncludeUnset=false };
+        OutcomeSlot = new CheckboxFilterSlotViewModel<GameData, GameOutcome>("Outcome", BuildOutcomeOptions(), g => [g.ReplayData.Win.AsGameOutcome()]) { AllowIncludeUnset=false };
+        MmrSlot = new NumericRangeFilterSlotViewModel<PlayerMmr>("Opponent MMR", m => m.Mmr) { AllowIncludeUnset=false };
+
+        List<BuildNode> allBuilds = buildRepository.GetAllBuilds();
+        BuildSlot = new CheckboxFilterSlotViewModel<GameData, BuildNode>("Build", BuildBuildOptions(allBuilds), 
+            g => g.ReplayData.Player.BuildIds.SelectMany(b => allBuilds[b].EnumerateAncestors().Append(allBuilds[b]))) 
+        { 
+            AllowIncludeUnset=false 
+        };
 
         GameAttributeSlots = new ObservableCollection<FilterMenuItemViewModel>();
         foreach (var attribute in gameAttributes)
         {
-            FilterSlotViewModel filterSlot = _filterSlotFactory.CreateFromDefinition(attribute);
+            IFilterSlotViewModel filterSlot = _filterSlotFactory.CreateFromDefinition<GameData>(attribute);
             GameAttributeSlots.Add(new FilterMenuItemViewModel(filterSlot));
         }
         gameAttributes.CollectionChanged += GameAttributesChanged;
@@ -106,11 +113,14 @@ public partial class DataPageFiltersViewModel : ViewModelBase
                 OnPropertyChanged(nameof(VisibleExtraFilterSlots));
                 OnPropertyChanged(nameof(HiddenExtraFilterSlots));
             };
-            slot.Filter?.Changed += () =>
+            foreach (var filter in slot.ContainedFilters)
             {
-                if (!_suppressChangeEvents)
-                    OtherFiltersChanged?.Invoke();
-            };
+                filter?.Changed += () =>
+                {
+                    if (!_suppressChangeEvents)
+                        OtherFiltersChanged?.Invoke();
+                };
+            }
         }
     }
 
@@ -156,7 +166,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             for (int i = e.NewStartingIndex; i < e.NewItems.Count + e.NewStartingIndex; ++i) 
             {
                 AttributeDefinition attribute = (AttributeDefinition)e.NewItems[i]!;
-                FilterSlotViewModel filterSlot = _filterSlotFactory.CreateFromDefinition(attribute);
+                IFilterSlotViewModel filterSlot = _filterSlotFactory.CreateFromDefinition<GameData>(attribute);
                 GameAttributeSlots.Insert(i, new FilterMenuItemViewModel(filterSlot));
             }
         }
@@ -212,15 +222,15 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         appliedFilters.Add(dateFilter);
 
         if (MapSlot.IsApplied)
-            appliedFilters.Add(MapSlot.GetFilter<GameData>(g => [g.Map!])); //TODO: why is Map nullable?
+            appliedFilters.Add(MapSlot.GetFilter());
         if (MatchupSlot.IsApplied)
-            appliedFilters.Add(MatchupSlot.GetFilter<GameData>(GetGameMatchups));
+            appliedFilters.Add(MatchupSlot.GetFilter());
         if (OutcomeSlot.IsApplied)
-            appliedFilters.Add(OutcomeSlot.GetFilter<GameData>(g => [g.ReplayData.Win.AsGameOutcome()]));
+            appliedFilters.Add(OutcomeSlot.GetFilter());
 
         if (MmrSlot.IsApplied)
         {
-            AndFilter<PlayerMmr> singleMmrFilter = MmrSlot.GetFilter<PlayerMmr>(m => m.Mmr);
+            AndFilter<PlayerMmr> singleMmrFilter = MmrSlot.GetFilter();
             SequentialAnyFilter<GameData, PlayerMmr> mmrFilter = new SequentialAnyFilter<GameData, PlayerMmr>(singleMmrFilter, g => g.ReplayData.Opponents.Select(o => o.Mmr));
             appliedFilters.Add(mmrFilter);
         }
@@ -228,10 +238,22 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         if (BuildSlot.IsApplied)
         {
             Dictionary<int, BuildNode> allBuilds = BuildSlot.Options.ToDictionary(o => o.Value.Id, o => o.Value);
-            SequentialAnyFilter<GameData, BuildNode> buildFilter = BuildSlot.GetFilter<GameData>(g => g.ReplayData.Player.BuildIds.SelectMany(b => allBuilds[b].EnumerateAncestors().Append(allBuilds[b])));
+            SequentialAnyFilter<GameData, BuildNode> buildFilter = BuildSlot.GetFilter();
             appliedFilters.Add(buildFilter);
         }
-        //TODO: game attributes filter
+
+        foreach (var attributeMenu in GameAttributeSlots)
+        {
+            foreach (var attributeFilterSlot in attributeMenu.ContainedFilters)
+            {
+                if (attributeFilterSlot.IsApplied)
+                {
+                    IFilter<GameData> attributeFilter = SlotFilter(attributeFilterSlot);
+                    //var wrappedFilter = new SequentialAllFilter<GameData, AttributeValue>(attributeFilter, g => [g.GetAttributeByDefinitionId(attribute.Id)]);
+                    appliedFilters.Add(attributeFilter);
+                }
+            }
+        }
         //TODO: build attribute filter
 
         AndFilter<GameData> collatedFilter = new AndFilter<GameData>(appliedFilters);
@@ -239,12 +261,24 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         return collatedFilter;
     }
 
+    private static IFilter<GameData> SlotFilter(IFilterSlotViewModel slot)
+    {
+        Type slotType = slot.GetType();
+        MethodInfo? getFilterMethod = slotType.GetMethod(nameof(FilterSlotViewModel<,>.GetFilter));
+        if (getFilterMethod == null)
+            throw new NotImplementedException();
+        IFilter<GameData>? returnValue = getFilterMethod.Invoke(slot, null) as IFilter<GameData>;
+        if (returnValue == null)
+            throw new ArgumentException();
+        return returnValue;
+    }
+
     private (Race,Race)[] GetGameMatchups(GameData game)
     {
         return game.ReplayData.Opponents.Select(o => (game.ReplayData.Player.Race.AsRace()!.Value, o.Race.AsRace()!.Value)).Distinct().ToArray();
     }
 
-    private static IReadOnlySet<int> ToBuildIdSet(CheckboxFilterSlotViewModel<BuildNode> slot) =>
+    private static IReadOnlySet<int> ToBuildIdSet(CheckboxFilterSlotViewModel<GameData, BuildNode> slot) =>
         slot.Options
             .Where(o => o.IsChecked)
             .SelectMany(o => GameDataFilter.CollectSubtreeIds(o.Value))
@@ -266,9 +300,8 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
     // Every build across every race, grouped by race (Z, T, P) and flattened depth-first with an
     // indentation prefix so the tree structure is still legible in a flat checkbox list.
-    private static List<CheckboxFilterOptionViewModel<BuildNode>> BuildBuildOptions(BuildRepository buildRepository)
+    private static List<CheckboxFilterOptionViewModel<BuildNode>> BuildBuildOptions(List<BuildNode> allNodes)
     {
-        List<BuildNode> allNodes = buildRepository.GetAllBuilds();
         List<CheckboxFilterOptionViewModel<BuildNode>> options = new();
         foreach (Race race in Enum.GetValues<Race>())
             foreach (BuildNode root in allNodes.Where(n => n.PlayerRace == race))

@@ -23,7 +23,7 @@
                                 </ItemsPanelTemplate>
                             </ItemsControl.ItemsPanel>
                             <ItemsControl.ItemTemplate>
-                                <DataTemplate x:DataType="vmw:Filters.CheckboxFilterOptionViewModel">
+                                <DataTemplate x:DataType="vmw:Filters.ICheckboxFilterOptionViewModel">
                                     <CheckBox Content="{Binding Label}" IsChecked="{Binding IsChecked}">
                                         <CheckBox.IsVisible>
                                             <MultiBinding Converter="{x:Static local:CheckboxFilterDropdown.LabelContainsSearchConverter}">

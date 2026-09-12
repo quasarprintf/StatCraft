@@ -6,28 +6,22 @@ namespace StatCraft.ViewModels.Windows.Filters;
 
 // Non-generic base is all the reusable CheckboxFilterDropdown view needs (Label/IsChecked); the
 // generic subclass carries the strongly-typed value each filter dimension actually filters on.
-public abstract partial class CheckboxFilterOptionViewModel : ObservableObject
+public interface ICheckboxFilterOptionViewModel
 {
-    public string Label { get; protected init; } = "";
-
-    [ObservableProperty] private bool _isChecked;
+    string Label { get; }
+    bool IsChecked { get; set; }
 }
 
-public sealed class CheckboxFilterOptionViewModel<T> : CheckboxFilterOptionViewModel
+public partial class CheckboxFilterOptionViewModel<T> : ObservableObject, ICheckboxFilterOptionViewModel
 {
+    public string Label { get; protected init; } = "";
+    [ObservableProperty] private bool _isChecked;
+
     public T Value { get; }
 
     internal CheckboxFilterOptionViewModel(T value, string label)
     {
         Value = value;
         Label = label;
-    }
-    public BoolFilter<F> GetFilter<F>(Func<F,T?> filteredPropertyMap, bool? acceptNull = null)
-    {
-        return new BoolFilter<F>(o => filteredPropertyMap(o)?.Equals(Value))
-        {
-            AcceptNull = acceptNull,
-            FilterValue = true
-        };
     }
 }

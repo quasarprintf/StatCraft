@@ -10,4 +10,5 @@ public interface IAttributedObject
     ObservableCollection<AttributeValue> AttributeValues { get; }
     void AddAttribute(AttributeDefinition definition);
     void RemoveAttribute(AttributeValue value);
+    public AttributeValue? GetAttributeByDefinitionId(int id);
 }

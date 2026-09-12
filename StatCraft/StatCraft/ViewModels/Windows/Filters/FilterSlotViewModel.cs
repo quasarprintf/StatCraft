@@ -5,11 +5,26 @@ using System;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 
+public interface IFilterSlotViewModel
+{
+    string Title { get; set; }
+    bool IsApplied { get; set; }
+    bool IncludeUnset { get; set; }
+    bool AllowIncludeUnset { get; set; }
+    event Action? Changed;
+    event EventHandler? IsAppliedChanged;
+    void Clear();
+    IRelayCommand AddCommand { get; }
+    IRelayCommand RemoveCommand { get; }
+}
+
 // One "extra filter" the Data tab's filter bar can show or hide. Two concrete subclasses (rather
 // than one class with a "kind" flag) so Avalonia's implicit per-x:DataType DataTemplate dispatch can
 // pick the right visual (checkbox dropdown vs. numeric range) automatically.
-public abstract partial class FilterSlotViewModel : ViewModelBase
+public abstract partial class FilterSlotViewModel<T,F> : ViewModelBase, IFilterSlotViewModel
 {
+    public Func<T,F> FilteredPropertyMap { get; set; }
+
     // Mutable rather than the more usual get-only, so the Maps tab can rename a filter's attribute in
     // place (MapsPageViewModel.WireAttribute) without recreating the slot itself — recreating it would
     // drop whatever criteria the user already entered.
@@ -36,10 +51,13 @@ public abstract partial class FilterSlotViewModel : ViewModelBase
     // which would tear down and recreate whatever control the user is actively focused on/typing in.
     public event EventHandler? IsAppliedChanged;
 
-    protected FilterSlotViewModel(string title)
+    protected FilterSlotViewModel(string title, Func<T,F> filteredPropertyMap)
     {
         Title = title;
+        FilteredPropertyMap = filteredPropertyMap;
     }
+
+    public abstract IFilter<T> GetFilter();
 
     // Resets this filter's own selection/bounds back to "inactive" — called when removed, so a
     // hidden filter never silently keeps constraining results.
