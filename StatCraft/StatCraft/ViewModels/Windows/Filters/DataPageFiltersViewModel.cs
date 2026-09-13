@@ -116,15 +116,60 @@ public partial class DataPageFiltersViewModel : ViewModelBase
                 OnPropertyChanged(nameof(HiddenExtraFilterSlots));
             };
             foreach (var filter in slot.ContainedFilters)
-            {
-                filter?.Changed += () =>
-                {
-                    if (!_suppressChangeEvents)
-                        OtherFiltersChanged?.Invoke();
-                };
-            }
+                WireSlotChanged(filter);
         }
     }
+
+    // Every filter slot has to raise OtherFiltersChanged when its criteria change, including the game
+    // attribute slots built after construction — the loop above only reaches the ones that exist by then.
+    private void WireSlotChanged(IFilterSlotViewModel? filter)
+    {
+        if (filter == null)
+            return;
+
+        filter.Changed += () =>
+        {
+            if (!_suppressChangeEvents)
+                OtherFiltersChanged?.Invoke();
+        };
+    }
+
+    // Found by attribute rather than by position: GameAttributeSlots is kept in step with the
+    // GameAttributes collection, but nothing guarantees the two stay index-aligned.
+    private FilterMenuItemViewModel<GameData>? MenuItemFor(AttributeDefinition attribute) =>
+        GameAttributeSlots.FirstOrDefault(m => (m.Filter as AttributeFilterSlotViewModel<GameData>)?.Attribute.Id == attribute.Id);
+
+    // The slot caches the attribute's name as its own title, and the menu item caches it again as its
+    // display text, so a rename made on the Attributes tab has to be pushed into both.
+    internal void RenameAttributeSlot(AttributeDefinition attribute)
+    {
+        FilterMenuItemViewModel<GameData>? item = MenuItemFor(attribute);
+        if (item?.Filter == null)
+            return;
+
+        item.Filter.Title = attribute.Name;
+        item.DisplayText = attribute.Name;
+    }
+
+    // Numeric/Percent vs. Bool vs. Values are different slot classes, so a type change has to swap the
+    // slot itself rather than patch it — preserving whether the user had it applied.
+    internal void ReplaceAttributeSlot(AttributeDefinition attribute)
+    {
+        FilterMenuItemViewModel<GameData>? item = MenuItemFor(attribute);
+        if (item == null)
+            return;
+
+        int index = GameAttributeSlots.IndexOf(item);
+        IFilterSlotViewModel<GameData> replacement = _filterSlotFactory.CreateFromDefinition<GameData>(attribute);
+        replacement.IsApplied = item.Filter?.IsApplied ?? false;
+        WireSlotChanged(replacement);
+        GameAttributeSlots[index] = new FilterMenuItemViewModel<GameData>(replacement);
+    }
+
+    // A Values slot builds its checkbox list when it's created, so options added or removed afterwards
+    // have to be patched in.
+    internal void RefreshAttributeSlotOptions(AttributeDefinition attribute) =>
+        (MenuItemFor(attribute)?.Filter as AttributeFilterSlotViewModel<GameData>)?.Refresh();
 
     partial void OnFromDateChanged(DateTime? value)
     {
@@ -169,6 +214,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             {
                 AttributeDefinition attribute = (AttributeDefinition)e.NewItems[i]!;
                 IFilterSlotViewModel<GameData> filterSlot = _filterSlotFactory.CreateFromDefinition<GameData>(attribute);
+                WireSlotChanged(filterSlot);
                 GameAttributeSlots.Insert(i + e.NewStartingIndex, new FilterMenuItemViewModel<GameData>(filterSlot));
             }
         }

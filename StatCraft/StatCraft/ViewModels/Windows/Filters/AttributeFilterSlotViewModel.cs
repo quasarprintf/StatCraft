@@ -14,10 +14,10 @@ namespace StatCraft.ViewModels.Windows.Filters;
 public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewModel<T>, IFilterSlotViewModel<T> where T : IAttributedObject
 {
     private IFilterSlotViewModel<AttributeValue> _wrappedFilter => (IFilterSlotViewModel<AttributeValue>)WrappedFilter;
-    private AttributeDefinition _attribute { get; set; }
+    public AttributeDefinition Attribute { get; }
     public AttributeFilterSlotViewModel(AttributeDefinition attribute)
     {
-        _attribute = attribute;
+        Attribute = attribute;
         WrappedFilter = CreateWrapped(attribute);
         base.BindWrapped();
     }
@@ -43,7 +43,7 @@ public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewMode
     public IFilter<T> GetFilter()
     {
         IFilter<AttributeValue> filter = _wrappedFilter.GetFilter();
-        SequentialAllFilter<T, AttributeValue> wrapper = new SequentialAllFilter<T, AttributeValue>(filter, m => [m.GetAttributeByDefinitionId(_attribute.Id)]);
+        SequentialAllFilter<T, AttributeValue> wrapper = new SequentialAllFilter<T, AttributeValue>(filter, m => [m.GetAttributeByDefinitionId(Attribute.Id)]);
         return wrapper;
     }
 
@@ -52,7 +52,7 @@ public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewMode
         if (WrappedFilter is CheckboxFilterSlotViewModel<AttributeValue, string> stringSlot)
         {
             HashSet<string> previouslyChecked = stringSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
-            stringSlot.ReplaceOptions(_attribute.ValueOptions
+            stringSlot.ReplaceOptions(Attribute.ValueOptions
                 .Select(o => new CheckboxFilterOptionViewModel<string>(o, o) { IsChecked = previouslyChecked.Contains(o) }));
         }
     }

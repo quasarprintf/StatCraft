@@ -326,8 +326,8 @@ public partial class DataPageViewModel : ViewModelBase
                     game.AttributeValues.Remove(value);
             }
 
-            //TODO: filter by game attribute
-            //RemoveFilterSlot(cachedAttr);
+            // The filter slot goes with it: DataPageFiltersViewModel tracks GameAttributes and drops the
+            // matching slot off the back of the Remove above.
         }
 
         //sync edited attributes
@@ -338,21 +338,16 @@ public partial class DataPageViewModel : ViewModelBase
             if (cachedAttr.Name != dbAttr.Name)
             {
                 cachedAttr.Name = dbAttr.Name;
-                //TODO: filter by game attribute
-                //if (_slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? slot))
-                //    slot.Title = dbAttr.Name;
+                Filters.RenameAttributeSlot(cachedAttr);
             }
 
             if (cachedAttr.Type != dbAttr.Type)
             {
                 cachedAttr.Type = dbAttr.Type;
-                //TODO: filter by game attribute
                 // Numeric/Percent vs. Bool vs. Values are different FilterSlotViewModel subclasses,
                 // so the slot itself has to be replaced rather than patched — but only for this one
-                // attribute, and preserving whether it was actually showing.
-                //bool wasVisible = _slotByAttribute.TryGetValue(cachedAttr, out FilterSlotViewModel? old) && old.IsVisible;
-                //RemoveFilterSlot(cachedAttr);
-                //AddFilterSlot(cachedAttr, wasVisible);
+                // attribute, and preserving whether it was actually applied.
+                Filters.ReplaceAttributeSlot(cachedAttr);
             }
 
             if (dbAttr.IsMandatory != cachedAttr.IsMandatory)
@@ -386,8 +381,7 @@ public partial class DataPageViewModel : ViewModelBase
                 _gameDataRepo.SaveGameAttributeValues(gamesToSave, dbAttr.Id);
             }
 
-            //TODO: filter by game attribute
-            //SyncValueOptions(cachedAttr, dbAttr.ValueOptions);
+            SyncValueOptions(cachedAttr, dbAttr.ValueOptions);
 
             if (dbAttr.DefaultValue.HasValue)
                 cachedAttr.DefaultValue.ApplyStoredValue(dbAttr.DefaultValue.Serialize()!);
@@ -413,11 +407,38 @@ public partial class DataPageViewModel : ViewModelBase
                 _gameDataRepo.SaveGameAttributeValues(gamesToSave, dbAttr.Id);
             }
 
-            //TODO: filter by game attribute
-            //AddFilterSlot(dbAttr);
+            // The filter slot comes with it: DataPageFiltersViewModel tracks GameAttributes and builds
+            // the matching slot off the back of the Add above.
         }
 
         ApplyFilters();
+    }
+
+    // Mirrors MapsPageViewModel.SyncValueOptions: the cached definition's option list is patched in
+    // place so the editors bound to it keep working, and the filter's own copy of the options is
+    // refreshed to match.
+    private void SyncValueOptions(AttributeDefinition attribute, ObservableCollection<string> latest)
+    {
+        bool changed = false;
+
+        //remove deleted options
+        foreach (string stale in attribute.ValueOptions.Where(o => !latest.Contains(o)).ToList())
+        {
+            attribute.ValueOptions.Remove(stale);
+            changed = true;
+        }
+
+        //sync new options
+        foreach (string value in latest.Where(o => !attribute.ValueOptions.Contains(o)))
+        {
+            attribute.ValueOptions.Add(value);
+            changed = true;
+        }
+
+        if (!changed)
+            return;
+
+        Filters.RefreshAttributeSlotOptions(attribute);
     }
 
     // Refresh every cached matchup tree in place, so any GameDataRowViewModel/BuildPathPicker
