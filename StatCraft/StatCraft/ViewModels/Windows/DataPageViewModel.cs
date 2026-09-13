@@ -317,7 +317,7 @@ public partial class DataPageViewModel : ViewModelBase
         //sync deleted attributes
         foreach (AttributeDefinition cachedAttr in GameAttributes.Where(a => !dbById.ContainsKey(a.Id)).ToList())
         {
-            GameAttributes.Remove(cachedAttr);
+            GameAttributes.Remove(cachedAttr); //automatically removes the filter slot
 
             foreach (GameData game in _loadedGames)
             {
@@ -325,9 +325,6 @@ public partial class DataPageViewModel : ViewModelBase
                 if (value != null)
                     game.AttributeValues.Remove(value);
             }
-
-            // The filter slot goes with it: DataPageFiltersViewModel tracks GameAttributes and drops the
-            // matching slot off the back of the Remove above.
         }
 
         //sync edited attributes
@@ -393,7 +390,7 @@ public partial class DataPageViewModel : ViewModelBase
         HashSet<int> knownIds = GameAttributes.Select(a => a.Id).ToHashSet();
         foreach (AttributeDefinition dbAttr in dbAttributes.Where(a => !knownIds.Contains(a.Id)))
         {
-            GameAttributes.Add(dbAttr);
+            GameAttributes.Add(dbAttr); //automatically adds filter slot
 
             if (dbAttr.IsMandatory)
             {
@@ -406,17 +403,11 @@ public partial class DataPageViewModel : ViewModelBase
                 }
                 _gameDataRepo.SaveGameAttributeValues(gamesToSave, dbAttr.Id);
             }
-
-            // The filter slot comes with it: DataPageFiltersViewModel tracks GameAttributes and builds
-            // the matching slot off the back of the Add above.
         }
 
         ApplyFilters();
     }
 
-    // Mirrors MapsPageViewModel.SyncValueOptions: the cached definition's option list is patched in
-    // place so the editors bound to it keep working, and the filter's own copy of the options is
-    // refreshed to match.
     private void SyncValueOptions(AttributeDefinition attribute, ObservableCollection<string> latest)
     {
         bool changed = false;
