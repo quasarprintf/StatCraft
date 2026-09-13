@@ -33,20 +33,11 @@
                         <StackPanel Spacing="4"/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
-                <!-- Both slot kinds put the editor on its own line under a title/remove header row: the
-                     pane is far narrower than the Data tab's horizontal bar, and a single-line layout
-                     pushes the remove button off the edge. -->
-                <ItemsControl.DataTemplates>
-                    <DataTemplate x:DataType="vmw:Filters.ICheckboxFilterSlotViewModel">
-                        <filters:CheckboxFilter/>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <filters:FilterSlot />
                     </DataTemplate>
-                    <DataTemplate x:DataType="vmw:Filters.IBoolFilterSlotViewModel">
-                        <filters:BoolFilter/>
-                    </DataTemplate>
-                    <DataTemplate x:DataType="vmw:Filters.INumericRangeFilterSlotViewModel">
-                        <filters:NumericRangeFilter/>
-                    </DataTemplate>
-                </ItemsControl.DataTemplates>
+                </ItemsControl.ItemTemplate>
             </ItemsControl>
 
             <ListBox x:Name="MapListBox" ItemsSource="{Binding FilteredMaps}" SelectedItem="{Binding SelectedMap}">

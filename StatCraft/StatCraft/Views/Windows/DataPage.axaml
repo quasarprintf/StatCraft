@@ -49,14 +49,11 @@
                             <StackPanel Orientation="Horizontal" Spacing="8"/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
-                    <ItemsControl.DataTemplates>
-                        <DataTemplate x:DataType="vmw:Filters.ICheckboxFilterSlotViewModel">
-                            <filters:CheckboxFilter/>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <filters:FilterSlot />
                         </DataTemplate>
-                        <DataTemplate x:DataType="vmw:Filters.INumericRangeFilterSlotViewModel">
-                            <filters:NumericRangeFilter/>
-                        </DataTemplate>
-                    </ItemsControl.DataTemplates>
+                    </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </StackPanel>
 

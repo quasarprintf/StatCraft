@@ -34,6 +34,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Update="Views\Components\Filters\FilterSlot.axaml.cs">
+      <DependentUpon>FilterSlot.axaml</DependentUpon>
+    </Compile>
     <Compile Update="Views\Windows\AttributesComponents\AttributeValuesSelect.axaml.cs">
       <DependentUpon>AttributeValuesSelect.axaml</DependentUpon>
     </Compile>

@@ -1,0 +1,23 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:StatCraft.Views.Components.Filters"
+             xmlns:vmw="using:StatCraft.ViewModels.Windows"
+             x:Class="StatCraft.Views.Components.Filters.FilterSlot"
+             x:DataType="vmw:Filters.IFilterSlotViewModel">
+    <ContentControl Content="{Binding}">
+        <ContentControl.DataTemplates>
+            <DataTemplate x:DataType="vmw:Filters.IWrappedFilterSlotViewModel">
+                <local:FilterSlot DataContext="{Binding WrappedFilter}"/>
+            </DataTemplate>
+            <DataTemplate x:DataType="vmw:Filters.IBoolFilterSlotViewModel" >
+                <local:BoolFilter />
+            </DataTemplate>
+            <DataTemplate x:DataType="vmw:Filters.ICheckboxFilterSlotViewModel" >
+                <local:CheckboxFilter />
+            </DataTemplate>
+            <DataTemplate x:DataType="vmw:Filters.INumericRangeFilterSlotViewModel" >
+                <local:NumericRangeFilter />
+            </DataTemplate>
+        </ContentControl.DataTemplates>
+    </ContentControl>
+</UserControl>
