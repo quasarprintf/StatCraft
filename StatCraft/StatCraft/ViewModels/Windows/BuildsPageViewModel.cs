@@ -299,13 +299,10 @@ public partial class BuildsPageViewModel : ViewModelBase
         if (!changed)
             return;
 
-        //TODO: wtf is going on here
         if (_slotByAttribute.TryGetValue(attribute, out IFilterSlotViewModel<BuildNode>? slot) &&
-            slot is CheckboxFilterSlotViewModel<BuildNode, string?> stringSlot)
+            slot is AttributeFilterSlotViewModel<Map> attributeSlot)
         {
-            HashSet<string?> previouslyChecked = stringSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
-            stringSlot.ReplaceOptions(attribute.ValueOptions
-                .Select(o => new CheckboxFilterOptionViewModel<string?>(o, o) { IsChecked = previouslyChecked.Contains(o) }));
+            attributeSlot.Refresh();
         }
     }
 

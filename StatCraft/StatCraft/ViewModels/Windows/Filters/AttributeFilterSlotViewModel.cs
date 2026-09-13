@@ -1,12 +1,13 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData.Attributes;
-using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Linq;
+using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataFiltering.SequentialFilters;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 
@@ -29,7 +30,7 @@ public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewMode
                 return new BoolFilterSlotViewModel<AttributeValue>(attribute.Name, a => a?.BoolValue);
             case AttributeType.Values:
                 var checkboxFilters = attribute.ValueOptions.Select(o => new CheckboxFilterOptionViewModel<string?>(o, o));
-                return new CheckboxFilterSlotViewModel<AttributeValue, string?>(attribute.Name, checkboxFilters, a => [a?.SelectedValue], showSearch: true);
+                return new CheckboxFilterSlotViewModel<AttributeValue, string?>(attribute.Name, checkboxFilters, a => a?.SelectedValue == null ? [] : [a.SelectedValue], showSearch: true);
             case AttributeType.Numeric:
                 return new NumericRangeFilterSlotViewModel<AttributeValue>(attribute.Name, a => a?.NumericValue);
             case AttributeType.Percent:
@@ -44,5 +45,15 @@ public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewMode
         IFilter<AttributeValue> filter = _wrappedFilter.GetFilter();
         SequentialAllFilter<T, AttributeValue> wrapper = new SequentialAllFilter<T, AttributeValue>(filter, m => [m.GetAttributeByDefinitionId(_attribute.Id)]);
         return wrapper;
+    }
+
+    public void Refresh()
+    {
+        if (WrappedFilter is CheckboxFilterSlotViewModel<AttributeValue, string> stringSlot)
+        {
+            HashSet<string> previouslyChecked = stringSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
+            stringSlot.ReplaceOptions(_attribute.ValueOptions
+                .Select(o => new CheckboxFilterOptionViewModel<string>(o, o) { IsChecked = previouslyChecked.Contains(o) }));
+        }
     }
 }

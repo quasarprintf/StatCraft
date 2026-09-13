@@ -238,11 +238,9 @@ public partial class MapsPageViewModel : ViewModelBase
             return;
 
         if (_slotByAttribute.TryGetValue(attribute, out IFilterSlotViewModel<Map>? slot) &&
-            slot is CheckboxFilterSlotViewModel<Map, string> stringSlot)
+            slot is AttributeFilterSlotViewModel<Map> attributeSlot)
         {
-            HashSet<string> previouslyChecked = stringSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
-            stringSlot.ReplaceOptions(attribute.ValueOptions
-                .Select(o => new CheckboxFilterOptionViewModel<string>(o, o) { IsChecked = previouslyChecked.Contains(o) }));
+            attributeSlot.Refresh();
         }
     }
 
