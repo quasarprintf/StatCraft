@@ -2,10 +2,11 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using StatCraft.Services.DataFiltering;
 using System;
+using System.ComponentModel;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 
-public interface IFilterSlotViewModel
+public interface IFilterSlotViewModel : INotifyPropertyChanged
 {
     string Title { get; set; }
     bool IsApplied { get; set; }

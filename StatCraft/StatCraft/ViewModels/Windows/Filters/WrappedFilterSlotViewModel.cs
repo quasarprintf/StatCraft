@@ -1,8 +1,8 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using StatCraft.Models.GameData.Attributes;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Text;
 
 namespace StatCraft.ViewModels.Windows.Filters;
@@ -12,14 +12,12 @@ public interface IWrappedFilterSlotViewModel : IFilterSlotViewModel
     IFilterSlotViewModel WrappedFilter { get; }
 }
 
-public abstract partial class WrappedFilterSlotViewModel<T> : ObservableObject, IWrappedFilterSlotViewModel
+public abstract partial class WrappedFilterSlotViewModel<T> : ViewModelBase, IWrappedFilterSlotViewModel
 {
     public event Action? Changed;
     public event EventHandler? IsAppliedChanged;
 
-
-    IFilterSlotViewModel IWrappedFilterSlotViewModel.WrappedFilter => WrappedFilter;
-    [ObservableProperty] protected IFilterSlotViewModel<T> _wrappedFilter;
+    [ObservableProperty] private IFilterSlotViewModel _wrappedFilter;
 
     public string Title
     {
@@ -52,7 +50,8 @@ public abstract partial class WrappedFilterSlotViewModel<T> : ObservableObject, 
 
     protected void BindWrapped() //must be called in constructor of implementing classes
     {
-        WrappedFilter.IsAppliedChanged += IsAppliedChanged;
-        WrappedFilter.Changed += Changed;
+        WrappedFilter.IsAppliedChanged += (_,_) => IsAppliedChanged?.Invoke(this, EventArgs.Empty);
+        WrappedFilter.Changed += () => Changed?.Invoke();
+        WrappedFilter.PropertyChanged += (o,e) => OnPropertyChanged(e.PropertyName);
     }
 }
