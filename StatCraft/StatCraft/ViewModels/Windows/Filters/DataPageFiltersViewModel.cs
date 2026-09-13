@@ -311,12 +311,6 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         return game.ReplayData.Opponents.Select(o => (game.ReplayData.Player.Race.AsRace()!.Value, o.Race.AsRace()!.Value)).Distinct().ToArray();
     }
 
-    private static IReadOnlySet<int> ToBuildIdSet(CheckboxFilterSlotViewModel<GameData, BuildNode> slot) =>
-        slot.Options
-            .Where(o => o.IsChecked)
-            .SelectMany(o => GameDataFilter.CollectSubtreeIds(o.Value))
-            .ToHashSet();
-
     private static List<CheckboxFilterOptionViewModel<(Race, Race)>> BuildMatchupOptions()
     {
         List<CheckboxFilterOptionViewModel<(Race, Race)>> options = new();
