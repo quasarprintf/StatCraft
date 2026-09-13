@@ -300,7 +300,7 @@ public partial class BuildsPageViewModel : ViewModelBase
             return;
 
         if (_slotByAttribute.TryGetValue(attribute, out IFilterSlotViewModel<BuildNode>? slot) &&
-            slot is AttributeFilterSlotViewModel<Map> attributeSlot)
+            slot is AttributeFilterSlotViewModel<BuildNode> attributeSlot)
         {
             attributeSlot.Refresh();
         }
