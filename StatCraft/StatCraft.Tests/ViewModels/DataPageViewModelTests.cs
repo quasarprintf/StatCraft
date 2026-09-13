@@ -3,6 +3,7 @@ using System.Threading;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Attributes;
+using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Models.Util;
@@ -32,9 +33,11 @@ public class DataPageViewModelTests : IAsyncDisposable
     private readonly GameDataRepository _gameDataRepository;
     private readonly MapRepository _mapRepository;
     private readonly AttributeRepository _attributeRepository;
+    private readonly AccountRepository _accountRepository;
+    private readonly BuildRepository _buildRepository;
     private readonly ReplayWatcherService _replayWatcherService;
     private readonly SettingsRepository _settingsRepository;
-    private readonly DataPageViewModel _viewModel;
+    private DataPageViewModel _viewModel;
     private readonly int _sc2ProfileId;
     private readonly Sc2Profile _profile;
 
@@ -45,10 +48,10 @@ public class DataPageViewModelTests : IAsyncDisposable
         _dbPath = Path.Combine(tempRoot, "statcraft.db");
         string settingsPath = Path.Combine(tempRoot, "settings.json");
 
-        AccountRepository accountRepository = new(_dbPath);
-        accountRepository.Initialize();
-        BuildRepository buildRepository = new(_dbPath);
-        buildRepository.Initialize();
+        _accountRepository = new AccountRepository(_dbPath);
+        _accountRepository.Initialize();
+        _buildRepository = new BuildRepository(_dbPath);
+        _buildRepository.Initialize();
         // Before GameDataRepository, whose MapName -> MapId migration writes into the Maps table.
         _mapRepository = new MapRepository(_dbPath);
         _mapRepository.Initialize();
@@ -62,20 +65,30 @@ public class DataPageViewModelTests : IAsyncDisposable
             BattleTag = "Player#1234", AccountSub = "sub-1", EncryptedAccessToken = [1],
             TokenExpiresAtUtc = DateTimeOffset.UtcNow, CreatedAtUtc = DateTimeOffset.UtcNow,
         };
-        accountRepository.InsertAccount(account);
+        _accountRepository.InsertAccount(account);
         _profile = new Sc2Profile { BattleNetAccountId = account.Id, RegionId = "1", RealmId = "1", ProfileId = 111, Name = "Player" };
-        accountRepository.UpsertProfile(_profile);
+        _accountRepository.UpsertProfile(_profile);
         _sc2ProfileId = _profile.Id;
 
         _settingsRepository = new SettingsRepository(settingsPath);
         _replayWatcherService = new ReplayWatcherService(new MockLogger());
+
+        _viewModel = CreateViewModel();
+    }
+
+    // Separate from the constructor because some filters snapshot the database when the page is built —
+    // the Build slot reads the whole build tree once — so a test needing those has to seed first and
+    // then rebuild the page.
+    private DataPageViewModel CreateViewModel()
+    {
         Sc2LadderService ladderService = new(new HttpClient(), new StubTokenProvider(), new MockLogger());
         ReplayDataExtractor replayDataExtractor = new();
         ReplayImportService replayImportService = new(new MockLogger(), replayDataExtractor, _gameDataRepository,
             _mapRepository, ladderService);
 
-        _viewModel = new DataPageViewModel(_settingsRepository, _replayWatcherService, replayImportService,
-            accountRepository, buildRepository, _gameDataRepository, _attributeRepository, ladderService, new MockLogger(), new StatCraft.Services.Factories.FilterSlotFactory(), replayDataExtractor);
+        return new DataPageViewModel(_settingsRepository, _replayWatcherService, replayImportService,
+            _accountRepository, _buildRepository, _gameDataRepository, _attributeRepository, ladderService,
+            new MockLogger(), new StatCraft.Services.Factories.FilterSlotFactory(), replayDataExtractor);
     }
 
     // The "Use Team Colors" setting can be toggled mid-session — already-visible rows must pick it up
@@ -266,6 +279,86 @@ public class DataPageViewModelTests : IAsyncDisposable
             _viewModel.Filters.GameAttributeSlots.Single(m => m.DisplayText == title).Filter!;
         return Assert.IsType<CheckboxFilterSlotViewModel<AttributeValue, string?>>(
             ((IWrappedFilterSlotViewModel)wrapper).WrappedFilter);
+    }
+
+    // Recreated from the deleted GameDataFilterTests, which were the only cover for build filtering. The
+    // rule is unchanged — checking a build matches games that picked it, or any build beneath it — but
+    // the implementation inverted: instead of expanding a checked build down to its subtree, the tab now
+    // walks each game's chosen builds up through their ancestors and tests set membership.
+    [Fact]
+    public async Task Filter_Build_CheckedBuild_KeepsAGameThatPickedIt()
+    {
+        BuildNode build = InsertBuild("4 Gate");
+        GameData game = InsertGameWithBuild(build);
+
+        await LoadGamesWithNoDateRange();
+        CheckBuild(build);
+
+        Assert.Contains(_viewModel.Games, r => r.GameId == game.GameId);
+    }
+
+    // The case the subtree expansion existed for: the game picked the child, the filter checks the parent.
+    [Fact]
+    public async Task Filter_Build_CheckedBuild_KeepsAGameThatPickedADescendant()
+    {
+        BuildNode parent = InsertBuild("4 Gate");
+        BuildNode child = InsertBuild("4 Gate into Blink", parent);
+        GameData game = InsertGameWithBuild(child);
+
+        await LoadGamesWithNoDateRange();
+        CheckBuild(parent);
+
+        Assert.Contains(_viewModel.Games, r => r.GameId == game.GameId);
+    }
+
+    // The other direction must not match: picking the parent is not picking the child.
+    [Fact]
+    public async Task Filter_Build_CheckedDescendant_ExcludesAGameThatPickedTheParent()
+    {
+        BuildNode parent = InsertBuild("4 Gate");
+        BuildNode child = InsertBuild("4 Gate into Blink", parent);
+        InsertGameWithBuild(parent);
+
+        await LoadGamesWithNoDateRange();
+        CheckBuild(child);
+
+        Assert.Empty(_viewModel.Games);
+    }
+
+    [Fact]
+    public async Task Filter_Build_UncheckedBuild_IsExcluded()
+    {
+        BuildNode picked = InsertBuild("4 Gate");
+        BuildNode other = InsertBuild("Cannon Rush");
+        InsertGameWithBuild(picked);
+
+        await LoadGamesWithNoDateRange();
+        CheckBuild(other);
+
+        Assert.Empty(_viewModel.Games);
+    }
+
+    private BuildNode InsertBuild(string name, BuildNode? parent = null)
+    {
+        BuildNode node = new() { Name = name, PlayerRace = Race.Protoss };
+        _buildRepository.InsertBuild(node, parent?.Id, 0);
+        return node;
+    }
+
+    // The Build slot reads the build tree once, when the page is constructed, so the page is rebuilt
+    // after the builds exist — otherwise neither the options nor the id lookup would know about them.
+    private GameData InsertGameWithBuild(BuildNode build)
+    {
+        GameData game = InsertGame();
+        _gameDataRepository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [build.Id]);
+        _viewModel = CreateViewModel();
+        return game;
+    }
+
+    private void CheckBuild(BuildNode build)
+    {
+        _viewModel.Filters.BuildSlot.AddCommand.Execute(null);
+        _viewModel.Filters.BuildSlot.Options.Single(o => o.Value.Id == build.Id).IsChecked = true;
     }
 
     // SetActiveProfile resets the date range to today, per spec. These tests set dates themselves (or
