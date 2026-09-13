@@ -101,7 +101,7 @@ public class BuildsPageViewModelTests : IDisposable
     {
         AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Cheese", Type = AttributeType.Bool };
         _attributeRepo.InsertAttribute(attribute, 0);
-        BoolFilterSlotViewModel<BuildNode> slot = Assert.IsType<BoolFilterSlotViewModel<BuildNode>>(_vm.HiddenFilterSlots.Single(s => s.Title == "Cheese"));
+        BoolFilterSlotViewModel<AttributeValue> slot = InnerSlot<BoolFilterSlotViewModel<AttributeValue>>(_vm.HiddenFilterSlots.Single(s => s.Title == "Cheese"));
         Assert.DoesNotContain(_vm.SelectedBuild!.AttributeValues, v => v.Definition.Id == attribute.Id);
 
         slot.IsApplied = true;
@@ -120,7 +120,7 @@ public class BuildsPageViewModelTests : IDisposable
     {
         AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Cheese", Type = AttributeType.Bool, IsMandatory = true };
         _attributeRepo.InsertAttribute(attribute, 0);
-        BoolFilterSlotViewModel<BuildNode> slot = Assert.IsType<BoolFilterSlotViewModel<BuildNode>>(_vm.HiddenFilterSlots.Single(s => s.Title == "Cheese"));
+        BoolFilterSlotViewModel<AttributeValue> slot = InnerSlot<BoolFilterSlotViewModel<AttributeValue>>(_vm.HiddenFilterSlots.Single(s => s.Title == "Cheese"));
         Assert.Contains(_vm.SelectedBuild!.AttributeValues, v => v.Definition.Id == attribute.Id);
 
         slot.IsApplied = true;
@@ -129,6 +129,12 @@ public class BuildsPageViewModelTests : IDisposable
 
         Assert.Equal(includeUnset, _vm.SelectedBuild.MatchesFilter);
     }
+
+    // An attribute filter slot is an AttributeFilterSlotViewModel wrapper: the kind-specific slot lives
+    // inside it and filters an AttributeValue, while the wrapper is what projects a build onto its value
+    // row. Tests that need Value/Min/Options reach through to the inner one.
+    private static TSlot InnerSlot<TSlot>(IFilterSlotViewModel slot) where TSlot : class =>
+        Assert.IsType<TSlot>(((IWrappedFilterSlotViewModel)slot).WrappedFilter);
 
     private void AddDetail(string name)
     {
