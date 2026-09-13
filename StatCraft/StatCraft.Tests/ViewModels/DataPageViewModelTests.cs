@@ -2,6 +2,7 @@ using System.Net.Http;
 using System.Threading;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Models.Util;
@@ -14,6 +15,7 @@ using StatCraft.Tests.Mocks;
 using StatCraft.ViewModels.Windows;
 using StatCraft.ViewModels.Windows.DataComponents;
 using StatCraft.ViewModels.Windows.DataComponents.GameRow;
+using StatCraft.ViewModels.Windows.Filters;
 
 namespace StatCraft.Tests;
 
@@ -29,6 +31,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     private readonly string _dbPath;
     private readonly GameDataRepository _gameDataRepository;
     private readonly MapRepository _mapRepository;
+    private readonly AttributeRepository _attributeRepository;
     private readonly ReplayWatcherService _replayWatcherService;
     private readonly SettingsRepository _settingsRepository;
     private readonly DataPageViewModel _viewModel;
@@ -51,8 +54,8 @@ public class DataPageViewModelTests : IAsyncDisposable
         _mapRepository.Initialize();
         _gameDataRepository = new GameDataRepository(_dbPath);
         _gameDataRepository.Initialize();
-        AttributeRepository attributeRepository = new(_dbPath);
-        attributeRepository.Initialize();
+        _attributeRepository = new AttributeRepository(_dbPath);
+        _attributeRepository.Initialize();
 
         BattleNetAccount account = new()
         {
@@ -72,7 +75,7 @@ public class DataPageViewModelTests : IAsyncDisposable
             _mapRepository, ladderService);
 
         _viewModel = new DataPageViewModel(_settingsRepository, _replayWatcherService, replayImportService,
-            accountRepository, buildRepository, _gameDataRepository, attributeRepository, ladderService, new MockLogger(), new StatCraft.Services.Factories.FilterSlotFactory(), replayDataExtractor);
+            accountRepository, buildRepository, _gameDataRepository, _attributeRepository, ladderService, new MockLogger(), new StatCraft.Services.Factories.FilterSlotFactory(), replayDataExtractor);
     }
 
     // The "Use Team Colors" setting can be toggled mid-session — already-visible rows must pick it up
@@ -229,6 +232,40 @@ public class DataPageViewModelTests : IAsyncDisposable
         SetOpponentMmrRange(3000, 4000);
 
         Assert.Empty(_viewModel.Games);
+    }
+
+    // The Games twin of MapsPageViewModelTests.ValueOptionAddedElsewhere_PatchesTheFilterSlotPreservingWhatWasChecked.
+    // The checkbox slot keeps its own option list, built when the slot is created, so an option added on
+    // the Attributes tab has to be patched in without dropping what the user already checked. The Data tab
+    // syncs attributes lazily — OnAttributesChanged only marks the cache dirty — so each repository change
+    // is followed by the NotifyActivated() the tab does when it becomes visible.
+    [Fact]
+    public void ValueOptionAddedElsewhere_PatchesTheFilterSlotPreservingWhatWasChecked()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Game) { Name = "Style", Type = AttributeType.Values };
+        _attributeRepository.InsertAttribute(attribute, 0);
+        _attributeRepository.InsertValueOption(attribute.Id, "Rush");
+        _viewModel.NotifyActivated();
+
+        CheckboxFilterSlotViewModel<AttributeValue, string?> slot = GameAttributeSlot("Style");
+        slot.Options.Single(o => o.Value == "Rush").IsChecked = true;
+
+        _attributeRepository.InsertValueOption(attribute.Id, "Macro");
+        _viewModel.NotifyActivated();
+
+        Assert.Equal(["Rush", "Macro"], slot.Options.Select(o => o.Value));
+        Assert.True(slot.Options.Single(o => o.Value == "Rush").IsChecked);
+        Assert.False(slot.Options.Single(o => o.Value == "Macro").IsChecked);
+    }
+
+    // A game attribute's filter lives in a menu item, wrapped in an AttributeFilterSlotViewModel that
+    // projects a game onto its value row; the checkbox slot holding the options is the one inside that.
+    private CheckboxFilterSlotViewModel<AttributeValue, string?> GameAttributeSlot(string title)
+    {
+        IFilterSlotViewModel<GameData> wrapper =
+            _viewModel.Filters.GameAttributeSlots.Single(m => m.DisplayText == title).Filter!;
+        return Assert.IsType<CheckboxFilterSlotViewModel<AttributeValue, string?>>(
+            ((IWrappedFilterSlotViewModel)wrapper).WrappedFilter);
     }
 
     // SetActiveProfile resets the date range to today, per spec. These tests set dates themselves (or

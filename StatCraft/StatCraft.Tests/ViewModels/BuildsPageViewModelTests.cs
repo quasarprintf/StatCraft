@@ -13,6 +13,7 @@ public class BuildsPageViewModelTests : IDisposable
     private readonly string _dbPath;
     private readonly BuildRepository _buildRepo;
     private readonly AttributeRepository _attributeRepo;
+    private readonly GameDataRepository _gameDataRepo;
     private readonly BuildsPageViewModel _vm;
 
     public BuildsPageViewModelTests()
@@ -23,12 +24,12 @@ public class BuildsPageViewModelTests : IDisposable
         _buildRepo.Initialize();
         MapRepository mapRepository = new(_dbPath);
         mapRepository.Initialize();
-        GameDataRepository gameDataRepository = new(_dbPath);
-        gameDataRepository.Initialize();
+        _gameDataRepo = new GameDataRepository(_dbPath);
+        _gameDataRepo.Initialize();
         _attributeRepo = new AttributeRepository(_dbPath);
         _attributeRepo.Initialize();
 
-        _vm = new BuildsPageViewModel(_buildRepo, _attributeRepo, gameDataRepository, new FilterSlotFactory())
+        _vm = new BuildsPageViewModel(_buildRepo, _attributeRepo, _gameDataRepo, new FilterSlotFactory())
         {
             PlayerRace = Race.Protoss,
         };
@@ -128,6 +129,32 @@ public class BuildsPageViewModelTests : IDisposable
         slot.Value = true;
 
         Assert.Equal(includeUnset, _vm.SelectedBuild.MatchesFilter);
+    }
+
+    // The Builds twin of MapsPageViewModelTests.ValueOptionAddedElsewhere_PatchesTheFilterSlotPreservingWhatWasChecked.
+    // The checkbox slot keeps its own option list, built when the slot is created, so an option added on
+    // the Attributes tab has to be patched in without dropping what the user already checked.
+    [Fact]
+    public void ValueOptionAddedElsewhere_PatchesTheFilterSlotPreservingWhatWasChecked()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Build) { Name = "Style", Type = AttributeType.Values };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        _attributeRepo.InsertValueOption(attribute.Id, "Rush");
+        // A page built after the attribute exists, so the slot starts with the option already on it —
+        // the same starting point as the Maps test.
+        BuildsPageViewModel vm = new(_buildRepo, _attributeRepo, _gameDataRepo, new FilterSlotFactory())
+        {
+            PlayerRace = Race.Protoss,
+        };
+        CheckboxFilterSlotViewModel<AttributeValue, string?> slot =
+            InnerSlot<CheckboxFilterSlotViewModel<AttributeValue, string?>>(vm.HiddenFilterSlots.Single(s => s.Title == "Style"));
+        slot.Options.Single(o => o.Value == "Rush").IsChecked = true;
+
+        _attributeRepo.InsertValueOption(attribute.Id, "Macro");
+
+        Assert.Equal(["Rush", "Macro"], slot.Options.Select(o => o.Value));
+        Assert.True(slot.Options.Single(o => o.Value == "Rush").IsChecked);
+        Assert.False(slot.Options.Single(o => o.Value == "Macro").IsChecked);
     }
 
     // An attribute filter slot is an AttributeFilterSlotViewModel wrapper: the kind-specific slot lives
