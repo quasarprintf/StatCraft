@@ -61,6 +61,7 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
             foreach (var oldItem in e.OldItems)
                 UnWireSubMenuItem((FilterMenuItemViewModel<T>)oldItem);
         }
+        IsAppliedChanged?.Invoke(this, EventArgs.Empty); 
     }
 
     private void WireSubMenuItem(IFilterMenuItemViewModel menuItem)
