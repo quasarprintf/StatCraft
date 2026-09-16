@@ -1,5 +1,6 @@
 using System.Net.Http;
 using System.Threading;
+using StatCraft.Models.Analytics;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Attributes;
@@ -127,10 +128,10 @@ public class DataPageViewModelTests : IAsyncDisposable
 
     #region Filtering (ported from GameDataFilterTests)
 
-    // These used to call GameDataFilter.Matches directly. The Games tab no longer uses it — ApplyFilters
-    // runs DataPageFiltersViewModel.GetFilter() — so they go through the page itself instead: insert
-    // games, load the profile, set the filters the way the filter bar would, and assert on what ends up
-    // in Games. That way they cover whatever the tab actually filters with, not a parallel implementation.
+    // These used to call GameDataFilter.Matches directly. The Games tab no longer uses it, so they go
+    // through the page itself instead: insert games, load the profile, set the filters the way the filter
+    // bar would, and assert on what ends up in Games. Filters are driven through FilterPanel, so these
+    // don't depend on how the page holds them either.
 
     [Fact]
     public async Task Filter_NothingApplied_ShowsEveryGame()
@@ -167,8 +168,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGame(map: InsertMap("Deathaura LE"));
         await LoadGamesWithNoDateRange();
 
-        _viewModel.Filters.MapSlot.AddCommand.Execute(null);
-        _viewModel.Filters.MapSlot.Options.Single(o => o.Label == "Deathaura LE").IsChecked = true;
+        Filters.Add("Map").Check("Deathaura LE");
 
         Assert.DoesNotContain(_viewModel.Games, r => r.GameId == altitudeGame.GameId);
     }
@@ -179,22 +179,20 @@ public class DataPageViewModelTests : IAsyncDisposable
         GameData altitudeGame = InsertGame(map: InsertMap("Altitude LE"));
         await LoadGamesWithNoDateRange();
 
-        _viewModel.Filters.MapSlot.AddCommand.Execute(null);
-        _viewModel.Filters.MapSlot.Options.Single(o => o.Label == "Altitude LE").IsChecked = true;
+        Filters.Add("Map").Check("Altitude LE");
 
         Assert.Contains(_viewModel.Games, r => r.GameId == altitudeGame.GameId);
     }
 
     [Theory]
-    [InlineData(GameOutcome.Loss, false)]
-    [InlineData(GameOutcome.Win, true)]
-    public async Task Filter_Outcome_KeepsOnlyCheckedOutcomes(GameOutcome checkedOutcome, bool expected)
+    [InlineData("Loss", false)]
+    [InlineData("Win", true)]
+    public async Task Filter_Outcome_KeepsOnlyCheckedOutcomes(string checkedOutcome, bool expected)
     {
         InsertGame(win: 1m);
         await LoadGamesWithNoDateRange();
 
-        _viewModel.Filters.OutcomeSlot.AddCommand.Execute(null);
-        _viewModel.Filters.OutcomeSlot.Options.Single(o => o.Value == checkedOutcome).IsChecked = true;
+        Filters.Add("Outcome").Check(checkedOutcome);
 
         Assert.Equal(expected, _viewModel.Games.Count == 1);
     }
@@ -209,7 +207,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGame(selfRace: 'T', opponents: [Opponent('Z', 3000), Opponent('P', 3000)]);
         await LoadGamesWithNoDateRange();
 
-        CheckMatchup(Race.Terran, Race.Protoss);
+        Filters.Add("Matchup").Check("TvP");
 
         Assert.Single(_viewModel.Games);
     }
@@ -220,7 +218,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGame(selfRace: 'T', opponents: [Opponent('Z', 3000)]);
         await LoadGamesWithNoDateRange();
 
-        CheckMatchup(Race.Terran, Race.Protoss);
+        Filters.Add("Matchup").Check("TvP");
 
         Assert.Empty(_viewModel.Games);
     }
@@ -247,6 +245,21 @@ public class DataPageViewModelTests : IAsyncDisposable
         Assert.Empty(_viewModel.Games);
     }
 
+    [Theory]
+    [InlineData(2999, false)]
+    [InlineData(3000, true)]
+    [InlineData(4000, true)]
+    [InlineData(4001, false)]
+    public async Task Filter_OpponentMmrRange_IsInclusiveOnBothEnds(long mmr, bool expected)
+    {
+        InsertGame(opponents: [Opponent('Z', mmr)]);
+        await LoadGamesWithNoDateRange();
+
+        SetOpponentMmrRange(3000, 4000);
+
+        Assert.Equal(expected, _viewModel.Games.Count == 1);
+    }
+
     // The Games twin of MapsPageViewModelTests.ValueOptionAddedElsewhere_PatchesTheFilterSlotPreservingWhatWasChecked.
     // The checkbox slot keeps its own option list, built when the slot is created, so an option added on
     // the Attributes tab has to be patched in without dropping what the user already checked. The Data tab
@@ -260,25 +273,13 @@ public class DataPageViewModelTests : IAsyncDisposable
         _attributeRepository.InsertValueOption(attribute.Id, "Rush");
         _viewModel.NotifyActivated();
 
-        CheckboxFilterSlotViewModel<AttributeValue, string?> slot = GameAttributeSlot("Style");
-        slot.Options.Single(o => o.Value == "Rush").IsChecked = true;
+        FilterHandle filter = Filters.Offered("Style").Check("Rush");
 
         _attributeRepository.InsertValueOption(attribute.Id, "Macro");
         _viewModel.NotifyActivated();
 
-        Assert.Equal(["Rush", "Macro"], slot.Options.Select(o => o.Value));
-        Assert.True(slot.Options.Single(o => o.Value == "Rush").IsChecked);
-        Assert.False(slot.Options.Single(o => o.Value == "Macro").IsChecked);
-    }
-
-    // A game attribute's filter lives in a menu item, wrapped in an AttributeFilterSlotViewModel that
-    // projects a game onto its value row; the checkbox slot holding the options is the one inside that.
-    private CheckboxFilterSlotViewModel<AttributeValue, string?> GameAttributeSlot(string title)
-    {
-        IFilterSlotViewModel wrapper =
-            _viewModel.Filters.GameAttributeSlots.Single(m => m.DisplayText == title).Filter!;
-        return Assert.IsType<CheckboxFilterSlotViewModel<AttributeValue, string?>>(
-            ((IWrappedFilterSlotViewModel)wrapper).WrappedFilter);
+        Assert.Equal(["Rush", "Macro"], filter.OptionLabels);
+        Assert.Equal(["Rush"], filter.CheckedLabels);
     }
 
     // Recreated from the deleted GameDataFilterTests, which were the only cover for build filtering. The
@@ -355,10 +356,12 @@ public class DataPageViewModelTests : IAsyncDisposable
         return game;
     }
 
+    // Build options are labelled with their place in the tree (race prefix, indentation), so match on the
+    // name the label ends with rather than the exact decoration.
     private void CheckBuild(BuildNode build)
     {
-        _viewModel.Filters.BuildSlot.AddCommand.Execute(null);
-        _viewModel.Filters.BuildSlot.Options.Single(o => o.Value.Id == build.Id).IsChecked = true;
+        FilterHandle filter = Filters.Add("Build");
+        filter.Check(filter.OptionLabels.Single(l => l.EndsWith(build.Name)));
     }
 
     // SetActiveProfile resets the date range to today, per spec. These tests set dates themselves (or
@@ -370,17 +373,11 @@ public class DataPageViewModelTests : IAsyncDisposable
         _viewModel.Filters.ToDate = null;
     }
 
-    private void CheckMatchup(Race self, Race opponent)
-    {
-        _viewModel.Filters.MatchupSlot.AddCommand.Execute(null);
-        _viewModel.Filters.MatchupSlot.Options.Single(o => o.Value == (self, opponent)).IsChecked = true;
-    }
-
     private void SetOpponentMmrRange(decimal min, decimal max)
     {
-        _viewModel.Filters.MmrSlot.AddCommand.Execute(null);
-        _viewModel.Filters.MmrSlot.Min = min;
-        _viewModel.Filters.MmrSlot.Max = max;
+        FilterHandle filter = Filters.Add("Opponent MMR");
+        filter.Min = min;
+        filter.Max = max;
     }
 
     // Games store their map by id, so a game's map has to be a real row for it to come back on load.
@@ -396,8 +393,532 @@ public class DataPageViewModelTests : IAsyncDisposable
 
     #endregion
 
+    #region Filter bar
+
+    // Behaviour of the filter bar and its "+ Filters" menu as a user sees it, pinned ahead of moving the
+    // Maps, Builds and Data tabs onto one shared filter menu.
+
+    // Re-created whenever a test rebuilds the page, so it always reads the page currently under test.
+    private FilterPanel Filters
+    {
+        get
+        {
+            if (_filtersPage != _viewModel)
+            {
+                _filtersPage = _viewModel;
+                _filters = FilterPanel.Of(_viewModel);
+            }
+            return _filters!;
+        }
+    }
+    private FilterPanel? _filters;
+    private DataPageViewModel? _filtersPage;
+
+    // The profile filter is always showing, with no menu entry, so it's reached directly.
+    private FilterHandle ProfileFilter => new(_viewModel.Filters.ProfileSlot);
+
+    private static readonly string[] BuiltInFilterTitles = ["Map", "Matchup", "Outcome", "Opponent MMR", "Build"];
+
+    [Fact]
+    public void BuiltInFilters_StartUnappliedAndAreOfferedInTheirFixedOrder()
+    {
+        Assert.Empty(Filters.AppliedTitles);
+        Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
+    }
+
+    // Everything these filter on comes from the replay itself, so there's never an unset value to include.
+    [Fact]
+    public void BuiltInFilters_DoNotOfferIncludeUnset()
+    {
+        Assert.All(BuiltInFilterTitles, title => Assert.False(Filters.Offered(title).AllowIncludeUnset));
+    }
+
+    [Fact]
+    public void AddingAFilter_MovesItFromTheAddMenuToTheFilterBar()
+    {
+        Filters.Add("Outcome");
+
+        Assert.Equal(["Outcome"], Filters.AppliedTitles);
+        Assert.Equal(["Map", "Matchup", "Opponent MMR", "Build"], Filters.AddableTitles);
+    }
+
+    // The bar keeps the same fixed order as the menu, not the order filters were added in.
+    [Fact]
+    public void AppliedFilters_ShowInTheirFixedOrderRegardlessOfTheOrderAdded()
+    {
+        Filters.Add("Build");
+        Filters.Add("Outcome");
+        Filters.Add("Map");
+
+        Assert.Equal(["Map", "Outcome", "Build"], Filters.AppliedTitles);
+    }
+
+    [Fact]
+    public async Task RemovingAFilter_ReturnsItToTheAddMenuStopsItConstrainingAndClearsIt()
+    {
+        InsertGame(map: InsertMap("Altitude LE"));
+        InsertGame(map: InsertMap("Deathaura LE"));
+        await LoadGamesWithNoDateRange();
+        Filters.Add("Map").Check("Altitude LE");
+        Assert.Single(_viewModel.Games);
+
+        Filters.Applied("Map").Remove();
+
+        Assert.Equal(2, _viewModel.Games.Count);
+        Assert.Empty(Filters.AppliedTitles);
+        Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
+        Assert.Empty(Filters.Add("Map").CheckedLabels);
+    }
+
+    [Fact]
+    public async Task RemovingTheMmrFilter_ClearsItsRange()
+    {
+        InsertGame(opponents: [Opponent('Z', 2000)]);
+        await LoadGamesWithNoDateRange();
+        SetOpponentMmrRange(3000, 4000);
+        Assert.Empty(_viewModel.Games);
+
+        Filters.Applied("Opponent MMR").Remove();
+
+        Assert.Single(_viewModel.Games);
+        FilterHandle readded = Filters.Add("Opponent MMR");
+        Assert.Null(readded.Min);
+        Assert.Null(readded.Max);
+    }
+
+    // Adding a filter only shows its controls; until something is checked or entered, it shows every game.
+    [Theory]
+    [InlineData("Map")]
+    [InlineData("Matchup")]
+    [InlineData("Outcome")]
+    [InlineData("Opponent MMR")]
+    public async Task AddedFilterWithNoCriteria_StillShowsEveryGame(string title)
+    {
+        InsertGame(map: InsertMap("Altitude LE"));
+        InsertGame(map: InsertMap("Deathaura LE"), win: 0m, selfRace: 'P');
+        await LoadGamesWithNoDateRange();
+
+        Filters.Add(title);
+
+        Assert.Equal(2, _viewModel.Games.Count);
+    }
+
+    // Separate from the theory above because only games that picked a build have anything for the build
+    // filter to look at; one without a build is excluded as soon as the filter is applied.
+    [Fact]
+    public async Task AddedBuildFilterWithNoCriteria_StillShowsEveryGameThatPickedABuild()
+    {
+        BuildNode gate = InsertBuild("4 Gate");
+        BuildNode cannon = InsertBuild("Cannon Rush");
+        InsertGameWithBuild(gate);
+        InsertGameWithBuild(cannon);
+        await LoadGamesWithNoDateRange();
+
+        Filters.Add("Build");
+
+        Assert.Equal(2, _viewModel.Games.Count);
+    }
+
+    [Fact]
+    public async Task UncheckingTheLastOption_StopsTheFilterConstraining()
+    {
+        InsertGame(map: InsertMap("Altitude LE"));
+        InsertGame(map: InsertMap("Deathaura LE"));
+        await LoadGamesWithNoDateRange();
+        FilterHandle filter = Filters.Add("Map").Check("Altitude LE");
+        Assert.Single(_viewModel.Games);
+
+        filter.Uncheck("Altitude LE");
+
+        Assert.Equal(2, _viewModel.Games.Count);
+    }
+
+    [Fact]
+    public async Task SeveralCheckedOptions_KeepGamesMatchingAnyOfThem()
+    {
+        InsertGame(map: InsertMap("Altitude LE"));
+        InsertGame(map: InsertMap("Deathaura LE"));
+        InsertGame(map: InsertMap("Ley Lines"));
+        await LoadGamesWithNoDateRange();
+
+        Filters.Add("Map").Check("Altitude LE", "Ley Lines");
+
+        Assert.Equal(2, _viewModel.Games.Count);
+    }
+
+    [Fact]
+    public async Task DifferentFilters_MustAllMatch()
+    {
+        Map altitude = InsertMap("Altitude LE");
+        GameData altitudeWin = InsertGame(map: altitude, win: 1m);
+        InsertGame(map: altitude, win: 0m);
+        InsertGame(map: InsertMap("Deathaura LE"), win: 1m);
+        await LoadGamesWithNoDateRange();
+
+        Filters.Add("Map").Check("Altitude LE");
+        Filters.Add("Outcome").Check("Win");
+
+        Assert.Equal(altitudeWin.GameId, Assert.Single(_viewModel.Games).GameId);
+    }
+
+    // The map filter only offers maps that loaded games were actually played on, alphabetically.
+    [Fact]
+    public async Task MapFilter_OffersTheDistinctMapsOfTheLoadedGames()
+    {
+        Map deathaura = InsertMap("Deathaura LE");
+        InsertGame(map: deathaura);
+        InsertGame(map: deathaura);
+        InsertGame(map: InsertMap("Altitude LE"));
+        InsertMap("Never Played LE");
+
+        await LoadGamesWithNoDateRange();
+
+        Assert.Equal(["Altitude LE", "Deathaura LE"], Filters.Offered("Map").OptionLabels);
+    }
+
+    // Reloading from the database (a profile change, a session start) rebuilds the map options from the
+    // new set of games; what was checked has to survive that and keep filtering.
+    [Fact]
+    public async Task MapFilter_CheckedMap_StaysCheckedAndFilteringAcrossAReload()
+    {
+        InsertGame(map: InsertMap("Altitude LE"));
+        InsertGame(map: InsertMap("Deathaura LE"));
+        await LoadGamesWithNoDateRange();
+        Filters.Add("Map").Check("Altitude LE");
+
+        InsertGame(map: InsertMap("Ley Lines"));
+        await LoadGamesWithNoDateRange();
+
+        FilterHandle filter = Filters.Applied("Map");
+        Assert.Equal(["Altitude LE", "Deathaura LE", "Ley Lines"], filter.OptionLabels);
+        Assert.Equal(["Altitude LE"], filter.CheckedLabels);
+        Assert.Single(_viewModel.Games);
+    }
+
+    // Per spec, starting a session collapses the profile filter to that profile and the date range to
+    // today — and nothing else. Filters the user added stay added and keep constraining.
+    [Fact]
+    public async Task BeginningASession_LeavesOtherFiltersApplied()
+    {
+        InsertGame(win: 1m);
+        InsertGame(win: 0m);
+        await LoadGamesWithNoDateRange();
+        Filters.Add("Outcome").Check("Win");
+
+        await _viewModel.SetActiveProfile(_profile);
+
+        Assert.Equal(["Outcome"], Filters.AppliedTitles);
+        Assert.Equal(["Win"], Filters.Applied("Outcome").CheckedLabels);
+        Assert.Single(_viewModel.Games);
+    }
+
+    [Fact]
+    public async Task BeginningASession_ResetsTheDateRangeToToday()
+    {
+        InsertGame(playedAt: DateTimeOffset.Now.AddDays(-2));
+        await LoadGamesWithNoDateRange();
+        Assert.Single(_viewModel.Games);
+
+        await _viewModel.SetActiveProfile(_profile);
+
+        Assert.Empty(_viewModel.Games);
+    }
+
+    [Fact]
+    public async Task ProfileFilter_CheckingAnotherProfile_LoadsItsGamesToo()
+    {
+        Sc2Profile other = InsertOtherProfile();
+        InsertGame();
+        InsertGame(profileId: other.Id);
+        await LoadGamesWithNoDateRange();
+        Assert.Single(_viewModel.Games);
+
+        ProfileFilter.Check(other.DisplayName);
+
+        Assert.Equal(2, _viewModel.Games.Count);
+    }
+
+    [Fact]
+    public async Task ProfileFilter_UncheckingEveryProfile_ShowsNoGames()
+    {
+        InsertGame();
+        await LoadGamesWithNoDateRange();
+
+        ProfileFilter.Uncheck(_profile.DisplayName);
+
+        Assert.Empty(_viewModel.Games);
+    }
+
+    // The win rate describes exactly the games showing, so filtering changes it.
+    [Fact]
+    public async Task WinRateLabel_CountsOnlyTheFilteredGames()
+    {
+        InsertGame(win: 1m);
+        InsertGame(win: 0m);
+        await LoadGamesWithNoDateRange();
+        Assert.Equal(new WinLossRecord(1, 1, 0).Label, _viewModel.WinRateLabel);
+
+        Filters.Add("Outcome").Check("Win");
+
+        Assert.Equal(new WinLossRecord(1, 0, 0).Label, _viewModel.WinRateLabel);
+    }
+
+    #endregion
+
+    #region Game attribute filters
+
+    // A game attribute filter sorts games into the same three cases as a map attribute filter (see
+    // MapsPageViewModelTests): no value row is excluded outright, an unset row is left to Include unset
+    // (never offered on this tab, so always excluded), and a set value has to match.
+
+    [Fact]
+    public void GameAttributes_AreOfferedInTheAddMenuAfterTheBuiltInFilters()
+    {
+        _attributeRepository.InsertAttribute(new(AttributeScope.Game) { Name = "Style", Type = AttributeType.Values }, 0);
+        _viewModel = CreateViewModel();
+
+        Assert.Equal([.. BuiltInFilterTitles, "Style"], Filters.AddableTitles);
+    }
+
+    // Pins the fix for the add menu not being told when a game attribute appeared: the menu is only
+    // re-read when the page announces a change, so without it the new attribute never showed up.
+    [Fact]
+    public void GameAttributeAddedElsewhere_IsOfferedOnceTheTabIsActivated()
+    {
+        FilterPanel filters = Filters;
+
+        _attributeRepository.InsertAttribute(new(AttributeScope.Game) { Name = "Style", Type = AttributeType.Values }, 0);
+        _viewModel.NotifyActivated();
+
+        Assert.Equal([.. BuiltInFilterTitles, "Style"], filters.AddableTitles);
+    }
+
+    [Theory]
+    [InlineData("Rush", true)]
+    [InlineData("Macro", false)]
+    public async Task GameAttributeFilter_CheckedOption_KeepsOnlyGamesHoldingThatValue(string gameValue, bool expected)
+    {
+        AttributeDefinition style = InsertStyleAttribute();
+        GameData game = InsertGame();
+        SaveGameValue(game, style, v => v.SelectedValue = gameValue);
+        _viewModel = CreateViewModel();
+        await LoadGamesWithNoDateRange();
+
+        Filters.Add("Style").Check("Rush");
+
+        Assert.Equal(expected, _viewModel.Games.Count == 1);
+    }
+
+    [Fact]
+    public async Task GameAttributeFilter_ExcludesAGameWithNoValueRow()
+    {
+        InsertStyleAttribute();
+        InsertGame();
+        _viewModel = CreateViewModel();
+        await LoadGamesWithNoDateRange();
+
+        Filters.Add("Style").Check("Rush");
+
+        Assert.Empty(_viewModel.Games);
+    }
+
+    // A mandatory attribute gives every loaded game a row, unset until filled in.
+    [Fact]
+    public async Task GameAttributeFilter_ExcludesAGameWhoseValueIsUnset()
+    {
+        AttributeDefinition style = new(AttributeScope.Game) { Name = "Style", Type = AttributeType.Values, IsMandatory = true };
+        _attributeRepository.InsertAttribute(style, 0);
+        _attributeRepository.InsertValueOption(style.Id, "Rush");
+        InsertGame();
+        _viewModel = CreateViewModel();
+        await LoadGamesWithNoDateRange();
+        Assert.Single(_viewModel.Games);
+
+        Filters.Add("Style").Check("Rush");
+
+        Assert.Empty(_viewModel.Games);
+    }
+
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, false)]
+    public async Task GameAttributeFilter_Bool_KeepsOnlyGamesWithTheChosenValue(bool gameValue, bool expected)
+    {
+        AttributeDefinition proxy = new(AttributeScope.Game) { Name = "Proxy", Type = AttributeType.Bool };
+        _attributeRepository.InsertAttribute(proxy, 0);
+        GameData game = InsertGame();
+        SaveGameValue(game, proxy, v => v.BoolValue = gameValue);
+        _viewModel = CreateViewModel();
+        await LoadGamesWithNoDateRange();
+
+        Filters.Add("Proxy").BoolValue = true;
+
+        Assert.Equal(expected, _viewModel.Games.Count == 1);
+    }
+
+    [Theory]
+    [InlineData(49, false)]
+    [InlineData(50, true)]
+    [InlineData(60, true)]
+    [InlineData(61, false)]
+    public async Task GameAttributeFilter_Numeric_RangeIsInclusiveOnBothEnds(int gameValue, bool expected)
+    {
+        AttributeDefinition apm = new(AttributeScope.Game) { Name = "Apm", Type = AttributeType.Numeric };
+        _attributeRepository.InsertAttribute(apm, 0);
+        GameData game = InsertGame();
+        SaveGameValue(game, apm, v => v.NumericValue = gameValue);
+        _viewModel = CreateViewModel();
+        await LoadGamesWithNoDateRange();
+
+        FilterHandle filter = Filters.Add("Apm");
+        filter.Min = 50;
+        filter.Max = 60;
+
+        Assert.Equal(expected, _viewModel.Games.Count == 1);
+    }
+
+    [Fact]
+    public async Task GameAttributeFilter_AndBuiltInFilter_MustBothMatch()
+    {
+        AttributeDefinition style = InsertStyleAttribute();
+        SaveGameValue(InsertGame(win: 1m), style, v => v.SelectedValue = "Rush");
+        SaveGameValue(InsertGame(win: 0m), style, v => v.SelectedValue = "Rush");
+        SaveGameValue(InsertGame(win: 1m), style, v => v.SelectedValue = "Macro");
+        _viewModel = CreateViewModel();
+        await LoadGamesWithNoDateRange();
+
+        Filters.Add("Style").Check("Rush");
+        Filters.Add("Outcome").Check("Win");
+
+        Assert.Single(_viewModel.Games);
+    }
+
+    [Fact]
+    public async Task RemovingAGameAttributeFilter_StopsItConstraining()
+    {
+        AttributeDefinition style = InsertStyleAttribute();
+        SaveGameValue(InsertGame(), style, v => v.SelectedValue = "Macro");
+        _viewModel = CreateViewModel();
+        await LoadGamesWithNoDateRange();
+        Filters.Add("Style").Check("Rush");
+        Assert.Empty(_viewModel.Games);
+
+        Filters.Applied("Style").Remove();
+
+        Assert.Single(_viewModel.Games);
+        Assert.Empty(Filters.AppliedTitles);
+        Assert.Empty(Filters.Offered("Style").CheckedLabels);
+    }
+
+    // A filter slot created by the lazy attribute sync has to be wired up like the original ones, or
+    // checking an option on it would never re-filter the games.
+    [Fact]
+    public async Task GameAttributeAddedElsewhere_Filters()
+    {
+        InsertGame();
+        await LoadGamesWithNoDateRange();
+
+        InsertStyleAttribute();
+        _viewModel.NotifyActivated();
+        Filters.Add("Style").Check("Rush");
+
+        Assert.Empty(_viewModel.Games);
+    }
+
+    [Fact]
+    public async Task GameAttributeDeletedElsewhere_WhileApplied_LeavesTheFilterBarAndStopsConstraining()
+    {
+        AttributeDefinition style = InsertStyleAttribute();
+        SaveGameValue(InsertGame(), style, v => v.SelectedValue = "Macro");
+        _viewModel = CreateViewModel();
+        await LoadGamesWithNoDateRange();
+        Filters.Add("Style").Check("Rush");
+        Assert.Empty(_viewModel.Games);
+
+        _attributeRepository.DeleteAttribute(style.Id);
+        _viewModel.NotifyActivated();
+
+        Assert.Empty(Filters.AppliedTitles);
+        Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
+        Assert.Single(_viewModel.Games);
+    }
+
+    [Fact]
+    public void GameAttributeRenamedElsewhere_WhileApplied_RenamesItInTheFilterBarAndMenuKeepingItsCriteria()
+    {
+        InsertStyleAttribute();
+        _viewModel = CreateViewModel();
+        Filters.Add("Style").Check("Rush");
+
+        AttributeDefinition editedElsewhere = Assert.Single(_attributeRepository.GetAllAttributes(AttributeScope.Game));
+        editedElsewhere.Name = "Play Style";
+        _attributeRepository.UpdateAttribute(editedElsewhere);
+        _viewModel.NotifyActivated();
+
+        Assert.Equal(["Play Style"], Filters.AppliedTitles);
+        Assert.Equal(["Rush"], Filters.Applied("Play Style").CheckedLabels);
+
+        // The menu entry is renamed too, which shows once the filter is back in the menu.
+        Filters.Applied("Play Style").Remove();
+        Assert.Equal([.. BuiltInFilterTitles, "Play Style"], Filters.AddableTitles);
+    }
+
+    // The slot is rebuilt as the new kind, but whether it was showing survives, and the rebuilt slot is
+    // still wired to re-filter the games.
+    [Fact]
+    public async Task GameAttributeTypeChangedElsewhere_WhileApplied_StaysAppliedAsTheNewKindAndStillFilters()
+    {
+        AttributeDefinition contested = new(AttributeScope.Game) { Name = "Contested", Type = AttributeType.Numeric };
+        _attributeRepository.InsertAttribute(contested, 0);
+        SaveGameValue(InsertGame(), contested, v => v.NumericValue = 5);
+        _viewModel = CreateViewModel();
+        await LoadGamesWithNoDateRange();
+        Filters.Add("Contested");
+        Assert.Single(_viewModel.Games);
+
+        AttributeDefinition editedElsewhere = Assert.Single(_attributeRepository.GetAllAttributes(AttributeScope.Game));
+        editedElsewhere.Type = AttributeType.Bool;
+        _attributeRepository.UpdateAttribute(editedElsewhere);
+        _viewModel.NotifyActivated();
+
+        Assert.Equal(["Contested"], Filters.AppliedTitles);
+        FilterHandle filter = Filters.Applied("Contested");
+        Assert.True(filter.IsBoolFilter);
+        // The game's stored value was numeric, so as a yes/no attribute it's unset and filtered out...
+        Assert.Empty(_viewModel.Games);
+
+        // ...until the rebuilt filter is removed, which only re-filters if the new slot is wired up.
+        filter.Remove();
+        Assert.Single(_viewModel.Games);
+    }
+
+    private AttributeDefinition InsertStyleAttribute()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Game) { Name = "Style", Type = AttributeType.Values };
+        _attributeRepository.InsertAttribute(attribute, 0);
+        _attributeRepository.InsertValueOption(attribute.Id, "Rush");
+        _attributeRepository.InsertValueOption(attribute.Id, "Macro");
+        return attribute;
+    }
+
+    private void SaveGameValue(GameData game, AttributeDefinition attribute, Action<AttributeValue> setValue)
+    {
+        AttributeValue value = new(attribute);
+        setValue(value);
+        _gameDataRepository.SaveGameAttributeValue(game.GameId!.Value, attribute.Id, value.Serialize());
+    }
+
+    private Sc2Profile InsertOtherProfile()
+    {
+        Sc2Profile other = new() { BattleNetAccountId = _profile.BattleNetAccountId, RegionId = "1", RealmId = "1", ProfileId = 222, Name = "Smurf" };
+        _accountRepository.UpsertProfile(other);
+        return other;
+    }
+
+    #endregion
+
     private GameData InsertGame(Map? map = null, decimal win = 1m, char selfRace = 'Z',
-        GamePlayer[]? opponents = null, DateTimeOffset? playedAt = null)
+        GamePlayer[]? opponents = null, DateTimeOffset? playedAt = null, int? profileId = null)
     {
         ParsedReplayData replay = new()
         {
@@ -410,7 +931,7 @@ public class DataPageViewModelTests : IAsyncDisposable
             Opponents = opponents ?? [new GamePlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'T', Random = false }],
         };
         GameData game = new() { Map = map, ReplayData = replay };
-        _gameDataRepository.InsertGame(game, _sc2ProfileId);
+        _gameDataRepository.InsertGame(game, profileId ?? _sc2ProfileId);
         return game;
     }
 

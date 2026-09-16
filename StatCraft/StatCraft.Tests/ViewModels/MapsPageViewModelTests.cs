@@ -3,7 +3,6 @@ using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.Factories;
 using StatCraft.ViewModels.Windows;
-using StatCraft.ViewModels.Windows.Filters;
 
 namespace StatCraft.Tests;
 
@@ -84,6 +83,7 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertAttribute(new(AttributeScope.Game) { Name = "Apm" }, 0);
 
         Assert.Empty(vm.AllAttributes);
+        Assert.Empty(FilterPanel.Of(vm).AddableTitles);
     }
 
     // Pins the fix for a real bug: this page loads its own AttributeDefinition instances, separate from
@@ -98,8 +98,9 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertAttribute(attribute, 0);
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
         MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
+        FilterPanel filters = FilterPanel.Of(vm);
         AttributeDefinition held = Assert.Single(vm.AllAttributes);
-        InnerSlot<NumericRangeFilterSlotViewModel<AttributeValue>>(Assert.Single(vm.HiddenFilterSlots));
+        Assert.True(filters.Offered("Rush Distance").IsNumericRangeFilter);
 
         AttributeDefinition editedElsewhere = Assert.Single(_attributeRepo.GetAllAttributes(AttributeScope.Map));
         editedElsewhere.Type = AttributeType.Bool;
@@ -108,9 +109,8 @@ public class MapsPageViewModelTests : IDisposable
         Assert.Equal(AttributeType.Bool, held.Type);
         Assert.Same(held, Assert.Single(vm.AllAttributes));
         Assert.Same(held, Assert.Single(vm.FilteredMaps.Single().AttributeValues).Definition);
-        // Numeric/Bool/Values are different FilterSlotViewModel subclasses, so the slot itself must be
-        // swapped, not just have a property change underneath it.
-        InnerSlot<BoolFilterSlotViewModel<AttributeValue>>(Assert.Single(vm.HiddenFilterSlots));
+        // The filter has to become the new kind too, not keep offering a range for a yes/no attribute.
+        Assert.True(filters.Offered("Rush Distance").IsBoolFilter);
     }
 
     [Fact]
@@ -126,7 +126,7 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.UpdateAttribute(editedElsewhere);
 
         Assert.Equal("New Name", held.Name);
-        Assert.Equal("New Name", Assert.Single(vm.HiddenFilterSlots).Title);
+        Assert.Equal(["New Name"], FilterPanel.Of(vm).AddableTitles);
     }
 
     [Fact]
@@ -151,14 +151,12 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertAttribute(attribute, 0);
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
         MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
-        CheckboxFilterSlotViewModel<AttributeValue, string?> slot = InnerSlot<CheckboxFilterSlotViewModel<AttributeValue, string?>>(Assert.Single(vm.HiddenFilterSlots));
-        slot.Options.Single(o => o.Value == "Rush").IsChecked = true;
+        FilterHandle filter = FilterPanel.Of(vm).Offered("Style").Check("Rush");
 
         _attributeRepo.InsertValueOption(attribute.Id, "Macro");
 
-        Assert.Equal(["Rush", "Macro"], slot.Options.Select(o => o.Value));
-        Assert.True(slot.Options.Single(o => o.Value == "Rush").IsChecked);
-        Assert.False(slot.Options.Single(o => o.Value == "Macro").IsChecked);
+        Assert.Equal(["Rush", "Macro"], filter.OptionLabels);
+        Assert.Equal(["Rush"], filter.CheckedLabels);
     }
 
     // An applied attribute filter sorts maps into three cases, and only the middle one is IncludeUnset's
@@ -178,12 +176,10 @@ public class MapsPageViewModelTests : IDisposable
     public void CheckedOption_KeepsOnlyMapsHoldingThatValue(string mapValue, bool expected)
     {
         MapsPageViewModel vm = ValuesAttributeVm();
-        CheckboxFilterSlotViewModel<AttributeValue, string?> slot = InnerSlot<CheckboxFilterSlotViewModel<AttributeValue, string?>>(Assert.Single(vm.HiddenFilterSlots));
         Map map = AddMapWithValueRows(vm);
         map.AttributeValues.Single().SelectedValue = mapValue;
 
-        slot.IsApplied = true;
-        slot.Options.Single(o => o.Value == "Rush").IsChecked = true;
+        FilterPanel.Of(vm).Add("Style").Check("Rush");
 
         Assert.Equal(expected, vm.FilteredMaps.Contains(map));
     }
@@ -192,12 +188,11 @@ public class MapsPageViewModelTests : IDisposable
     public void AttributeFilterWithoutIncludeUnset_DropsAMapWhoseValueIsUnset()
     {
         MapsPageViewModel vm = ValuesAttributeVm();
-        CheckboxFilterSlotViewModel<AttributeValue, string?> slot = InnerSlot<CheckboxFilterSlotViewModel<AttributeValue, string?>>(Assert.Single(vm.HiddenFilterSlots));
         Map map = AddMapWithValueRows(vm);
 
-        slot.IsApplied = true;
-        slot.IncludeUnset = false;
-        slot.Options.Single(o => o.Value == "Rush").IsChecked = true;
+        FilterHandle filter = FilterPanel.Of(vm).Add("Style");
+        filter.IncludeUnset = false;
+        filter.Check("Rush");
 
         Assert.DoesNotContain(map, vm.FilteredMaps);
     }
@@ -209,12 +204,11 @@ public class MapsPageViewModelTests : IDisposable
     public void IncludeUnset_ValuesAttribute_KeepsAMapWhoseValueRowIsUnset()
     {
         MapsPageViewModel vm = ValuesAttributeVm();
-        CheckboxFilterSlotViewModel<AttributeValue, string?> slot = InnerSlot<CheckboxFilterSlotViewModel<AttributeValue, string?>>(Assert.Single(vm.HiddenFilterSlots));
         Map map = AddMapWithValueRows(vm);
 
-        slot.IsApplied = true;
-        slot.IncludeUnset = true;
-        slot.Options.Single(o => o.Value == "Rush").IsChecked = true;
+        FilterHandle filter = FilterPanel.Of(vm).Add("Style");
+        filter.IncludeUnset = true;
+        filter.Check("Rush");
 
         Assert.Contains(map, vm.FilteredMaps);
     }
@@ -225,12 +219,11 @@ public class MapsPageViewModelTests : IDisposable
     public void IncludeUnset_BoolAttribute_DecidesAMapWhoseValueRowIsUnset(bool includeUnset)
     {
         MapsPageViewModel vm = AttributeVm("Ramped", AttributeType.Bool);
-        BoolFilterSlotViewModel<AttributeValue> slot = InnerSlot<BoolFilterSlotViewModel<AttributeValue>>(Assert.Single(vm.HiddenFilterSlots));
         Map map = AddMapWithValueRows(vm);
 
-        slot.IsApplied = true;
-        slot.IncludeUnset = includeUnset;
-        slot.Value = true;
+        FilterHandle filter = FilterPanel.Of(vm).Add("Ramped");
+        filter.IncludeUnset = includeUnset;
+        filter.BoolValue = true;
 
         Assert.Equal(includeUnset, vm.FilteredMaps.Contains(map));
     }
@@ -241,12 +234,11 @@ public class MapsPageViewModelTests : IDisposable
     public void IncludeUnset_NumericAttribute_DecidesAMapWhoseValueRowIsUnset(bool includeUnset)
     {
         MapsPageViewModel vm = AttributeVm("Rush Distance", AttributeType.Numeric);
-        NumericRangeFilterSlotViewModel<AttributeValue> slot = InnerSlot<NumericRangeFilterSlotViewModel<AttributeValue>>(Assert.Single(vm.HiddenFilterSlots));
         Map map = AddMapWithValueRows(vm);
 
-        slot.IsApplied = true;
-        slot.IncludeUnset = includeUnset;
-        slot.Min = 10;
+        FilterHandle filter = FilterPanel.Of(vm).Add("Rush Distance");
+        filter.IncludeUnset = includeUnset;
+        filter.Min = 10;
 
         Assert.Equal(includeUnset, vm.FilteredMaps.Contains(map));
     }
@@ -264,12 +256,11 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
         MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
-        CheckboxFilterSlotViewModel<AttributeValue, string?> slot = InnerSlot<CheckboxFilterSlotViewModel<AttributeValue, string?>>(Assert.Single(vm.HiddenFilterSlots));
         Assert.Empty(vm.FilteredMaps.Single().AttributeValues);
 
-        slot.IsApplied = true;
-        slot.IncludeUnset = true;
-        slot.Options.Single(o => o.Value == "Rush").IsChecked = true;
+        FilterHandle filter = FilterPanel.Of(vm).Add("Style");
+        filter.IncludeUnset = true;
+        filter.Check("Rush");
 
         Assert.Empty(vm.FilteredMaps);
     }
@@ -279,11 +270,10 @@ public class MapsPageViewModelTests : IDisposable
     {
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
         MapsPageViewModel vm = AttributeVm("Ramped", AttributeType.Bool);
-        BoolFilterSlotViewModel<AttributeValue> slot = InnerSlot<BoolFilterSlotViewModel<AttributeValue>>(Assert.Single(vm.HiddenFilterSlots));
 
-        slot.IsApplied = true;
-        slot.IncludeUnset = true;
-        slot.Value = true;
+        FilterHandle filter = FilterPanel.Of(vm).Add("Ramped");
+        filter.IncludeUnset = true;
+        filter.BoolValue = true;
 
         Assert.Empty(vm.FilteredMaps);
     }
@@ -293,11 +283,10 @@ public class MapsPageViewModelTests : IDisposable
     {
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
         MapsPageViewModel vm = AttributeVm("Rush Distance", AttributeType.Numeric);
-        NumericRangeFilterSlotViewModel<AttributeValue> slot = InnerSlot<NumericRangeFilterSlotViewModel<AttributeValue>>(Assert.Single(vm.HiddenFilterSlots));
 
-        slot.IsApplied = true;
-        slot.IncludeUnset = true;
-        slot.Min = 10;
+        FilterHandle filter = FilterPanel.Of(vm).Add("Rush Distance");
+        filter.IncludeUnset = true;
+        filter.Min = 10;
 
         Assert.Empty(vm.FilteredMaps);
     }
@@ -333,11 +322,400 @@ public class MapsPageViewModelTests : IDisposable
         Assert.Empty(vm.FilteredMaps);
     }
 
-    // An attribute filter slot is an AttributeFilterSlotViewModel wrapper: the kind-specific slot lives
-    // inside it and filters an AttributeValue, while the wrapper is what projects a map onto its value
-    // row. Tests that need Value/Min/Options reach through to the inner one.
-    private static TSlot InnerSlot<TSlot>(IFilterSlotViewModel slot) where TSlot : class =>
-        Assert.IsType<TSlot>(((IWrappedFilterSlotViewModel)slot).WrappedFilter);
+    #region Filter bar
+
+    // Behaviour of the filter bar and its "+" menu as a user sees it, pinned ahead of moving the Maps,
+    // Builds and Data tabs onto one shared filter menu. Everything goes through FilterPanel, so these
+    // don't depend on how the page holds its filters.
+
+    [Fact]
+    public void AttributeFilters_StartUnappliedAndAreOfferedInTheAddMenu()
+    {
+        _attributeRepo.InsertAttribute(new(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values }, 0);
+        _attributeRepo.InsertAttribute(new(AttributeScope.Map) { Name = "Ramped", Type = AttributeType.Bool }, 1);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
+        FilterPanel filters = FilterPanel.Of(vm);
+
+        Assert.Empty(filters.AppliedTitles);
+        Assert.Equal(["Ramped", "Style"], filters.AddableTitles.Order());
+    }
+
+    // Maps can be missing a value for any attribute, so every attribute filter offers "Include unset".
+    [Theory]
+    [InlineData(AttributeType.Values)]
+    [InlineData(AttributeType.Bool)]
+    [InlineData(AttributeType.Numeric)]
+    [InlineData(AttributeType.Percent)]
+    public void AttributeFilters_OfferIncludeUnset(AttributeType type)
+    {
+        MapsPageViewModel vm = AttributeVm("Attribute", type);
+
+        Assert.True(FilterPanel.Of(vm).Offered("Attribute").AllowIncludeUnset);
+    }
+
+    [Fact]
+    public void AddingAFilter_MovesItFromTheAddMenuToTheFilterBar()
+    {
+        MapsPageViewModel vm = ValuesAttributeVm();
+        FilterPanel filters = FilterPanel.Of(vm);
+
+        FilterHandle filter = filters.Add("Style");
+
+        Assert.True(filter.IsApplied);
+        Assert.Equal(["Style"], filters.AppliedTitles);
+        Assert.Empty(filters.AddableTitles);
+    }
+
+    [Fact]
+    public void RemovingAFilter_ReturnsItToTheAddMenuAndStopsItConstraining()
+    {
+        MapsPageViewModel vm = ValuesAttributeVm();
+        Map map = AddMapWithValue(vm, "Style", v => v.SelectedValue = "Macro");
+        FilterPanel filters = FilterPanel.Of(vm);
+        FilterHandle filter = filters.Add("Style").Check("Rush");
+        Assert.DoesNotContain(map, vm.FilteredMaps);
+
+        filters.Applied("Style").Remove();
+
+        Assert.Contains(map, vm.FilteredMaps);
+        Assert.Empty(filters.AppliedTitles);
+        Assert.Equal(["Style"], filters.AddableTitles);
+        Assert.False(filter.IsApplied);
+    }
+
+    // A removed filter must not come back with the criteria it had, or re-adding it would silently
+    // re-apply a constraint the user can't see until they open it.
+    [Fact]
+    public void RemovingAFilter_ClearsItsCriteria()
+    {
+        MapsPageViewModel vm = AttributeVm("Rush Distance", AttributeType.Numeric);
+        FilterPanel filters = FilterPanel.Of(vm);
+        FilterHandle filter = filters.Add("Rush Distance");
+        filter.Min = 10;
+        filter.Max = 20;
+        filter.IncludeUnset = true;
+
+        filter.Remove();
+        FilterHandle readded = filters.Add("Rush Distance");
+
+        Assert.Null(readded.Min);
+        Assert.Null(readded.Max);
+        Assert.False(readded.IncludeUnset);
+    }
+
+    [Fact]
+    public void RemovingAValuesFilter_UnchecksItsOptions()
+    {
+        MapsPageViewModel vm = ValuesAttributeVm();
+        FilterPanel filters = FilterPanel.Of(vm);
+        filters.Add("Style").Check("Rush", "Macro").Remove();
+
+        Assert.Empty(filters.Add("Style").CheckedLabels);
+    }
+
+    // Adding a filter only shows its controls; until criteria are entered it shouldn't hide maps that
+    // have a value for it.
+    [Theory]
+    [InlineData(AttributeType.Values)]
+    [InlineData(AttributeType.Bool)]
+    [InlineData(AttributeType.Numeric)]
+    [InlineData(AttributeType.Percent)]
+    public void AddedFilterWithNoCriteria_KeepsMapsThatHaveAValue(AttributeType type)
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Attribute", Type = type };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        _attributeRepo.InsertValueOption(attribute.Id, "Rush");
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
+        Map map = AddMapWithValue(vm, "Attribute", v =>
+        {
+            v.SelectedValue = "Rush";
+            v.BoolValue = false;
+            v.NumericValue = 5;
+            v.PercentValue = 50;
+        });
+
+        FilterPanel.Of(vm).Add("Attribute");
+
+        Assert.Contains(map, vm.FilteredMaps);
+    }
+
+    [Fact]
+    public void ValuesFilter_WithSeveralCheckedOptions_KeepsMapsHoldingAnyOfThem()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        foreach (string option in new[] { "Rush", "Macro", "Cheese" })
+            _attributeRepo.InsertValueOption(attribute.Id, option);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
+        Map rush = AddMapWithValue(vm, "Style", v => v.SelectedValue = "Rush");
+        Map macro = AddMapWithValue(vm, "Style", v => v.SelectedValue = "Macro");
+        Map cheese = AddMapWithValue(vm, "Style", v => v.SelectedValue = "Cheese");
+
+        FilterPanel.Of(vm).Add("Style").Check("Rush", "Macro");
+
+        Assert.Equal([rush, macro], vm.FilteredMaps.Order(MapOrder(rush, macro, cheese)));
+    }
+
+    [Fact]
+    public void UncheckingTheLastOption_StopsTheValuesFilterConstraining()
+    {
+        MapsPageViewModel vm = ValuesAttributeVm();
+        Map map = AddMapWithValue(vm, "Style", v => v.SelectedValue = "Macro");
+        FilterHandle filter = FilterPanel.Of(vm).Add("Style").Check("Rush");
+        Assert.DoesNotContain(map, vm.FilteredMaps);
+
+        filter.Uncheck("Rush");
+
+        Assert.Contains(map, vm.FilteredMaps);
+    }
+
+    [Theory]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, false)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, false)]
+    public void BoolFilter_KeepsOnlyMapsWithTheChosenValue(bool mapValue, bool filterValue, bool expected)
+    {
+        MapsPageViewModel vm = AttributeVm("Ramped", AttributeType.Bool);
+        Map map = AddMapWithValue(vm, "Ramped", v => v.BoolValue = mapValue);
+
+        FilterPanel.Of(vm).Add("Ramped").BoolValue = filterValue;
+
+        Assert.Equal(expected, vm.FilteredMaps.Contains(map));
+    }
+
+    // The three-state checkbox's indeterminate state is "either", not "unset only".
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void BoolFilter_BackToIndeterminate_KeepsMapsWithEitherValue(bool mapValue)
+    {
+        MapsPageViewModel vm = AttributeVm("Ramped", AttributeType.Bool);
+        Map map = AddMapWithValue(vm, "Ramped", v => v.BoolValue = mapValue);
+        FilterHandle filter = FilterPanel.Of(vm).Add("Ramped");
+        filter.BoolValue = !mapValue;
+
+        filter.BoolValue = null;
+
+        Assert.Contains(map, vm.FilteredMaps);
+    }
+
+    [Theory]
+    [InlineData(9, false)]
+    [InlineData(10, true)]
+    [InlineData(15, true)]
+    [InlineData(20, true)]
+    [InlineData(21, false)]
+    public void NumericFilter_RangeIsInclusiveOnBothEnds(int mapValue, bool expected)
+    {
+        MapsPageViewModel vm = AttributeVm("Rush Distance", AttributeType.Numeric);
+        Map map = AddMapWithValue(vm, "Rush Distance", v => v.NumericValue = mapValue);
+
+        FilterHandle filter = FilterPanel.Of(vm).Add("Rush Distance");
+        filter.Min = 10;
+        filter.Max = 20;
+
+        Assert.Equal(expected, vm.FilteredMaps.Contains(map));
+    }
+
+    [Theory]
+    [InlineData(10, null, 9, false)]
+    [InlineData(10, null, 1000, true)]
+    [InlineData(null, 20, 21, false)]
+    [InlineData(null, 20, -1000, true)]
+    public void NumericFilter_WithOnlyOneBound_IsOpenOnTheOtherSide(int? min, int? max, int mapValue, bool expected)
+    {
+        MapsPageViewModel vm = AttributeVm("Rush Distance", AttributeType.Numeric);
+        Map map = AddMapWithValue(vm, "Rush Distance", v => v.NumericValue = mapValue);
+
+        FilterHandle filter = FilterPanel.Of(vm).Add("Rush Distance");
+        filter.Min = min;
+        filter.Max = max;
+
+        Assert.Equal(expected, vm.FilteredMaps.Contains(map));
+    }
+
+    // Percent attributes store their value separately from Numeric ones; the filter has to read that one.
+    [Theory]
+    [InlineData(40, false)]
+    [InlineData(60, true)]
+    public void PercentFilter_FiltersOnThePercentValue(int mapValue, bool expected)
+    {
+        MapsPageViewModel vm = AttributeVm("Win Rate", AttributeType.Percent);
+        Map map = AddMapWithValue(vm, "Win Rate", v => v.PercentValue = mapValue);
+
+        FilterPanel.Of(vm).Add("Win Rate").Min = 50;
+
+        Assert.Equal(expected, vm.FilteredMaps.Contains(map));
+    }
+
+    [Fact]
+    public void NameFilterAndAttributeFilter_MustBothMatch()
+    {
+        MapsPageViewModel vm = ValuesAttributeVm();
+        Map altitudeRush = AddMapWithValue(vm, "Style", v => v.SelectedValue = "Rush", name: "Altitude LE");
+        Map altitudeMacro = AddMapWithValue(vm, "Style", v => v.SelectedValue = "Macro", name: "Altitude II");
+        Map deathauraRush = AddMapWithValue(vm, "Style", v => v.SelectedValue = "Rush", name: "Deathaura LE");
+
+        vm.NameFilter = "Altitude";
+        FilterPanel.Of(vm).Add("Style").Check("Rush");
+
+        Assert.Equal([altitudeRush], vm.FilteredMaps);
+        Assert.DoesNotContain(altitudeMacro, vm.FilteredMaps);
+        Assert.DoesNotContain(deathauraRush, vm.FilteredMaps);
+    }
+
+    [Fact]
+    public void TwoAttributeFilters_MustBothMatch()
+    {
+        AttributeDefinition style = new(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
+        _attributeRepo.InsertAttribute(style, 0);
+        _attributeRepo.InsertValueOption(style.Id, "Rush");
+        _attributeRepo.InsertValueOption(style.Id, "Macro");
+        _attributeRepo.InsertAttribute(new(AttributeScope.Map) { Name = "Ramped", Type = AttributeType.Bool }, 1);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
+        Map both = AddMapWithValues(vm, ("Style", v => v.SelectedValue = "Rush"), ("Ramped", v => v.BoolValue = true));
+        Map styleOnly = AddMapWithValues(vm, ("Style", v => v.SelectedValue = "Rush"), ("Ramped", v => v.BoolValue = false));
+        Map rampedOnly = AddMapWithValues(vm, ("Style", v => v.SelectedValue = "Macro"), ("Ramped", v => v.BoolValue = true));
+
+        FilterPanel filters = FilterPanel.Of(vm);
+        filters.Add("Style").Check("Rush");
+        filters.Add("Ramped").BoolValue = true;
+
+        Assert.Equal([both], vm.FilteredMaps);
+        Assert.DoesNotContain(styleOnly, vm.FilteredMaps);
+        Assert.DoesNotContain(rampedOnly, vm.FilteredMaps);
+    }
+
+    // Editing a value on the selected map re-runs the filters, so a map edited out of the active filter
+    // leaves the list straight away instead of lingering until the filter is next touched.
+    [Fact]
+    public void EditingTheSelectedMapsValue_ReappliesTheFilters()
+    {
+        MapsPageViewModel vm = ValuesAttributeVm();
+        Map map = AddMapWithValue(vm, "Style", v => v.SelectedValue = "Rush");
+        FilterPanel.Of(vm).Add("Style").Check("Rush");
+        Assert.Contains(map, vm.FilteredMaps);
+
+        map.AttributeValues.Single().SelectedValue = "Macro";
+
+        Assert.DoesNotContain(map, vm.FilteredMaps);
+    }
+
+    [Fact]
+    public void RenamingTheSelectedMap_ReappliesTheNameFilter()
+    {
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
+        Map map = AddMapWithValueRows(vm);
+        map.Name = "Altitude LE";
+        vm.NameFilter = "Altitude";
+        Assert.Contains(map, vm.FilteredMaps);
+
+        map.Name = "Deathaura LE";
+
+        Assert.DoesNotContain(map, vm.FilteredMaps);
+    }
+
+    // A filter slot created after the page was built has to be wired up the same as the original ones,
+    // or checking an option on it would do nothing.
+    [Fact]
+    public void AttributeAddedElsewhere_IsOfferedAndFilters()
+    {
+        _mapRepo.InsertMap(new() { Name = "Altitude LE" });
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
+        FilterPanel filters = FilterPanel.Of(vm);
+
+        _attributeRepo.InsertAttribute(new(AttributeScope.Map) { Name = "Ramped", Type = AttributeType.Bool, IsMandatory = true }, 0);
+        Assert.Equal(["Ramped"], filters.AddableTitles);
+        Assert.Single(vm.FilteredMaps);
+
+        // The backfilled mandatory row is unset, so an applied filter without Include unset drops it.
+        filters.Add("Ramped").BoolValue = true;
+
+        Assert.Empty(vm.FilteredMaps);
+    }
+
+    [Fact]
+    public void AttributeDeletedElsewhere_WhileApplied_LeavesTheFilterBarAndStopsConstraining()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        _attributeRepo.InsertValueOption(attribute.Id, "Rush");
+        _attributeRepo.InsertValueOption(attribute.Id, "Macro");
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
+        Map map = AddMapWithValue(vm, "Style", v => v.SelectedValue = "Macro");
+        FilterPanel filters = FilterPanel.Of(vm);
+        filters.Add("Style").Check("Rush");
+        Assert.DoesNotContain(map, vm.FilteredMaps);
+
+        _attributeRepo.DeleteAttribute(attribute.Id);
+
+        Assert.Empty(filters.AppliedTitles);
+        Assert.Empty(filters.AddableTitles);
+        Assert.Contains(map, vm.FilteredMaps);
+    }
+
+    [Fact]
+    public void AttributeRenamedElsewhere_WhileApplied_RenamesItInTheFilterBarKeepingItsCriteria()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        _attributeRepo.InsertValueOption(attribute.Id, "Rush");
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
+        FilterPanel filters = FilterPanel.Of(vm);
+        filters.Add("Style").Check("Rush");
+
+        AttributeDefinition editedElsewhere = Assert.Single(_attributeRepo.GetAllAttributes(AttributeScope.Map));
+        editedElsewhere.Name = "Play Style";
+        _attributeRepo.UpdateAttribute(editedElsewhere);
+
+        Assert.Equal(["Play Style"], filters.AppliedTitles);
+        Assert.Equal(["Rush"], filters.Applied("Play Style").CheckedLabels);
+    }
+
+    // The slot is rebuilt as the new kind, but whether it was showing survives — and the rebuilt slot
+    // still re-filters when its criteria change.
+    [Fact]
+    public void AttributeTypeChangedElsewhere_WhileApplied_StaysAppliedAsTheNewKindAndStillFilters()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Contested", Type = AttributeType.Numeric };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
+        Map map = AddMapWithValueRows(vm);
+        FilterPanel filters = FilterPanel.Of(vm);
+        filters.Add("Contested");
+
+        AttributeDefinition editedElsewhere = Assert.Single(_attributeRepo.GetAllAttributes(AttributeScope.Map));
+        editedElsewhere.Type = AttributeType.Bool;
+        _attributeRepo.UpdateAttribute(editedElsewhere);
+
+        Assert.Equal(["Contested"], filters.AppliedTitles);
+        FilterHandle filter = filters.Applied("Contested");
+        Assert.True(filter.IsBoolFilter);
+
+        map.AttributeValues.Single().BoolValue = true;
+        Assert.Contains(map, vm.FilteredMaps);
+        filter.BoolValue = false;
+        Assert.DoesNotContain(map, vm.FilteredMaps);
+    }
+
+    [Fact]
+    public void AttributeTypeChangedElsewhere_WhileNotApplied_StaysInTheAddMenu()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Contested", Type = AttributeType.Numeric };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, _filterSlotFactory);
+        FilterPanel filters = FilterPanel.Of(vm);
+
+        AttributeDefinition editedElsewhere = Assert.Single(_attributeRepo.GetAllAttributes(AttributeScope.Map));
+        editedElsewhere.Type = AttributeType.Bool;
+        _attributeRepo.UpdateAttribute(editedElsewhere);
+
+        Assert.Empty(filters.AppliedTitles);
+        Assert.Equal(["Contested"], filters.AddableTitles);
+    }
+
+    #endregion
 
     private MapsPageViewModel ValuesAttributeVm()
     {
@@ -361,6 +739,26 @@ public class MapsPageViewModelTests : IDisposable
         vm.AddMapCommand.Execute(null);
         return vm.SelectedMap!;
     }
+
+    private static Map AddMapWithValue(MapsPageViewModel vm, string attribute, Action<AttributeValue> setValue, string? name = null) =>
+        AddMapWithValues(vm, [(attribute, setValue)], name);
+
+    private static Map AddMapWithValues(MapsPageViewModel vm, params (string Attribute, Action<AttributeValue> SetValue)[] values) =>
+        AddMapWithValues(vm, values, null);
+
+    // Values are set while the map is still selected, the way the value editor would set them. Renamed
+    // straight away because map names are unique and every added map starts as "New Map".
+    private static Map AddMapWithValues(MapsPageViewModel vm, (string Attribute, Action<AttributeValue> SetValue)[] values, string? name)
+    {
+        Map map = AddMapWithValueRows(vm);
+        map.Name = name ?? $"Map {Guid.NewGuid():N}";
+        foreach ((string attribute, Action<AttributeValue> setValue) in values)
+            setValue(map.AttributeValues.Single(v => v.Definition.Name == attribute));
+        return map;
+    }
+
+    private static Comparer<Map> MapOrder(params Map[] order) =>
+        Comparer<Map>.Create((a, b) => Array.IndexOf(order, a).CompareTo(Array.IndexOf(order, b)));
 
     public void Dispose()
     {
