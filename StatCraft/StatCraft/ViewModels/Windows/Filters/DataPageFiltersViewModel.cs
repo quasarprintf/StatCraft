@@ -47,8 +47,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public CheckboxFilterSlotViewModel<GameData, GameOutcome> OutcomeSlot { get; }
     public NumericRangeFilterSlotViewModel<PlayerMmr> MmrSlot { get; }
     public CheckboxFilterSlotViewModel<GameData, BuildNode> BuildSlot { get; }
-    public ObservableCollection<IFilterMenuItemViewModel> GameAttributeSlots { get; private set; }
-    public FilterMenuItemViewModel<GameData> GameAttributeMenu { get; private set; }
+    public ObservableCollection<FilterMenuItemViewModel<GameData>> GameAttributeSlots { get; private set; }
 
     // Fixed display order for both the bar itself and the "+ Filters" add-dropdown.
     public IReadOnlyList<IFilterMenuItemViewModel> ExtraFilterSlots { get; }
@@ -88,14 +87,13 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             AllowIncludeUnset=false 
         };
 
-        GameAttributeSlots = new ObservableCollection<IFilterMenuItemViewModel>();
+        GameAttributeSlots = new ObservableCollection<FilterMenuItemViewModel<GameData>>();
         foreach (var attribute in gameAttributes)
         {
             IFilterSlotViewModel<GameData> filterSlot = _filterSlotFactory.CreateFromDefinition<GameData>(attribute);
             GameAttributeSlots.Add(new FilterMenuItemViewModel<GameData>(filterSlot));
         }
         gameAttributes.CollectionChanged += GameAttributesChanged;
-        GameAttributeMenu = new FilterMenuItemViewModel<GameData>(GameAttributeSlots, "Game Attributes");
 
         ExtraFilterSlots = 
         [
@@ -104,7 +102,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             new FilterMenuItemViewModel<GameData>(OutcomeSlot),
             new FilterMenuItemViewModel<PlayerMmr>(MmrSlot),
             new FilterMenuItemViewModel<GameData>(BuildSlot),
-            GameAttributeMenu
+            new FilterMenuItemViewModel<GameData>(GameAttributeSlots, "Game Attributes")
         ];
         foreach (IFilterMenuItemViewModel slot in ExtraFilterSlots)
         {
@@ -137,7 +135,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     private FilterMenuItemViewModel<GameData>? MenuItemFor(AttributeDefinition attribute)
     {
         //TODO: look for better way to do this
-        return GameAttributeSlots.OfType<FilterMenuItemViewModel<GameData>>().FirstOrDefault(m => (m.Filter as AttributeFilterSlotViewModel<GameData>)?.Attribute.Id == attribute.Id);
+        return GameAttributeSlots.FirstOrDefault(m => (m.Filter as AttributeFilterSlotViewModel<GameData>)?.Attribute.Id == attribute.Id);
     }
     internal void RenameAttributeSlot(AttributeDefinition attribute)
     {
@@ -289,13 +287,16 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             appliedFilters.Add(buildFilter);
         }
 
-        foreach (var attributeFilterSlot in GameAttributeMenu.ContainedFilters)
+        foreach (var filterMenu in GameAttributeSlots)
         {
-            if (attributeFilterSlot.IsApplied)
+            foreach (var attributeFilterSlot in filterMenu.ContainedFilters)
             {
-                IFilter<GameData> attributeFilter = attributeFilterSlot.GetFilter();
-                //var wrappedFilter = new SequentialAllFilter<GameData, AttributeValue>(attributeFilter, g => [g.GetAttributeByDefinitionId(attribute.Id)]);
-                appliedFilters.Add(attributeFilter);
+                if (attributeFilterSlot.IsApplied)
+                {
+                    IFilter<GameData> attributeFilter = attributeFilterSlot.GetFilter();
+                    //var wrappedFilter = new SequentialAllFilter<GameData, AttributeValue>(attributeFilter, g => [g.GetAttributeByDefinitionId(attribute.Id)]);
+                    appliedFilters.Add(attributeFilter);
+                }
             }
         }
         //TODO: build attribute filter

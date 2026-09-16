@@ -15,7 +15,7 @@ public interface IFilterMenuItemViewModel
     event EventHandler? IsAppliedChanged;
     string DisplayText { get; set; }
     IFilterSlotViewModel? Filter { get; }
-    ObservableCollection<IFilterMenuItemViewModel>? SubMenuItems { get; }
+    IEnumerable<IFilterMenuItemViewModel>? SubMenuItems { get; }
     bool IsApplied { get; }
     IEnumerable<IFilterSlotViewModel> ContainedFilters { get; }
 }
@@ -27,11 +27,12 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
     IFilterSlotViewModel? IFilterMenuItemViewModel.Filter => Filter;
     public IFilterSlotViewModel<T>? Filter { get; private set; }
 
-    public ObservableCollection<IFilterMenuItemViewModel>? SubMenuItems { get; private set; }
+    private ObservableCollection<FilterMenuItemViewModel<T>>? _subMenuItems { get; set; }
+    public IEnumerable<IFilterMenuItemViewModel>? SubMenuItems => _subMenuItems;
     public bool IsApplied => Filter != null ? Filter.IsApplied : SubMenuItems!.All(i => i.IsApplied);
 
     IEnumerable<IFilterSlotViewModel> IFilterMenuItemViewModel.ContainedFilters => ContainedFilters;
-    public IEnumerable<IFilterSlotViewModel<T>> ContainedFilters => Filter != null ? [Filter] : SubMenuItems!.SelectMany(i => i.ContainedFilters).OfType<IFilterSlotViewModel<T>>();
+    public IEnumerable<IFilterSlotViewModel<T>> ContainedFilters => Filter != null ? [Filter] : _subMenuItems!.SelectMany(i => i.ContainedFilters);
 
     public FilterMenuItemViewModel(IFilterSlotViewModel<T> filter)
     {
@@ -39,12 +40,12 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
         _displayText = filter.Title;
         Filter.IsAppliedChanged += RefreshIsApplied;
     }
-    public FilterMenuItemViewModel(ObservableCollection<IFilterMenuItemViewModel> subMenu, string name)
+    public FilterMenuItemViewModel(ObservableCollection<FilterMenuItemViewModel<T>> subMenu, string name)
     {
         _displayText = name;
-        SubMenuItems = subMenu;
-        SubMenuItems.CollectionChanged += SubMenuChanged;
-        foreach (var item in SubMenuItems)
+        _subMenuItems = subMenu;
+        _subMenuItems.CollectionChanged += SubMenuChanged;
+        foreach (var item in _subMenuItems)
             WireSubMenuItem(item);
     }
 
