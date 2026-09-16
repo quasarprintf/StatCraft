@@ -275,7 +275,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     // projects a game onto its value row; the checkbox slot holding the options is the one inside that.
     private CheckboxFilterSlotViewModel<AttributeValue, string?> GameAttributeSlot(string title)
     {
-        IFilterSlotViewModel<GameData> wrapper =
+        IFilterSlotViewModel wrapper =
             _viewModel.Filters.GameAttributeSlots.Single(m => m.DisplayText == title).Filter!;
         return Assert.IsType<CheckboxFilterSlotViewModel<AttributeValue, string?>>(
             ((IWrappedFilterSlotViewModel)wrapper).WrappedFilter);

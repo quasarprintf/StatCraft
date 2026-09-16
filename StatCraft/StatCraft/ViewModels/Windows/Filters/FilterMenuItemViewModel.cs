@@ -15,7 +15,7 @@ public interface IFilterMenuItemViewModel
     event EventHandler? IsAppliedChanged;
     string DisplayText { get; set; }
     IFilterSlotViewModel? Filter { get; }
-    ReadOnlyObservableCollection<IFilterMenuItemViewModel>? SubMenuItems { get; }
+    ObservableCollection<IFilterMenuItemViewModel>? SubMenuItems { get; }
     bool IsApplied { get; }
     IEnumerable<IFilterSlotViewModel> ContainedFilters { get; }
 }
@@ -27,15 +27,11 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
     IFilterSlotViewModel? IFilterMenuItemViewModel.Filter => Filter;
     public IFilterSlotViewModel<T>? Filter { get; private set; }
 
-    public ReadOnlyObservableCollection<IFilterMenuItemViewModel>? SubMenuItems { get; private set; }
-    // Backs SubMenuItems. A separate collection from GenericSubMenuItems because the view binds
-    // without knowing T, which means every change to the generic one has to be replayed onto it.
-    private ObservableCollection<IFilterMenuItemViewModel>? _subMenuItems;
-    private ObservableCollection<FilterMenuItemViewModel<T>>? GenericSubMenuItems { get; set; }
-    public bool IsApplied => Filter != null ? Filter.IsApplied : GenericSubMenuItems!.All(i => i.IsApplied);
+    public ObservableCollection<IFilterMenuItemViewModel>? SubMenuItems { get; private set; }
+    public bool IsApplied => Filter != null ? Filter.IsApplied : SubMenuItems!.All(i => i.IsApplied);
 
     IEnumerable<IFilterSlotViewModel> IFilterMenuItemViewModel.ContainedFilters => ContainedFilters;
-    public IEnumerable<IFilterSlotViewModel<T>> ContainedFilters => Filter != null ? [Filter] : GenericSubMenuItems!.SelectMany(i => i.ContainedFilters);
+    public IEnumerable<IFilterSlotViewModel<T>> ContainedFilters => Filter != null ? [Filter] : SubMenuItems!.SelectMany(i => i.ContainedFilters).OfType<IFilterSlotViewModel<T>>();
 
     public FilterMenuItemViewModel(IFilterSlotViewModel<T> filter)
     {
@@ -43,15 +39,13 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
         _displayText = filter.Title;
         Filter.IsAppliedChanged += RefreshIsApplied;
     }
-    public FilterMenuItemViewModel(ObservableCollection<FilterMenuItemViewModel<T>> subMenu, string name)
+    public FilterMenuItemViewModel(ObservableCollection<IFilterMenuItemViewModel> subMenu, string name)
     {
         _displayText = name;
-        GenericSubMenuItems = subMenu;
-        GenericSubMenuItems.CollectionChanged += SubMenuChanged;
-        foreach (var item in GenericSubMenuItems)
+        SubMenuItems = subMenu;
+        SubMenuItems.CollectionChanged += SubMenuChanged;
+        foreach (var item in SubMenuItems)
             WireSubMenuItem(item);
-        _subMenuItems = new ObservableCollection<IFilterMenuItemViewModel>(GenericSubMenuItems);
-        SubMenuItems = new ReadOnlyObservableCollection<IFilterMenuItemViewModel>(_subMenuItems);
     }
 
     private void SubMenuChanged(object? sender, NotifyCollectionChangedEventArgs e)
@@ -66,51 +60,13 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
             foreach (var oldItem in e.OldItems)
                 UnWireSubMenuItem((FilterMenuItemViewModel<T>)oldItem);
         }
-        MirrorSubMenuChange(e);
     }
 
-    // Replays a change onto _subMenuItems, which is what the menu is actually bound to — without this
-    // the bound collection keeps whatever it was built with and the menu silently goes stale.
-    private void MirrorSubMenuChange(NotifyCollectionChangedEventArgs e)
-    {
-        switch (e.Action)
-        {
-            case NotifyCollectionChangedAction.Add:
-                InsertMirrored(e.NewItems!, e.NewStartingIndex);
-                break;
-            case NotifyCollectionChangedAction.Remove:
-                RemoveMirrored(e.OldStartingIndex, e.OldItems!.Count);
-                break;
-            case NotifyCollectionChangedAction.Replace:
-                RemoveMirrored(e.OldStartingIndex, e.OldItems!.Count);
-                InsertMirrored(e.NewItems!, e.NewStartingIndex);
-                break;
-            case NotifyCollectionChangedAction.Move:
-                _subMenuItems!.Move(e.OldStartingIndex, e.NewStartingIndex);
-                break;
-            // Reset carries no items, so the mirror is rebuilt from the source rather than patched.
-            case NotifyCollectionChangedAction.Reset:
-                _subMenuItems!.Clear();
-                foreach (var item in GenericSubMenuItems!)
-                    _subMenuItems.Add(item);
-                break;
-        }
-    }
-    private void InsertMirrored(IList newItems, int startingIndex)
-    {
-        for (int i = 0; i < newItems.Count; i++)
-            _subMenuItems!.Insert(startingIndex + i, (IFilterMenuItemViewModel)newItems[i]!);
-    }
-    private void RemoveMirrored(int startingIndex, int count)
-    {
-        for (int i = 0; i < count; i++)
-            _subMenuItems!.RemoveAt(startingIndex);
-    }
-    private void WireSubMenuItem(FilterMenuItemViewModel<T> menuItem)
+    private void WireSubMenuItem(IFilterMenuItemViewModel menuItem)
     {
         menuItem.IsAppliedChanged += RefreshIsApplied;
     }
-    private void UnWireSubMenuItem(FilterMenuItemViewModel<T> menuItem)
+    private void UnWireSubMenuItem(IFilterMenuItemViewModel menuItem)
     {
         menuItem.IsAppliedChanged -= RefreshIsApplied;
     }
