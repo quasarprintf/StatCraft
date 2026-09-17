@@ -9,6 +9,7 @@ namespace StatCraft.ViewModels.Windows.Filters;
 public interface IFilterSlotViewModel : INotifyPropertyChanged
 {
     string Title { get; set; }
+    bool Mandatory { get; set; }
     bool IsApplied { get; set; }
     bool IncludeUnset { get; set; }
     bool AllowIncludeUnset { get; set; }
@@ -36,6 +37,7 @@ public abstract partial class FilterSlotViewModel<T,F> : ViewModelBase, IFilterS
     // drop whatever criteria the user already entered.
     [ObservableProperty] private string _title = "";
 
+    [ObservableProperty] private bool _mandatory;
     [ObservableProperty] private bool _isApplied;
 
     // Whether entities with no value at all for this dimension still pass. Only the Maps tab binds

@@ -25,6 +25,11 @@ public abstract partial class WrappedFilterSlotViewModel<T> : ViewModelBase, IWr
         set => WrappedFilter.Title = value;
     }
 
+    public bool Mandatory
+    {
+        get => WrappedFilter.Mandatory;
+        set => WrappedFilter.Mandatory = value;
+    }
     public bool IsApplied
     {
         get => WrappedFilter.IsApplied;

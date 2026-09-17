@@ -5,7 +5,7 @@
              x:DataType="vmw:Filters.IBoolFilterSlotViewModel">
     <StackPanel Spacing="2" VerticalAlignment="Center">
         <Grid ColumnDefinitions="Auto,*">
-            <Button Grid.Column="0" Classes="removeFilter" Command="{Binding RemoveCommand}"/>
+            <Button Grid.Column="0" Classes="removeFilter" Command="{Binding RemoveCommand}" IsVisible="{Binding !Mandatory}"/>
             <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center"
                        TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
         </Grid>

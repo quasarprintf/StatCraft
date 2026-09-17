@@ -7,7 +7,7 @@
              x:Name="Root">
     <StackPanel Spacing="2" VerticalAlignment="Center">
         <Grid ColumnDefinitions="Auto,*">
-            <Button Grid.Column="0" Classes="removeFilter" Command="{Binding RemoveCommand}"/>
+            <Button Grid.Column="0" Classes="removeFilter" Command="{Binding RemoveCommand}" IsVisible="{Binding !Mandatory}"/>
             <local:CheckboxFilterDropdown Grid.Column="1" Header="{Binding Title}" Options="{Binding Options}"
                                             ShowSearch="{Binding ShowSearch}" SearchText="{Binding SearchText}"
                                             Columns="{Binding Columns}" HorizontalAlignment="Left"/>
