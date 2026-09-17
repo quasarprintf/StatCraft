@@ -65,14 +65,16 @@ public class DataPageFiltersViewModelTests : IDisposable
     [Fact]
     public void RemoveCommand_OnNumericRangeSlot_ClearsMinAndMax()
     {
-        _filters.MmrSlot.Min = 1000;
-        _filters.MmrSlot.Max = 2000;
+        // The MMR slot wraps a range slot per opponent, so its bounds are reached the way the page tests do.
+        FilterHandle mmr = new(_filters.MmrSlot);
+        mmr.Min = 1000;
+        mmr.Max = 2000;
 
         _filters.MmrSlot.RemoveCommand.Execute(null);
 
         Assert.False(_filters.MmrSlot.IsApplied);
-        Assert.Null(_filters.MmrSlot.Min);
-        Assert.Null(_filters.MmrSlot.Max);
+        Assert.Null(mmr.Min);
+        Assert.Null(mmr.Max);
     }
 
     [Fact]

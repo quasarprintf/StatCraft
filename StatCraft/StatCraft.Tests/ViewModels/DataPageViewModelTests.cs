@@ -260,6 +260,27 @@ public class DataPageViewModelTests : IAsyncDisposable
         Assert.Equal(expected, _viewModel.Games.Count == 1);
     }
 
+    // The range is re-read every time it changes, so editing it after it has already filtered swaps the
+    // old range out rather than combining with it or keeping the one first applied.
+    [Fact]
+    public async Task Filter_OpponentMmrRange_EditedAfterFiltering_UsesOnlyTheNewRange()
+    {
+        GameData low = InsertGame(opponents: [Opponent('Z', 2000)]);
+        GameData high = InsertGame(opponents: [Opponent('Z', 3500)]);
+        await LoadGamesWithNoDateRange();
+        SetOpponentMmrRange(3000, 4000);
+        Assert.Equal(high.GameId, Assert.Single(_viewModel.Games).GameId);
+
+        FilterHandle mmr = Filters.Applied("Opponent MMR");
+        mmr.Min = 1000;
+        mmr.Max = 2500;
+
+        Assert.Equal(low.GameId, Assert.Single(_viewModel.Games).GameId);
+
+        mmr.Remove();
+        Assert.Equal(2, _viewModel.Games.Count);
+    }
+
     // The Games twin of MapsPageViewModelTests.ValueOptionAddedElsewhere_PatchesTheFilterSlotPreservingWhatWasChecked.
     // The checkbox slot keeps its own option list, built when the slot is created, so an option added on
     // the Attributes tab has to be patched in without dropping what the user already checked. The Data tab
