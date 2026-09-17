@@ -38,14 +38,11 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public DateRangeFilterSlotViewModel<GameData> DateSlot { get; }
     public CheckboxFilterSlotViewModel<GameData, Map> MapSlot { get; }
     public CheckboxFilterSlotViewModel<GameData, (Race, Race)> MatchupSlot { get; }
-    // Internal, not public, because GameOutcome itself is internal — this stays consistent with the
-    // same-assembly-only visibility of the type it filters on.
     public CheckboxFilterSlotViewModel<GameData, GameOutcome> OutcomeSlot { get; }
     public NumericRangeFilterSlotViewModel<PlayerMmr> MmrSlot { get; }
     public CheckboxFilterSlotViewModel<GameData, BuildNode> BuildSlot { get; }
     public ObservableCollection<FilterMenuItemViewModel<GameData>> GameAttributeSlots { get; private set; }
 
-    // Fixed display order for both the bar itself and the "+ Filters" add-dropdown.
     public IReadOnlyList<IFilterMenuItemViewModel> ExtraFilterSlots { get; }
     public IEnumerable<IFilterSlotViewModel> VisibleExtraFilterSlots => ExtraFilterSlots.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
     public IEnumerable<IFilterMenuItemViewModel> HiddenExtraFilterSlots => ExtraFilterSlots.Where(s => !s.IsApplied);
@@ -60,9 +57,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         _filterSlotFactory = filterSlotFactory;
 
         ProfileSlot = new CheckboxFilterSlotViewModel<Sc2Profile, Sc2Profile>("Profile", [], p => [p], showSearch: true);
-        // Checking/unchecking a profile requires a database reload, unlike every other checkbox
-        // filter, so it's wired to ProfileSelectionChanged instead of joining the ExtraFilterSlots
-        // loop below (which is also how it stays permanently visible, with no Add/Remove).
+        // Checking/unchecking a profile requires a database reload
         ProfileSlot.Changed += () =>
         {
             if (!_suppressChangeEvents)
@@ -112,10 +107,6 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         ];
         foreach (IFilterMenuItemViewModel slot in ExtraFilterSlots)
         {
-            // Only a visibility toggle (Add/Remove) should rebuild the filter bar's own item list —
-            // rebuilding on every criteria edit too would tear down and recreate the ItemsControl's
-            // containers on every keystroke/checkbox click, stealing focus from whatever the user is
-            // actively interacting with.
             slot.IsAppliedChanged += (_,_) =>
             {
                 OnPropertyChanged(nameof(VisibleExtraFilterSlots));
