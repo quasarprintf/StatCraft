@@ -80,14 +80,30 @@ internal sealed class FilterPanel
 
     private IEnumerable<MenuLeaf> MenuLeaves() => _addMenu.Items.Cast<object>().SelectMany(Leaves);
 
-    private static IEnumerable<MenuLeaf> Leaves(object entry) => entry switch
+    // One binding per submenu, made the first time it is read and kept for the life of the panel. That is
+    // stricter than a view that happens to rebuild the submenu whenever the top-level menu changes: a
+    // submenu has to announce its own changes rather than rely on a rebuild to pick them up.
+    private readonly Dictionary<IFilterMenuItemViewModel, BoundList> _subMenus = new(ReferenceEqualityComparer.Instance);
+
+    private IEnumerable<MenuLeaf> Leaves(object entry) => entry switch
     {
-        // A submenu's ItemsSource is bound straight to its collection, so it is read live.
-        IFilterMenuItemViewModel { SubMenuItems: { } children } => children.SelectMany(Leaves),
+        // A submenu lists only the entries not applied yet, re-read when the submenu announces a change.
+        IFilterMenuItemViewModel { Filter: null } subMenu => SubMenu(subMenu).Items.Cast<object>().SelectMany(Leaves),
         IFilterMenuItemViewModel { Filter: { } slot } item => [new MenuLeaf(item.DisplayText, slot)],
         IFilterSlotViewModel slot => [new MenuLeaf(slot.Title, slot)],
         _ => throw new InvalidOperationException($"Unrecognised add-menu entry {entry.GetType().Name}"),
     };
+
+    private BoundList SubMenu(IFilterMenuItemViewModel subMenu)
+    {
+        if (!_subMenus.TryGetValue(subMenu, out BoundList? bound))
+        {
+            bound = new BoundList((INotifyPropertyChanged)subMenu, nameof(subMenu.UnAppliedSubMenuItems),
+                () => subMenu.UnAppliedSubMenuItems ?? Enumerable.Empty<IFilterMenuItemViewModel>());
+            _subMenus[subMenu] = bound;
+        }
+        return bound;
+    }
 
     private sealed record MenuLeaf(string Text, IFilterSlotViewModel Slot);
 

@@ -892,6 +892,105 @@ public class DataPageViewModelTests : IAsyncDisposable
         Assert.Single(_viewModel.Games);
     }
 
+    // Game attributes share one submenu, which only lists the attributes not already showing in the
+    // filter bar — the same as every other entry in the menu.
+    [Fact]
+    public void ApplyingAGameAttribute_TakesItOutOfTheMenuWhileTheOthersStay()
+    {
+        InsertStyleAttribute();
+        InsertProxyAttribute();
+        _viewModel = CreateViewModel();
+        Assert.Equal([.. BuiltInFilterTitles, "Style", "Proxy"], Filters.AddableTitles);
+
+        Filters.Add("Style");
+
+        Assert.Equal([.. BuiltInFilterTitles, "Proxy"], Filters.AddableTitles);
+    }
+
+    [Fact]
+    public void RemovingAGameAttributeFilter_PutsItBackInTheMenu()
+    {
+        InsertStyleAttribute();
+        InsertProxyAttribute();
+        _viewModel = CreateViewModel();
+        Filters.Add("Style");
+
+        Filters.Applied("Style").Remove();
+
+        Assert.Equal([.. BuiltInFilterTitles, "Style", "Proxy"], Filters.AddableTitles);
+    }
+
+    // With nothing left in it to add, the submenu itself leaves the menu, and comes back when one of its
+    // filters is removed.
+    [Fact]
+    public void ApplyingEveryGameAttribute_TakesTheSubmenuOutOfTheMenuUntilOneIsRemoved()
+    {
+        InsertStyleAttribute();
+        InsertProxyAttribute();
+        _viewModel = CreateViewModel();
+
+        Filters.Add("Style");
+        Filters.Add("Proxy");
+        Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
+
+        Filters.Applied("Proxy").Remove();
+        Assert.Equal([.. BuiltInFilterTitles, "Proxy"], Filters.AddableTitles);
+    }
+
+    [Fact]
+    public void GameAttributeAddedElsewhere_WhileTheOthersAreApplied_IsOffered()
+    {
+        InsertStyleAttribute();
+        _viewModel = CreateViewModel();
+        Filters.Add("Style");
+        Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
+
+        InsertProxyAttribute();
+        _viewModel.NotifyActivated();
+
+        Assert.Equal([.. BuiltInFilterTitles, "Proxy"], Filters.AddableTitles);
+    }
+
+    [Fact]
+    public void GameAttributeDeletedElsewhere_WhileNotApplied_LeavesTheMenu()
+    {
+        InsertStyleAttribute();
+        AttributeDefinition proxy = InsertProxyAttribute();
+        _viewModel = CreateViewModel();
+        Assert.Equal([.. BuiltInFilterTitles, "Style", "Proxy"], Filters.AddableTitles);
+
+        _attributeRepository.DeleteAttribute(proxy.Id);
+        _viewModel.NotifyActivated();
+
+        Assert.Equal([.. BuiltInFilterTitles, "Style"], Filters.AddableTitles);
+    }
+
+    // The type change rebuilds the applied filter's menu entry; the rebuilt entry must still count as
+    // applied and stay out of the menu.
+    [Fact]
+    public void GameAttributeTypeChangedElsewhere_WhileApplied_StaysOutOfTheMenu()
+    {
+        AttributeDefinition style = InsertStyleAttribute();
+        InsertProxyAttribute();
+        _viewModel = CreateViewModel();
+        Filters.Add("Style");
+
+        AttributeDefinition editedElsewhere = _attributeRepository.GetAllAttributes(AttributeScope.Game).Single(a => a.Id == style.Id);
+        editedElsewhere.Type = AttributeType.Bool;
+        _attributeRepository.UpdateAttribute(editedElsewhere);
+        _viewModel.NotifyActivated();
+
+        Assert.Equal(["Style"], Filters.AppliedTitles);
+        Assert.Equal([.. BuiltInFilterTitles, "Proxy"], Filters.AddableTitles);
+    }
+
+    private AttributeDefinition InsertProxyAttribute()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Game) { Name = "Proxy", Type = AttributeType.Bool };
+        _attributeRepository.InsertAttribute(attribute, 1);
+        return attribute;
+    }
+
     private AttributeDefinition InsertStyleAttribute()
     {
         AttributeDefinition attribute = new(AttributeScope.Game) { Name = "Style", Type = AttributeType.Values };
