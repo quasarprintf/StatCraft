@@ -10,7 +10,6 @@ using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataFiltering.CollatedFilters;
 using StatCraft.Services.DataFiltering.SequentialFilters;
 using StatCraft.Services.DataParsing;
-using StatCraft.Services.Factories;
 using StatCraft.ViewModels.Windows.Filters.WrappedFilters;
 using System;
 using System.Collections.Generic;
@@ -32,8 +31,6 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     // exactly one explicit reload right afterward.
     private bool _suppressChangeEvents;
 
-    private FilterSlotFactory _filterSlotFactory;
-
     public CheckboxFilterSlotViewModel<GameData, int> ProfileSlot { get; }
 
     public DateRangeFilterSlotViewModel<GameData> DateSlot { get; }
@@ -53,10 +50,8 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public event Action? ProfileSelectionChanged;
     public event Action? OtherFiltersChanged;
 
-    internal DataPageFiltersViewModel(BuildRepository buildRepository, ObservableCollection<AttributeDefinition> gameAttributes, FilterSlotFactory filterSlotFactory)
+    internal DataPageFiltersViewModel(BuildRepository buildRepository, ObservableCollection<AttributeDefinition> gameAttributes)
     {
-        _filterSlotFactory = filterSlotFactory;
-
         ProfileSlot = new CheckboxFilterSlotViewModel<GameData, int>("Profile", [], g => [g.Sc2ProfileId], showSearch: true)
         {
             Mandatory = true
@@ -95,7 +90,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         GameAttributeSlots = new ObservableCollection<FilterMenuItemViewModel<GameData>>();
         foreach (var attribute in gameAttributes)
         {
-            IFilterSlotViewModel<GameData> filterSlot = _filterSlotFactory.CreateFromDefinition<GameData>(attribute);
+            IFilterSlotViewModel<GameData> filterSlot = new AttributeFilterSlotViewModel<GameData>(attribute);
             GameAttributeSlots.Add(new FilterMenuItemViewModel<GameData>(filterSlot));
         }
         gameAttributes.CollectionChanged += GameAttributesChanged;
@@ -158,7 +153,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             return;
 
         int index = GameAttributeSlots.IndexOf(item);
-        IFilterSlotViewModel<GameData> replacement = _filterSlotFactory.CreateFromDefinition<GameData>(attribute);
+        IFilterSlotViewModel<GameData> replacement = new AttributeFilterSlotViewModel<GameData>(attribute);
         replacement.IsApplied = item.Filter?.IsApplied ?? false;
         WireSlotChanged(replacement);
         GameAttributeSlots[index] = new FilterMenuItemViewModel<GameData>(replacement);
@@ -201,7 +196,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             for (int i = 0; i < e.NewItems.Count; ++i) 
             {
                 AttributeDefinition attribute = (AttributeDefinition)e.NewItems[i]!;
-                IFilterSlotViewModel<GameData> filterSlot = _filterSlotFactory.CreateFromDefinition<GameData>(attribute);
+                IFilterSlotViewModel<GameData> filterSlot = new AttributeFilterSlotViewModel<GameData>(attribute);
                 WireSlotChanged(filterSlot);
                 GameAttributeSlots.Insert(i + e.NewStartingIndex, new FilterMenuItemViewModel<GameData>(filterSlot));
             }

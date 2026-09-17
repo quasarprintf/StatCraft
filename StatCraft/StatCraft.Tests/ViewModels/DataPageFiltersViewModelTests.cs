@@ -21,7 +21,7 @@ public class DataPageFiltersViewModelTests : IDisposable
         _dbPath = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid() + ".db");
         _buildRepository = new BuildRepository(_dbPath);
         _buildRepository.Initialize();
-        _filters = new DataPageFiltersViewModel(_buildRepository, new System.Collections.ObjectModel.ObservableCollection<Models.GameData.Attributes.AttributeDefinition>(), new StatCraft.Services.Factories.FilterSlotFactory());
+        _filters = new DataPageFiltersViewModel(_buildRepository, new System.Collections.ObjectModel.ObservableCollection<Models.GameData.Attributes.AttributeDefinition>());
         // The mandatory date range starts on today; the GetFilter tests use fixed-date games, so they
         // clear it rather than depend on when they run.
         _filters.DateSlot.FromDate = null;

@@ -19,7 +19,6 @@ using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DataParsing;
 using StatCraft.Models.Util;
-using StatCraft.Services.Factories;
 
 namespace StatCraft;
 
@@ -154,8 +153,6 @@ public partial class App : Application
             return repository;
         });
 
-        //factories
-        services.AddSingleton<FilterSlotFactory>();
 
         services.AddSingleton<TokenProtector>(_ =>
         {

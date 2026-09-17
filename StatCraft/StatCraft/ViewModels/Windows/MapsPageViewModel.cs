@@ -6,7 +6,6 @@ using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataFiltering.CollatedFilters;
 using StatCraft.Services.DataFiltering.SequentialFilters;
-using StatCraft.Services.Factories;
 using StatCraft.ViewModels.Windows.AttributeComponents;
 using StatCraft.ViewModels.Windows.Filters;
 using StatCraft.ViewModels.Windows.Filters.WrappedFilters;
@@ -26,8 +25,6 @@ public partial class MapsPageViewModel : ViewModelBase
     private readonly AttributeRepository _attributeRepo;
     private readonly GameDataRepository _gameDataRepo;
 
-    private readonly FilterSlotFactory _filterSlotFactory;
-
     private readonly List<Map> _allMaps = [];
     public ObservableCollection<Map> FilteredMaps { get; } = [];
     [ObservableProperty] private Map? _selectedMap;
@@ -43,13 +40,11 @@ public partial class MapsPageViewModel : ViewModelBase
     // Raised instead of deleting when the map still has games recorded on it
     public event Action<Map>? DeleteBlocked;
 
-    public MapsPageViewModel(MapRepository mapRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository, FilterSlotFactory filterSlotFactory)
+    public MapsPageViewModel(MapRepository mapRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository)
     {
         _mapRepo = mapRepository;
         _attributeRepo = attributeRepository;
         _gameDataRepo = gameDataRepository;
-
-        _filterSlotFactory = filterSlotFactory;
 
         foreach (AttributeDefinition attribute in _attributeRepo.GetAllAttributes(AttributeScope.Map))
             AllAttributes.Add(attribute);
@@ -296,7 +291,7 @@ public partial class MapsPageViewModel : ViewModelBase
     #region filters
     private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
     {
-        IFilterSlotViewModel<Map> slot = _filterSlotFactory.CreateFromDefinition<Map>(attribute);
+        IFilterSlotViewModel<Map> slot = new AttributeFilterSlotViewModel<Map>(attribute);
         slot.IsApplied = isVisible;
         slot.AllowIncludeUnset = true;
         slot.IsAppliedChanged += (_,_) => OnSlotVisibilityChanged(slot);

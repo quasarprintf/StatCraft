@@ -89,7 +89,7 @@ public class DataPageViewModelTests : IAsyncDisposable
 
         return new DataPageViewModel(_settingsRepository, _replayWatcherService, replayImportService,
             _accountRepository, _buildRepository, _gameDataRepository, _attributeRepository, ladderService,
-            new MockLogger(), new StatCraft.Services.Factories.FilterSlotFactory(), replayDataExtractor);
+            new MockLogger(), replayDataExtractor);
     }
 
     // The "Use Team Colors" setting can be toggled mid-session — already-visible rows must pick it up

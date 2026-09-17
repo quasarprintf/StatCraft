@@ -12,7 +12,6 @@ using StatCraft.Services.BattlenetApi;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataParsing;
-using StatCraft.Services.Factories;
 using StatCraft.ViewModels.Windows.DataComponents;
 using StatCraft.ViewModels.Windows.DataComponents.GameRow;
 using StatCraft.ViewModels.Windows.Filters;
@@ -39,7 +38,6 @@ public partial class DataPageViewModel : ViewModelBase
     private readonly AttributeRepository _attributeRepo;
     private readonly SessionMmrTracker _mmrTracker;
     private readonly ILogger _logger;
-    private readonly FilterSlotFactory _filterSlotFactory;
     private readonly ReplayDataExtractor _replayDataExtractor;
     private readonly Dictionary<(Race Player, Matchups Opponent), ObservableCollection<BuildNode>> _buildTreeCache = new();
     private bool _buildTreeCacheDirty;
@@ -55,7 +53,7 @@ public partial class DataPageViewModel : ViewModelBase
     public DataPageViewModel(SettingsRepository settingsRepository, ReplayWatcherService replayWatcherService,
         ReplayImportService replayImportService, AccountRepository accountRepository, BuildRepository buildRepository,
         GameDataRepository gameDataRepository, AttributeRepository attributeRepository, Sc2LadderService ladderService,
-        ILogger logger, FilterSlotFactory filterSlotFactory, ReplayDataExtractor replayDataExtractor)
+        ILogger logger, ReplayDataExtractor replayDataExtractor)
     {
         _settingsRepo = settingsRepository;
         _replayWatcherService = replayWatcherService;
@@ -65,7 +63,6 @@ public partial class DataPageViewModel : ViewModelBase
         _gameDataRepo = gameDataRepository;
         _attributeRepo = attributeRepository;
         _logger = logger;
-        _filterSlotFactory = filterSlotFactory;
         _replayDataExtractor = replayDataExtractor;
         _mmrTracker = new SessionMmrTracker(ladderService);
         _replayWatcherService.NewReplayFileFound += OnNewReplayFileFound;
@@ -78,7 +75,7 @@ public partial class DataPageViewModel : ViewModelBase
             GameAttributes.Add(attribute);
         _attributeRepo.AttributesChanged += OnAttributesChanged;
 
-        Filters = new DataPageFiltersViewModel(buildRepository, GameAttributes, _filterSlotFactory);
+        Filters = new DataPageFiltersViewModel(buildRepository, GameAttributes);
         Filters.ProfileSelectionChanged += async () => await ReloadGamesFromDatabase();
         Filters.OtherFiltersChanged += ApplyFilters;
 

@@ -8,7 +8,6 @@ using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataFiltering.CollatedFilters;
 using StatCraft.Services.DataFiltering.SequentialFilters;
-using StatCraft.Services.Factories;
 using StatCraft.ViewModels.Windows.AttributeComponents;
 using StatCraft.ViewModels.Windows.Filters;
 using StatCraft.ViewModels.Windows.Filters.WrappedFilters;
@@ -40,8 +39,6 @@ public partial class BuildsPageViewModel : ViewModelBase
     private readonly AttributeRepository _attributeRepo;
     private readonly GameDataRepository _gameDataRepo;
 
-    private readonly FilterSlotFactory _filterSlotFactory;
-
     private readonly HashSet<Race> _loadedPlayerRaces = [];
 
     [NotifyPropertyChangedFor(nameof(Builds))]
@@ -64,13 +61,11 @@ public partial class BuildsPageViewModel : ViewModelBase
     public ObservableCollection<IFilterSlotViewModel> VisibleFilterSlots { get; } = [];
     public ObservableCollection<IFilterSlotViewModel> HiddenFilterSlots { get; } = [];
 
-    public BuildsPageViewModel(BuildRepository buildRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository, FilterSlotFactory filterSlotFactory)
+    public BuildsPageViewModel(BuildRepository buildRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository)
     {
         _buildRepo = buildRepository;
         _attributeRepo = attributeRepository;
         _gameDataRepo = gameDataRepository;
-
-        _filterSlotFactory = filterSlotFactory;
 
         PlayerRaceOptions = Enum.GetValues<Race>()
             .Select(r => new RaceOption(r) { IsSelected = r == PlayerRace })
@@ -557,7 +552,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     #region filters
     private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
     {
-        IFilterSlotViewModel<BuildNode> slot = _filterSlotFactory.CreateFromDefinition<BuildNode>(attribute);
+        IFilterSlotViewModel<BuildNode> slot = new AttributeFilterSlotViewModel<BuildNode>(attribute);
         slot.IsApplied = isVisible;
         slot.AllowIncludeUnset = true;
         slot.IsAppliedChanged += (_,_) => OnSlotVisibilityChanged(slot);
