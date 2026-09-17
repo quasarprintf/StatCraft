@@ -57,21 +57,23 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     {
         _filterSlotFactory = filterSlotFactory;
 
-        ProfileSlot = new CheckboxFilterSlotViewModel<GameData, int>("Profile", [], g => [g.Sc2ProfileId], showSearch: true);
+        ProfileSlot = new CheckboxFilterSlotViewModel<GameData, int>("Profile", [], g => [g.Sc2ProfileId], showSearch: true)
+        {
+            Mandatory = true
+        };
         // Checking/unchecking a profile requires a database reload
         ProfileSlot.Changed += () =>
         {
             if (!_suppressChangeEvents)
                 ProfileSelectionChanged?.Invoke();
         };
-        ProfileSlot.SetMandatory(true);
 
         DateSlot = new DateRangeFilterSlotViewModel<GameData>("Date", g => g.ReplayData.ReplayTimestamp.ToLocalTime().Date)
         {
             FromDate = DateTime.Today,
             ToDate = DateTime.Today,
+            Mandatory = true
         };
-        DateSlot.SetMandatory(true);
 
         MapSlot = new CheckboxFilterSlotViewModel<GameData, Map>("Map", [], g => [g.Map!], showSearch: true) { AllowIncludeUnset=false }; //TODO: why is map nullable?
         MatchupSlot = new CheckboxFilterSlotViewModel<GameData, (Race, Race)>("Matchup", BuildMatchupOptions(), GetGameMatchups, columns: 3) { AllowIncludeUnset=false };

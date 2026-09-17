@@ -62,12 +62,6 @@ public abstract partial class FilterSlotViewModel<T,F> : ViewModelBase, IFilterS
     }
 
     public abstract IFilter<T> GetFilter();
-    public void SetMandatory(bool mandatory)
-    {
-        Mandatory = mandatory;
-        if (mandatory)
-            IsApplied = true;
-    }
 
     // Resets this filter's own selection/bounds back to "inactive" — called when removed, so a
     // hidden filter never silently keeps constraining results.
@@ -87,8 +81,14 @@ public abstract partial class FilterSlotViewModel<T,F> : ViewModelBase, IFilterS
     [RelayCommand]
     private void Remove()
     {
-        IsApplied = false;
+        if (!Mandatory)
+            IsApplied = false;
         IncludeUnset = false;
         Clear();
+    }
+    partial void OnMandatoryChanged(bool value)
+    {
+        if (value)
+            IsApplied = true;
     }
 }
