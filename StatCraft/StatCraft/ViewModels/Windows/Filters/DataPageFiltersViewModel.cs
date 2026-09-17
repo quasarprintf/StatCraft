@@ -33,7 +33,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
     private FilterSlotFactory _filterSlotFactory;
 
-    public CheckboxFilterSlotViewModel<Sc2Profile, Sc2Profile> ProfileSlot { get; }
+    public CheckboxFilterSlotViewModel<GameData, int> ProfileSlot { get; }
 
     public DateRangeFilterSlotViewModel<GameData> DateSlot { get; }
     public CheckboxFilterSlotViewModel<GameData, Map> MapSlot { get; }
@@ -56,7 +56,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     {
         _filterSlotFactory = filterSlotFactory;
 
-        ProfileSlot = new CheckboxFilterSlotViewModel<Sc2Profile, Sc2Profile>("Profile", [], p => [p], showSearch: true);
+        ProfileSlot = new CheckboxFilterSlotViewModel<GameData, int>("Profile", [], g => [g.Sc2ProfileId], showSearch: true);
         // Checking/unchecking a profile requires a database reload
         ProfileSlot.Changed += () =>
         {
@@ -96,7 +96,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
         ExtraFilterSlots = 
         [
-            new FilterMenuItemViewModel<Sc2Profile>(ProfileSlot),
+            new FilterMenuItemViewModel<GameData>(ProfileSlot),
             new FilterMenuItemViewModel<GameData>(DateSlot),
             new FilterMenuItemViewModel<GameData>(MapSlot),
             new FilterMenuItemViewModel<GameData>(MatchupSlot), 
@@ -169,10 +169,10 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     // state by profile id across the rebuild.
     internal void RefreshProfileOptions(IReadOnlyList<Sc2Profile> profiles)
     {
-        HashSet<int> previouslyChecked = ProfileSlot.Options.Where(o => o.IsChecked).Select(o => o.Value.Id).ToHashSet();
+        HashSet<int> previouslyChecked = ProfileSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
 
-        IEnumerable<CheckboxFilterOptionViewModel<Sc2Profile>> newOptions = profiles
-            .Select(p => new CheckboxFilterOptionViewModel<Sc2Profile>(p, p.DisplayName) { IsChecked = previouslyChecked.Contains(p.Id) });
+        IEnumerable<CheckboxFilterOptionViewModel<int>> newOptions = profiles
+            .Select(p => new CheckboxFilterOptionViewModel<int>(p.Id, p.DisplayName) { IsChecked = previouslyChecked.Contains(p.Id) });
         ProfileSlot.ReplaceOptions(newOptions);
     }
 
@@ -217,15 +217,15 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         _suppressChangeEvents = true;
         try
         {
-            List<CheckboxFilterOptionViewModel<Sc2Profile>> options = ProfileSlot.Options.ToList();
-            if (options.All(o => o.Value.Id != profile.Id))
+            List<CheckboxFilterOptionViewModel<int>> options = ProfileSlot.Options.ToList();
+            if (options.All(o => o.Value != profile.Id))
             {
-                options.Add(new CheckboxFilterOptionViewModel<Sc2Profile>(profile, profile.DisplayName));
+                options.Add(new CheckboxFilterOptionViewModel<int>(profile.Id, profile.DisplayName));
                 ProfileSlot.ReplaceOptions(options);
             }
 
-            foreach (CheckboxFilterOptionViewModel<Sc2Profile> option in ProfileSlot.Options)
-                option.IsChecked = option.Value.Id == profile.Id;
+            foreach (CheckboxFilterOptionViewModel<int> option in ProfileSlot.Options)
+                option.IsChecked = option.Value == profile.Id;
 
             DateSlot.FromDate = DateTime.Today;
             DateSlot.ToDate = DateTime.Today;
@@ -240,6 +240,8 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     {
         List<IFilter<GameData>> appliedFilters = new List<IFilter<GameData>>();
 
+        if (ProfileSlot.IsApplied)
+            appliedFilters.Add(ProfileSlot.GetFilter());
         if (DateSlot.IsApplied)
             appliedFilters.Add(DateSlot.GetFilter());
         if (MapSlot.IsApplied)

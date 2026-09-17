@@ -453,7 +453,7 @@ public partial class DataPageViewModel : ViewModelBase
     // ApplyFilters (see OtherFiltersChanged), not a fresh database round trip.
     private async Task ReloadGamesFromDatabase()
     {
-        List<int> profileIds = Filters.ProfileSlot.Options.Where(o => o.IsChecked).Select(o => o.Value.Id).ToList();
+        List<int> profileIds = Filters.ProfileSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToList();
         _loadedGames = profileIds.Count == 0 ? [] : _gameDataRepo.GetGamesForProfiles(profileIds, _attributeRepo.GetAllAttributes(AttributeScope.Game));
         Filters.RefreshMapOptions(_loadedGames.Where(g => g.Map != null).Select(g => g.Map!).Distinct());
         ApplyFilters();
@@ -515,7 +515,7 @@ public partial class DataPageViewModel : ViewModelBase
             _settingsRepo.Load().UseTeamColors);
 
     private string ResolveProfileLabel(int sc2ProfileId) =>
-        Filters.ProfileSlot.Options.FirstOrDefault(o => o.Value.Id == sc2ProfileId)?.Value.DisplayName ?? sc2ProfileId.ToString();
+        Filters.ProfileSlot.Options.FirstOrDefault(o => o.Value == sc2ProfileId)?.Label ?? sc2ProfileId.ToString();
 
     private ObservableCollection<BuildNode>? GetBuildTree(Race? player, Matchups matchups)
     {
