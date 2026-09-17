@@ -22,15 +22,18 @@ public class DataPageFiltersViewModelTests : IDisposable
         _buildRepository = new BuildRepository(_dbPath);
         _buildRepository.Initialize();
         _filters = new DataPageFiltersViewModel(_buildRepository, new System.Collections.ObjectModel.ObservableCollection<Models.GameData.Attributes.AttributeDefinition>(), new StatCraft.Services.Factories.FilterSlotFactory());
+        // The mandatory date range starts on today; the GetFilter tests use fixed-date games, so they
+        // clear it rather than depend on when they run.
+        _filters.DateSlot.FromDate = null;
+        _filters.DateSlot.ToDate = null;
     }
 
     [Fact]
-    public void ExtraFilterSlots_AreHiddenByDefault()
+    public void ExtraFilterSlots_AreHiddenByDefault_ExceptTheMandatoryDateRange()
     {
-
-        Assert.All(_filters.ExtraFilterSlots, slot => Assert.True(slot.Filter == null || !slot.IsApplied));
+        Assert.All(_filters.ExtraFilterSlots, slot => Assert.True(slot.Filter == null || slot.Filter.Mandatory || !slot.IsApplied));
         Assert.Equal(5, _filters.HiddenExtraFilterSlots.Count());
-        Assert.Empty(_filters.VisibleExtraFilterSlots);
+        Assert.Equal([_filters.DateSlot], _filters.VisibleExtraFilterSlots);
     }
 
     [Fact]
@@ -113,8 +116,8 @@ public class DataPageFiltersViewModelTests : IDisposable
 
         Assert.True(ProfileOption(1).IsChecked);
         Assert.False(ProfileOption(2).IsChecked);
-        Assert.Equal(DateTime.Today, _filters.FromDate);
-        Assert.Equal(DateTime.Today, _filters.ToDate);
+        Assert.Equal(DateTime.Today, _filters.DateSlot.FromDate);
+        Assert.Equal(DateTime.Today, _filters.DateSlot.ToDate);
     }
 
     [Fact]

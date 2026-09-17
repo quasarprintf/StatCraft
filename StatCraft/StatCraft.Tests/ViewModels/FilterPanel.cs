@@ -137,6 +137,9 @@ internal sealed class FilterHandle(IFilterSlotViewModel slot)
 {
     public string Title => slot.Title;
     public bool IsApplied => slot.IsApplied;
+
+    // A mandatory filter is always showing and has no ✕ button.
+    public bool Mandatory => slot.Mandatory;
     public bool AllowIncludeUnset => slot.AllowIncludeUnset;
 
     public bool IncludeUnset
@@ -174,7 +177,20 @@ internal sealed class FilterHandle(IFilterSlotViewModel slot)
 
     public bool IsCheckboxFilter => TryKind<ICheckboxFilterSlotViewModel>() != null;
     public bool IsBoolFilter => TryKind<IBoolFilterSlotViewModel>() != null;
+    public DateTime? FromDate
+    {
+        get => Kind<IDateRangeFilterSlotViewModel>().FromDate;
+        set => Kind<IDateRangeFilterSlotViewModel>().FromDate = value;
+    }
+
+    public DateTime? ToDate
+    {
+        get => Kind<IDateRangeFilterSlotViewModel>().ToDate;
+        set => Kind<IDateRangeFilterSlotViewModel>().ToDate = value;
+    }
+
     public bool IsNumericRangeFilter => TryKind<INumericRangeFilterSlotViewModel>() != null;
+    public bool IsDateRangeFilter => TryKind<IDateRangeFilterSlotViewModel>() != null;
 
     private FilterHandle SetChecked(string[] labels, bool isChecked)
     {

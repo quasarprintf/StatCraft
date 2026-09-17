@@ -154,8 +154,8 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGame(playedAt: new DateTimeOffset(new DateTime(2026, 1, day, 12, 0, 0, DateTimeKind.Local)));
         await LoadGamesWithNoDateRange();
 
-        _viewModel.Filters.FromDate = new DateTime(2026, 1, 15);
-        _viewModel.Filters.ToDate = new DateTime(2026, 1, 15);
+        DateFilter.FromDate = new DateTime(2026, 1, 15);
+        DateFilter.ToDate = new DateTime(2026, 1, 15);
 
         Assert.Equal(expected, _viewModel.Games.Count == 1);
     }
@@ -369,8 +369,8 @@ public class DataPageViewModelTests : IAsyncDisposable
     private async Task LoadGamesWithNoDateRange()
     {
         await _viewModel.SetActiveProfile(_profile);
-        _viewModel.Filters.FromDate = null;
-        _viewModel.Filters.ToDate = null;
+        DateFilter.FromDate = null;
+        DateFilter.ToDate = null;
     }
 
     private void SetOpponentMmrRange(decimal min, decimal max)
@@ -417,12 +417,16 @@ public class DataPageViewModelTests : IAsyncDisposable
     // The profile filter is always showing, with no menu entry, so it's reached directly.
     private FilterHandle ProfileFilter => new(_viewModel.Filters.ProfileSlot);
 
+    // The date range is a mandatory filter: always in the filter bar, first, and never in the menu.
+    private FilterHandle DateFilter => Filters.Applied("Date");
+
+    private static readonly string[] AlwaysApplied = ["Date"];
     private static readonly string[] BuiltInFilterTitles = ["Map", "Matchup", "Outcome", "Opponent MMR", "Build"];
 
     [Fact]
     public void BuiltInFilters_StartUnappliedAndAreOfferedInTheirFixedOrder()
     {
-        Assert.Empty(Filters.AppliedTitles);
+        Assert.Equal(AlwaysApplied, Filters.AppliedTitles);
         Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
     }
 
@@ -431,6 +435,66 @@ public class DataPageViewModelTests : IAsyncDisposable
     public void BuiltInFilters_DoNotOfferIncludeUnset()
     {
         Assert.All(BuiltInFilterTitles, title => Assert.False(Filters.Offered(title).AllowIncludeUnset));
+        Assert.False(DateFilter.AllowIncludeUnset);
+    }
+
+    [Fact]
+    public void DateFilter_IsAMandatoryDateRangeThatStartsOnToday()
+    {
+        FilterHandle date = DateFilter;
+
+        Assert.True(date.IsDateRangeFilter);
+        Assert.True(date.Mandatory);
+        Assert.Equal(DateTime.Today, date.FromDate);
+        Assert.Equal(DateTime.Today, date.ToDate);
+    }
+
+    // Loading games without starting a session (checking a profile directly) still only shows today's
+    // games, because a new page's date range already starts on today.
+    [Fact]
+    public void DateFilter_OnANewPage_ShowsOnlyTodaysGames()
+    {
+        InsertGame(playedAt: DateTimeOffset.Now);
+        InsertGame(playedAt: DateTimeOffset.Now.AddDays(-2));
+        _viewModel.Filters.RefreshProfileOptions(_accountRepository.GetAllProfiles());
+
+        ProfileFilter.Check(_profile.DisplayName);
+
+        Assert.Single(_viewModel.Games);
+    }
+
+    // Local noon on each day, so the games sit squarely inside their calendar days in any timezone.
+    [Theory]
+    [InlineData(true, false, 9, false)]
+    [InlineData(true, false, 10, true)]
+    [InlineData(true, false, 30, true)]
+    [InlineData(false, true, 1, true)]
+    [InlineData(false, true, 20, true)]
+    [InlineData(false, true, 21, false)]
+    public async Task DateFilter_WithOnlyOneEndSet_IsOpenOnTheOtherSide(bool setFrom, bool setTo, int day, bool expected)
+    {
+        InsertGame(playedAt: new DateTimeOffset(new DateTime(2026, 1, day, 12, 0, 0, DateTimeKind.Local)));
+        await LoadGamesWithNoDateRange();
+
+        if (setFrom)
+            DateFilter.FromDate = new DateTime(2026, 1, 10);
+        if (setTo)
+            DateFilter.ToDate = new DateTime(2026, 1, 20);
+
+        Assert.Equal(expected, _viewModel.Games.Count == 1);
+    }
+
+    // The range compares calendar days, so a game late on the last day is still in it.
+    [Fact]
+    public async Task DateFilter_IncludesAGameLateOnTheLastDay()
+    {
+        InsertGame(playedAt: new DateTimeOffset(new DateTime(2026, 1, 15, 23, 30, 0, DateTimeKind.Local)));
+        await LoadGamesWithNoDateRange();
+
+        DateFilter.FromDate = new DateTime(2026, 1, 15);
+        DateFilter.ToDate = new DateTime(2026, 1, 15);
+
+        Assert.Single(_viewModel.Games);
     }
 
     [Fact]
@@ -438,7 +502,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     {
         Filters.Add("Outcome");
 
-        Assert.Equal(["Outcome"], Filters.AppliedTitles);
+        Assert.Equal([.. AlwaysApplied, "Outcome"], Filters.AppliedTitles);
         Assert.Equal(["Map", "Matchup", "Opponent MMR", "Build"], Filters.AddableTitles);
     }
 
@@ -450,7 +514,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         Filters.Add("Outcome");
         Filters.Add("Map");
 
-        Assert.Equal(["Map", "Outcome", "Build"], Filters.AppliedTitles);
+        Assert.Equal([.. AlwaysApplied, "Map", "Outcome", "Build"], Filters.AppliedTitles);
     }
 
     [Fact]
@@ -465,7 +529,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         Filters.Applied("Map").Remove();
 
         Assert.Equal(2, _viewModel.Games.Count);
-        Assert.Empty(Filters.AppliedTitles);
+        Assert.Equal(AlwaysApplied, Filters.AppliedTitles);
         Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
         Assert.Empty(Filters.Add("Map").CheckedLabels);
     }
@@ -607,7 +671,7 @@ public class DataPageViewModelTests : IAsyncDisposable
 
         await _viewModel.SetActiveProfile(_profile);
 
-        Assert.Equal(["Outcome"], Filters.AppliedTitles);
+        Assert.Equal([.. AlwaysApplied, "Outcome"], Filters.AppliedTitles);
         Assert.Equal(["Win"], Filters.Applied("Outcome").CheckedLabels);
         Assert.Single(_viewModel.Games);
     }
@@ -806,7 +870,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         Filters.Applied("Style").Remove();
 
         Assert.Single(_viewModel.Games);
-        Assert.Empty(Filters.AppliedTitles);
+        Assert.Equal(AlwaysApplied, Filters.AppliedTitles);
         Assert.Empty(Filters.Offered("Style").CheckedLabels);
     }
 
@@ -838,7 +902,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         _attributeRepository.DeleteAttribute(style.Id);
         _viewModel.NotifyActivated();
 
-        Assert.Empty(Filters.AppliedTitles);
+        Assert.Equal(AlwaysApplied, Filters.AppliedTitles);
         Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
         Assert.Single(_viewModel.Games);
     }
@@ -855,7 +919,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         _attributeRepository.UpdateAttribute(editedElsewhere);
         _viewModel.NotifyActivated();
 
-        Assert.Equal(["Play Style"], Filters.AppliedTitles);
+        Assert.Equal([.. AlwaysApplied, "Play Style"], Filters.AppliedTitles);
         Assert.Equal(["Rush"], Filters.Applied("Play Style").CheckedLabels);
 
         // The menu entry is renamed too, which shows once the filter is back in the menu.
@@ -881,7 +945,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         _attributeRepository.UpdateAttribute(editedElsewhere);
         _viewModel.NotifyActivated();
 
-        Assert.Equal(["Contested"], Filters.AppliedTitles);
+        Assert.Equal([.. AlwaysApplied, "Contested"], Filters.AppliedTitles);
         FilterHandle filter = Filters.Applied("Contested");
         Assert.True(filter.IsBoolFilter);
         // The game's stored value was numeric, so as a yes/no attribute it's unset and filtered out...
@@ -980,7 +1044,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         _attributeRepository.UpdateAttribute(editedElsewhere);
         _viewModel.NotifyActivated();
 
-        Assert.Equal(["Style"], Filters.AppliedTitles);
+        Assert.Equal([.. AlwaysApplied, "Style"], Filters.AppliedTitles);
         Assert.Equal([.. BuiltInFilterTitles, "Proxy"], Filters.AddableTitles);
     }
 
