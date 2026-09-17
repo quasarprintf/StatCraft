@@ -68,6 +68,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             if (!_suppressChangeEvents)
                 ProfileSelectionChanged?.Invoke();
         };
+        ProfileSlot.SetMandatory(true);
 
         DateSlot = new DateRangeFilterSlotViewModel<GameData>("Date", g => g.ReplayData.ReplayTimestamp.ToLocalTime().Date)
         {
@@ -100,6 +101,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
         ExtraFilterSlots = 
         [
+            new FilterMenuItemViewModel<Sc2Profile>(ProfileSlot),
             new FilterMenuItemViewModel<GameData>(DateSlot),
             new FilterMenuItemViewModel<GameData>(MapSlot),
             new FilterMenuItemViewModel<GameData>(MatchupSlot), 
