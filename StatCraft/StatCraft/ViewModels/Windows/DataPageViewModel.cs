@@ -85,9 +85,6 @@ public partial class DataPageViewModel : ViewModelBase
         // Give the two always-visible filters sensible defaults as soon as the page exists, rather
         // than leaving them blank until a session actually starts.
         Filters.RefreshProfileOptions(_accountRepo.GetAllProfiles());
-        DateTime today = DateTime.Today;
-        Filters.FromDate = today;
-        Filters.ToDate = today;
     }
 
     [NotifyPropertyChangedFor(nameof(ActiveProfileLabel), nameof(HasActiveSession))]

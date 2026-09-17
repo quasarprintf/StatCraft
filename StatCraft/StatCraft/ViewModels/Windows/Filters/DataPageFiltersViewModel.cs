@@ -35,11 +35,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
     public CheckboxFilterSlotViewModel<Sc2Profile, Sc2Profile> ProfileSlot { get; }
 
-    // DateTime (not DateTimeOffset) because Calendar.SelectedDate — which CompactDatePicker wraps —
-    // is DateTime?.
-    [ObservableProperty] private DateTime? _fromDate;
-    [ObservableProperty] private DateTime? _toDate;
-
+    public DateRangeFilterSlotViewModel<GameData> DateSlot { get; }
     public CheckboxFilterSlotViewModel<GameData, Map> MapSlot { get; }
     public CheckboxFilterSlotViewModel<GameData, (Race, Race)> MatchupSlot { get; }
     // Internal, not public, because GameOutcome itself is internal — this stays consistent with the
@@ -73,6 +69,13 @@ public partial class DataPageFiltersViewModel : ViewModelBase
                 ProfileSelectionChanged?.Invoke();
         };
 
+        DateSlot = new DateRangeFilterSlotViewModel<GameData>("Date", g => g.ReplayData.ReplayTimestamp.ToLocalTime().Date)
+        {
+            FromDate = DateTime.Today,
+            ToDate = DateTime.Today,
+        };
+        DateSlot.SetMandatory(true);
+
         MapSlot = new CheckboxFilterSlotViewModel<GameData, Map>("Map", [], g => [g.Map!], showSearch: true) { AllowIncludeUnset=false }; //TODO: why is map nullable?
         MatchupSlot = new CheckboxFilterSlotViewModel<GameData, (Race, Race)>("Matchup", BuildMatchupOptions(), GetGameMatchups, columns: 3) { AllowIncludeUnset=false };
         OutcomeSlot = new CheckboxFilterSlotViewModel<GameData, GameOutcome>("Outcome", BuildOutcomeOptions(), g => [g.ReplayData.Win.AsGameOutcome()]) { AllowIncludeUnset=false };
@@ -97,6 +100,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
         ExtraFilterSlots = 
         [
+            new FilterMenuItemViewModel<GameData>(DateSlot),
             new FilterMenuItemViewModel<GameData>(MapSlot),
             new FilterMenuItemViewModel<GameData>(MatchupSlot), 
             new FilterMenuItemViewModel<GameData>(OutcomeSlot),
@@ -168,18 +172,6 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         (MenuItemFor(attribute)?.Filter as AttributeFilterSlotViewModel<GameData>)?.Refresh();
     }
 
-    partial void OnFromDateChanged(DateTime? value)
-    {
-        if (!_suppressChangeEvents)
-            OtherFiltersChanged?.Invoke();
-    }
-
-    partial void OnToDateChanged(DateTime? value)
-    {
-        if (!_suppressChangeEvents)
-            OtherFiltersChanged?.Invoke();
-    }
-
     // Rebuilds the profile checkbox list (e.g. after linking a new account), preserving checked
     // state by profile id across the rebuild.
     internal void RefreshProfileOptions(IReadOnlyList<Sc2Profile> profiles)
@@ -242,9 +234,8 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             foreach (CheckboxFilterOptionViewModel<Sc2Profile> option in ProfileSlot.Options)
                 option.IsChecked = option.Value.Id == profile.Id;
 
-            DateTime today = DateTime.Today;
-            FromDate = today;
-            ToDate = today;
+            DateSlot.FromDate = DateTime.Today;
+            DateSlot.ToDate = DateTime.Today;
         }
         finally
         {
@@ -255,17 +246,9 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public AndFilter<GameData> GetFilter()
     {
         List<IFilter<GameData>> appliedFilters = new List<IFilter<GameData>>();
-        DateTimeFilter<GameData> fromDateFilter = new DateTimeFilter<GameData>(g => g.ReplayData.ReplayTimestamp.ToLocalTime().DateTime.Date)
-        {
-            FilterValue = FromDate == null ? null : FromDate.Value.Date
-        }.SetMatchLowerBound();
-        DateTimeFilter<GameData> toDateFilter = new DateTimeFilter<GameData>(g => g.ReplayData.ReplayTimestamp.ToLocalTime().DateTime.Date)
-        {
-            FilterValue = ToDate == null ? null : ToDate.Value.Date
-        }.SetMatchUpperBound();
-        AndFilter<GameData> dateFilter = new AndFilter<GameData>([fromDateFilter, toDateFilter]);
-        appliedFilters.Add(dateFilter);
 
+        if (DateSlot.IsApplied)
+            appliedFilters.Add(DateSlot.GetFilter());
         if (MapSlot.IsApplied)
             appliedFilters.Add(MapSlot.GetFilter());
         if (MatchupSlot.IsApplied)

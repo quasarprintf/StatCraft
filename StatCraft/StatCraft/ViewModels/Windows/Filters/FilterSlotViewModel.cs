@@ -62,6 +62,12 @@ public abstract partial class FilterSlotViewModel<T,F> : ViewModelBase, IFilterS
     }
 
     public abstract IFilter<T> GetFilter();
+    public void SetMandatory(bool mandatory)
+    {
+        Mandatory = mandatory;
+        if (mandatory)
+            IsApplied = true;
+    }
 
     // Resets this filter's own selection/bounds back to "inactive" — called when removed, so a
     // hidden filter never silently keeps constraining results.

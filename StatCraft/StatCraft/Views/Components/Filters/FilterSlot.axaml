@@ -18,6 +18,9 @@
             <DataTemplate x:DataType="vmw:Filters.INumericRangeFilterSlotViewModel" >
                 <local:NumericRangeFilter />
             </DataTemplate>
+            <DataTemplate x:DataType="vmw:Filters.IDateRangeFilterSlotViewModel" >
+                <local:DateRangeFilter />
+            </DataTemplate>
         </ContentControl.DataTemplates>
     </ContentControl>
 </UserControl>
