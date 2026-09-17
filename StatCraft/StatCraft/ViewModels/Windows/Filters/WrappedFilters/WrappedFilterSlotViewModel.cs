@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Text;
 
-namespace StatCraft.ViewModels.Windows.Filters;
+namespace StatCraft.ViewModels.Windows.Filters.WrappedFilters;
 
 public interface IWrappedFilterSlotViewModel : IFilterSlotViewModel
 {

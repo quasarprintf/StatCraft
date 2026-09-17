@@ -11,6 +11,7 @@ using StatCraft.Services.DataFiltering.SequentialFilters;
 using StatCraft.Services.Factories;
 using StatCraft.ViewModels.Windows.AttributeComponents;
 using StatCraft.ViewModels.Windows.Filters;
+using StatCraft.ViewModels.Windows.Filters.WrappedFilters;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;

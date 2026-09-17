@@ -1,7 +1,4 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
-using CommunityToolkit.Mvvm.Input;
-using StatCraft.Models.GameData.Attributes;
-using StatCraft.Models.GameData.Maps;
+﻿using StatCraft.Models.GameData.Attributes;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataFiltering.SequentialFilters;
 using System;
@@ -9,7 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 
-namespace StatCraft.ViewModels.Windows.Filters;
+namespace StatCraft.ViewModels.Windows.Filters.WrappedFilters;
 
 public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewModel<T>, IFilterSlotViewModel<T> where T : IAttributedObject
 {

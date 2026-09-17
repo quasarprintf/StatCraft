@@ -6,7 +6,7 @@
              x:DataType="vmw:Filters.IFilterSlotViewModel">
     <ContentControl Content="{Binding}">
         <ContentControl.DataTemplates>
-            <DataTemplate x:DataType="vmw:Filters.IWrappedFilterSlotViewModel">
+            <DataTemplate x:DataType="vmw:Filters.WrappedFilters.IWrappedFilterSlotViewModel">
                 <local:FilterSlot DataContext="{Binding WrappedFilter}"/>
             </DataTemplate>
             <DataTemplate x:DataType="vmw:Filters.IBoolFilterSlotViewModel" >

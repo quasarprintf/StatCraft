@@ -1,5 +1,6 @@
 ﻿using StatCraft.Models.GameData.Attributes;
 using StatCraft.ViewModels.Windows.Filters;
+using StatCraft.ViewModels.Windows.Filters.WrappedFilters;
 using System;
 using System.Collections.Generic;
 using System.Linq;

@@ -3,6 +3,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using StatCraft.ViewModels.Windows;
 using StatCraft.ViewModels.Windows.Filters;
+using StatCraft.ViewModels.Windows.Filters.WrappedFilters;
 
 namespace StatCraft.Tests;
 

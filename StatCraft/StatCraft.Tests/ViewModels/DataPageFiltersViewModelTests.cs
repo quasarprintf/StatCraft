@@ -185,8 +185,8 @@ public class DataPageFiltersViewModelTests : IDisposable
         return new GameData { Map = new Map { Name = "Altitude LE" }, ReplayData = replay };
     }
 
-    private CheckboxFilterOptionViewModel<Sc2Profile> ProfileOption(int profileId) =>
-        _filters.ProfileSlot.Options.Single(o => o.Value.Id == profileId);
+    private CheckboxFilterOptionViewModel<int> ProfileOption(int profileId) =>
+        _filters.ProfileSlot.Options.Single(o => o.Value == profileId);
 
     public void Dispose()
     {
