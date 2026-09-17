@@ -44,7 +44,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public CheckboxFilterSlotViewModel<GameData, BuildNode> BuildSlot { get; }
     public ObservableCollection<FilterMenuItemViewModel<GameData>> GameAttributeSlots { get; private set; }
 
-    public IReadOnlyList<IFilterMenuItemViewModel> ExtraFilterSlots { get; }
+    public IReadOnlyList<FilterMenuItemViewModel<GameData>> ExtraFilterSlots { get; }
     public IEnumerable<IFilterSlotViewModel> VisibleExtraFilterSlots => ExtraFilterSlots.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
     public IEnumerable<IFilterMenuItemViewModel> HiddenExtraFilterSlots => ExtraFilterSlots.Where(s => !s.IsApplied);
 
@@ -243,40 +243,14 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public AndFilter<GameData> GetFilter()
     {
         List<IFilter<GameData>> appliedFilters = new List<IFilter<GameData>>();
-
-        if (ProfileSlot.IsApplied)
-            appliedFilters.Add(ProfileSlot.GetFilter());
-        if (DateSlot.IsApplied)
-            appliedFilters.Add(DateSlot.GetFilter());
-        if (MapSlot.IsApplied)
-            appliedFilters.Add(MapSlot.GetFilter());
-        if (MatchupSlot.IsApplied)
-            appliedFilters.Add(MatchupSlot.GetFilter());
-        if (OutcomeSlot.IsApplied)
-            appliedFilters.Add(OutcomeSlot.GetFilter());
-        if (MmrSlot.IsApplied)
-            appliedFilters.Add(MmrSlot.GetFilter());
-
-        if (BuildSlot.IsApplied)
+        foreach (var filterMenuItem in ExtraFilterSlots)
         {
-            Dictionary<int, BuildNode> allBuilds = BuildSlot.Options.ToDictionary(o => o.Value.Id, o => o.Value);
-            SequentialAnyFilter<GameData, BuildNode> buildFilter = BuildSlot.GetFilter();
-            appliedFilters.Add(buildFilter);
-        }
-
-        foreach (var filterMenu in GameAttributeSlots)
-        {
-            foreach (var attributeFilterSlot in filterMenu.ContainedFilters)
+            foreach (var filterSlot in filterMenuItem.ContainedFilters)
             {
-                if (attributeFilterSlot.IsApplied)
-                {
-                    IFilter<GameData> attributeFilter = attributeFilterSlot.GetFilter();
-                    //var wrappedFilter = new SequentialAllFilter<GameData, AttributeValue>(attributeFilter, g => [g.GetAttributeByDefinitionId(attribute.Id)]);
-                    appliedFilters.Add(attributeFilter);
-                }
+                if (filterSlot.IsApplied)
+                    appliedFilters.Add(filterSlot.GetFilter());
             }
         }
-        //TODO: build attribute filter
 
         AndFilter<GameData> collatedFilter = new AndFilter<GameData>(appliedFilters);
 
