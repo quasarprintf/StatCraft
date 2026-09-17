@@ -8,9 +8,9 @@ namespace StatCraft.ViewModels.Windows.Filters.WrappedFilters;
 
 public partial class TemplatedFilterSlotViewModel<T,F> : WrappedFilterSlotViewModel<T>, IFilterSlotViewModel<T>
 {
-    private Func<IFilter<F>, IWrappedFilter<T,F>> FilterTemplate { get; set; }
+    private Func<IFilter<F>, IFilter<T>> FilterTemplate { get; set; }
     private IFilterSlotViewModel<F> _wrappedFilter => (IFilterSlotViewModel<F>)WrappedFilter;
-    public TemplatedFilterSlotViewModel(Func<IFilter<F>, IWrappedFilter<T,F>> filterTemplate, IFilterSlotViewModel<F> wrappedSlot)
+    public TemplatedFilterSlotViewModel(Func<IFilter<F>, IFilter<T>> filterTemplate, IFilterSlotViewModel<F> wrappedSlot)
     {
         FilterTemplate = filterTemplate;
         WrappedFilter = wrappedSlot;

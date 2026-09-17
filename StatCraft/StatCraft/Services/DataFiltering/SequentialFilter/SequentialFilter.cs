@@ -5,7 +5,7 @@ using System.Text;
 
 namespace StatCraft.Services.DataFiltering.SequentialFilters;
 
-public abstract class SequentialFilter<T,F> : IWrappedFilter<T,F>
+public abstract class SequentialFilter<T,F> : IFilter<T>
 {
     public bool? AcceptNull { get; set; }
     public IFilter<F> Filter { get; set; }
