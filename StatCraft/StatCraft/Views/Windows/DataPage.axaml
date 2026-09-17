@@ -67,7 +67,7 @@
                                     <Setter Property="VerticalOffset" Value="-5"/>
                                 </Style>
                                 <Setter Property="Header" Value="{Binding DisplayText}"/>
-                                <Setter Property="ItemsSource" Value="{Binding SubMenuItems}"/>
+                                <Setter Property="ItemsSource" Value="{Binding UnAppliedSubMenuItems}"/>
                                 <Setter Property="Command" Value="{Binding Filter.AddCommand}"/>
                             </ControlTheme>
                         </MenuFlyout.ItemContainerTheme>

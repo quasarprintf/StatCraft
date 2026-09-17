@@ -16,6 +16,7 @@ public interface IFilterMenuItemViewModel
     string DisplayText { get; set; }
     IFilterSlotViewModel? Filter { get; }
     IEnumerable<IFilterMenuItemViewModel>? SubMenuItems { get; }
+    IEnumerable<IFilterMenuItemViewModel>? UnAppliedSubMenuItems { get; }
     bool IsApplied { get; }
     IEnumerable<IFilterSlotViewModel> ContainedFilters { get; }
 }
@@ -29,6 +30,7 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
 
     private ObservableCollection<FilterMenuItemViewModel<T>>? _subMenuItems { get; set; }
     public IEnumerable<IFilterMenuItemViewModel>? SubMenuItems => _subMenuItems;
+    public IEnumerable<IFilterMenuItemViewModel>? UnAppliedSubMenuItems => _subMenuItems?.Where(i => !i.IsApplied);
     public bool IsApplied => Filter != null ? Filter.IsApplied : SubMenuItems!.All(i => i.IsApplied);
 
     IEnumerable<IFilterSlotViewModel> IFilterMenuItemViewModel.ContainedFilters => ContainedFilters;
@@ -62,6 +64,8 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
                 UnWireSubMenuItem((FilterMenuItemViewModel<T>)oldItem);
         }
         IsAppliedChanged?.Invoke(this, EventArgs.Empty); 
+        OnPropertyChanged(nameof(IsApplied)); 
+        OnPropertyChanged(nameof(UnAppliedSubMenuItems)); 
     }
 
     private void WireSubMenuItem(IFilterMenuItemViewModel menuItem)
@@ -76,5 +80,6 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
     {
         IsAppliedChanged?.Invoke(this, EventArgs.Empty); 
         OnPropertyChanged(nameof(IsApplied)); 
+        OnPropertyChanged(nameof(UnAppliedSubMenuItems)); 
     }
 }
