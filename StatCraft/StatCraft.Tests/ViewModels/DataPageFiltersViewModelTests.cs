@@ -29,11 +29,11 @@ public class DataPageFiltersViewModelTests : IDisposable
     }
 
     [Fact]
-    public void ExtraFilterSlots_AreHiddenByDefault_ExceptTheMandatoryDateRange()
+    public void ExtraFilterSlots_AreHiddenByDefault_ExceptTheMandatoryProfileAndDateRange()
     {
         Assert.All(_filters.ExtraFilterSlots, slot => Assert.True(slot.Filter == null || slot.Filter.Mandatory || !slot.IsApplied));
         Assert.Equal(5, _filters.HiddenExtraFilterSlots.Count());
-        Assert.Equal([_filters.DateSlot], _filters.VisibleExtraFilterSlots);
+        Assert.Equal([_filters.ProfileSlot, _filters.DateSlot], _filters.VisibleExtraFilterSlots);
     }
 
     [Fact]

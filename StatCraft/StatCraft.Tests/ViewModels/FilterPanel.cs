@@ -36,8 +36,7 @@ internal sealed class FilterPanel
         new(page, nameof(page.VisibleFilterSlots), () => page.VisibleFilterSlots,
             nameof(page.HiddenFilterSlots), () => page.HiddenFilterSlots);
 
-    // Only the add/remove-able filters. The Data tab's profile and date range are always shown and
-    // have no menu entry, so tests reach those through the page directly.
+    // The Data tab's filter bar and "+ Filters" menu, including its mandatory profile and date range filters.
     public static FilterPanel Of(DataPageViewModel page) =>
         new(page.Filters, nameof(page.Filters.VisibleExtraFilterSlots), () => page.Filters.VisibleExtraFilterSlots,
             nameof(page.Filters.HiddenExtraFilterSlots), () => page.Filters.HiddenExtraFilterSlots);

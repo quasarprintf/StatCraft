@@ -414,13 +414,12 @@ public class DataPageViewModelTests : IAsyncDisposable
     private FilterPanel? _filters;
     private DataPageViewModel? _filtersPage;
 
-    // The profile filter is always showing, with no menu entry, so it's reached directly.
-    private FilterHandle ProfileFilter => new(_viewModel.Filters.ProfileSlot);
+    // Profile and date range are mandatory filters: always in the filter bar, first, and never in the menu.
+    private FilterHandle ProfileFilter => Filters.Applied("Profile");
 
-    // The date range is a mandatory filter: always in the filter bar, first, and never in the menu.
     private FilterHandle DateFilter => Filters.Applied("Date");
 
-    private static readonly string[] AlwaysApplied = ["Date"];
+    private static readonly string[] AlwaysApplied = ["Profile", "Date"];
     private static readonly string[] BuiltInFilterTitles = ["Map", "Matchup", "Outcome", "Opponent MMR", "Build"];
 
     [Fact]
@@ -436,6 +435,34 @@ public class DataPageViewModelTests : IAsyncDisposable
     {
         Assert.All(BuiltInFilterTitles, title => Assert.False(Filters.Offered(title).AllowIncludeUnset));
         Assert.False(DateFilter.AllowIncludeUnset);
+        Assert.False(ProfileFilter.AllowIncludeUnset);
+    }
+
+    [Fact]
+    public void ProfileFilter_IsAMandatoryCheckboxFilterListingTheLinkedProfiles()
+    {
+        FilterHandle profile = ProfileFilter;
+
+        Assert.True(profile.IsCheckboxFilter);
+        Assert.True(profile.Mandatory);
+        Assert.Equal([_profile.DisplayName], profile.OptionLabels);
+    }
+
+    // Checking and unchecking profiles changes which games are loaded, so it has to keep working now that
+    // the profile filter sits in the filter bar alongside the filters that only re-filter loaded games.
+    [Fact]
+    public async Task ProfileFilter_CheckingAndUncheckingAProfile_LoadsAndUnloadsItsGames()
+    {
+        Sc2Profile other = InsertOtherProfile();
+        InsertGame(profileId: other.Id);
+        await LoadGamesWithNoDateRange();
+        Assert.Empty(_viewModel.Games);
+
+        ProfileFilter.Check(other.DisplayName);
+        Assert.Single(_viewModel.Games);
+
+        ProfileFilter.Uncheck(other.DisplayName);
+        Assert.Empty(_viewModel.Games);
     }
 
     [Fact]
