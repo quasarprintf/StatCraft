@@ -6,5 +6,5 @@ namespace StatCraft.Services.DataFiltering;
 
 public interface IWrappedFilter<T,F> : IFilter<T>
 {
-    IFilter<F>? Filter { get; set; }
+    IFilter<F> Filter { get; set; }
 }

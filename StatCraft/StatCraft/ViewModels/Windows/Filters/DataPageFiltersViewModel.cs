@@ -75,8 +75,12 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         OutcomeSlot = new CheckboxFilterSlotViewModel<GameData, GameOutcome>("Outcome", BuildOutcomeOptions(), g => [g.ReplayData.Win.AsGameOutcome()]) { AllowIncludeUnset=false };
 
         var innerMmrSlot = new NumericRangeFilterSlotViewModel<PlayerMmr>("Opponent MMR", m => m.Mmr) { AllowIncludeUnset=false };
-        var mmrFilterWrapper = new SequentialAnyFilter<GameData, PlayerMmr>(null, g => g.ReplayData.Opponents.Select(o => o.Mmr));
-        MmrSlot = new TemplatedFilterSlotViewModel<GameData, PlayerMmr>(mmrFilterWrapper, innerMmrSlot) { AllowIncludeUnset=false };
+        MmrSlot = new TemplatedFilterSlotViewModel<GameData, PlayerMmr>(
+            f => new SequentialAnyFilter<GameData, PlayerMmr>(f, g => g.ReplayData.Opponents.Select(o => o.Mmr)),
+            innerMmrSlot)
+        {
+            AllowIncludeUnset=false 
+        };
 
         //TODO: builds filter needs to be completely redesigned
         List<BuildNode> allBuilds = buildRepository.GetAllBuilds();

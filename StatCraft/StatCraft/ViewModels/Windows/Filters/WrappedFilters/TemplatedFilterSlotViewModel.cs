@@ -1,6 +1,4 @@
-﻿using StatCraft.Models.GameData.Attributes;
-using StatCraft.Services.DataFiltering;
-using StatCraft.Services.DataFiltering.SequentialFilters;
+﻿using StatCraft.Services.DataFiltering;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,19 +8,17 @@ namespace StatCraft.ViewModels.Windows.Filters.WrappedFilters;
 
 public partial class TemplatedFilterSlotViewModel<T,F> : WrappedFilterSlotViewModel<T>, IFilterSlotViewModel<T>
 {
-    public IWrappedFilter<T,F> TemplateFilter { get; set; }
+    private Func<IFilter<F>, IWrappedFilter<T,F>> FilterTemplate { get; set; }
     private IFilterSlotViewModel<F> _wrappedFilter => (IFilterSlotViewModel<F>)WrappedFilter;
-    public TemplatedFilterSlotViewModel(IWrappedFilter<T,F> templateFilter, IFilterSlotViewModel<F> wrappedSlot)
+    public TemplatedFilterSlotViewModel(Func<IFilter<F>, IWrappedFilter<T,F>> filterTemplate, IFilterSlotViewModel<F> wrappedSlot)
     {
-        TemplateFilter = templateFilter;
+        FilterTemplate = filterTemplate;
         WrappedFilter = wrappedSlot;
         base.BindWrapped();
     }
 
     public IFilter<T> GetFilter()
     {
-        IFilter<F> filter = _wrappedFilter.GetFilter();
-        TemplateFilter.Filter = filter;
-        return TemplateFilter;
+        return FilterTemplate(_wrappedFilter.GetFilter());
     }
 }

@@ -41,8 +41,4 @@
       <DependentUpon>AttributeValuesSelect.axaml</DependentUpon>
     </Compile>
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Services\Factories\" />
-  </ItemGroup>
 </Project>

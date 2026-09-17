@@ -7,7 +7,7 @@ namespace StatCraft.Services.DataFiltering.SequentialFilters;
 
 public class SequentialAllFilter<T,F> : SequentialFilter<T,F>
 {
-    public SequentialAllFilter(IFilter<F>? filter, Func<T,IEnumerable<F?>?> filteredPropertyMap) : base(filter, filteredPropertyMap)
+    public SequentialAllFilter(IFilter<F> filter, Func<T,IEnumerable<F?>?> filteredPropertyMap) : base(filter, filteredPropertyMap)
     {
     }
 
