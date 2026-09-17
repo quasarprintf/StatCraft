@@ -1,0 +1,20 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vmw="using:StatCraft.ViewModels.Windows"
+             xmlns:component="using:StatCraft.Views.Components"
+             x:Class="StatCraft.Views.Components.Filters.DateRangeFilter"
+             x:DataType="vmw:Filters.IDateRangeFilterSlotViewModel">
+    <StackPanel Spacing="2" VerticalAlignment="Center">
+        <Grid ColumnDefinitions="Auto,*">
+            <Button Grid.Column="0" Classes="removeFilter" Command="{Binding RemoveCommand}" IsVisible="{Binding !Mandatory}"/>
+            <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center"
+                       TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
+        </Grid>
+        <StackPanel Classes="filterSlot">
+            <component:CompactDatePicker SelectedDate="{Binding FromDate}"/>
+            <TextBlock Text="to" VerticalAlignment="Center"/>
+            <component:CompactDatePicker SelectedDate="{Binding ToDate}"/>
+        </StackPanel>
+        <CheckBox Content="Include unset" IsChecked="{Binding IncludeUnset}" IsVisible="{Binding AllowIncludeUnset}" FontSize="11"/>
+    </StackPanel>
+</UserControl>
