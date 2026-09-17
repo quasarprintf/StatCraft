@@ -8,7 +8,7 @@ using System.Text;
 
 namespace StatCraft.ViewModels.Windows.Filters.WrappedFilters;
 
-public partial class TemplatedFilterSlotViewModel<T,F> : WrappedFilterSlotViewModel<T>, IFilterSlotViewModel<T> where T : IAttributedObject
+public partial class TemplatedFilterSlotViewModel<T,F> : WrappedFilterSlotViewModel<T>, IFilterSlotViewModel<T>
 {
     public IWrappedFilter<T,F> TemplateFilter { get; set; }
     private IFilterSlotViewModel<F> _wrappedFilter => (IFilterSlotViewModel<F>)WrappedFilter;
