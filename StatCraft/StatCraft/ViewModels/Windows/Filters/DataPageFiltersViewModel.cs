@@ -40,7 +40,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public CheckboxFilterSlotViewModel<GameData, Map> MapSlot { get; }
     public CheckboxFilterSlotViewModel<GameData, (Race, Race)> MatchupSlot { get; }
     public CheckboxFilterSlotViewModel<GameData, GameOutcome> OutcomeSlot { get; }
-    public NumericRangeFilterSlotViewModel<PlayerMmr> MmrSlot { get; }
+    public TemplatedFilterSlotViewModel<GameData,PlayerMmr> MmrSlot { get; }
     public CheckboxFilterSlotViewModel<GameData, BuildNode> BuildSlot { get; }
     public ObservableCollection<FilterMenuItemViewModel<GameData>> GameAttributeSlots { get; private set; }
 
@@ -76,7 +76,10 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         MapSlot = new CheckboxFilterSlotViewModel<GameData, Map>("Map", [], g => [g.Map!], showSearch: true) { AllowIncludeUnset=false }; //TODO: why is map nullable?
         MatchupSlot = new CheckboxFilterSlotViewModel<GameData, (Race, Race)>("Matchup", BuildMatchupOptions(), GetGameMatchups, columns: 3) { AllowIncludeUnset=false };
         OutcomeSlot = new CheckboxFilterSlotViewModel<GameData, GameOutcome>("Outcome", BuildOutcomeOptions(), g => [g.ReplayData.Win.AsGameOutcome()]) { AllowIncludeUnset=false };
-        MmrSlot = new NumericRangeFilterSlotViewModel<PlayerMmr>("Opponent MMR", m => m.Mmr) { AllowIncludeUnset=false };
+
+        var innerMmrSlot = new NumericRangeFilterSlotViewModel<PlayerMmr>("Opponent MMR", m => m.Mmr) { AllowIncludeUnset=false };
+        var mmrFilterWrapper = new SequentialAnyFilter<GameData, PlayerMmr>(null, g => g.ReplayData.Opponents.Select(o => o.Mmr));
+        MmrSlot = new TemplatedFilterSlotViewModel<GameData, PlayerMmr>(mmrFilterWrapper, innerMmrSlot) { AllowIncludeUnset=false };
 
         //TODO: builds filter needs to be completely redesigned
         List<BuildNode> allBuilds = buildRepository.GetAllBuilds();
@@ -102,7 +105,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             new FilterMenuItemViewModel<GameData>(MapSlot),
             new FilterMenuItemViewModel<GameData>(MatchupSlot), 
             new FilterMenuItemViewModel<GameData>(OutcomeSlot),
-            new FilterMenuItemViewModel<PlayerMmr>(MmrSlot),
+            new FilterMenuItemViewModel<GameData>(MmrSlot),
             new FilterMenuItemViewModel<GameData>(BuildSlot),
             new FilterMenuItemViewModel<GameData>(GameAttributeSlots, "Game Attributes")
         ];
@@ -251,13 +254,8 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             appliedFilters.Add(MatchupSlot.GetFilter());
         if (OutcomeSlot.IsApplied)
             appliedFilters.Add(OutcomeSlot.GetFilter());
-
         if (MmrSlot.IsApplied)
-        {
-            AndFilter<PlayerMmr> singleMmrFilter = MmrSlot.GetFilter();
-            SequentialAnyFilter<GameData, PlayerMmr> mmrFilter = new SequentialAnyFilter<GameData, PlayerMmr>(singleMmrFilter, g => g.ReplayData.Opponents.Select(o => o.Mmr));
-            appliedFilters.Add(mmrFilter);
-        }
+            appliedFilters.Add(MmrSlot.GetFilter());
 
         if (BuildSlot.IsApplied)
         {

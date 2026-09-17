@@ -7,7 +7,7 @@ namespace StatCraft.Services.DataFiltering.SequentialFilters;
 
 public class SequentialAllFilter<T,F> : SequentialFilter<T,F>
 {
-    public SequentialAllFilter(IFilter<F> filter, Func<T,IEnumerable<F?>?> filteredPropertyMap) : base(filter, filteredPropertyMap)
+    public SequentialAllFilter(IFilter<F>? filter, Func<T,IEnumerable<F?>?> filteredPropertyMap) : base(filter, filteredPropertyMap)
     {
     }
 
@@ -18,6 +18,6 @@ public class SequentialAllFilter<T,F> : SequentialFilter<T,F>
         IEnumerable<F?>? mapped = _filteredPropertyMap(candidate);
         if (mapped == null || !mapped.Any())
             return acceptNullOverride ?? AcceptNull ?? false;
-        return mapped.All(m => Filter.MatchesFilter(m, acceptNullOverride ?? AcceptNull));
+        return mapped.All(m => Filter!.MatchesFilter(m, acceptNullOverride ?? AcceptNull));
     }
 }
