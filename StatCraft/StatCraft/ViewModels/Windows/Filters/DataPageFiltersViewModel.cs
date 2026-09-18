@@ -110,7 +110,11 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             new FilterMenuItemViewModel<GameData>(GameAttributeSlots, "Game Attributes")
         ];
         FilterMenu = new FilterMenuViewModel(filterSlots);
-        FilterMenu.FiltersChanged += () => OtherFiltersChanged?.Invoke();
+        FilterMenu.FiltersChanged += () =>
+        {
+            if (!_suppressChangeEvents)
+                OtherFiltersChanged?.Invoke();
+        };
     }
 
     private FilterMenuItemViewModel<GameData>? MenuItemFor(AttributeDefinition attribute)
