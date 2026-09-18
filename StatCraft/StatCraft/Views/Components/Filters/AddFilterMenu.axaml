@@ -1,0 +1,24 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vmw="using:StatCraft.ViewModels.Windows"
+             x:DataType="vmw:Filters.FilterMenuViewModel"
+             x:Class="StatCraft.Views.Components.Filters.AddFilterMenu">
+    <Button Content="+ Filters" VerticalAlignment="Center">
+        <Button.Flyout>
+            <MenuFlyout ItemsSource="{Binding ExtraFilterSlots}" Placement="BottomEdgeAlignedRight">
+                <MenuFlyout.ItemContainerTheme>
+                    <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmw:Filters.IFilterMenuItemViewModel">
+                        <!-- Submenus are misaligned by default for some reason. Shift up to fix -->
+                        <Style Selector="^ /template/ Popup">
+                            <Setter Property="VerticalOffset" Value="-5"/>
+                        </Style>
+                        <Setter Property="Header" Value="{Binding DisplayText}"/>
+                        <Setter Property="ItemsSource" Value="{Binding UnAppliedSubMenuItems}"/>
+                        <Setter Property="Command" Value="{Binding Filter.AddCommand}"/>
+                        <Setter Property="IsVisible" Value="{Binding !IsApplied}" />
+                    </ControlTheme>
+                </MenuFlyout.ItemContainerTheme>
+            </MenuFlyout>
+        </Button.Flyout>
+    </Button>
+</UserControl>

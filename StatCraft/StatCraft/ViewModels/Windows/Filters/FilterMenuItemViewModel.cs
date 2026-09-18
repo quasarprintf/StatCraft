@@ -13,6 +13,7 @@ namespace StatCraft.ViewModels.Windows.Filters;
 public interface IFilterMenuItemViewModel
 {
     event EventHandler? IsAppliedChanged;
+    event Action? Changed;
     string DisplayText { get; set; }
     IFilterSlotViewModel? Filter { get; }
     IEnumerable<IFilterMenuItemViewModel>? SubMenuItems { get; }
@@ -22,6 +23,7 @@ public interface IFilterMenuItemViewModel
 }
 public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItemViewModel
 {
+    public event Action? Changed;
     public event EventHandler? IsAppliedChanged;
     [ObservableProperty] private string _displayText;
     //should either have a Filter or SubMenuItems, but not both
@@ -41,6 +43,7 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
         Filter = filter;
         _displayText = filter.Title;
         Filter.IsAppliedChanged += RefreshIsApplied;
+        Filter.Changed += ForwardChangedEvent;
     }
     public FilterMenuItemViewModel(ObservableCollection<FilterMenuItemViewModel<T>> subMenu, string name)
     {
@@ -71,15 +74,21 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
     private void WireSubMenuItem(IFilterMenuItemViewModel menuItem)
     {
         menuItem.IsAppliedChanged += RefreshIsApplied;
+        menuItem.Changed += ForwardChangedEvent;
     }
     private void UnWireSubMenuItem(IFilterMenuItemViewModel menuItem)
     {
         menuItem.IsAppliedChanged -= RefreshIsApplied;
+        menuItem.Changed -= ForwardChangedEvent;
     }
     private void RefreshIsApplied(object? sender, EventArgs e)
     {
         IsAppliedChanged?.Invoke(this, EventArgs.Empty); 
         OnPropertyChanged(nameof(IsApplied)); 
         OnPropertyChanged(nameof(UnAppliedSubMenuItems)); 
+    }
+    private void ForwardChangedEvent()
+    {
+        Changed?.Invoke();
     }
 }

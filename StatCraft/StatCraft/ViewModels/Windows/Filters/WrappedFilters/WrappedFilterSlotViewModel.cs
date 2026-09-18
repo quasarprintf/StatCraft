@@ -53,10 +53,32 @@ public abstract partial class WrappedFilterSlotViewModel<T> : ViewModelBase, IWr
     public IRelayCommand AddCommand => WrappedFilter.AddCommand;
     public IRelayCommand RemoveCommand => WrappedFilter.RemoveCommand;
 
-    protected void BindWrapped() //must be called in constructor of implementing classes
+    partial void OnWrappedFilterChanging(IFilterSlotViewModel value)
     {
-        WrappedFilter.IsAppliedChanged += (_,_) => IsAppliedChanged?.Invoke(this, EventArgs.Empty);
-        WrappedFilter.Changed += () => Changed?.Invoke();
-        WrappedFilter.PropertyChanged += (o,e) => OnPropertyChanged(e.PropertyName);
+        if (WrappedFilter != null)
+        {
+            WrappedFilter.IsAppliedChanged -= ForwardIsAppliedChanged;
+            WrappedFilter.Changed -= ForwardChanged;
+            WrappedFilter.PropertyChanged -= ForwardPropertyChanged;
+        }
+        if (value != null)
+        {
+            value.IsAppliedChanged += ForwardIsAppliedChanged;
+            value.Changed += ForwardChanged;
+            value.PropertyChanged += ForwardPropertyChanged;
+        }
+    }
+
+    private void ForwardIsAppliedChanged(object? sender, EventArgs e)
+    {
+        IsAppliedChanged?.Invoke(this, e);
+    }
+    private void ForwardChanged()
+    {
+        Changed?.Invoke();
+    }
+    private void ForwardPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        OnPropertyChanged(e.PropertyName);
     }
 }

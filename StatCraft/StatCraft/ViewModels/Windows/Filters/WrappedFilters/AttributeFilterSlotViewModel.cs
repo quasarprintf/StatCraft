@@ -16,7 +16,6 @@ public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewMode
     {
         Attribute = attribute;
         WrappedFilter = CreateWrapped(attribute);
-        base.BindWrapped();
     }
 
     private IFilterSlotViewModel<AttributeValue> CreateWrapped(AttributeDefinition attribute)
@@ -44,6 +43,14 @@ public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewMode
         return wrapper;
     }
 
+    public void Rebuild()
+    {
+        bool wasApplied = _wrappedFilter.IsApplied;
+
+        WrappedFilter = CreateWrapped(Attribute);
+
+        WrappedFilter.IsApplied = wasApplied;
+    }
     public void Refresh()
     {
         if (WrappedFilter is CheckboxFilterSlotViewModel<AttributeValue, string> stringSlot)

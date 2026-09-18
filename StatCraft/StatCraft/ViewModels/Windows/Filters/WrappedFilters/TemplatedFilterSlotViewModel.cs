@@ -14,7 +14,6 @@ public partial class TemplatedFilterSlotViewModel<T,F> : WrappedFilterSlotViewMo
     {
         FilterTemplate = filterTemplate;
         WrappedFilter = wrappedSlot;
-        base.BindWrapped();
     }
 
     public IFilter<T> GetFilter()

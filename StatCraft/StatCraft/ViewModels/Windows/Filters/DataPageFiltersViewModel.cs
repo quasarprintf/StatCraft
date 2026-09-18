@@ -41,8 +41,8 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public CheckboxFilterSlotViewModel<GameData, BuildNode> BuildSlot { get; }
     public ObservableCollection<FilterMenuItemViewModel<GameData>> GameAttributeSlots { get; private set; }
 
-    public IReadOnlyList<FilterMenuItemViewModel<GameData>> ExtraFilterSlots { get; }
-    public IEnumerable<IFilterSlotViewModel> VisibleExtraFilterSlots => ExtraFilterSlots.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
+    public FilterMenuViewModel FilterMenu { get; private set; }
+
 
     // Checking/unchecking a profile changes which games need to be loaded from the database at all;
     // every other filter change only needs to re-filter the already-loaded set in memory.
@@ -98,7 +98,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         }
         gameAttributes.CollectionChanged += GameAttributesChanged;
 
-        ExtraFilterSlots = 
+        FilterMenuItemViewModel<GameData>[] filterSlots = 
         [
             new FilterMenuItemViewModel<GameData>(ProfileSlot),
             new FilterMenuItemViewModel<GameData>(DateSlot),
@@ -109,27 +109,8 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             new FilterMenuItemViewModel<GameData>(BuildSlot),
             new FilterMenuItemViewModel<GameData>(GameAttributeSlots, "Game Attributes")
         ];
-        foreach (IFilterMenuItemViewModel slot in ExtraFilterSlots)
-        {
-            slot.IsAppliedChanged += (_,_) =>
-            {
-                OnPropertyChanged(nameof(VisibleExtraFilterSlots));
-            };
-            foreach (var filter in slot.ContainedFilters)
-                WireSlotChanged(filter);
-        }
-    }
-
-    private void WireSlotChanged(IFilterSlotViewModel? filter)
-    {
-        if (filter == null)
-            return;
-
-        filter.Changed += () =>
-        {
-            if (!_suppressChangeEvents)
-                OtherFiltersChanged?.Invoke();
-        };
+        FilterMenu = new FilterMenuViewModel(filterSlots);
+        FilterMenu.OtherFiltersChanged += () => OtherFiltersChanged?.Invoke();
     }
 
     private FilterMenuItemViewModel<GameData>? MenuItemFor(AttributeDefinition attribute)
@@ -154,11 +135,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         if (item == null)
             return;
 
-        int index = GameAttributeSlots.IndexOf(item);
-        IFilterSlotViewModel<GameData> replacement = new AttributeFilterSlotViewModel<GameData>(attribute);
-        replacement.IsApplied = item.Filter?.IsApplied ?? false;
-        WireSlotChanged(replacement);
-        GameAttributeSlots[index] = new FilterMenuItemViewModel<GameData>(replacement);
+        ((AttributeFilterSlotViewModel<GameData>)item.Filter!).Rebuild();
     }
 
     // A Values slot builds its checkbox list when it's created, so options added or removed afterwards
@@ -199,7 +176,6 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             {
                 AttributeDefinition attribute = (AttributeDefinition)e.NewItems[i]!;
                 IFilterSlotViewModel<GameData> filterSlot = new AttributeFilterSlotViewModel<GameData>(attribute);
-                WireSlotChanged(filterSlot);
                 GameAttributeSlots.Insert(i + e.NewStartingIndex, new FilterMenuItemViewModel<GameData>(filterSlot));
             }
         }
@@ -241,19 +217,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
     public AndFilter<GameData> GetFilter()
     {
-        List<IFilter<GameData>> appliedFilters = new List<IFilter<GameData>>();
-        foreach (var filterMenuItem in ExtraFilterSlots)
-        {
-            foreach (var filterSlot in filterMenuItem.ContainedFilters)
-            {
-                if (filterSlot.IsApplied)
-                    appliedFilters.Add(filterSlot.GetFilter());
-            }
-        }
-
-        AndFilter<GameData> collatedFilter = new AndFilter<GameData>(appliedFilters);
-
-        return collatedFilter;
+        return FilterMenu.GetFilter();
     }
 
     private (Race,Race)[] GetGameMatchups(GameData game)
