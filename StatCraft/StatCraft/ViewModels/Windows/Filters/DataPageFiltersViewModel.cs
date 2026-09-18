@@ -43,7 +43,6 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
     public IReadOnlyList<FilterMenuItemViewModel<GameData>> ExtraFilterSlots { get; }
     public IEnumerable<IFilterSlotViewModel> VisibleExtraFilterSlots => ExtraFilterSlots.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
-    public IEnumerable<IFilterMenuItemViewModel> HiddenExtraFilterSlots => ExtraFilterSlots.Where(s => !s.IsApplied);
 
     // Checking/unchecking a profile changes which games need to be loaded from the database at all;
     // every other filter change only needs to re-filter the already-loaded set in memory.
@@ -115,7 +114,6 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             slot.IsAppliedChanged += (_,_) =>
             {
                 OnPropertyChanged(nameof(VisibleExtraFilterSlots));
-                OnPropertyChanged(nameof(HiddenExtraFilterSlots));
             };
             foreach (var filter in slot.ContainedFilters)
                 WireSlotChanged(filter);

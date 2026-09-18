@@ -54,7 +54,7 @@
 
             <Button Grid.Column="1" Content="+ Filters" VerticalAlignment="Center">
                 <Button.Flyout>
-                    <MenuFlyout ItemsSource="{Binding Filters.HiddenExtraFilterSlots}" Placement="BottomEdgeAlignedRight">
+                    <MenuFlyout ItemsSource="{Binding Filters.ExtraFilterSlots}" Placement="BottomEdgeAlignedRight">
                         <MenuFlyout.ItemContainerTheme>
                             <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmw:Filters.IFilterMenuItemViewModel">
                                 <!-- Submenus are misaligned by default for some reason. Shift up to fix -->
