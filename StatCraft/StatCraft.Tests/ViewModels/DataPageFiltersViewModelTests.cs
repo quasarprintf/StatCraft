@@ -31,9 +31,12 @@ public class DataPageFiltersViewModelTests : IDisposable
     [Fact]
     public void ExtraFilterSlots_AreHiddenByDefault_ExceptTheMandatoryProfileAndDateRange()
     {
-        Assert.All(_filters.ExtraFilterSlots, slot => Assert.True(slot.Filter == null || slot.Filter.Mandatory || !slot.IsApplied));
-        Assert.Equal(5, _filters.HiddenExtraFilterSlots.Count());
-        Assert.Equal([_filters.ProfileSlot, _filters.DateSlot], _filters.VisibleExtraFilterSlots);
+        FilterMenuViewModel menu = _filters.FilterMenu;
+
+        Assert.All(menu.ExtraFilterSlots, slot => Assert.True(slot.Filter == null || slot.Filter.Mandatory || !slot.IsApplied));
+        // Map, Matchup, Outcome, Opponent MMR and Build. The empty Game Attributes submenu counts as applied.
+        Assert.Equal(5, menu.ExtraFilterSlots.Count(s => !s.IsApplied));
+        Assert.Equal([_filters.ProfileSlot, _filters.DateSlot], menu.VisibleExtraFilterSlots);
     }
 
     [Fact]
@@ -42,8 +45,8 @@ public class DataPageFiltersViewModelTests : IDisposable
         _filters.MapSlot.AddCommand.Execute(null);
 
         Assert.True(_filters.MapSlot.IsApplied);
-        Assert.Contains(_filters.MapSlot, _filters.VisibleExtraFilterSlots);
-        Assert.DoesNotContain(_filters.MapSlot, _filters.HiddenExtraFilterSlots.Select(s => s.Filter));
+        Assert.Contains(_filters.MapSlot, _filters.FilterMenu.VisibleExtraFilterSlots);
+        Assert.DoesNotContain(_filters.MapSlot, _filters.FilterMenu.ExtraFilterSlots.Where(s => !s.IsApplied).Select(s => s.Filter));
     }
 
     [Fact]
