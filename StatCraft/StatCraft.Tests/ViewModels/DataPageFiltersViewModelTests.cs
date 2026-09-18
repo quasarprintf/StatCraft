@@ -33,10 +33,10 @@ public class DataPageFiltersViewModelTests : IDisposable
     {
         IFilterMenuViewModel menu = _filters.FilterMenu;
 
-        Assert.All(menu.FilterSlots, slot => Assert.True(slot.Filter == null || slot.Filter.Mandatory || !slot.IsApplied));
+        Assert.All(menu.MenuItems, slot => Assert.True(slot.Filter == null || slot.Filter.Mandatory || !slot.IsApplied));
         // Map, Matchup, Outcome, Opponent MMR and Build. The empty Game Attributes submenu counts as applied.
-        Assert.Equal(5, menu.FilterSlots.Count(s => !s.IsApplied));
-        Assert.Equal([_filters.ProfileSlot, _filters.DateSlot], menu.AppliedFilterSlots);
+        Assert.Equal(5, menu.MenuItems.Count(s => !s.IsApplied));
+        Assert.Equal([_filters.ProfileSlot, _filters.DateSlot], menu.AppliedFilters);
     }
 
     [Fact]
@@ -45,7 +45,7 @@ public class DataPageFiltersViewModelTests : IDisposable
         _filters.MapSlot.AddCommand.Execute(null);
 
         Assert.True(_filters.MapSlot.IsApplied);
-        Assert.Contains(_filters.MapSlot, _filters.FilterMenu.AppliedFilterSlots);
+        Assert.Contains(_filters.MapSlot, _filters.FilterMenu.AppliedFilters);
         Assert.DoesNotContain(_filters.MapSlot, _filters.FilterMenu.FilterSlots.Where(s => !s.IsApplied).Select(s => s.Filter));
     }
 

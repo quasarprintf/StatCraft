@@ -11,17 +11,17 @@ namespace StatCraft.ViewModels.Windows.Filters;
 public interface IFilterMenuViewModel : INotifyPropertyChanged
 {
     event Action? FiltersChanged;
-    IReadOnlyList<IFilterMenuItemViewModel> FilterSlots { get; }
-    IEnumerable<IFilterSlotViewModel> AppliedFilterSlots { get; }
+    IReadOnlyList<IFilterMenuItemViewModel> MenuItems { get; }
+    IEnumerable<IFilterSlotViewModel> AppliedFilters { get; }
 }
 
 public class FilterMenuViewModel<T> : ViewModelBase, IFilterMenuViewModel
 {
     public event Action? FiltersChanged;
 
-    IReadOnlyList<IFilterMenuItemViewModel> IFilterMenuViewModel.FilterSlots => FilterSlots;
+    IReadOnlyList<IFilterMenuItemViewModel> IFilterMenuViewModel.MenuItems => FilterSlots;
     public IReadOnlyList<FilterMenuItemViewModel<T>> FilterSlots { get; }
-    public IEnumerable<IFilterSlotViewModel> AppliedFilterSlots => FilterSlots.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
+    public IEnumerable<IFilterSlotViewModel> AppliedFilters => FilterSlots.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
 
     public FilterMenuViewModel(IReadOnlyList<FilterMenuItemViewModel<T>> filters)
     {
@@ -30,7 +30,7 @@ public class FilterMenuViewModel<T> : ViewModelBase, IFilterMenuViewModel
         {
             slot.IsAppliedChanged += (_,_) =>
             {
-                OnPropertyChanged(nameof(AppliedFilterSlots));
+                OnPropertyChanged(nameof(AppliedFilters));
             };
             WireSlotChanged(slot);
         }

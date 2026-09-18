@@ -40,7 +40,7 @@ internal sealed class FilterPanel
     // The Data tab's FilterBar and AddFilterMenu, including its mandatory profile and date range filters.
     // The menu lists every entry and hides the applied ones itself (see Leaves).
     public static FilterPanel Of(DataPageViewModel page) =>
-        new(page.Filters.FilterMenu, nameof(page.Filters.FilterMenu.AppliedFilterSlots), () => page.Filters.FilterMenu.AppliedFilterSlots,
+        new(page.Filters.FilterMenu, nameof(page.Filters.FilterMenu.AppliedFilters), () => page.Filters.FilterMenu.AppliedFilters,
             nameof(page.Filters.FilterMenu.FilterSlots), () => page.Filters.FilterMenu.FilterSlots);
 
     // Titles of the filters currently shown in the filter bar.
