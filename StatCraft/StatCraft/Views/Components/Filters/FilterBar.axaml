@@ -6,7 +6,7 @@
              x:Class="StatCraft.Views.Components.Filters.FilterBar">
     <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
 
-        <ItemsControl ItemsSource="{Binding VisibleExtraFilterSlots}">
+        <ItemsControl ItemsSource="{Binding AppliedFilterSlots}">
             <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
                     <StackPanel Orientation="Horizontal" Spacing="8"/>

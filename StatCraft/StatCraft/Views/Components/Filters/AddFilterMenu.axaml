@@ -5,7 +5,7 @@
              x:Class="StatCraft.Views.Components.Filters.AddFilterMenu">
     <Button Content="+ Filters" VerticalAlignment="Center">
         <Button.Flyout>
-            <MenuFlyout ItemsSource="{Binding ExtraFilterSlots}" Placement="BottomEdgeAlignedRight">
+            <MenuFlyout ItemsSource="{Binding FilterSlots}" Placement="BottomEdgeAlignedRight">
                 <MenuFlyout.ItemContainerTheme>
                     <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmw:Filters.IFilterMenuItemViewModel">
                         <!-- Submenus are misaligned by default for some reason. Shift up to fix -->
