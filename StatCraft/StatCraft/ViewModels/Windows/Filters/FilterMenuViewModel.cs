@@ -2,12 +2,13 @@
 using StatCraft.Services.DataFiltering.CollatedFilters;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Linq;
 using System.Text;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 
-public interface IFilterMenuViewModel
+public interface IFilterMenuViewModel : INotifyPropertyChanged
 {
     event Action? FiltersChanged;
     IReadOnlyList<IFilterMenuItemViewModel> FilterSlots { get; }

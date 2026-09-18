@@ -10,7 +10,7 @@ using System.Text;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 
-public interface IFilterMenuItemViewModel
+public interface IFilterMenuItemViewModel : INotifyPropertyChanged
 {
     event EventHandler? IsAppliedChanged;
     event Action? Changed;
