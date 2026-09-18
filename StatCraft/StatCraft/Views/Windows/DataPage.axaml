@@ -64,6 +64,7 @@
                                 <Setter Property="Header" Value="{Binding DisplayText}"/>
                                 <Setter Property="ItemsSource" Value="{Binding UnAppliedSubMenuItems}"/>
                                 <Setter Property="Command" Value="{Binding Filter.AddCommand}"/>
+                                <Setter Property="IsVisible" Value="{Binding !IsApplied}" />
                             </ControlTheme>
                         </MenuFlyout.ItemContainerTheme>
                     </MenuFlyout>
