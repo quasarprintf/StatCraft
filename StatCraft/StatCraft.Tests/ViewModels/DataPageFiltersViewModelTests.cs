@@ -31,7 +31,7 @@ public class DataPageFiltersViewModelTests : IDisposable
     [Fact]
     public void ExtraFilterSlots_AreHiddenByDefault_ExceptTheMandatoryProfileAndDateRange()
     {
-        FilterMenuViewModel menu = _filters.FilterMenu;
+        IFilterMenuViewModel menu = _filters.FilterMenu;
 
         Assert.All(menu.FilterSlots, slot => Assert.True(slot.Filter == null || slot.Filter.Mandatory || !slot.IsApplied));
         // Map, Matchup, Outcome, Opponent MMR and Build. The empty Game Attributes submenu counts as applied.

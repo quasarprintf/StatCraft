@@ -1,5 +1,4 @@
-﻿using StatCraft.Models.GameData;
-using StatCraft.Services.DataFiltering;
+﻿using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataFiltering.CollatedFilters;
 using System;
 using System.Collections.Generic;
@@ -8,14 +7,22 @@ using System.Text;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 
-public class FilterMenuViewModel : ViewModelBase
+public interface IFilterMenuViewModel
+{
+    event Action? FiltersChanged;
+    IReadOnlyList<IFilterMenuItemViewModel> FilterSlots { get; }
+    IEnumerable<IFilterSlotViewModel> AppliedFilterSlots { get; }
+}
+
+public class FilterMenuViewModel<T> : ViewModelBase, IFilterMenuViewModel
 {
     public event Action? FiltersChanged;
 
-    public IReadOnlyList<FilterMenuItemViewModel<GameData>> FilterSlots { get; }
+    IReadOnlyList<IFilterMenuItemViewModel> IFilterMenuViewModel.FilterSlots => FilterSlots;
+    public IReadOnlyList<FilterMenuItemViewModel<T>> FilterSlots { get; }
     public IEnumerable<IFilterSlotViewModel> AppliedFilterSlots => FilterSlots.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
 
-    public FilterMenuViewModel(IReadOnlyList<FilterMenuItemViewModel<GameData>> filters)
+    public FilterMenuViewModel(IReadOnlyList<FilterMenuItemViewModel<T>> filters)
     {
         FilterSlots = filters;
         foreach (IFilterMenuItemViewModel slot in FilterSlots)
@@ -38,9 +45,9 @@ public class FilterMenuViewModel : ViewModelBase
         };
     }
 
-    public AndFilter<GameData> GetFilter()
+    public AndFilter<T> GetFilter()
     {
-        List<IFilter<GameData>> appliedFilters = new List<IFilter<GameData>>();
+        List<IFilter<T>> appliedFilters = new List<IFilter<T>>();
         foreach (var filterMenuItem in FilterSlots)
         {
             foreach (var filterSlot in filterMenuItem.ContainedFilters)
@@ -50,6 +57,6 @@ public class FilterMenuViewModel : ViewModelBase
             }
         }
 
-        return new AndFilter<GameData>(appliedFilters);
+        return new AndFilter<T>(appliedFilters);
     }
 }

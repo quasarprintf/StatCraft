@@ -1,7 +1,7 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
-             x:DataType="vmw:Filters.FilterMenuViewModel"
+             x:DataType="vmw:Filters.IFilterMenuViewModel"
              x:Class="StatCraft.Views.Components.Filters.AddFilterMenu">
     <Button Content="+ Filters" VerticalAlignment="Center">
         <Button.Flyout>

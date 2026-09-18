@@ -41,7 +41,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public CheckboxFilterSlotViewModel<GameData, BuildNode> BuildSlot { get; }
     public ObservableCollection<FilterMenuItemViewModel<GameData>> GameAttributeSlots { get; private set; }
 
-    public FilterMenuViewModel FilterMenu { get; private set; }
+    public FilterMenuViewModel<GameData> FilterMenu { get; private set; }
 
 
     // Checking/unchecking a profile changes which games need to be loaded from the database at all;
@@ -109,7 +109,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             new FilterMenuItemViewModel<GameData>(BuildSlot),
             new FilterMenuItemViewModel<GameData>(GameAttributeSlots, "Game Attributes")
         ];
-        FilterMenu = new FilterMenuViewModel(filterSlots);
+        FilterMenu = new FilterMenuViewModel<GameData>(filterSlots);
         FilterMenu.FiltersChanged += () =>
         {
             if (!_suppressChangeEvents)
