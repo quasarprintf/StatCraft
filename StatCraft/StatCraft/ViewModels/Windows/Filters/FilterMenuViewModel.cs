@@ -2,6 +2,7 @@
 using StatCraft.Services.DataFiltering.CollatedFilters;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
 using System.Text;
@@ -11,7 +12,7 @@ namespace StatCraft.ViewModels.Windows.Filters;
 public interface IFilterMenuViewModel : INotifyPropertyChanged
 {
     event Action? FiltersChanged;
-    IReadOnlyList<IFilterMenuItemViewModel> MenuItems { get; }
+    ObservableCollection<IFilterMenuItemViewModel> MenuItems { get; }
     IEnumerable<IFilterSlotViewModel> AppliedFilters { get; }
 }
 
@@ -19,19 +20,15 @@ public class FilterMenuViewModel<T> : ViewModelBase, IFilterMenuViewModel
 {
     public event Action? FiltersChanged;
 
-    IReadOnlyList<IFilterMenuItemViewModel> IFilterMenuViewModel.MenuItems => FilterSlots;
-    public IReadOnlyList<FilterMenuItemViewModel<T>> FilterSlots { get; }
+    public ObservableCollection<IFilterMenuItemViewModel> MenuItems { get; set; }
+    public IEnumerable<FilterMenuItemViewModel<T>> FilterSlots => MenuItems.Cast<FilterMenuItemViewModel<T>>();
     public IEnumerable<IFilterSlotViewModel> AppliedFilters => FilterSlots.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
 
-    public FilterMenuViewModel(IReadOnlyList<FilterMenuItemViewModel<T>> filters)
+    public FilterMenuViewModel(IEnumerable<FilterMenuItemViewModel<T>> filters)
     {
-        FilterSlots = filters;
+        MenuItems = new ObservableCollection<IFilterMenuItemViewModel>(filters);
         foreach (IFilterMenuItemViewModel slot in FilterSlots)
         {
-            slot.IsAppliedChanged += (_,_) =>
-            {
-                OnPropertyChanged(nameof(AppliedFilters));
-            };
             WireSlotChanged(slot);
         }
     }
@@ -40,10 +37,40 @@ public class FilterMenuViewModel<T> : ViewModelBase, IFilterMenuViewModel
         if (filter == null)
             return;
 
-        filter.Changed += () =>
+        filter.IsAppliedChanged += AppliedFiltersChanged;
+        filter.Changed += InvokeFiltersChanged;
+    }
+    private void UnWireSlotChanged(IFilterMenuItemViewModel? filter)
+    {
+        if (filter == null)
+            return;
+
+        filter.IsAppliedChanged -= AppliedFiltersChanged;
+        filter.Changed -= InvokeFiltersChanged;
+    }
+    private void InvokeFiltersChanged()
+    {
+        FiltersChanged?.Invoke();
+    }
+    private void AppliedFiltersChanged(object? sender, EventArgs e)
+    {
+        OnPropertyChanged(nameof(AppliedFilters));
+    }
+
+    public void AddFilter(FilterMenuItemViewModel<T> filter)
+    {
+        WireSlotChanged(filter);
+        MenuItems.Add(filter);
+    }
+    public void RemoveFilter(FilterMenuItemViewModel<T> filter)
+    {
+        UnWireSlotChanged(filter);
+        MenuItems.Remove(filter);
+        if (filter.IsApplied)
         {
-            FiltersChanged?.Invoke();
-        };
+            OnPropertyChanged(nameof(AppliedFilters));
+            InvokeFiltersChanged();
+        }
     }
 
     public AndFilter<T> GetFilter()

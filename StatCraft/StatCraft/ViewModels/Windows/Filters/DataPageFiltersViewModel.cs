@@ -129,7 +129,6 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             return;
 
         item.Filter.Title = attribute.Name;
-        item.DisplayText = attribute.Name;
     }
 
     //underlying slot type is tied to attribute type, needs to be rebuilt when type changes

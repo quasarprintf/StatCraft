@@ -42,6 +42,7 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
     {
         Filter = filter;
         _displayText = filter.Title;
+        Filter.PropertyChanged += (_,e) => { if (e.PropertyName == nameof(Filter.Title)) _displayText = Filter.Title; };
         Filter.IsAppliedChanged += RefreshIsApplied;
         Filter.Changed += ForwardChangedEvent;
     }

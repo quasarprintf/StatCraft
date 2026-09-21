@@ -30,8 +30,8 @@ internal sealed class FilterPanel
     }
 
     public static FilterPanel Of(MapsPageViewModel page) =>
-        new(page, nameof(page.VisibleFilterSlots), () => page.VisibleFilterSlots,
-            nameof(page.HiddenFilterSlots), () => page.HiddenFilterSlots);
+        new(page.FilterMenu, nameof(page.FilterMenu.AppliedFilters), () => page.FilterMenu.AppliedFilters,
+            nameof(page.FilterMenu.FilterSlots), () => page.FilterMenu.MenuItems);
 
     public static FilterPanel Of(BuildsPageViewModel page) =>
         new(page, nameof(page.VisibleFilterSlots), () => page.VisibleFilterSlots,

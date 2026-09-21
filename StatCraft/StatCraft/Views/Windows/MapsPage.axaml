@@ -11,34 +11,12 @@
         <DockPanel Grid.Column="0" Margin="4">
             <Grid DockPanel.Dock="Top" ColumnDefinitions="*,Auto" Margin="0,0,0,4">
                 <TextBox Grid.Column="0" Text="{Binding NameFilter}" PlaceholderText="Filter maps..." Margin="0,0,4,0"/>
-                <Button Grid.Column="1" Content="+" Padding="6,2" VerticalAlignment="Center" ToolTip.Tip="Add attribute filter">
-                    <Button.Flyout>
-                        <MenuFlyout ItemsSource="{Binding HiddenFilterSlots}" Placement="BottomEdgeAlignedRight">
-                            <MenuFlyout.ItemContainerTheme>
-                                <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmw:Filters.IFilterSlotViewModel">
-                                    <Setter Property="Header" Value="{Binding Title}"/>
-                                    <Setter Property="Command" Value="{Binding AddCommand}"/>
-                                </ControlTheme>
-                            </MenuFlyout.ItemContainerTheme>
-                        </MenuFlyout>
-                    </Button.Flyout>
-                </Button>
+                <filters:AddFilterMenu Grid.Column="1" DataContext="{Binding FilterMenu}" />
             </Grid>
 
             <!-- Attribute filters stack vertically here rather than in a horizontal bar, because the
                  left pane is narrow and the slot count grows with the number of defined attributes. -->
-            <ItemsControl DockPanel.Dock="Top" ItemsSource="{Binding VisibleFilterSlots}" Margin="0,0,0,4">
-                <ItemsControl.ItemsPanel>
-                    <ItemsPanelTemplate>
-                        <StackPanel Spacing="4"/>
-                    </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                        <filters:FilterSlot />
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-            </ItemsControl>
+            <filters:FilterBar DockPanel.Dock="Top" DataContext="{Binding FilterMenu}" />
 
             <ListBox x:Name="MapListBox" ItemsSource="{Binding FilteredMaps}" SelectedItem="{Binding SelectedMap}">
                 <ListBox.ContextMenu>
