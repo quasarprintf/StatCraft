@@ -31,9 +31,7 @@ internal sealed class FilterPanel
 
     public static FilterPanel Of(MapsPageViewModel page) => OfMenu(page.FilterMenu);
 
-    public static FilterPanel Of(BuildsPageViewModel page) =>
-        new(page, nameof(page.VisibleFilterSlots), () => page.VisibleFilterSlots,
-            nameof(page.HiddenFilterSlots), () => page.HiddenFilterSlots);
+    public static FilterPanel Of(BuildsPageViewModel page) => OfMenu(page.FilterMenu);
 
     // The Data tab, including its mandatory profile and date range filters.
     public static FilterPanel Of(DataPageViewModel page) => OfMenu(page.Filters.FilterMenu);

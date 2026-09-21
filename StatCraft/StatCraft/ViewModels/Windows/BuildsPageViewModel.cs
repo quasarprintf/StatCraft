@@ -7,7 +7,6 @@ using StatCraft.Models.GameData.Race;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataFiltering.CollatedFilters;
-using StatCraft.Services.DataFiltering.SequentialFilters;
 using StatCraft.ViewModels.Windows.AttributeComponents;
 using StatCraft.ViewModels.Windows.Filters;
 using StatCraft.ViewModels.Windows.Filters.WrappedFilters;
@@ -16,7 +15,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
-using System.Reflection;
 
 namespace StatCraft.ViewModels.Windows;
 
@@ -57,9 +55,8 @@ public partial class BuildsPageViewModel : ViewModelBase
     public AttributeValuesSelectViewModel AttributeValuesSelect { get; }
 
     [ObservableProperty] private string _nameFilter = "";
-    private readonly Dictionary<AttributeDefinition, IFilterSlotViewModel<BuildNode>> _slotByAttribute = [];
-    public ObservableCollection<IFilterSlotViewModel> VisibleFilterSlots { get; } = [];
-    public ObservableCollection<IFilterSlotViewModel> HiddenFilterSlots { get; } = [];
+    public FilterMenuViewModel<BuildNode> FilterMenu { get; set; }
+    private readonly Dictionary<AttributeDefinition, FilterMenuItemViewModel<BuildNode>> _filterMenuItems = [];
 
     public BuildsPageViewModel(BuildRepository buildRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository)
     {
@@ -80,6 +77,9 @@ public partial class BuildsPageViewModel : ViewModelBase
         foreach (AttributeDefinition attribute in _attributeRepo.GetAllAttributes(AttributeScope.Build))
             AllAttributes.Add(attribute);
         AttributeValuesSelect = new AttributeValuesSelectViewModel(AllAttributes);
+
+        FilterMenu = new FilterMenuViewModel<BuildNode>([]);
+        FilterMenu.FiltersChanged += ApplyFilters;
 
         foreach (AttributeDefinition attribute in AllAttributes)
             AddFilterSlot(attribute);
@@ -195,19 +195,15 @@ public partial class BuildsPageViewModel : ViewModelBase
             if (cachedAttr.Name != dbAttr.Name)
             {
                 cachedAttr.Name = dbAttr.Name;
-                if (_slotByAttribute.TryGetValue(cachedAttr, out IFilterSlotViewModel<BuildNode>? slot))
-                    slot.Title = dbAttr.Name;
+                if (_filterMenuItems.TryGetValue(cachedAttr, out FilterMenuItemViewModel<BuildNode>? slot))
+                    slot.Filter!.Title = dbAttr.Name;
             }
 
             if (cachedAttr.Type != dbAttr.Type)
             {
                 cachedAttr.Type = dbAttr.Type;
-                // Numeric/Percent vs. Bool vs. Values are different FilterSlotViewModel subclasses,
-                // so the slot itself has to be replaced rather than patched — but only for this one
-                // attribute, and preserving whether it was actually showing.
-                bool wasVisible = _slotByAttribute.TryGetValue(cachedAttr, out IFilterSlotViewModel<BuildNode>? old) && old.IsApplied;
-                RemoveFilterSlot(cachedAttr);
-                AddFilterSlot(cachedAttr, wasVisible);
+                if (_filterMenuItems.TryGetValue(cachedAttr, out FilterMenuItemViewModel<BuildNode>? slot))
+                    ((AttributeFilterSlotViewModel<BuildNode>)slot.Filter!).Rebuild();
             }
 
             if (dbAttr.IsMandatory != cachedAttr.IsMandatory)
@@ -295,8 +291,8 @@ public partial class BuildsPageViewModel : ViewModelBase
         if (!changed)
             return;
 
-        if (_slotByAttribute.TryGetValue(attribute, out IFilterSlotViewModel<BuildNode>? slot) &&
-            slot is AttributeFilterSlotViewModel<BuildNode> attributeSlot)
+        if (_filterMenuItems.TryGetValue(attribute, out FilterMenuItemViewModel<BuildNode>? slot) &&
+            slot.Filter is AttributeFilterSlotViewModel<BuildNode> attributeSlot)
         {
             attributeSlot.Refresh();
         }
@@ -550,43 +546,21 @@ public partial class BuildsPageViewModel : ViewModelBase
     }
 
     #region filters
-    private void AddFilterSlot(AttributeDefinition attribute, bool isVisible = false)
+    private void AddFilterSlot(AttributeDefinition attribute)
     {
         IFilterSlotViewModel<BuildNode> slot = new AttributeFilterSlotViewModel<BuildNode>(attribute);
-        slot.IsApplied = isVisible;
         slot.AllowIncludeUnset = true;
-        slot.IsAppliedChanged += (_,_) => OnSlotVisibilityChanged(slot);
-        slot.Changed += ApplyFilters;
+        FilterMenuItemViewModel<BuildNode> menuItem = new FilterMenuItemViewModel<BuildNode>(slot);
 
-        _slotByAttribute[attribute] = slot;
-        (isVisible ? VisibleFilterSlots : HiddenFilterSlots).Add(slot);
+        _filterMenuItems[attribute] = menuItem;
+        FilterMenu.AddFilter(menuItem);
     }
     private void RemoveFilterSlot(AttributeDefinition attribute)
     {
-        if (!_slotByAttribute.Remove(attribute, out IFilterSlotViewModel<BuildNode>? slot))
+        if (!_filterMenuItems.Remove(attribute, out FilterMenuItemViewModel<BuildNode>? slot))
             return;
 
-        slot.Changed -= ApplyFilters;
-        VisibleFilterSlots.Remove(slot);
-        HiddenFilterSlots.Remove(slot);
-    }
-
-    // Moves a slot between the visible/hidden collections when its own IsVisible flips — via the
-    // Add/Remove commands the "+" menu and the filter's own ✕ button invoke.
-    private void OnSlotVisibilityChanged(IFilterSlotViewModel slot)
-    {
-        if (slot.IsApplied)
-        {
-            HiddenFilterSlots.Remove(slot);
-            if (!VisibleFilterSlots.Contains(slot))
-                VisibleFilterSlots.Add(slot);
-        }
-        else
-        {
-            VisibleFilterSlots.Remove(slot);
-            if (!HiddenFilterSlots.Contains(slot))
-                HiddenFilterSlots.Add(slot);
-        }
+        FilterMenu.RemoveFilter(slot);
     }
 
     partial void OnNameFilterChanged(string value)
@@ -620,24 +594,14 @@ public partial class BuildsPageViewModel : ViewModelBase
     }
     private AndFilter<BuildNode> GetFilters()
     {
-        List<IFilter<BuildNode>> filters = new List<IFilter<BuildNode>>();
         StringFilter<BuildNode> nameFilter = new StringFilter<BuildNode>(m => m.Name)
         {
             FilterValue = NameFilter.Trim(),
             MatchExact = false,
             AcceptNull = string.IsNullOrWhiteSpace(NameFilter)
         };
-        filters.Add(nameFilter);
-        foreach ((AttributeDefinition attribute, IFilterSlotViewModel<BuildNode> slot) in _slotByAttribute)
-        {
-            if (!slot.IsApplied)
-                continue;
-            IFilter<BuildNode> filter = slot.GetFilter();
-            //wrap the filter in an AndFilter so we can have a null check on both the attribute and the attribute value
-            //SequentialAllFilter<BuildNode, AttributeValue> wrappedFilter = new SequentialAllFilter<BuildNode, AttributeValue>(filter, b => [b.GetAttributeByDefinitionId(attribute.Id)]);
-            filters.Add(filter);
-        }
-        return new AndFilter<BuildNode>(filters);
+        var attributeFilters = FilterMenu.GetFilter();
+        return new AndFilter<BuildNode>([nameFilter, attributeFilters]);
     }
     #endregion
 }
