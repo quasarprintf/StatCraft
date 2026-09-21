@@ -29,19 +29,20 @@ internal sealed class FilterPanel
         _addMenu = new BoundList(owner, addMenuProperty, readAddMenu);
     }
 
-    public static FilterPanel Of(MapsPageViewModel page) =>
-        new(page.FilterMenu, nameof(page.FilterMenu.AppliedFilters), () => page.FilterMenu.AppliedFilters,
-            nameof(page.FilterMenu.FilterSlots), () => page.FilterMenu.FilterSlots);
+    public static FilterPanel Of(MapsPageViewModel page) => OfMenu(page.FilterMenu);
 
     public static FilterPanel Of(BuildsPageViewModel page) =>
         new(page, nameof(page.VisibleFilterSlots), () => page.VisibleFilterSlots,
             nameof(page.HiddenFilterSlots), () => page.HiddenFilterSlots);
 
-    // The Data tab's FilterBar and AddFilterMenu, including its mandatory profile and date range filters.
-    // The menu lists every entry and hides the applied ones itself (see Leaves).
-    public static FilterPanel Of(DataPageViewModel page) =>
-        new(page.Filters.FilterMenu, nameof(page.Filters.FilterMenu.AppliedFilters), () => page.Filters.FilterMenu.AppliedFilters,
-            nameof(page.Filters.FilterMenu.FilterSlots), () => page.Filters.FilterMenu.FilterSlots);
+    // The Data tab, including its mandatory profile and date range filters.
+    public static FilterPanel Of(DataPageViewModel page) => OfMenu(page.Filters.FilterMenu);
+
+    // A page whose filters live in a FilterMenuViewModel, shown by FilterBar and AddFilterMenu: the bar
+    // binds AppliedFilters, and the menu binds MenuItems and hides the applied entries itself (see Leaves).
+    private static FilterPanel OfMenu(IFilterMenuViewModel menu) =>
+        new(menu, nameof(menu.AppliedFilters), () => menu.AppliedFilters,
+            nameof(menu.MenuItems), () => menu.MenuItems);
 
     // Titles of the filters currently shown in the filter bar.
     public IReadOnlyList<string> AppliedTitles => AppliedSlots().Select(s => s.Title).ToList();
@@ -93,7 +94,7 @@ internal sealed class FilterPanel
         IFilterMenuItemViewModel item when Hidden(item) => [],
         // A submenu lists only the entries not applied yet, re-read when the submenu announces a change.
         IFilterMenuItemViewModel { Filter: null } subMenu => SubMenu(subMenu).Items.Cast<object>().SelectMany(Leaves),
-        IFilterMenuItemViewModel { Filter: { } slot } item => [new MenuLeaf(item.DisplayText, slot)],
+        IFilterMenuItemViewModel { Filter: { } slot } item => [new MenuLeaf(Header(item), slot)],
         IFilterSlotViewModel slot => [new MenuLeaf(slot.Title, slot)],
         _ => throw new InvalidOperationException($"Unrecognised add-menu entry {entry.GetType().Name}"),
     };
@@ -102,33 +103,42 @@ internal sealed class FilterPanel
     {
         if (!_subMenus.TryGetValue(subMenu, out BoundList? bound))
         {
-            bound = new BoundList((INotifyPropertyChanged)subMenu, nameof(subMenu.UnAppliedSubMenuItems),
+            bound = new BoundList(subMenu, nameof(subMenu.UnAppliedSubMenuItems),
                 () => subMenu.UnAppliedSubMenuItems ?? Enumerable.Empty<IFilterMenuItemViewModel>());
             _subMenus[subMenu] = bound;
         }
         return bound;
     }
 
-    // One IsVisible binding per menu entry, made the first time it is read, like the submenu bindings above.
-    private readonly Dictionary<IFilterMenuItemViewModel, BoundFlag> _hidden = new(ReferenceEqualityComparer.Instance);
+    // The IsVisible and Header bindings of each menu entry, made the first time the entry is read, like
+    // the submenu bindings above. An entry that changes without announcing it stays as it was.
+    private readonly Dictionary<IFilterMenuItemViewModel, BoundValue<bool>> _hidden = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<IFilterMenuItemViewModel, BoundValue<string>> _headers = new(ReferenceEqualityComparer.Instance);
 
-    private bool Hidden(IFilterMenuItemViewModel item)
+    private bool Hidden(IFilterMenuItemViewModel item) =>
+        Bound(_hidden, item, nameof(item.IsApplied), () => item.IsApplied);
+
+    private string Header(IFilterMenuItemViewModel item) =>
+        Bound(_headers, item, nameof(item.DisplayText), () => item.DisplayText);
+
+    private static TValue Bound<TValue>(Dictionary<IFilterMenuItemViewModel, BoundValue<TValue>> bindings,
+        IFilterMenuItemViewModel item, string property, Func<TValue> read)
     {
-        if (!_hidden.TryGetValue(item, out BoundFlag? hidden))
+        if (!bindings.TryGetValue(item, out BoundValue<TValue>? bound))
         {
-            hidden = new BoundFlag((INotifyPropertyChanged)item, nameof(item.IsApplied), () => item.IsApplied);
-            _hidden[item] = hidden;
+            bound = new BoundValue<TValue>(item, property, read);
+            bindings[item] = bound;
         }
-        return hidden.Value;
+        return bound.Value;
     }
 
     private sealed record MenuLeaf(string Text, IFilterSlotViewModel Slot);
 
-    private sealed class BoundFlag
+    private sealed class BoundValue<TValue>
     {
-        public bool Value { get; private set; }
+        public TValue Value { get; private set; }
 
-        public BoundFlag(INotifyPropertyChanged owner, string property, Func<bool> read)
+        public BoundValue(INotifyPropertyChanged owner, string property, Func<TValue> read)
         {
             Value = read();
             owner.PropertyChanged += (_, e) =>

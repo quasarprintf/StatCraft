@@ -697,6 +697,32 @@ public class MapsPageViewModelTests : IDisposable
         Assert.DoesNotContain(map, vm.FilteredMaps);
     }
 
+    // Changing the type rebuilds the kind-specific filter underneath, but everything that isn't tied to
+    // the kind belongs to the slot the page set up, so it has to survive the rebuild — otherwise "Include
+    // unset" quietly disappears from a Maps filter, and a map the user had chosen to keep drops out.
+    [Fact]
+    public void AttributeTypeChangedElsewhere_KeepsIncludeUnsetAndTheOptionToSetIt()
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Contested", Type = AttributeType.Numeric };
+        _attributeRepo.InsertAttribute(attribute, 0);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        Map map = AddMapWithValueRows(vm);
+        FilterPanel filters = FilterPanel.Of(vm);
+        FilterHandle filter = filters.Add("Contested");
+        filter.IncludeUnset = true;
+        Assert.Contains(map, vm.FilteredMaps);
+
+        AttributeDefinition editedElsewhere = Assert.Single(_attributeRepo.GetAllAttributes(AttributeScope.Map));
+        editedElsewhere.Type = AttributeType.Bool;
+        _attributeRepo.UpdateAttribute(editedElsewhere);
+
+        FilterHandle rebuilt = filters.Applied("Contested");
+        Assert.True(rebuilt.AllowIncludeUnset);
+        Assert.True(rebuilt.IncludeUnset);
+        // The map's value row is unset for the new kind, so Include unset is what keeps it listed.
+        Assert.Contains(map, vm.FilteredMaps);
+    }
+
     [Fact]
     public void AttributeTypeChangedElsewhere_WhileNotApplied_StaysInTheAddMenu()
     {
