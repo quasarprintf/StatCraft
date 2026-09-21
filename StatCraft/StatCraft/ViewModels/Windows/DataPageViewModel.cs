@@ -14,7 +14,6 @@ using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataParsing;
 using StatCraft.ViewModels.Windows.DataComponents;
 using StatCraft.ViewModels.Windows.DataComponents.GameRow;
-using StatCraft.ViewModels.Windows.Filters;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;

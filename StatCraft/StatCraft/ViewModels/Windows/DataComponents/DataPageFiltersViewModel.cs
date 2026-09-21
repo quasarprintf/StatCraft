@@ -10,6 +10,7 @@ using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataFiltering.CollatedFilters;
 using StatCraft.Services.DataFiltering.SequentialFilters;
 using StatCraft.Services.DataParsing;
+using StatCraft.ViewModels.Windows.Filters;
 using StatCraft.ViewModels.Windows.Filters.WrappedFilters;
 using System;
 using System.Collections.Generic;
@@ -18,7 +19,7 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Reflection;
 
-namespace StatCraft.ViewModels.Windows.Filters;
+namespace StatCraft.ViewModels.Windows.DataComponents;
 
 // Owns every filter dimension on the Data tab's filter bar. Player profile and date range are
 // always visible; the other five are "extra filters" that can be added/removed via the bar's
