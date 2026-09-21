@@ -12,7 +12,7 @@ namespace StatCraft.ViewModels.Windows.Filters;
 public interface IFilterMenuViewModel : INotifyPropertyChanged
 {
     event Action? FiltersChanged;
-    ObservableCollection<IFilterMenuItemViewModel> MenuItems { get; }
+    IEnumerable<IFilterMenuItemViewModel> MenuItems { get; }
     IEnumerable<IFilterSlotViewModel> AppliedFilters { get; }
 }
 
@@ -20,7 +20,8 @@ public class FilterMenuViewModel<T> : ViewModelBase, IFilterMenuViewModel
 {
     public event Action? FiltersChanged;
 
-    public ObservableCollection<IFilterMenuItemViewModel> MenuItems { get; set; }
+    IEnumerable<IFilterMenuItemViewModel> IFilterMenuViewModel.MenuItems => MenuItems;
+    private ObservableCollection<IFilterMenuItemViewModel> MenuItems { get; set; }
     public IEnumerable<FilterMenuItemViewModel<T>> FilterSlots => MenuItems.Cast<FilterMenuItemViewModel<T>>();
     public IEnumerable<IFilterSlotViewModel> AppliedFilters => FilterSlots.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
 
