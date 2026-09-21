@@ -127,7 +127,7 @@ public class FilterTests
     [Fact]
     public void IntFilter_NoFilterValue_MatchesAnySetValue()
     {
-        IntFilter<Subject> filter = new(s => s.Count);
+        ComparableFilter<Subject, int> filter = new(s => s.Count);
 
         Assert.True(filter.MatchesFilter(new Subject { Count = 42 }));
     }
@@ -138,7 +138,7 @@ public class FilterTests
     [InlineData(16, false)]
     public void IntFilter_DefaultsToExactMatch(int actual, bool expected)
     {
-        IntFilter<Subject> filter = new(s => s.Count) { FilterValue = 15 };
+        ComparableFilter<Subject, int> filter = new(s => s.Count) { FilterValue = 15 };
 
         Assert.Equal(expected, filter.MatchesFilter(new Subject { Count = actual }));
     }
@@ -150,7 +150,7 @@ public class FilterTests
     [InlineData(16, true)]
     public void IntFilter_LowerBound_IsInclusive(int actual, bool expected)
     {
-        IntFilter<Subject> filter = new IntFilter<Subject>(s => s.Count) { FilterValue = 15 }.SetMatchLowerBound();
+        ComparableFilter<Subject, int> filter = new ComparableFilter<Subject, int>(s => s.Count) { FilterValue = 15 }.SetMatchLowerBound();
 
         Assert.Equal(expected, filter.MatchesFilter(new Subject { Count = actual }));
     }
@@ -161,7 +161,7 @@ public class FilterTests
     [InlineData(16, false)]
     public void IntFilter_UpperBound_IsInclusive(int actual, bool expected)
     {
-        IntFilter<Subject> filter = new IntFilter<Subject>(s => s.Count) { FilterValue = 15 }.SetMatchUpperBound();
+        ComparableFilter<Subject, int> filter = new ComparableFilter<Subject, int>(s => s.Count) { FilterValue = 15 }.SetMatchUpperBound();
 
         Assert.Equal(expected, filter.MatchesFilter(new Subject { Count = actual }));
     }
@@ -172,7 +172,7 @@ public class FilterTests
     [InlineData(true, true)]
     public void IntFilter_UnsetValue_FollowsAcceptNull(bool? acceptNull, bool expected)
     {
-        IntFilter<Subject> filter = new(s => s.Count) { FilterValue = 15, AcceptNull = acceptNull };
+        ComparableFilter<Subject, int> filter = new(s => s.Count) { FilterValue = 15, AcceptNull = acceptNull };
 
         Assert.Equal(expected, filter.MatchesFilter(new Subject { Count = null }));
     }
@@ -183,7 +183,7 @@ public class FilterTests
     [InlineData(16, true)]
     public void DecimalFilter_LowerBound_IsInclusive(int actual, bool expected)
     {
-        DecimalFilter<Subject> filter = new DecimalFilter<Subject>(s => s.Amount) { FilterValue = 15m }.SetMatchLowerBound();
+        ComparableFilter<Subject, decimal> filter = new ComparableFilter<Subject, decimal>(s => s.Amount) { FilterValue = 15m }.SetMatchLowerBound();
 
         Assert.Equal(expected, filter.MatchesFilter(new Subject { Amount = actual }));
     }
@@ -194,7 +194,7 @@ public class FilterTests
     [InlineData(16, false)]
     public void DecimalFilter_UpperBound_IsInclusive(int actual, bool expected)
     {
-        DecimalFilter<Subject> filter = new DecimalFilter<Subject>(s => s.Amount) { FilterValue = 15m }.SetMatchUpperBound();
+        ComparableFilter<Subject, decimal> filter = new ComparableFilter<Subject, decimal>(s => s.Amount) { FilterValue = 15m }.SetMatchUpperBound();
 
         Assert.Equal(expected, filter.MatchesFilter(new Subject { Amount = actual }));
     }
@@ -209,8 +209,8 @@ public class FilterTests
     [InlineData(21, false)]
     public void DecimalFilter_LowerAndUpperBoundAnded_FormAnInclusiveRange(int actual, bool expected)
     {
-        DecimalFilter<Subject> lower = new DecimalFilter<Subject>(s => s.Amount) { FilterValue = 10m }.SetMatchLowerBound();
-        DecimalFilter<Subject> upper = new DecimalFilter<Subject>(s => s.Amount) { FilterValue = 20m }.SetMatchUpperBound();
+        ComparableFilter<Subject, decimal> lower = new ComparableFilter<Subject, decimal>(s => s.Amount) { FilterValue = 10m }.SetMatchLowerBound();
+        ComparableFilter<Subject, decimal> upper = new ComparableFilter<Subject, decimal>(s => s.Amount) { FilterValue = 20m }.SetMatchUpperBound();
         AndFilter<Subject> range = new([lower, upper]);
 
         Assert.Equal(expected, range.MatchesFilter(new Subject { Amount = actual }));
@@ -219,8 +219,8 @@ public class FilterTests
     [Fact]
     public void DecimalFilter_OpenEndedRange_OnlyConstrainsTheEndThatIsSet()
     {
-        DecimalFilter<Subject> lower = new DecimalFilter<Subject>(s => s.Amount) { FilterValue = 10m }.SetMatchLowerBound();
-        DecimalFilter<Subject> noUpper = new DecimalFilter<Subject>(s => s.Amount).SetMatchUpperBound();
+        ComparableFilter<Subject, decimal> lower = new ComparableFilter<Subject, decimal>(s => s.Amount) { FilterValue = 10m }.SetMatchLowerBound();
+        ComparableFilter<Subject, decimal> noUpper = new ComparableFilter<Subject, decimal>(s => s.Amount).SetMatchUpperBound();
         AndFilter<Subject> range = new([lower, noUpper]);
 
         Assert.True(range.MatchesFilter(new Subject { Amount = 9999m }));

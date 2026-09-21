@@ -27,11 +27,11 @@ public sealed partial class NumericRangeFilterSlotViewModel<T> : FilterSlotViewM
 
     public override AndFilter<T> GetFilter()
     {
-        DecimalFilter<T> lowerBound = new DecimalFilter<T>(FilteredPropertyMap)
+        ComparableFilter<T,decimal> lowerBound = new ComparableFilter<T,decimal>(FilteredPropertyMap)
         {
             FilterValue = Min
         }.SetMatchLowerBound();
-        DecimalFilter<T> upperBound = new DecimalFilter<T>(FilteredPropertyMap)
+        ComparableFilter<T,decimal> upperBound = new ComparableFilter<T,decimal>(FilteredPropertyMap)
         {
             FilterValue = Max
         }.SetMatchUpperBound();

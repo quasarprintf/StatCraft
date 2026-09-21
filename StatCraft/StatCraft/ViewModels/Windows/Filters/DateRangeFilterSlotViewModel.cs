@@ -31,11 +31,11 @@ public sealed partial class DateRangeFilterSlotViewModel<T> : FilterSlotViewMode
     public override AndFilter<T> GetFilter()
     {
         Func<T,DateTime?> mapToDay = t => FilteredPropertyMap(t)?.Date;
-        DateTimeFilter<T> lowerBound = new DateTimeFilter<T>(mapToDay)
+        ComparableFilter<T,DateTime> lowerBound = new ComparableFilter<T,DateTime>(mapToDay)
         {
             FilterValue = FromDate?.Date
         }.SetMatchLowerBound();
-        DateTimeFilter<T> upperBound = new DateTimeFilter<T>(mapToDay)
+        ComparableFilter<T,DateTime> upperBound = new ComparableFilter<T,DateTime>(mapToDay)
         {
             FilterValue = ToDate?.Date
         }.SetMatchUpperBound();
