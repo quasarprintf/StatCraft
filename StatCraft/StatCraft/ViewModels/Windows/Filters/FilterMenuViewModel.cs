@@ -21,14 +21,13 @@ public class FilterMenuViewModel<T> : ViewModelBase, IFilterMenuViewModel
     public event Action? FiltersChanged;
 
     IEnumerable<IFilterMenuItemViewModel> IFilterMenuViewModel.MenuItems => MenuItems;
-    private ObservableCollection<IFilterMenuItemViewModel> MenuItems { get; set; }
-    public IEnumerable<FilterMenuItemViewModel<T>> FilterSlots => MenuItems.Cast<FilterMenuItemViewModel<T>>();
-    public IEnumerable<IFilterSlotViewModel> AppliedFilters => FilterSlots.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
+    private ObservableCollection<FilterMenuItemViewModel<T>> MenuItems { get; set; }
+    public IEnumerable<IFilterSlotViewModel> AppliedFilters => MenuItems.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
 
     public FilterMenuViewModel(IEnumerable<FilterMenuItemViewModel<T>> filters)
     {
-        MenuItems = new ObservableCollection<IFilterMenuItemViewModel>(filters);
-        foreach (IFilterMenuItemViewModel slot in FilterSlots)
+        MenuItems = new ObservableCollection<FilterMenuItemViewModel<T>>(filters);
+        foreach (IFilterMenuItemViewModel slot in MenuItems)
         {
             WireSlotChanged(slot);
         }
@@ -77,7 +76,7 @@ public class FilterMenuViewModel<T> : ViewModelBase, IFilterMenuViewModel
     public AndFilter<T> GetFilter()
     {
         List<IFilter<T>> appliedFilters = new List<IFilter<T>>();
-        foreach (var filterMenuItem in FilterSlots)
+        foreach (var filterMenuItem in MenuItems)
         {
             foreach (var filterSlot in filterMenuItem.ContainedFilters)
             {
