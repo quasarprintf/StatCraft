@@ -16,7 +16,7 @@
 
             <!-- Attribute filters stack vertically here rather than in a horizontal bar, because the
                  left pane is narrow and the slot count grows with the number of defined attributes. -->
-            <filters:FilterBar DockPanel.Dock="Top" DataContext="{Binding FilterMenu}" />
+            <filters:FilterBar DockPanel.Dock="Top" DataContext="{Binding FilterMenu}" Orientation="Vertical" Spacing="4" />
 
             <ListBox x:Name="MapListBox" ItemsSource="{Binding FilteredMaps}" SelectedItem="{Binding SelectedMap}">
                 <ListBox.ContextMenu>

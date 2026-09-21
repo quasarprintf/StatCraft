@@ -3,20 +3,18 @@
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
              xmlns:filters="using:StatCraft.Views.Components.Filters"
              x:DataType="vmw:Filters.IFilterMenuViewModel"
-             x:Class="StatCraft.Views.Components.Filters.FilterBar">
-    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
-
-        <ItemsControl ItemsSource="{Binding AppliedFilters}">
-            <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                    <StackPanel Orientation="Horizontal" Spacing="8"/>
-                </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                    <filters:FilterSlot />
-                </DataTemplate>
-            </ItemsControl.ItemTemplate>
-        </ItemsControl>
-    </StackPanel>
+             x:Class="StatCraft.Views.Components.Filters.FilterBar"
+             Name="Root">
+    <ItemsControl ItemsSource="{Binding AppliedFilters}">
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+                <StackPanel Orientation="{Binding Orientation, ElementName=Root}" Spacing="{Binding Spacing, ElementName=Root}"/>
+            </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+            <DataTemplate>
+                <filters:FilterSlot />
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
 </UserControl>
