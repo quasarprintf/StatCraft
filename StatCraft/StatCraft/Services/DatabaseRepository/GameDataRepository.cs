@@ -141,7 +141,7 @@ public partial class GameDataRepository : SqliteRepository
         // the same map ends up holding the *same* Map instance — reference equality is what lets the
         // Maps tab and anything grouping by map line up without needing value equality on Map.
         Dictionary<int, Map> mapsById = new();
-        List<int> mapIds = gameRows.Where(r => r.MapId != null).Select(r => r.MapId!.Value).Distinct().ToList();
+        List<int> mapIds = gameRows.Select(r => r.MapId).Distinct().ToList();
         if (mapIds.Count > 0)
         {
             IEnumerable<MapRow> mapRows = conn.Query<MapRow>(
@@ -242,7 +242,7 @@ public partial class GameDataRepository : SqliteRepository
 
             ParsedReplayData replay = new()
             {
-                Map = mapsById[row.MapId.Value],
+                Map = mapsById[row.MapId],
                 GameLengthSeconds = row.GameLengthSeconds,
                 ReplayPath = row.ReplayPath,
                 ReplayTimestamp = row.ReplayTimestamp,
@@ -454,7 +454,7 @@ public partial class GameDataRepository : SqliteRepository
     {
         public long Id { get; set; }
         public int Sc2ProfileId { get; set; }
-        public int? MapId { get; set; }
+        public int MapId { get; set; }
         public int GameLengthSeconds { get; set; }
         public string ReplayPath { get; set; } = "";
         public DateTimeOffset ReplayTimestamp { get; set; }

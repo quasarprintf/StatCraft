@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS Games (
     Id                INTEGER PRIMARY KEY AUTOINCREMENT,
     Sc2ProfileId      INTEGER NOT NULL REFERENCES Sc2Profiles(Id) ON DELETE CASCADE,
-    MapId             INTEGER REFERENCES Maps(Id),
+    MapId             INTEGER NOT NULL REFERENCES Maps(Id),
     GameLengthSeconds INTEGER NOT NULL DEFAULT 0,
     ReplayPath        TEXT    NOT NULL UNIQUE,
     ReplayTimestamp   TEXT    NOT NULL DEFAULT '',
