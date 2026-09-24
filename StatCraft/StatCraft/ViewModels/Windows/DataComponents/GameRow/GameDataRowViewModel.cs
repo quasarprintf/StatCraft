@@ -4,6 +4,7 @@ using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
+using StatCraft.Models.GameData.Replays;
 using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;

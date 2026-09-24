@@ -1,4 +1,4 @@
-using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Replays;
 using System.Collections.Generic;
 using System.Globalization;
 

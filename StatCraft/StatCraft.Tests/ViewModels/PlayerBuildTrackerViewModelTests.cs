@@ -10,6 +10,7 @@ using StatCraft.Tests.Mocks;
 using StatCraft.ViewModels.Windows.DataComponents;
 using AppColors = StatCraft.Styles.Colors;
 using StatCraft.ViewModels.Windows.DataComponents.GameRow;
+using StatCraft.Models.GameData.Replays;
 
 namespace StatCraft.Tests;
 

@@ -6,6 +6,7 @@ using Microsoft.Data.Sqlite;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Maps;
+using StatCraft.Models.GameData.Replays;
 using StatCraft.Services.BackgroundService;
 
 namespace StatCraft.Services.DatabaseRepository;

@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace StatCraft.Models.GameData;
+namespace StatCraft.Models.GameData.Replays;
 
 public class ParsedReplayData
 {

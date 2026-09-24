@@ -5,6 +5,7 @@ using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
+using StatCraft.Models.GameData.Replays;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataFiltering.CollatedFilters;

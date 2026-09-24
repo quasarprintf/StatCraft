@@ -1,5 +1,5 @@
 using StatCraft.Models.Analytics;
-using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Replays;
 
 namespace StatCraft.Tests;
 

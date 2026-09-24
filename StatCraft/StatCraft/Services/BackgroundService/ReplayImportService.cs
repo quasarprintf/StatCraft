@@ -2,6 +2,7 @@ using s2protocol.NET;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Race;
+using StatCraft.Models.GameData.Replays;
 using StatCraft.Services.BattlenetApi;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
@@ -42,7 +43,7 @@ public class ReplayImportService(ILogger logger, ReplayDataExtractor replayDataE
         {
             // Expected rather than exceptional: the watcher reports a file the moment it appears in
             // the folder, which can be while StarCraft II is still writing it.
-            logger.LogWarning($"Replay file could not be read: {filePath} ({ex.Message})", profile);
+            logger.LogWarning($"Replays file could not be read: {filePath} ({ex.Message})", profile);
             if (currentAttempt < 5)
             {
                 await Task.Delay(1000 * (int)Math.Pow(2, currentAttempt));
@@ -78,7 +79,7 @@ public class ReplayImportService(ILogger logger, ReplayDataExtractor replayDataE
 
         DateTimeOffset replayTimestamp = new DateTimeOffset(File.GetLastWriteTimeUtc(filePath));
         RawReplayData rawReplayData = replayDataExtractor.Extract(replay, replayTimestamp);
-        logger.LogInfo($"Replay parsed: {filePath}", profile, rawReplayData);
+        logger.LogInfo($"Replays parsed: {filePath}", profile, rawReplayData);
 
         ParsedReplayData parsedReplayData;
         try

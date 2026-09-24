@@ -64,7 +64,7 @@ public class ReplayWatcherService(ILogger logger) : IAsyncDisposable
         {
             if (_knownFiles.Add(file))
             {
-                logger.LogInfo($"Replay file found: {file}");
+                logger.LogInfo($"Replays file found: {file}");
                 NewReplayFileFound?.Invoke(file);
             }
         }

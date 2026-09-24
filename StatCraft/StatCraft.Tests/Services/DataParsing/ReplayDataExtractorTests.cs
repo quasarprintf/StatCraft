@@ -3,6 +3,7 @@ using System.Linq;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Maps;
+using StatCraft.Models.GameData.Replays;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
 

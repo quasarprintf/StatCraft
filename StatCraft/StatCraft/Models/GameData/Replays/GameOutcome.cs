@@ -1,4 +1,4 @@
-namespace StatCraft.Models.GameData;
+namespace StatCraft.Models.GameData.Replays;
 
 public enum GameOutcome { Win, Loss, Draw }
 

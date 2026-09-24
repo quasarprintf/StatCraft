@@ -1,7 +1,7 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using System;
 
-namespace StatCraft.Models.GameData;
+namespace StatCraft.Models.GameData.Replays;
 
 // A GamePlayer's MMR going into the game, from up to three sources in priority order. ParsedMmr is
 // always the raw value read straight from the replay and is never itself overwritten; EstimatedMmr is

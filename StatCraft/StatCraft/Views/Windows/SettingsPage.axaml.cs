@@ -23,7 +23,7 @@ public partial class SettingsPage : UserControl
 
         IReadOnlyList<IStorageFolder> folders = await owner.StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Select Replay Folder",
+            Title = "Select Replays Folder",
             AllowMultiple = false,
         });
 

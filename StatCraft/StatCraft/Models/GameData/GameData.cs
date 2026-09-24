@@ -1,4 +1,5 @@
 using StatCraft.Models.GameData.Attributes;
+using StatCraft.Models.GameData.Replays;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;

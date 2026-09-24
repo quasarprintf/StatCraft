@@ -290,7 +290,7 @@ public partial class DataPage : UserControl
             Title = "Select a replay to import",
             AllowMultiple = false,
             SuggestedStartLocation = suggestedFolder,
-            FileTypeFilter = [new FilePickerFileType("StarCraft II Replay") { Patterns = ["*.SC2Replay"] }],
+            FileTypeFilter = [new FilePickerFileType("StarCraft II Replays") { Patterns = ["*.SC2Replay"] }],
         });
 
         if (files.Count == 0) return;

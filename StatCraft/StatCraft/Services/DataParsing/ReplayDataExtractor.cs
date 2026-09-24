@@ -7,6 +7,7 @@ using s2protocol.NET.Models;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Maps;
+using StatCraft.Models.GameData.Replays;
 using StatCraft.Services.DatabaseRepository;
 
 namespace StatCraft.Services.DataParsing;

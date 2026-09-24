@@ -29,7 +29,7 @@ public partial class SettingsPromptWindow : Window
 
         IReadOnlyList<IStorageFolder> folders = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions
         {
-            Title = "Select Replay Folder",
+            Title = "Select Replays Folder",
             AllowMultiple = false,
         });
 
