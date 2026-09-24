@@ -54,7 +54,7 @@ public class GameDataRepositoryTests : IDisposable
         Assert.Equal(game.GameId, loaded.GameId);
         Assert.Equal(game.ReplayData.Player.GamePlayerId, loaded.ReplayData.Player.GamePlayerId);
         Assert.NotNull(loaded.ReplayData.Player.GamePlayerId);
-        Assert.Equal("Map", loaded.Map?.Name);
+        Assert.Equal("Map", loaded.ReplayData.Map?.Name);
         Assert.Equal(600, loaded.ReplayData.GameLengthSeconds);
         Assert.Equal(new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero), loaded.ReplayData.ReplayTimestamp);
         Assert.Equal(1m, loaded.ReplayData.Win);
@@ -585,6 +585,7 @@ public class GameDataRepositoryTests : IDisposable
     {
         ParsedReplayData replay = new()
         {
+            Map = _mapRepository.GetOrCreateMap(mapName),
             GameLengthSeconds = 600,
             ReplayPath = replayPath,
             ReplayTimestamp = replayTimestamp ?? new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero),
@@ -593,7 +594,7 @@ public class GameDataRepositoryTests : IDisposable
             Allies = allies ?? [],
             Opponents = opponents ?? [new GamePlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false }],
         };
-        return new GameData { Map = _mapRepository.GetOrCreateMap(mapName), ReplayData = replay };
+        return new GameData { ReplayData = replay };
     }
 
     public void Dispose()

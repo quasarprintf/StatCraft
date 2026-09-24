@@ -91,9 +91,10 @@ public class ReplayImportService(ILogger logger, ReplayDataExtractor replayDataE
             return $"\"{Path.GetFileName(filePath)}\" doesn't contain a match for the active profile.";
         }
 
+        parsedReplayData.Map = mapRepository.GetOrCreateMap(rawReplayData.MapName);
+
         GameData game = new()
         {
-            Map = mapRepository.GetOrCreateMap(rawReplayData.MapName),
             ReplayData = parsedReplayData,
             GameType = ResolveGameType(parsedReplayData, profile),
         };

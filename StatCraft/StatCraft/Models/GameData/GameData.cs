@@ -1,5 +1,4 @@
 using StatCraft.Models.GameData.Attributes;
-using StatCraft.Models.GameData.Maps;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
@@ -10,8 +9,6 @@ public class GameData : IAttributedObject
 {
     public int? GameId { get; set; }
     public int Sc2ProfileId { get; set; }
-
-    public Map? Map { get; set; }
 
     public GameType GameType { get; set; }
     public required ParsedReplayData ReplayData { get; set; }

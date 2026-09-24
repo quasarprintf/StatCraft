@@ -451,7 +451,7 @@ public partial class DataPageViewModel : ViewModelBase
     {
         List<int> profileIds = Filters.ProfileSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToList();
         _loadedGames = profileIds.Count == 0 ? [] : _gameDataRepo.GetGamesForProfiles(profileIds, _attributeRepo.GetAllAttributes(AttributeScope.Game));
-        Filters.RefreshMapOptions(_loadedGames.Where(g => g.Map != null).Select(g => g.Map!).Distinct());
+        Filters.RefreshMapOptions(_loadedGames.Where(g => g.ReplayData.Map != null).Select(g => g.ReplayData.Map!).Distinct());
         ApplyFilters();
         await Task.CompletedTask;
     }

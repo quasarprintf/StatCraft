@@ -95,7 +95,7 @@ public partial class GameDataRowViewModel : ViewModelBase
         AttributeValuesSelect.Object = game;
 
         ParsedReplayData replay = game.ReplayData;
-        MapName = game.Map?.Name ?? "";
+        MapName = game.ReplayData.Map?.Name ?? "";
         PlayedAt = replay.ReplayTimestamp.ToLocalTime().ToString("yyyy-MM-dd HH:mm");
         GameOutcome outcome = replay.Win.AsGameOutcome();
         ResultLabel = outcome switch { GameOutcome.Win => "Win", GameOutcome.Loss => "Loss", _ => "Draw" };

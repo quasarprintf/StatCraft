@@ -180,6 +180,7 @@ public class DataPageFiltersViewModelTests : IDisposable
     {
         ParsedReplayData replay = new()
         {
+            Map = new Map { Name = "Altitude LE" },
             GameLengthSeconds = 600,
             ReplayPath = "replay.SC2Replay",
             ReplayTimestamp = new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero),
@@ -188,7 +189,7 @@ public class DataPageFiltersViewModelTests : IDisposable
             Allies = [],
             Opponents = opponents,
         };
-        return new GameData { Map = new Map { Name = "Altitude LE" }, ReplayData = replay };
+        return new GameData { ReplayData = replay };
     }
 
     private CheckboxFilterOptionViewModel<int> ProfileOption(int profileId) =>

@@ -1133,6 +1133,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     {
         ParsedReplayData replay = new()
         {
+            Map = map,
             GameLengthSeconds = 600,
             ReplayPath = Guid.NewGuid() + ".SC2Replay",
             ReplayTimestamp = playedAt ?? DateTimeOffset.Now,
@@ -1141,7 +1142,7 @@ public class DataPageViewModelTests : IAsyncDisposable
             Allies = [],
             Opponents = opponents ?? [new GamePlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'T', Random = false }],
         };
-        GameData game = new() { Map = map, ReplayData = replay };
+        GameData game = new() { ReplayData = replay };
         _gameDataRepository.InsertGame(game, profileId ?? _sc2ProfileId);
         return game;
     }
