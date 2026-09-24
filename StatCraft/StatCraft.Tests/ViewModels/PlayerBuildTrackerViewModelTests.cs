@@ -19,6 +19,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     private readonly GameDataRepository _gameDataRepository;
     private readonly BuildRepository _buildRepository;
     private readonly AccountRepository _accountRepository;
+    private readonly MapRepository _mapRepository;
     private readonly MockLogger _logger = new();
     private readonly int _sc2ProfileId;
 
@@ -32,7 +33,8 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         _buildRepository.Initialize();
         // Before GameDataRepository, whose MapName -> MapId migration writes into the Maps table — the
         // same ordering App.axaml.cs enforces through DI.
-        new MapRepository(_dbPath).Initialize();
+        _mapRepository = new MapRepository(_dbPath);
+        _mapRepository.Initialize();
         _gameDataRepository = new GameDataRepository(_dbPath);
         _gameDataRepository.Initialize();
 
@@ -348,10 +350,12 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         Assert.Equal(Color.FromUInt32(unchecked((uint)0xFFFF0000)), brush.Color);
     }
 
-    private static GameData CreateGame()
+    private GameData CreateGame()
     {
         ParsedReplayData replay = new()
         {
+            // A game always has a map, and it has to be a real row since the game stores it by id.
+            Map = _mapRepository.GetOrCreateMap("Ladder LE")!,
             GameLengthSeconds = 600,
             ReplayPath = Guid.NewGuid() + ".SC2Replay",
             ReplayTimestamp = DateTimeOffset.UtcNow,

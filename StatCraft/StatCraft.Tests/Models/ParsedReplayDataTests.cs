@@ -1,4 +1,5 @@
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Maps;
 
 namespace StatCraft.Tests;
 
@@ -44,6 +45,8 @@ public class ParsedReplayDataTests
 
     private static ParsedReplayData CreateReplay(long selfMmr = 3000, GamePlayer[]? allies = null, GamePlayer[]? opponents = null) => new()
     {
+        // Not a database-backed test, so any Map instance will do — it just has to be present.
+        Map = new Map { Name = "Ladder LE" },
         GameLengthSeconds = 600,
         ReplayPath = "replay.SC2Replay",
         ReplayTimestamp = DateTimeOffset.UtcNow,

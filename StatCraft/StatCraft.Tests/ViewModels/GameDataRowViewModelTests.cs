@@ -19,6 +19,7 @@ public class GameDataRowViewModelTests : IDisposable
     private readonly ObservableCollection<AttributeDefinition> _gameAttributes = [];
     private readonly MockLogger _logger = new();
     private readonly ReplayDataExtractor _replayDataExtractor;
+    private readonly MapRepository _mapRepository;
     private readonly int _sc2ProfileId;
 
     public GameDataRowViewModelTests()
@@ -28,9 +29,9 @@ public class GameDataRowViewModelTests : IDisposable
         AccountRepository accountRepository = new(_dbPath);
         accountRepository.Initialize();
         new BuildRepository(_dbPath).Initialize();
-        MapRepository mapRepository = new(_dbPath);
-        mapRepository.Initialize();
-        _replayDataExtractor = new ReplayDataExtractor(mapRepository);
+        _mapRepository = new MapRepository(_dbPath);
+        _mapRepository.Initialize();
+        _replayDataExtractor = new ReplayDataExtractor(_mapRepository);
         _gameDataRepository = new GameDataRepository(_dbPath);
         _gameDataRepository.Initialize();
 
@@ -89,10 +90,12 @@ public class GameDataRowViewModelTests : IDisposable
         Assert.Equal(3400, opponentRow.Mmr);
     }
 
-    private static GameData CreateGame()
+    private GameData CreateGame()
     {
         ParsedReplayData replay = new()
         {
+            // A game always has a map, and it has to be a real row since the game stores it by id.
+            Map = _mapRepository.GetOrCreateMap("Ladder LE")!,
             GameLengthSeconds = 600,
             ReplayPath = Guid.NewGuid() + ".SC2Replay",
             ReplayTimestamp = DateTimeOffset.UtcNow,

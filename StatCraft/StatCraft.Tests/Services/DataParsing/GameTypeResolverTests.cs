@@ -1,4 +1,5 @@
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DataParsing;
 
 namespace StatCraft.Tests;
@@ -65,6 +66,8 @@ public class GameTypeResolverTests
 
     private static ParsedReplayData CreateReplay(bool isMatchmade = true, long selfMmr = 3000) => new()
     {
+        // Not a database-backed test, so any Map instance will do — it just has to be present.
+        Map = new Map { Name = "Ladder LE" },
         GameLengthSeconds = 600,
         ReplayPath = "replay.SC2Replay",
         ReplayTimestamp = DateTimeOffset.UtcNow,
