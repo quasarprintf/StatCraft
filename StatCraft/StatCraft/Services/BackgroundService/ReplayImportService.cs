@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 namespace StatCraft.Services.BackgroundService;
 
 public class ReplayImportService(ILogger logger, ReplayDataExtractor replayDataExtractor,
-    GameDataRepository gameDataRepository, MapRepository mapRepository, Sc2LadderService ladderService)
+    GameDataRepository gameDataRepository, Sc2LadderService ladderService)
 {
     private static readonly TimeSpan[] MmrPollDelays =
     [

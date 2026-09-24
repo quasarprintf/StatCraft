@@ -35,7 +35,6 @@ public class ReplayImportServiceTests : IDisposable
             new MockLogger(),
             new ReplayDataExtractor(mapRepository),
             gameDataRepository,
-            mapRepository,
             new Sc2LadderService(new HttpClient(), new StubTokenProvider(), new MockLogger()));
     }
 

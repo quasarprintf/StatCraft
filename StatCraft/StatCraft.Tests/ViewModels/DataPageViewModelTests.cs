@@ -84,8 +84,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     {
         Sc2LadderService ladderService = new(new HttpClient(), new StubTokenProvider(), new MockLogger());
         ReplayDataExtractor replayDataExtractor = new(_mapRepository);
-        ReplayImportService replayImportService = new(new MockLogger(), replayDataExtractor, _gameDataRepository,
-            _mapRepository, ladderService);
+        ReplayImportService replayImportService = new(new MockLogger(), replayDataExtractor, _gameDataRepository, ladderService);
 
         return new DataPageViewModel(_settingsRepository, _replayWatcherService, replayImportService,
             _accountRepository, _buildRepository, _gameDataRepository, _attributeRepository, ladderService,
