@@ -77,8 +77,8 @@ public class ReplayDataExtractorTests : IDisposable
         ParsedReplayData result = _extractor.Parse(raw, CreateProfile(100));
 
         GamePlayer ally = Assert.Single(result.Allies);
-        Assert.Equal("Ally", ally.Name);
-        Assert.Equal(["Foe1", "Foe2"], result.Opponents.Select(o => o.Name));
+        Assert.Equal("Ally", ally.ReplayPlayer.Name);
+        Assert.Equal(["Foe1", "Foe2"], result.Opponents.Select(o => o.ReplayPlayer.Name));
     }
 
     [Fact]
@@ -96,8 +96,8 @@ public class ReplayDataExtractorTests : IDisposable
         ParsedReplayData result = _extractor.Parse(raw, CreateProfile(100));
 
         GamePlayer ally = Assert.Single(result.Allies);
-        Assert.Equal("Ally", ally.Name);
-        Assert.Equal(["Foe1", "Foe2"], result.Opponents.Select(o => o.Name));
+        Assert.Equal("Ally", ally.ReplayPlayer.Name);
+        Assert.Equal(["Foe1", "Foe2"], result.Opponents.Select(o => o.ReplayPlayer.Name));
     }
 
     [Fact]
@@ -122,7 +122,7 @@ public class ReplayDataExtractorTests : IDisposable
 
         ParsedReplayData result = _extractor.Parse(raw, CreateProfile(100));
 
-        Assert.Equal("", result.Player.Clan);
+        Assert.Equal("", result.Player.ReplayPlayer.Clan);
     }
 
     [Fact]
@@ -136,7 +136,7 @@ public class ReplayDataExtractorTests : IDisposable
 
         ParsedReplayData result = _extractor.Parse(raw, CreateProfile(100));
 
-        Assert.Equal(0, result.Player.Mmr.ParsedMmr);
+        Assert.Equal(0, result.Player.ReplayPlayer.Mmr.ParsedMmr);
     }
 
     [Fact]
@@ -174,11 +174,11 @@ public class ReplayDataExtractorTests : IDisposable
 
         ParsedReplayData result = _extractor.Parse(raw, CreateProfile(100));
 
-        Assert.Equal("Me", result.Player.Name);
-        Assert.Equal("ABC", result.Player.Clan);
-        Assert.Equal('Z', result.Player.Race);
-        Assert.True(result.Player.Random);
-        Assert.Equal(3500, result.Player.Mmr.ParsedMmr);
+        Assert.Equal("Me", result.Player.ReplayPlayer.Name);
+        Assert.Equal("ABC", result.Player.ReplayPlayer.Clan);
+        Assert.Equal('Z', result.Player.ReplayPlayer.Race);
+        Assert.True(result.Player.ReplayPlayer.Random);
+        Assert.Equal(3500, result.Player.ReplayPlayer.Mmr.ParsedMmr);
     }
 
     // Each player's in-game color (see GamePlayer.ColorArgb) is what the Data tab's build tabs are
@@ -195,8 +195,8 @@ public class ReplayDataExtractorTests : IDisposable
 
         ParsedReplayData result = _extractor.Parse(raw, CreateProfile(100));
 
-        Assert.Equal(unchecked((int)0xFFFF0000), result.Player.ColorArgb);
-        Assert.Equal(unchecked((int)0xFF0000FF), Assert.Single(result.Opponents).ColorArgb);
+        Assert.Equal(unchecked((int)0xFFFF0000), result.Player.ReplayPlayer.ColorArgb);
+        Assert.Equal(unchecked((int)0xFF0000FF), Assert.Single(result.Opponents).ReplayPlayer.ColorArgb);
     }
 
     // A moved, deleted, or otherwise unreadable replay file is exactly the case this exists for — an

@@ -49,19 +49,19 @@ public class GameDataRepositoryTests : IDisposable
     {
         GameData game = CreateGame(replayPath: "r1.SC2Replay");
         _repository.InsertGame(game, _sc2ProfileId);
-        Assert.NotNull(game.ReplayData.Player.GamePlayerId);
+        Assert.NotNull(game.ReplayData.Player.ReplayPlayer.GamePlayerId);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         Assert.Equal(game.GameId, loaded.GameId);
-        Assert.Equal(game.ReplayData.Player.GamePlayerId, loaded.ReplayData.Player.GamePlayerId);
-        Assert.NotNull(loaded.ReplayData.Player.GamePlayerId);
+        Assert.Equal(game.ReplayData.Player.ReplayPlayer.GamePlayerId, loaded.ReplayData.Player.ReplayPlayer.GamePlayerId);
+        Assert.NotNull(loaded.ReplayData.Player.ReplayPlayer.GamePlayerId);
         Assert.Equal("Map", loaded.ReplayData.Map.Name);
         Assert.Equal(600, loaded.ReplayData.GameLengthSeconds);
         Assert.Equal(new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero), loaded.ReplayData.ReplayTimestamp);
         Assert.Equal(1m, loaded.ReplayData.Win);
-        Assert.Equal("Me", loaded.ReplayData.Player.Name);
-        Assert.Equal(3000, loaded.ReplayData.Player.Mmr.Mmr);
-        Assert.Equal('T', loaded.ReplayData.Player.Race);
+        Assert.Equal("Me", loaded.ReplayData.Player.ReplayPlayer.Name);
+        Assert.Equal(3000, loaded.ReplayData.Player.ReplayPlayer.Mmr.Mmr);
+        Assert.Equal('T', loaded.ReplayData.Player.ReplayPlayer.Race);
     }
 
     [Fact]
@@ -75,37 +75,37 @@ public class GameDataRepositoryTests : IDisposable
         _repository.InsertGame(second, _sc2ProfileId);
 
         Assert.Equal(firstId, second.GameId);
-        Assert.Equal(first.ReplayData.Player.GamePlayerId, second.ReplayData.Player.GamePlayerId);
+        Assert.Equal(first.ReplayData.Player.ReplayPlayer.GamePlayerId, second.ReplayData.Player.ReplayPlayer.GamePlayerId);
         Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
     }
 
     [Fact]
     public void InsertGame_PersistsAlliesAndOpponentsSeparately()
     {
-        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 2900 }, Race = 'T', Random = false };
-        GamePlayer opponent = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false };
+        GamePlayer ally = new() { ReplayPlayer = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 2900 }, Race = 'T', Random = false } };
+        GamePlayer opponent = new() { ReplayPlayer = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false } };
         GameData game = CreateGame(allies: [ally], opponents: [opponent]);
         _repository.InsertGame(game, _sc2ProfileId);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         GamePlayer loadedAlly = Assert.Single(loaded.ReplayData.Allies);
         GamePlayer loadedOpponent = Assert.Single(loaded.ReplayData.Opponents);
-        Assert.Equal("Ally", loadedAlly.Name);
-        Assert.Equal("Foe", loadedOpponent.Name);
+        Assert.Equal("Ally", loadedAlly.ReplayPlayer.Name);
+        Assert.Equal("Foe", loadedOpponent.ReplayPlayer.Name);
     }
 
     [Fact]
     public void InsertGame_AllyAndOpponentGetTheirOwnDistinctGamePlayerId()
     {
-        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 2900 }, Race = 'T', Random = false };
-        GamePlayer opponent = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false };
+        GamePlayer ally = new() { ReplayPlayer = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 2900 }, Race = 'T', Random = false } };
+        GamePlayer opponent = new() { ReplayPlayer = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false } };
         GameData game = CreateGame(allies: [ally], opponents: [opponent]);
         _repository.InsertGame(game, _sc2ProfileId);
 
-        Assert.NotNull(ally.GamePlayerId);
-        Assert.NotNull(opponent.GamePlayerId);
-        Assert.NotEqual(ally.GamePlayerId, opponent.GamePlayerId);
-        Assert.NotEqual(game.ReplayData.Player.GamePlayerId, ally.GamePlayerId);
+        Assert.NotNull(ally.ReplayPlayer.GamePlayerId);
+        Assert.NotNull(opponent.ReplayPlayer.GamePlayerId);
+        Assert.NotEqual(ally.ReplayPlayer.GamePlayerId, opponent.ReplayPlayer.GamePlayerId);
+        Assert.NotEqual(game.ReplayData.Player.ReplayPlayer.GamePlayerId, ally.ReplayPlayer.GamePlayerId);
     }
 
     [Fact]
@@ -116,12 +116,12 @@ public class GameDataRepositoryTests : IDisposable
         BuildNode allyBuild = new() { Name = "Ally Build" };
         _buildRepository.InsertBuild(allyBuild, null, 1);
 
-        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 2900 }, Race = 'T', Random = false };
+        GamePlayer ally = new() { ReplayPlayer = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 2900 }, Race = 'T', Random = false } };
         GameData game = CreateGame(allies: [ally]);
         _repository.InsertGame(game, _sc2ProfileId);
 
-        _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [selfBuild.Id]);
-        _repository.UpdateGameBuilds(ally.GamePlayerId!.Value, [allyBuild.Id]);
+        _repository.UpdateGameBuilds(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, [selfBuild.Id]);
+        _repository.UpdateGameBuilds(ally.ReplayPlayer.GamePlayerId!.Value, [allyBuild.Id]);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         Assert.Equal([selfBuild.Id], loaded.ReplayData.Player.BuildIds);
@@ -137,7 +137,7 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [build.Id]);
+        _repository.UpdateGameBuilds(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, [build.Id]);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         Assert.Equal([build.Id], loaded.ReplayData.Player.BuildIds);
@@ -153,7 +153,7 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [buildB.Id, buildA.Id]);
+        _repository.UpdateGameBuilds(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, [buildB.Id, buildA.Id]);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         Assert.Equal([buildB.Id, buildA.Id], loaded.ReplayData.Player.BuildIds);
@@ -169,8 +169,8 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [buildA.Id, buildB.Id]);
-        _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [buildB.Id]);
+        _repository.UpdateGameBuilds(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, [buildA.Id, buildB.Id]);
+        _repository.UpdateGameBuilds(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, [buildB.Id]);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         Assert.Equal([buildB.Id], loaded.ReplayData.Player.BuildIds);
@@ -183,11 +183,11 @@ public class GameDataRepositoryTests : IDisposable
         _buildRepository.InsertBuild(build, null, 0);
         AttributeValue attr = InsertBuildDetailAttribute();
 
-        GamePlayer ally = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 2900 }, Race = 'T', Random = false };
+        GamePlayer ally = new() { ReplayPlayer = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 2900 }, Race = 'T', Random = false } };
         GameData game = CreateGame(allies: [ally]);
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [build.Id]);
-        _repository.UpsertBuildDetailValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Definition.Id, "14");
+        _repository.UpdateGameBuilds(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, [build.Id]);
+        _repository.UpsertBuildDetailValue(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, attr.Definition.Id, "14");
 
         _repository.DeleteGame(game.GameId!.Value);
 
@@ -269,7 +269,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.InsertGame(game, _sc2ProfileId);
 
         // CreateGame gives the self player an Mmr of 3000 going into the game.
-        _repository.UpdateGamePlayerMmrAfter(game.ReplayData.Player.GamePlayerId!.Value, 3024);
+        _repository.UpdateGamePlayerMmrAfter(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, 3024);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         Assert.Equal(3024, loaded.ReplayData.Player.MmrAfter);
@@ -282,7 +282,7 @@ public class GameDataRepositoryTests : IDisposable
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
 
-        _repository.UpdateGamePlayerMmrAfter(game.ReplayData.Player.GamePlayerId!.Value, 2976);
+        _repository.UpdateGamePlayerMmrAfter(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, 2976);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         Assert.Equal(-24, loaded.ReplayData.Player.MmrChange);
@@ -291,11 +291,11 @@ public class GameDataRepositoryTests : IDisposable
     [Fact]
     public void UpdateGamePlayerMmrAfter_DoesNotTouchOtherPlayers()
     {
-        GamePlayer opponent = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false };
+        GamePlayer opponent = new() { ReplayPlayer = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false } };
         GameData game = CreateGame(opponents: [opponent]);
         _repository.InsertGame(game, _sc2ProfileId);
 
-        _repository.UpdateGamePlayerMmrAfter(game.ReplayData.Player.GamePlayerId!.Value, 3024);
+        _repository.UpdateGamePlayerMmrAfter(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, 3024);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         Assert.Equal(3024, loaded.ReplayData.Player.MmrAfter);
@@ -320,7 +320,7 @@ public class GameDataRepositoryTests : IDisposable
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
 
-        _repository.UpsertBuildDetailValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Definition.Id, "14");
+        _repository.UpsertBuildDetailValue(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, attr.Definition.Id, "14");
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         BuildDetailValue value = Assert.Single(loaded.ReplayData.Player.BuildDetailValues);
@@ -335,8 +335,8 @@ public class GameDataRepositoryTests : IDisposable
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
 
-        _repository.UpsertBuildDetailValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Definition.Id, "14");
-        _repository.UpsertBuildDetailValue(game.ReplayData.Player.GamePlayerId!.Value, attr.Definition.Id, "16");
+        _repository.UpsertBuildDetailValue(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, attr.Definition.Id, "14");
+        _repository.UpsertBuildDetailValue(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, attr.Definition.Id, "16");
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         BuildDetailValue value = Assert.Single(loaded.ReplayData.Player.BuildDetailValues);
@@ -355,10 +355,10 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpsertBuildDetailValue(game.ReplayData.Player.GamePlayerId!.Value, attr1.Definition.Id, "1");
-        _repository.UpsertBuildDetailValue(game.ReplayData.Player.GamePlayerId!.Value, attr2.Definition.Id, "2");
+        _repository.UpsertBuildDetailValue(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, attr1.Definition.Id, "1");
+        _repository.UpsertBuildDetailValue(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, attr2.Definition.Id, "2");
 
-        _repository.DeleteBuildDetailValue(game.ReplayData.Player.GamePlayerId!.Value, attr1.Definition.Id);
+        _repository.DeleteBuildDetailValue(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, attr1.Definition.Id);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         BuildDetailValue remaining = Assert.Single(loaded.ReplayData.Player.BuildDetailValues);
@@ -510,7 +510,7 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [build.Id]);
+        _repository.UpdateGameBuilds(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, [build.Id]);
 
         Assert.True(_repository.IsAnyBuildReferenced([build.Id]));
     }
@@ -540,7 +540,7 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [child.Id]);
+        _repository.UpdateGameBuilds(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, [child.Id]);
 
         // Simulates deleting "parent", which would cascade-delete "child" too — the caller passes the
         // whole subtree, and only "child" (not "parent") is actually referenced by a game.
@@ -591,9 +591,9 @@ public class GameDataRepositoryTests : IDisposable
             ReplayPath = replayPath,
             ReplayTimestamp = replayTimestamp ?? new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero),
             Win = win,
-            Player = new GamePlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'T', Random = false },
+            Player = new GamePlayer { ReplayPlayer = new() { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'T', Random = false } },
             Allies = allies ?? [],
-            Opponents = opponents ?? [new GamePlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false }],
+            Opponents = opponents ?? [new GamePlayer { ReplayPlayer = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false } }],
         };
         return new GameData { ReplayData = replay };
     }

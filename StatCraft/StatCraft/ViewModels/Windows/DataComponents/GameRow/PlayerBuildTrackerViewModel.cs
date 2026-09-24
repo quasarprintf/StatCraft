@@ -22,7 +22,7 @@ namespace StatCraft.ViewModels.Windows.DataComponents.GameRow;
 // GamePlayer's own id, not to the game as a whole.
 public partial class PlayerBuildTrackerViewModel : ViewModelBase
 {
-    public string TabHeader => _player.Name;
+    public string TabHeader => _player.ReplayPlayer.Name;
 
     // Null for self player, since only allies/opponents are tabulated
     [ObservableProperty] private IBrush? _nameColor;
@@ -37,7 +37,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     // The color NameColor falls back to when team colors are off — kept even while team colors are
     // on, resolving in the background same as always, so toggling the setting back off has an
     // up-to-date color ready immediately instead of needing a fresh replay re-read.
-    private IBrush? _replayNameColor => _player?.ColorArgb == null ? null : Styles.Colors.FromArgb(_player.ColorArgb.Value);
+    private IBrush? _replayNameColor => _player?.ReplayPlayer.ColorArgb == null ? null : Styles.Colors.FromArgb(_player.ReplayPlayer.ColorArgb.Value);
 
     [ObservableProperty] private string _selectedBuildsSummary = "";
 
@@ -56,7 +56,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
         _useTeamColors = useTeamColors;
         _isAlly = isAlly;
 
-        if (!player.ColorArgb.HasValue && replayDataExtractor != null && replayPath != null)
+        if (!player.ReplayPlayer.ColorArgb.HasValue && replayDataExtractor != null && replayPath != null)
             _ = ResolveNameColorFromReplayAsync(replayDataExtractor, replayPath);
         UpdateNameColor();
 
@@ -91,16 +91,16 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     // (falls back to the default tab foreground) rather than failing anything else about the row.
     private async Task ResolveNameColorFromReplayAsync(ReplayDataExtractor replayDataExtractor, string replayPath)
     {
-        int? colorArgb = await replayDataExtractor.TryResolvePlayerColorAsync(replayPath, _player.Name);
+        int? colorArgb = await replayDataExtractor.TryResolvePlayerColorAsync(replayPath, _player.ReplayPlayer.Name);
         if (colorArgb == null)
         {
-            _logger.LogWarning($"Could not resolve in-game color for \"{_player.Name}\" from replay: {replayPath}");
+            _logger.LogWarning($"Could not resolve in-game color for \"{_player.ReplayPlayer.Name}\" from replay: {replayPath}");
             return;
         }
 
-        _player.ColorArgb = colorArgb;
-        if (_player.GamePlayerId.HasValue)
-            _repository.UpdateGamePlayerColor(_player.GamePlayerId.Value, colorArgb.Value);
+        _player.ReplayPlayer.ColorArgb = colorArgb;
+        if (_player.ReplayPlayer.GamePlayerId.HasValue)
+            _repository.UpdateGamePlayerColor(_player.ReplayPlayer.GamePlayerId.Value, colorArgb.Value);
 
         Dispatcher.UIThread.Post(() =>
         {
@@ -182,11 +182,11 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     {
         try
         {
-            _repository.UpdateGameBuilds(_player.GamePlayerId!.Value, buildIds);
+            _repository.UpdateGameBuilds(_player.ReplayPlayer.GamePlayerId!.Value, buildIds);
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Failed to persist build selection for \"{_player.Name}\" (GamePlayerId={_player.GamePlayerId}): {ex}");
+            _logger.LogError($"Failed to persist build selection for \"{_player.ReplayPlayer.Name}\" (GamePlayerId={_player.ReplayPlayer.GamePlayerId}): {ex}");
         }
     }
 
@@ -194,11 +194,11 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     {
         try
         {
-            _repository.UpsertBuildDetailValue(_player.GamePlayerId!.Value, buildAttributeId, value);
+            _repository.UpsertBuildDetailValue(_player.ReplayPlayer.GamePlayerId!.Value, buildAttributeId, value);
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Failed to persist attribute value (BuildAttributeId={buildAttributeId}) for \"{_player.Name}\" (GamePlayerId={_player.GamePlayerId}): {ex}");
+            _logger.LogError($"Failed to persist attribute value (BuildAttributeId={buildAttributeId}) for \"{_player.ReplayPlayer.Name}\" (GamePlayerId={_player.ReplayPlayer.GamePlayerId}): {ex}");
         }
     }
 
@@ -206,11 +206,11 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     {
         try
         {
-            _repository.DeleteBuildDetailValue(_player.GamePlayerId!.Value, buildAttributeId);
+            _repository.DeleteBuildDetailValue(_player.ReplayPlayer.GamePlayerId!.Value, buildAttributeId);
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Failed to delete attribute value (BuildAttributeId={buildAttributeId}) for \"{_player.Name}\" (GamePlayerId={_player.GamePlayerId}): {ex}");
+            _logger.LogError($"Failed to delete attribute value (BuildAttributeId={buildAttributeId}) for \"{_player.ReplayPlayer.Name}\" (GamePlayerId={_player.ReplayPlayer.GamePlayerId}): {ex}");
         }
     }
 

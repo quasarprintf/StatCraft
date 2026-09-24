@@ -89,10 +89,13 @@ public class MatchupResolverTests
 
     private static GamePlayer CreateOpponent(char race) => new()
     {
-        Name = "Opponent",
-        Clan = "",
-        Mmr = new PlayerMmr { ParsedMmr = 0 },
-        Race = race,
-        Random = false,
+        ReplayPlayer = new()
+        {
+            Name = "Opponent",
+            Clan = "",
+            Mmr = new PlayerMmr { ParsedMmr = 0 },
+            Race = race,
+            Random = false,
+        },
     };
 }

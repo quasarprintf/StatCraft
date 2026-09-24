@@ -175,7 +175,7 @@ public class DataPageFiltersViewModelTests : IDisposable
     }
 
     private static GamePlayer Opponent(char race) =>
-        new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = race, Random = false };
+        new() { ReplayPlayer = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = race, Random = false } };
 
     private static GameData CreateGame(char selfRace, GamePlayer[] opponents)
     {
@@ -186,7 +186,7 @@ public class DataPageFiltersViewModelTests : IDisposable
             ReplayPath = "replay.SC2Replay",
             ReplayTimestamp = new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero),
             Win = 1m,
-            Player = new GamePlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = selfRace, Random = false, BuildIds = [] },
+            Player = new GamePlayer { ReplayPlayer = new() { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = selfRace, Random = false }, BuildIds = [] },
             Allies = [],
             Opponents = opponents,
         };

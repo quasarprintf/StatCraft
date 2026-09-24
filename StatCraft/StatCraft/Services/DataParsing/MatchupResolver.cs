@@ -12,7 +12,7 @@ internal static class MatchupResolver
         Matchups matchups = Matchups.None;
         foreach (var opponent in opponents)
         {
-            matchups |= ParseMatchup(opponent.Race);
+            matchups |= ParseMatchup(opponent.ReplayPlayer.Race);
         }
         return matchups;
     }

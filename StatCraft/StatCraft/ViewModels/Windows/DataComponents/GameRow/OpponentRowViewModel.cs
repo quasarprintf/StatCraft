@@ -13,8 +13,8 @@ public partial class OpponentRowViewModel : ViewModelBase
     private readonly GamePlayer _player;
     private readonly GameDataRepository _repository;
 
-    public string Name => _player.Name;
-    public string FormattedClan => _player.FormattedClan;
+    public string Name => _player.ReplayPlayer.Name;
+    public string FormattedClan => _player.ReplayPlayer.FormattedClan;
 
     //mmr currently being displayed, not guaranteed to match player.mmr
     [ObservableProperty] private decimal? _mmr;
@@ -23,24 +23,24 @@ public partial class OpponentRowViewModel : ViewModelBase
     {
         _player = player;
         _repository = repository;
-        _mmr = player.Mmr.Mmr;
-        _player.Mmr.MmrChanged += PlayerMmrChanged;
+        _mmr = player.ReplayPlayer.Mmr.Mmr;
+        _player.ReplayPlayer.Mmr.MmrChanged += PlayerMmrChanged;
     }
 
     private void PlayerMmrChanged(object? sender, EventArgs e)
     {
-        Mmr = _player.Mmr.Mmr;
+        Mmr = _player.ReplayPlayer.Mmr.Mmr;
     }
 
     partial void OnMmrChanged(decimal? value)
     {
-        long baseline = _player.Mmr.EstimatedMmr ?? _player.Mmr.ParsedMmr;
+        long baseline = _player.ReplayPlayer.Mmr.EstimatedMmr ?? _player.ReplayPlayer.Mmr.ParsedMmr;
         long? newOverride = value == null || (long)value.Value == baseline ? null : (long)value.Value;
 
-        if (_player.Mmr.OverrideMmr != newOverride)
+        if (_player.ReplayPlayer.Mmr.OverrideMmr != newOverride)
         {
-            _player.Mmr.OverrideMmr = newOverride;
-            _repository.UpdateGamePlayerOverrideMmr(_player.GamePlayerId!.Value, newOverride);
+            _player.ReplayPlayer.Mmr.OverrideMmr = newOverride;
+            _repository.UpdateGamePlayerOverrideMmr(_player.ReplayPlayer.GamePlayerId!.Value, newOverride);
         }
 
         if (value == null)

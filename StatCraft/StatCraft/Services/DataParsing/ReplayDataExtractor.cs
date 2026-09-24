@@ -130,12 +130,15 @@ public class ReplayDataExtractor(MapRepository mapRepo)
 
         GamePlayer BuildPlayer(int i) => new()
         {
-            Name = names[i],
-            Clan = clans[i] ?? "",
-            Mmr = new PlayerMmr { ParsedMmr = mmrs[i] ?? 0 },
-            Race = races[i],
-            Random = randomRace[i],
-            ColorArgb = colorsArgb[i],
+            ReplayPlayer = new ReplayPlayer
+            {
+                Name = names[i],
+                Clan = clans[i] ?? "",
+                Mmr = new PlayerMmr { ParsedMmr = mmrs[i] ?? 0 },
+                Race = races[i],
+                Random = randomRace[i],
+                ColorArgb = colorsArgb[i],
+            },
         };
 
         decimal win = rawReplayData.IsDraw ? 0.5m : winners.Contains(playerIndex) ? 1m : 0m;

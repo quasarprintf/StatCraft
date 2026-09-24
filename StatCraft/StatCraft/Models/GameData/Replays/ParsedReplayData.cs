@@ -17,5 +17,5 @@ public class ParsedReplayData
     public required GamePlayer[] Opponents { get; set; }
     public bool IsMatchmade { get; set; }
 
-    public bool IsRatedOneVsOne => Allies.Length == 0 && Opponents.Length == 1 && Player.Mmr.Mmr > 0;
+    public bool IsRatedOneVsOne => Allies.Length == 0 && Opponents.Length == 1 && Player.ReplayPlayer.Mmr.Mmr > 0;
 }

@@ -33,7 +33,7 @@ public partial class GameDataRepository : SqliteRepository
         if (existingId != null)
         {
             game.GameId = (int)existingId.Value;
-            game.ReplayData.Player.GamePlayerId = (int)conn.ExecuteScalar<long>(
+            game.ReplayData.Player.ReplayPlayer.GamePlayerId = (int)conn.ExecuteScalar<long>(
                 "SELECT Id FROM GamePlayers WHERE GameId = @gameId AND Side = @side",
                 new { gameId = game.GameId, side = SideSelf });
             return;
@@ -52,17 +52,17 @@ public partial class GameDataRepository : SqliteRepository
                 replayPath = replay.ReplayPath,
                 replayTimestamp = replay.ReplayTimestamp,
                 win = (double)replay.Win,
-                playerName = replay.Player.Name,
-                playerClan = replay.Player.Clan,
-                playerMmr = replay.Player.Mmr.ParsedMmr,
+                playerName = replay.Player.ReplayPlayer.Name,
+                playerClan = replay.Player.ReplayPlayer.Clan,
+                playerMmr = replay.Player.ReplayPlayer.Mmr.ParsedMmr,
                 gameType = (int)game.GameType,
-                playerRace = replay.Player.Race,
-                playerRandom = replay.Player.Random ? 1 : 0,
+                playerRace = replay.Player.ReplayPlayer.Race,
+                playerRandom = replay.Player.ReplayPlayer.Random ? 1 : 0,
                 notes = game.Notes,
                 createdAt = DateTimeOffset.UtcNow,
             });
 
-        replay.Player.GamePlayerId = (int)conn.ExecuteScalar<long>(@"
+        replay.Player.ReplayPlayer.GamePlayerId = (int)conn.ExecuteScalar<long>(@"
                 INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random, Color)
                 VALUES (@gameId, @side, 0, @name, @clan, @mmr, @race, @random, @color);
                 SELECT last_insert_rowid();",
@@ -70,12 +70,12 @@ public partial class GameDataRepository : SqliteRepository
             {
                 gameId = game.GameId,
                 side = SideSelf,
-                name = replay.Player.Name,
-                clan = replay.Player.Clan,
-                mmr = replay.Player.Mmr.ParsedMmr,
-                race = replay.Player.Race,
-                random = replay.Player.Random ? 1 : 0,
-                color = replay.Player.ColorArgb,
+                name = replay.Player.ReplayPlayer.Name,
+                clan = replay.Player.ReplayPlayer.Clan,
+                mmr = replay.Player.ReplayPlayer.Mmr.ParsedMmr,
+                race = replay.Player.ReplayPlayer.Race,
+                random = replay.Player.ReplayPlayer.Random ? 1 : 0,
+                color = replay.Player.ReplayPlayer.ColorArgb,
             });
 
         InsertGamePlayers(conn, game.GameId.Value, SideAlly, replay.Allies);
@@ -90,7 +90,7 @@ public partial class GameDataRepository : SqliteRepository
         for (int i = 0; i < players.Length; i++)
         {
             GamePlayer player = players[i];
-            player.GamePlayerId = (int)conn.ExecuteScalar<long>(@"
+            player.ReplayPlayer.GamePlayerId = (int)conn.ExecuteScalar<long>(@"
                     INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random, Color)
                     VALUES (@gameId, @side, @sortOrder, @name, @clan, @mmr, @race, @random, @color);
                     SELECT last_insert_rowid();",
@@ -99,12 +99,12 @@ public partial class GameDataRepository : SqliteRepository
                     gameId,
                     side,
                     sortOrder = i,
-                    name = player.Name,
-                    clan = player.Clan,
-                    mmr = player.Mmr.ParsedMmr,
-                    race = player.Race,
-                    random = player.Random ? 1 : 0,
-                    color = player.ColorArgb,
+                    name = player.ReplayPlayer.Name,
+                    clan = player.ReplayPlayer.Clan,
+                    mmr = player.ReplayPlayer.Mmr.ParsedMmr,
+                    race = player.ReplayPlayer.Race,
+                    random = player.ReplayPlayer.Random ? 1 : 0,
+                    color = player.ReplayPlayer.ColorArgb,
                 });
         }
     }
@@ -186,14 +186,17 @@ public partial class GameDataRepository : SqliteRepository
         {
             GamePlayer player = new()
             {
-                GamePlayerId = (int)row.Id,
-                Name = row.Name,
-                Clan = row.Clan,
-                Mmr = new PlayerMmr { ParsedMmr = row.Mmr, EstimatedMmr = row.EstimatedMmr, OverrideMmr = row.OverrideMmr },
+                ReplayPlayer = new ReplayPlayer
+                {
+                    GamePlayerId = (int)row.Id,
+                    Name = row.Name,
+                    Clan = row.Clan,
+                    Mmr = new PlayerMmr { ParsedMmr = row.Mmr, EstimatedMmr = row.EstimatedMmr, OverrideMmr = row.OverrideMmr },
+                    Race = row.Race,
+                    Random = row.Random,
+                    ColorArgb = row.Color,
+                },
                 MmrAfter = row.MmrAfter,
-                Race = row.Race,
-                Random = row.Random,
-                ColorArgb = row.Color,
             };
             playersById[row.Id] = player;
 
@@ -234,11 +237,14 @@ public partial class GameDataRepository : SqliteRepository
             // row's own Player* columns rather than crashing.
             GamePlayer selfPlayer = selfPlayers.TryGetValue(row.Id, out GamePlayer? sp) ? sp : new GamePlayer
             {
-                Name = row.PlayerName,
-                Clan = row.PlayerClan,
-                Mmr = new PlayerMmr { ParsedMmr = row.PlayerMmr },
-                Race = row.PlayerRace,
-                Random = row.PlayerRandom,
+                ReplayPlayer = new ReplayPlayer
+                {
+                    Name = row.PlayerName,
+                    Clan = row.PlayerClan,
+                    Mmr = new PlayerMmr { ParsedMmr = row.PlayerMmr },
+                    Race = row.PlayerRace,
+                    Random = row.PlayerRandom,
+                },
             };
 
             ParsedReplayData replay = new()

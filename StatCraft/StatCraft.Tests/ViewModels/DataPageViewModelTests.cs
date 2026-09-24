@@ -372,7 +372,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     private GameData InsertGameWithBuild(BuildNode build)
     {
         GameData game = InsertGame();
-        _gameDataRepository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [build.Id]);
+        _gameDataRepository.UpdateGameBuilds(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, [build.Id]);
         _viewModel = CreateViewModel();
         return game;
     }
@@ -412,7 +412,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     }
 
     private static GamePlayer Opponent(char race, long mmr) =>
-        new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = mmr }, Race = race, Random = false };
+        new() { ReplayPlayer = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = mmr }, Race = race, Random = false } };
 
     #endregion
 
@@ -1142,9 +1142,9 @@ public class DataPageViewModelTests : IAsyncDisposable
             ReplayPath = Guid.NewGuid() + ".SC2Replay",
             ReplayTimestamp = playedAt ?? DateTimeOffset.Now,
             Win = win,
-            Player = new GamePlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = selfRace, Random = false },
+            Player = new GamePlayer { ReplayPlayer = new() { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = selfRace, Random = false } },
             Allies = [],
-            Opponents = opponents ?? [new GamePlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'T', Random = false }],
+            Opponents = opponents ?? [new GamePlayer { ReplayPlayer = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'T', Random = false } }],
         };
         GameData game = new() { ReplayData = replay };
         _gameDataRepository.InsertGame(game, profileId ?? _sc2ProfileId);
