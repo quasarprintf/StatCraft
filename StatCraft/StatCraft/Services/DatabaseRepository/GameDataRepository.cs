@@ -46,7 +46,7 @@ public partial class GameDataRepository : SqliteRepository
             new
             {
                 sc2ProfileId,
-                mapId = replay.Map?.Id,
+                mapId = replay.Map.Id,
                 gameLengthSeconds = replay.GameLengthSeconds,
                 replayPath = replay.ReplayPath,
                 replayTimestamp = replay.ReplayTimestamp,
@@ -242,7 +242,7 @@ public partial class GameDataRepository : SqliteRepository
 
             ParsedReplayData replay = new()
             {
-                Map = mapsById[row.MapId!.Value],
+                Map = mapsById[row.MapId.Value],
                 GameLengthSeconds = row.GameLengthSeconds,
                 ReplayPath = row.ReplayPath,
                 ReplayTimestamp = row.ReplayTimestamp,

@@ -70,7 +70,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             Mandatory = true
         };
 
-        MapSlot = new CheckboxFilterSlotViewModel<GameData, Map>("Map", [], g => [g.ReplayData.Map!], showSearch: true) { AllowIncludeUnset=false }; //TODO: why is map nullable?
+        MapSlot = new CheckboxFilterSlotViewModel<GameData, Map>("Map", [], g => [g.ReplayData.Map], showSearch: true) { AllowIncludeUnset=false }; //TODO: why is map nullable?
         MatchupSlot = new CheckboxFilterSlotViewModel<GameData, (Race, Race)>("Matchup", BuildMatchupOptions(), GetGameMatchups, columns: 3) { AllowIncludeUnset=false };
         OutcomeSlot = new CheckboxFilterSlotViewModel<GameData, GameOutcome>("Outcome", BuildOutcomeOptions(), g => [g.ReplayData.Win.AsGameOutcome()]) { AllowIncludeUnset=false };
 
