@@ -24,7 +24,7 @@ public class ParsedReplayDataTests
     [Fact]
     public void TeamGame_IsNotRated()
     {
-        GamePlayer ally = Player("Ally", 'T');
+        ReplayPlayer ally = Player("Ally", 'T');
         Assert.False(CreateReplay(allies: [ally], opponents: [Player("A", 'Z'), Player("B", 'P')]).IsRatedOneVsOne);
     }
 
@@ -41,10 +41,10 @@ public class ParsedReplayDataTests
         Assert.False(CreateReplay(selfMmr: -1).IsRatedOneVsOne);
     }
 
-    private static GamePlayer Player(string name, char race, long mmr = 3000) =>
-        new() { ReplayPlayer = new() { Name = name, Clan = "", Mmr = new PlayerMmr { ParsedMmr = mmr }, Race = race, Random = false } };
+    private static ReplayPlayer Player(string name, char race, long mmr = 3000) =>
+        new() { Name = name, Clan = "", Mmr = new PlayerMmr { ParsedMmr = mmr }, Race = race, Random = false };
 
-    private static ParsedReplayData CreateReplay(long selfMmr = 3000, GamePlayer[]? allies = null, GamePlayer[]? opponents = null) => new()
+    private static ParsedReplayData CreateReplay(long selfMmr = 3000, ReplayPlayer[]? allies = null, ReplayPlayer[]? opponents = null) => new()
     {
         // Not a database-backed test, so any Map instance will do — it just has to be present.
         Map = new Map { Name = "Ladder LE" },

@@ -65,7 +65,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
         ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
-        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+        PlayerBuildTrackerViewModel tracker = new(game.PlayerDetails[game.ReplayData.Player], _gameDataRepository, tree, _logger);
 
         // Select the build — this locks in the attribute's current default (10) as this player's own value.
         BuildNode loadedBuild = tree.Single();
@@ -101,7 +101,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
         ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
-        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+        PlayerBuildTrackerViewModel tracker = new(game.PlayerDetails[game.ReplayData.Player], _gameDataRepository, tree, _logger);
 
         tracker.BuildSlots[0].SelectedBuildNode = tree.Single();
 
@@ -118,7 +118,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
         ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
-        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+        PlayerBuildTrackerViewModel tracker = new(game.PlayerDetails[game.ReplayData.Player], _gameDataRepository, tree, _logger);
 
         BuildNode offTreeBuild = new() { Id = 9999, Name = "Not In Tree" };
         tracker.BuildSlots[0].SelectedBuildNode = offTreeBuild;
@@ -146,7 +146,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
         ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
-        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+        PlayerBuildTrackerViewModel tracker = new(game.PlayerDetails[game.ReplayData.Player], _gameDataRepository, tree, _logger);
 
         BuildNode loadedRoot = tree.Single();
         BuildNode loadedChild = loadedRoot.Children.Single();
@@ -177,7 +177,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
         ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
-        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+        PlayerBuildTrackerViewModel tracker = new(game.PlayerDetails[game.ReplayData.Player], _gameDataRepository, tree, _logger);
 
         BuildNode loadedRoot = tree.Single();
         BuildNode loadedChild = loadedRoot.Children.Single();
@@ -204,7 +204,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
         ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
-        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+        PlayerBuildTrackerViewModel tracker = new(game.PlayerDetails[game.ReplayData.Player], _gameDataRepository, tree, _logger);
 
         BuildNode loadedParent = tree.Single();
         tracker.BuildSlots[0].SelectedBuildNode = loadedParent.Children.Single(n => n.Name == "B");
@@ -227,7 +227,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
         ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
-        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+        PlayerBuildTrackerViewModel tracker = new(game.PlayerDetails[game.ReplayData.Player], _gameDataRepository, tree, _logger);
 
         BuildNode loadedParent = tree.Single();
         tracker.BuildSlots[0].SelectedBuildNode = loadedParent.Children.Single(n => n.Name == "B");
@@ -259,7 +259,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
         ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
-        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+        PlayerBuildTrackerViewModel tracker = new(game.PlayerDetails[game.ReplayData.Player], _gameDataRepository, tree, _logger);
 
         BuildNode loadedA = tree.Single();
         BuildNode loadedB = loadedA.Children.Single(n => n.Name == "B");
@@ -284,7 +284,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
 
         ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
-        PlayerBuildTrackerViewModel tracker = new(game.ReplayData.Player, _gameDataRepository, tree, _logger);
+        PlayerBuildTrackerViewModel tracker = new(game.PlayerDetails[game.ReplayData.Player], _gameDataRepository, tree, _logger);
 
         tracker.BuildSlots[0].SelectedBuildNode = tree.Single(n => n.Name == "A");
         tracker.BuildSlots[1].SelectedBuildNode = tree.Single(n => n.Name == "D");
@@ -299,7 +299,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void Construction_WithColorArgbAlreadySet_SetsNameColorFromIt()
     {
-        GamePlayer player = new() { ReplayPlayer = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) } };
+        GamePlayer player = new(new ReplayPlayer { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) });
 
         PlayerBuildTrackerViewModel tracker = new(player, _gameDataRepository, null, _logger);
 
@@ -313,7 +313,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void Construction_WithNoColorArgbAndNoReplayToResolveFrom_LeavesNameColorNull()
     {
-        GamePlayer player = new() { ReplayPlayer = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false } };
+        GamePlayer player = new(new ReplayPlayer { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false });
 
         PlayerBuildTrackerViewModel tracker = new(player, _gameDataRepository, null, _logger);
 
@@ -325,8 +325,8 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void Construction_WithUseTeamColorsOn_ColorsByAllyOpponentSideNotReplayColor()
     {
-        GamePlayer ally = new() { ReplayPlayer = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) } };
-        GamePlayer opponent = new() { ReplayPlayer = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'T', Random = false, ColorArgb = unchecked((int)0xFF00FF00) } };
+        GamePlayer ally = new(new ReplayPlayer { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) });
+        GamePlayer opponent = new(new ReplayPlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'T', Random = false, ColorArgb = unchecked((int)0xFF00FF00) });
 
         PlayerBuildTrackerViewModel allyTracker = new(ally, _gameDataRepository, null, _logger, useTeamColors: true, isAlly: true);
         PlayerBuildTrackerViewModel opponentTracker = new(opponent, _gameDataRepository, null, _logger, useTeamColors: true, isAlly: false);
@@ -341,7 +341,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
     [Fact]
     public void SetUseTeamColors_ToggledOffAfterOn_RestoresReplayColor()
     {
-        GamePlayer ally = new() { ReplayPlayer = new() { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) } };
+        GamePlayer ally = new(new ReplayPlayer { Name = "Ally", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false, ColorArgb = unchecked((int)0xFFFF0000) });
         PlayerBuildTrackerViewModel tracker = new(ally, _gameDataRepository, null, _logger, useTeamColors: true, isAlly: true);
         Assert.Same(AppColors.AllyYellow, tracker.NameColor);
 
@@ -361,11 +361,11 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
             ReplayPath = Guid.NewGuid() + ".SC2Replay",
             ReplayTimestamp = DateTimeOffset.UtcNow,
             Win = 1m,
-            Player = new GamePlayer { ReplayPlayer = new() { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false } },
+            Player = new ReplayPlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false },
             Allies = [],
-            Opponents = [new GamePlayer { ReplayPlayer = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'T', Random = false } }],
+            Opponents = [new ReplayPlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'T', Random = false }],
         };
-        return new GameData { ReplayData = replay };
+        return new GameData(replay);
     }
 
     public void Dispose()

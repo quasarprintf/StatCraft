@@ -13,7 +13,7 @@ public class MatchupResolverTests
     [InlineData('P', Matchups.VsP)]
     public void FromOpponents_SingleKnownRace_ReturnsMatchingFlag(char race, Matchups expected)
     {
-        GamePlayer[] opponents = [CreateOpponent(race)];
+        ReplayPlayer[] opponents = [CreateOpponent(race)];
 
         Matchups result = MatchupResolver.FromOpponents(opponents);
 
@@ -23,7 +23,7 @@ public class MatchupResolverTests
     [Fact]
     public void FromOpponents_UnresolvedRace_ReturnsNone()
     {
-        GamePlayer[] opponents = [CreateOpponent('?')];
+        ReplayPlayer[] opponents = [CreateOpponent('?')];
 
         Matchups result = MatchupResolver.FromOpponents(opponents);
 
@@ -41,7 +41,7 @@ public class MatchupResolverTests
     [Fact]
     public void FromOpponents_MultipleDifferentRaces_CombinesFlags()
     {
-        GamePlayer[] opponents = [CreateOpponent('T'), CreateOpponent('Z')];
+        ReplayPlayer[] opponents = [CreateOpponent('T'), CreateOpponent('Z')];
 
         Matchups result = MatchupResolver.FromOpponents(opponents);
 
@@ -51,7 +51,7 @@ public class MatchupResolverTests
     [Fact]
     public void FromOpponents_MultipleSameRace_DoesNotDuplicateFlag()
     {
-        GamePlayer[] opponents = [CreateOpponent('Z'), CreateOpponent('Z')];
+        ReplayPlayer[] opponents = [CreateOpponent('Z'), CreateOpponent('Z')];
 
         Matchups result = MatchupResolver.FromOpponents(opponents);
 
@@ -61,7 +61,7 @@ public class MatchupResolverTests
     [Fact]
     public void FromOpponents_MixOfKnownAndUnresolvedRace_IgnoresUnresolved()
     {
-        GamePlayer[] opponents = [CreateOpponent('P'), CreateOpponent('?')];
+        ReplayPlayer[] opponents = [CreateOpponent('P'), CreateOpponent('?')];
 
         Matchups result = MatchupResolver.FromOpponents(opponents);
 
@@ -87,15 +87,12 @@ public class MatchupResolverTests
         Assert.Null(result);
     }
 
-    private static GamePlayer CreateOpponent(char race) => new()
+    private static ReplayPlayer CreateOpponent(char race) => new()
     {
-        ReplayPlayer = new()
-        {
-            Name = "Opponent",
-            Clan = "",
-            Mmr = new PlayerMmr { ParsedMmr = 0 },
-            Race = race,
-            Random = false,
-        },
+        Name = "Opponent",
+        Clan = "",
+        Mmr = new PlayerMmr { ParsedMmr = 0 },
+        Race = race,
+        Random = false,
     };
 }

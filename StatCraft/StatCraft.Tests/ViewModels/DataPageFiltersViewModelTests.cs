@@ -174,10 +174,10 @@ public class DataPageFiltersViewModelTests : IDisposable
         Assert.Equal(expected, _filters.GetFilter().MatchesFilter(game));
     }
 
-    private static GamePlayer Opponent(char race) =>
-        new() { ReplayPlayer = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = race, Random = false } };
+    private static ReplayPlayer Opponent(char race) =>
+        new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = race, Random = false };
 
-    private static GameData CreateGame(char selfRace, GamePlayer[] opponents)
+    private static GameData CreateGame(char selfRace, ReplayPlayer[] opponents)
     {
         ParsedReplayData replay = new()
         {
@@ -186,11 +186,11 @@ public class DataPageFiltersViewModelTests : IDisposable
             ReplayPath = "replay.SC2Replay",
             ReplayTimestamp = new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero),
             Win = 1m,
-            Player = new GamePlayer { ReplayPlayer = new() { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = selfRace, Random = false }, BuildIds = [] },
+            Player = new ReplayPlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = selfRace, Random = false },
             Allies = [],
             Opponents = opponents,
         };
-        return new GameData { ReplayData = replay };
+        return new GameData(replay);
     }
 
     private CheckboxFilterOptionViewModel<int> ProfileOption(int profileId) =>

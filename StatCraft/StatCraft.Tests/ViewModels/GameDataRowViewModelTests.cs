@@ -85,8 +85,8 @@ public class GameDataRowViewModelTests : IDisposable
 
         // Simulates TryCorrectOpponentMmr discarding the replay-parsed 3100 as implausible and storing
         // an Elo-estimated value instead, minutes after the row was already constructed and displayed.
-        GamePlayer opponent = game.ReplayData.Opponents[0];
-        opponent.ReplayPlayer.Mmr.EstimatedMmr = 3400;
+        ReplayPlayer opponent = game.ReplayData.Opponents[0];
+        opponent.Mmr.EstimatedMmr = 3400;
 
         Assert.Equal(3400, opponentRow.Mmr);
     }
@@ -101,11 +101,11 @@ public class GameDataRowViewModelTests : IDisposable
             ReplayPath = Guid.NewGuid() + ".SC2Replay",
             ReplayTimestamp = DateTimeOffset.UtcNow,
             Win = 1m,
-            Player = new GamePlayer { ReplayPlayer = new() { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false } },
+            Player = new ReplayPlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = 'Z', Random = false },
             Allies = [],
-            Opponents = [new GamePlayer { ReplayPlayer = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'T', Random = false } }],
+            Opponents = [new ReplayPlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'T', Random = false }],
         };
-        return new GameData { ReplayData = replay };
+        return new GameData(replay);
     }
 
     public void Dispose()

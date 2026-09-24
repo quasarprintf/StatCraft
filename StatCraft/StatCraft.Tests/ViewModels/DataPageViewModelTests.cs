@@ -372,7 +372,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     private GameData InsertGameWithBuild(BuildNode build)
     {
         GameData game = InsertGame();
-        _gameDataRepository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [build.Id]);
+        _gameDataRepository.UpdateGameBuilds(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, [build.Id]);
         _viewModel = CreateViewModel();
         return game;
     }
@@ -411,8 +411,8 @@ public class DataPageViewModelTests : IAsyncDisposable
         return map;
     }
 
-    private static GamePlayer Opponent(char race, long mmr) =>
-        new() { ReplayPlayer = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = mmr }, Race = race, Random = false } };
+    private static ReplayPlayer Opponent(char race, long mmr) =>
+        new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = mmr }, Race = race, Random = false };
 
     #endregion
 
@@ -1131,7 +1131,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     #endregion
 
     private GameData InsertGame(Map? map = null, decimal win = 1m, char selfRace = 'Z',
-        GamePlayer[]? opponents = null, DateTimeOffset? playedAt = null, int? profileId = null)
+        ReplayPlayer[]? opponents = null, DateTimeOffset? playedAt = null, int? profileId = null)
     {
         ParsedReplayData replay = new()
         {
@@ -1142,11 +1142,11 @@ public class DataPageViewModelTests : IAsyncDisposable
             ReplayPath = Guid.NewGuid() + ".SC2Replay",
             ReplayTimestamp = playedAt ?? DateTimeOffset.Now,
             Win = win,
-            Player = new GamePlayer { ReplayPlayer = new() { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = selfRace, Random = false } },
+            Player = new ReplayPlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = selfRace, Random = false },
             Allies = [],
-            Opponents = opponents ?? [new GamePlayer { ReplayPlayer = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'T', Random = false } }],
+            Opponents = opponents ?? [new ReplayPlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'T', Random = false }],
         };
-        GameData game = new() { ReplayData = replay };
+        GameData game = new(replay);
         _gameDataRepository.InsertGame(game, profileId ?? _sc2ProfileId);
         return game;
     }

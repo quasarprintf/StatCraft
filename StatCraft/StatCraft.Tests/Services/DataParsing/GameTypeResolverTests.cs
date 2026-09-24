@@ -74,8 +74,8 @@ public class GameTypeResolverTests
         ReplayTimestamp = DateTimeOffset.UtcNow,
         Win = 1m,
         IsMatchmade = isMatchmade,
-        Player = new GamePlayer { ReplayPlayer = new() { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = selfMmr }, Race = 'P', Random = false } },
+        Player = new ReplayPlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = selfMmr }, Race = 'P', Random = false },
         Allies = [],
-        Opponents = [new GamePlayer { ReplayPlayer = new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false } }],
+        Opponents = [new ReplayPlayer { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3100 }, Race = 'Z', Random = false }],
     };
 }
