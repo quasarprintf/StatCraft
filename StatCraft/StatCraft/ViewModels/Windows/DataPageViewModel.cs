@@ -248,8 +248,8 @@ public partial class DataPageViewModel : ViewModelBase
         if (!replay.IsRatedOneVsOne)
             return;
 
-        if (LadderRaceExtensions.FromPlayer(replay.Player.ReplayPlayer.Race, replay.Player.ReplayPlayer.Random) is { } race)
-            _mmrTracker.SeedBaselineIfAbsent(race, replay.Player.ReplayPlayer.Mmr.Mmr);
+        if (LadderRaceExtensions.FromPlayer(replay.Player.Race, replay.Player.Random) is { } race)
+            _mmrTracker.SeedBaselineIfAbsent(race, replay.Player.Mmr.Mmr);
     }
 
     // Arrives minutes after the game was imported, on a background polling task. The row's underlying
@@ -261,7 +261,7 @@ public partial class DataPageViewModel : ViewModelBase
 
         // The freshly-observed rating is by definition this profile's current one for the ladder just
         // played, so the header can be updated straight from it rather than re-querying the API.
-        GamePlayer self = game.ReplayData.Player;
+        GamePlayer self = game.PlayerDetails[game.ReplayData.Player];
         if (self.MmrAfter is { } mmrAfter && LadderRaceExtensions.FromPlayer(self.ReplayPlayer.Race, self.ReplayPlayer.Random) is { } race)
             _mmrTracker.UpdateCurrent(race, mmrAfter);
     });

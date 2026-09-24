@@ -128,23 +128,20 @@ public class ReplayDataExtractor(MapRepository mapRepo)
         if (map == null)
             throw new InvalidOperationException($"Failed to parse map {rawReplayData.MapName} from replay.");
 
-        GamePlayer BuildPlayer(int i) => new()
+        ReplayPlayer BuildPlayer(int i) => new()
         {
-            ReplayPlayer = new ReplayPlayer
-            {
-                Name = names[i],
-                Clan = clans[i] ?? "",
-                Mmr = new PlayerMmr { ParsedMmr = mmrs[i] ?? 0 },
-                Race = races[i],
-                Random = randomRace[i],
-                ColorArgb = colorsArgb[i],
-            },
+            Name = names[i],
+            Clan = clans[i] ?? "",
+            Mmr = new PlayerMmr { ParsedMmr = mmrs[i] ?? 0 },
+            Race = races[i],
+            Random = randomRace[i],
+            ColorArgb = colorsArgb[i],
         };
 
         decimal win = rawReplayData.IsDraw ? 0.5m : winners.Contains(playerIndex) ? 1m : 0m;
 
-        List<GamePlayer> allies = new();
-        List<GamePlayer> opponents = new();
+        List<ReplayPlayer> allies = new();
+        List<ReplayPlayer> opponents = new();
         for (int i = 0; i < names.Count; i++)
         {
             if (i == playerIndex)

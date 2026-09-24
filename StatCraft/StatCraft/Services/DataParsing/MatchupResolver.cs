@@ -1,5 +1,6 @@
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Race;
+using StatCraft.Models.GameData.Replays;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -7,12 +8,12 @@ namespace StatCraft.Services.DataParsing;
 
 internal static class MatchupResolver
 {
-    internal static Matchups FromOpponents(GamePlayer[] opponents)
+    internal static Matchups FromOpponents(ReplayPlayer[] opponents)
     {
         Matchups matchups = Matchups.None;
         foreach (var opponent in opponents)
         {
-            matchups |= ParseMatchup(opponent.ReplayPlayer.Race);
+            matchups |= ParseMatchup(opponent.Race);
         }
         return matchups;
     }

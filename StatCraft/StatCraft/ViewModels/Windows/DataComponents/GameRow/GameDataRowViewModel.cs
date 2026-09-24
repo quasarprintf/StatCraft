@@ -58,7 +58,7 @@ public partial class GameDataRowViewModel : ViewModelBase
     {
         get
         {
-            GamePlayer self = _game.ReplayData.Player;
+            GamePlayer self = _game.PlayerDetails[_game.ReplayData.Player];
             if (self.MmrAfter is not { } after || self.MmrChange is not { } change)
                 return [new ColoredCharacter(self.ReplayPlayer.Mmr.Mmr.ToString())];
 
@@ -111,8 +111,8 @@ public partial class GameDataRowViewModel : ViewModelBase
         // user edit and write straight back to the database (same reason as _notes below).
         _gameType = game.GameType;
         MatchupCharacters = BuildMatchupCharacters(replay);
-        foreach (GamePlayer opponent in replay.Opponents)
-            Opponents.Add(new OpponentRowViewModel(opponent, repository));
+        foreach (ReplayPlayer opponent in replay.Opponents)
+            Opponents.Add(new OpponentRowViewModel(game.PlayerDetails[opponent], repository));
         _notes = game.Notes;
 
         // Allies share the self player's own opponents (same enemy team), so their build tree uses
@@ -121,21 +121,21 @@ public partial class GameDataRowViewModel : ViewModelBase
         Matchups selfSideMatchups = MatchupResolver.FromOpponents(replay.Opponents);
         Matchups opponentSideMatchups = MatchupResolver.FromOpponents([replay.Player, .. replay.Allies]);
 
-        ObservableCollection<BuildNode>? selfBuildTree = getBuildTree(replay.Player.ReplayPlayer.Race.AsRace(), selfSideMatchups);
-        SelfTracker = new PlayerBuildTrackerViewModel(replay.Player, repository, selfBuildTree, logger, useTeamColors: useTeamColors);
+        ObservableCollection<BuildNode>? selfBuildTree = getBuildTree(replay.Player.Race.AsRace(), selfSideMatchups);
+        SelfTracker = new PlayerBuildTrackerViewModel(game.PlayerDetails[replay.Player], repository, selfBuildTree, logger, useTeamColors: useTeamColors);
         SelfTracker.BuildSlots.CollectionChanged += (_,_) => RenderHeightChanged?.Invoke(this, EventArgs.Empty);
 
-        foreach (GamePlayer ally in replay.Allies)
+        foreach (ReplayPlayer ally in replay.Allies)
         {
-            ObservableCollection<BuildNode>? buildTree = getBuildTree(ally.ReplayPlayer.Race.AsRace(), selfSideMatchups);
-            var buildTracker = new PlayerBuildTrackerViewModel(ally, repository, buildTree, logger, replayDataExtractor, replay.ReplayPath, useTeamColors, isAlly: true);
+            ObservableCollection<BuildNode>? buildTree = getBuildTree(ally.Race.AsRace(), selfSideMatchups);
+            var buildTracker = new PlayerBuildTrackerViewModel(game.PlayerDetails[ally], repository, buildTree, logger, replayDataExtractor, replay.ReplayPath, useTeamColors, isAlly: true);
             OtherPlayers.Add(buildTracker);
             buildTracker.BuildSlots.CollectionChanged += (_,_) => RenderHeightChanged?.Invoke(this, EventArgs.Empty);
         }
-        foreach (GamePlayer opponent in replay.Opponents)
+        foreach (ReplayPlayer opponent in replay.Opponents)
         {
-            ObservableCollection<BuildNode>? buildTree = getBuildTree(opponent.ReplayPlayer.Race.AsRace(), opponentSideMatchups);
-            var buildTracker = new PlayerBuildTrackerViewModel(opponent, repository, buildTree, logger, replayDataExtractor, replay.ReplayPath, useTeamColors, isAlly: false);
+            ObservableCollection<BuildNode>? buildTree = getBuildTree(opponent.Race.AsRace(), opponentSideMatchups);
+            var buildTracker = new PlayerBuildTrackerViewModel(game.PlayerDetails[opponent], repository, buildTree, logger, replayDataExtractor, replay.ReplayPath, useTeamColors, isAlly: false);
             OtherPlayers.Add(buildTracker);
             buildTracker.BuildSlots.CollectionChanged += (_,_) => RenderHeightChanged?.Invoke(this, EventArgs.Empty);
         }
@@ -208,12 +208,12 @@ public partial class GameDataRowViewModel : ViewModelBase
 
         void AddRace(char race) => characters.Add(new ColoredCharacter(race.ToString(), RaceColor(race)));
 
-        AddRace(replay.Player.ReplayPlayer.Race);
-        foreach (GamePlayer ally in replay.Allies)
-            AddRace(ally.ReplayPlayer.Race);
+        AddRace(replay.Player.Race);
+        foreach (ReplayPlayer ally in replay.Allies)
+            AddRace(ally.Race);
         characters.Add(new ColoredCharacter("v", Brushes.Black));
-        foreach (GamePlayer opponent in replay.Opponents)
-            AddRace(opponent.ReplayPlayer.Race);
+        foreach (ReplayPlayer opponent in replay.Opponents)
+            AddRace(opponent.Race);
 
         return characters;
     }

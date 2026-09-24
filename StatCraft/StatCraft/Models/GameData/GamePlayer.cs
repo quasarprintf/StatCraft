@@ -8,20 +8,16 @@ namespace StatCraft.Models.GameData;
 public class GamePlayer
 {
     public int? GamePlayerId { get; set; }
+    public ReplayPlayer ReplayPlayer { get; set; }
 
-    // What the replay itself reported about this player — name, clan, race, in-game color, and the
-    // MMR going into the game. Everything else here is recorded by StatCraft after the fact instead.
-    public required ReplayPlayer ReplayPlayer { get; set; }
-
-    // MMR read back from the Battle.net ladder API shortly after the game, i.e. coming *out* of it.
-    // Null whenever it couldn't be determined — no saved API credentials, the profile has no placed
-    // ladder this season, the game wasn't ranked 1v1, or the API hadn't caught up before we gave up
-    // polling. Only ever populated for the tracked user's own row; opponents' ratings aren't
-    // retrievable without knowing their region/realm/profile ids.
-    public long? MmrAfter { get; set; }
-
+    public long? MmrAfter { get; set; } //mmr after the game, per battlenet api
     public long? MmrChange => MmrAfter.HasValue ? MmrAfter.Value - ReplayPlayer.Mmr.Mmr : null;
 
     public List<int> BuildIds { get; set; } = [];
     public List<BuildDetailValue> BuildDetailValues { get; set; } = [];
+
+    public GamePlayer(ReplayPlayer replayPlayer)
+    {
+        ReplayPlayer = replayPlayer;
+    }
 }

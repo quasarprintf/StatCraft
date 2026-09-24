@@ -92,9 +92,8 @@ public class ReplayImportService(ILogger logger, ReplayDataExtractor replayDataE
             return $"\"{Path.GetFileName(filePath)}\" doesn't contain a match for the active profile.";
         }
 
-        GameData game = new()
+        GameData game = new GameData(parsedReplayData)
         {
-            ReplayData = parsedReplayData,
             GameType = ResolveGameType(parsedReplayData, profile),
         };
         gameDataRepository.InsertGame(game, profile.Id);
@@ -108,7 +107,7 @@ public class ReplayImportService(ILogger logger, ReplayDataExtractor replayDataE
     //distinguish ranked vs unranked using the heuristic of comparing replay mmr to current ranked mmr from battlenet api
     private GameType ResolveGameType(ParsedReplayData replay, Sc2Profile profile)
     {
-        LadderRace? race = LadderRaceExtensions.FromPlayer(replay.Player.ReplayPlayer.Race, replay.Player.ReplayPlayer.Random);
+        LadderRace? race = LadderRaceExtensions.FromPlayer(replay.Player.Race, replay.Player.Random);
         long? lastKnown = race.HasValue ? ladderService.GetLastKnownMmr(profile, race.Value) : null;
         return GameTypeResolver.Resolve(replay, lastKnown);
     }
@@ -123,11 +122,12 @@ public class ReplayImportService(ILogger logger, ReplayDataExtractor replayDataE
             if (!replay.IsRatedOneVsOne || game.GameType != GameType.Ranked)
                 return;
 
-            int? gamePlayerId = replay.Player.GamePlayerId;
+            GamePlayer gamePlayer = game.PlayerDetails[game.ReplayData.Player];
+            int? gamePlayerId = gamePlayer.GamePlayerId;
             if (gamePlayerId == null)
                 return;
 
-            LadderRace? ladderRace = LadderRaceExtensions.FromPlayer(replay.Player.ReplayPlayer.Race, replay.Player.ReplayPlayer.Random);
+            LadderRace? ladderRace = LadderRaceExtensions.FromPlayer(replay.Player.Race, replay.Player.Random);
             if (ladderRace == null)
                 return;
 
@@ -136,22 +136,22 @@ public class ReplayImportService(ILogger logger, ReplayDataExtractor replayDataE
                 await Task.Delay(delay, CancellationToken.None);
 
                 long? currentMmr = await ladderService.GetCurrentMmrAsync(profile, ladderRace.Value, CancellationToken.None);
-                if (currentMmr == null || currentMmr == replay.Player.ReplayPlayer.Mmr.ParsedMmr)
+                if (currentMmr == null || currentMmr == replay.Player.Mmr.ParsedMmr)
                     continue;
 
-                long mmrChange = currentMmr.Value - replay.Player.ReplayPlayer.Mmr.ParsedMmr;
+                long mmrChange = currentMmr.Value - replay.Player.Mmr.ParsedMmr;
                 gameDataRepository.UpdateGamePlayerMmrAfter(gamePlayerId.Value, currentMmr.Value);
-                replay.Player.MmrAfter = currentMmr.Value;
+                gamePlayer.MmrAfter = currentMmr.Value;
 
-                logger.LogInfo($"MMR after game resolved: {replay.Player.ReplayPlayer.Mmr.ParsedMmr} -> {currentMmr.Value} ({mmrChange:+#;-#;0})", profile);
+                logger.LogInfo($"MMR after game resolved: {replay.Player.Mmr.ParsedMmr} -> {currentMmr.Value} ({mmrChange:+#;-#;0})", profile);
 
-                TryCorrectOpponentMmr(replay, mmrChange, profile);
+                TryCorrectOpponentMmr(game, mmrChange, profile);
 
                 GameMmrUpdated?.Invoke(game);
                 return;
             }
 
-            logger.LogInfo($"Post-game MMR never changed from {replay.Player.ReplayPlayer.Mmr.ParsedMmr}; leaving it unknown.", profile);
+            logger.LogInfo($"Post-game MMR never changed from {replay.Player.Mmr.ParsedMmr}; leaving it unknown.", profile);
         }
         catch (Exception ex)
         {
@@ -171,17 +171,18 @@ public class ReplayImportService(ILogger logger, ReplayDataExtractor replayDataE
     // The estimate lands in EstimatedMmr, alongside ParsedMmr rather than overwriting it — every input
     // into the estimation itself always reads ParsedMmr specifically, so a correction here can never
     // feed back into a later one.
-    private void TryCorrectOpponentMmr(ParsedReplayData replay, long playerMmrChange, Sc2Profile profile)
+    private void TryCorrectOpponentMmr(GameData game, long playerMmrChange, Sc2Profile profile)
     {
-        GamePlayer opponent = replay.Opponents[0];
+        ParsedReplayData replay = game.ReplayData;
+        GamePlayer opponent = game.PlayerDetails[replay.Opponents[0]];
         if (opponent.GamePlayerId == null)
             return;
 
-        double predictedChange = OpponentMmrEstimator.PredictedChange(replay.Player.ReplayPlayer.Mmr.ParsedMmr, opponent.ReplayPlayer.Mmr.ParsedMmr, replay.Win);
+        double predictedChange = OpponentMmrEstimator.PredictedChange(replay.Player.Mmr.ParsedMmr, opponent.ReplayPlayer.Mmr.ParsedMmr, replay.Win);
         if (Math.Abs(predictedChange - playerMmrChange) <= OpponentMmrEstimator.MaxPlausibleResidual)
             return;
 
-        long? estimatedMmr = OpponentMmrEstimator.Estimate(replay.Player.ReplayPlayer.Mmr.ParsedMmr, playerMmrChange, replay.Win);
+        long? estimatedMmr = OpponentMmrEstimator.Estimate(replay.Player.Mmr.ParsedMmr, playerMmrChange, replay.Win);
         if (estimatedMmr == null)
             return;
 

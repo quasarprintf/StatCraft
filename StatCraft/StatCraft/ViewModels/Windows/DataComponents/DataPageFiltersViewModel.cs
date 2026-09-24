@@ -77,7 +77,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
         var innerMmrSlot = new NumericRangeFilterSlotViewModel<PlayerMmr>("Opponent MMR", m => m.Mmr) { AllowIncludeUnset=false };
         MmrSlot = new TemplatedFilterSlotViewModel<GameData, PlayerMmr>(
-            f => new SequentialAnyFilter<GameData, PlayerMmr>(f, g => g.ReplayData.Opponents.Select(o => o.ReplayPlayer.Mmr)),
+            f => new SequentialAnyFilter<GameData, PlayerMmr>(f, g => g.ReplayData.Opponents.Select(o => o.Mmr)),
             innerMmrSlot)
         {
             AllowIncludeUnset=false 
@@ -87,7 +87,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         List<BuildNode> allBuilds = buildRepository.GetAllBuilds();
         Dictionary<int, BuildNode> buildsMap = allBuilds.SelectMany(b => b.EnumerateDescendants().Append(b)).ToDictionary(b => b.Id);
         BuildSlot = new CheckboxFilterSlotViewModel<GameData, BuildNode>("Build", BuildBuildOptions(allBuilds), 
-            g => g.ReplayData.Player.BuildIds.SelectMany(b => buildsMap.TryGetValue(b, out BuildNode? build) ? build.EnumerateAncestors().Append(build) : Enumerable.Empty<BuildNode>())) 
+            g => g.PlayerDetails[g.ReplayData.Player].BuildIds.SelectMany(b => buildsMap.TryGetValue(b, out BuildNode? build) ? build.EnumerateAncestors().Append(build) : Enumerable.Empty<BuildNode>())) 
         { 
             AllowIncludeUnset=false 
         };
@@ -227,7 +227,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
     private (Race,Race)[] GetGameMatchups(GameData game)
     {
-        return game.ReplayData.Opponents.Select(o => (game.ReplayData.Player.ReplayPlayer.Race.AsRace()!.Value, o.ReplayPlayer.Race.AsRace()!.Value)).Distinct().ToArray();
+        return game.ReplayData.Opponents.Select(o => (game.ReplayData.Player.Race.AsRace()!.Value, o.Race.AsRace()!.Value)).Distinct().ToArray();
     }
 
     private static List<CheckboxFilterOptionViewModel<(Race, Race)>> BuildMatchupOptions()

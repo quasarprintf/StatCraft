@@ -33,7 +33,7 @@ public partial class GameDataRepository : SqliteRepository
         if (existingId != null)
         {
             game.GameId = (int)existingId.Value;
-            game.ReplayData.Player.GamePlayerId = (int)conn.ExecuteScalar<long>(
+            game.PlayerDetails[game.ReplayData.Player].GamePlayerId = (int)conn.ExecuteScalar<long>(
                 "SELECT Id FROM GamePlayers WHERE GameId = @gameId AND Side = @side",
                 new { gameId = game.GameId, side = SideSelf });
             return;
@@ -52,17 +52,17 @@ public partial class GameDataRepository : SqliteRepository
                 replayPath = replay.ReplayPath,
                 replayTimestamp = replay.ReplayTimestamp,
                 win = (double)replay.Win,
-                playerName = replay.Player.ReplayPlayer.Name,
-                playerClan = replay.Player.ReplayPlayer.Clan,
-                playerMmr = replay.Player.ReplayPlayer.Mmr.ParsedMmr,
+                playerName = replay.Player.Name,
+                playerClan = replay.Player.Clan,
+                playerMmr = replay.Player.Mmr.ParsedMmr,
                 gameType = (int)game.GameType,
-                playerRace = replay.Player.ReplayPlayer.Race,
-                playerRandom = replay.Player.ReplayPlayer.Random ? 1 : 0,
+                playerRace = replay.Player.Race,
+                playerRandom = replay.Player.Random ? 1 : 0,
                 notes = game.Notes,
                 createdAt = DateTimeOffset.UtcNow,
             });
 
-        replay.Player.GamePlayerId = (int)conn.ExecuteScalar<long>(@"
+        game.PlayerDetails[replay.Player].GamePlayerId = (int)conn.ExecuteScalar<long>(@"
                 INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random, Color)
                 VALUES (@gameId, @side, 0, @name, @clan, @mmr, @race, @random, @color);
                 SELECT last_insert_rowid();",
@@ -70,16 +70,16 @@ public partial class GameDataRepository : SqliteRepository
             {
                 gameId = game.GameId,
                 side = SideSelf,
-                name = replay.Player.ReplayPlayer.Name,
-                clan = replay.Player.ReplayPlayer.Clan,
-                mmr = replay.Player.ReplayPlayer.Mmr.ParsedMmr,
-                race = replay.Player.ReplayPlayer.Race,
-                random = replay.Player.ReplayPlayer.Random ? 1 : 0,
-                color = replay.Player.ReplayPlayer.ColorArgb,
+                name = replay.Player.Name,
+                clan = replay.Player.Clan,
+                mmr = replay.Player.Mmr.ParsedMmr,
+                race = replay.Player.Race,
+                random = replay.Player.Random ? 1 : 0,
+                color = replay.Player.ColorArgb,
             });
 
-        InsertGamePlayers(conn, game.GameId.Value, SideAlly, replay.Allies);
-        InsertGamePlayers(conn, game.GameId.Value, SideOpponent, replay.Opponents);
+        InsertGamePlayers(conn, game.GameId.Value, SideAlly, replay.Allies.Select(p => game.PlayerDetails[p]).ToArray());
+        InsertGamePlayers(conn, game.GameId.Value, SideOpponent, replay.Opponents.Select(p => game.PlayerDetails[p]).ToArray());
     }
 
     // Inserted one row at a time (rather than Dapper's batched IEnumerable-params Execute) so each
@@ -184,18 +184,18 @@ public partial class GameDataRepository : SqliteRepository
             $"SELECT Id, GameId, Side, Name, Clan, Mmr, EstimatedMmr, OverrideMmr, MmrAfter, Race, Random, Color FROM GamePlayers WHERE GameId IN ({idList}) ORDER BY GameId, Side, SortOrder");
         foreach (GamePlayerRow row in playerRows)
         {
-            GamePlayer player = new()
+            ReplayPlayer replayPlayer = new ReplayPlayer()
+            {
+                Name = row.Name,
+                Clan = row.Clan,
+                Mmr = new PlayerMmr { ParsedMmr = row.Mmr, EstimatedMmr = row.EstimatedMmr, OverrideMmr = row.OverrideMmr },
+                Race = row.Race,
+                Random = row.Random,
+                ColorArgb = row.Color,
+            };
+            GamePlayer player = new GamePlayer(replayPlayer)
             {
                 GamePlayerId = (int)row.Id,
-                ReplayPlayer = new ReplayPlayer
-                {
-                    Name = row.Name,
-                    Clan = row.Clan,
-                    Mmr = new PlayerMmr { ParsedMmr = row.Mmr, EstimatedMmr = row.EstimatedMmr, OverrideMmr = row.OverrideMmr },
-                    Race = row.Race,
-                    Random = row.Random,
-                    ColorArgb = row.Color,
-                },
                 MmrAfter = row.MmrAfter,
             };
             playersById[row.Id] = player;
@@ -235,18 +235,22 @@ public partial class GameDataRepository : SqliteRepository
             // A missing Self row would mean the GamePlayers backfill in Initialize() somehow never
             // ran for this game — shouldn't happen, but fall back to reconstructing from the Games
             // row's own Player* columns rather than crashing.
-            GamePlayer selfPlayer = selfPlayers.TryGetValue(row.Id, out GamePlayer? sp) ? sp : new GamePlayer
+            
+            if (!selfPlayers.TryGetValue(row.Id, out GamePlayer? selfPlayer))
             {
-                ReplayPlayer = new ReplayPlayer
+                ReplayPlayer replayPlayer = new ReplayPlayer()
                 {
                     Name = row.PlayerName,
                     Clan = row.PlayerClan,
                     Mmr = new PlayerMmr { ParsedMmr = row.PlayerMmr },
                     Race = row.PlayerRace,
                     Random = row.PlayerRandom,
-                },
+                };
+                selfPlayer = new GamePlayer(replayPlayer);
             };
 
+            List<GamePlayer> rowAllies = allies.TryGetValue(row.Id, out List<GamePlayer>? a) ? a : [];
+            List<GamePlayer>? rowOpponents = opponents.TryGetValue(row.Id, out List<GamePlayer>? o) ? o : [];
             ParsedReplayData replay = new()
             {
                 Map = mapsById[row.MapId],
@@ -254,12 +258,19 @@ public partial class GameDataRepository : SqliteRepository
                 ReplayPath = row.ReplayPath,
                 ReplayTimestamp = row.ReplayTimestamp,
                 Win = row.Win,
-                Player = selfPlayer,
-                Allies = allies.TryGetValue(row.Id, out List<GamePlayer>? a) ? a.ToArray() : [],
-                Opponents = opponents.TryGetValue(row.Id, out List<GamePlayer>? o) ? o.ToArray() : [],
+                Player = selfPlayer.ReplayPlayer,
+                Allies = rowAllies.Select(p => p.ReplayPlayer).ToArray(),
+                Opponents = rowOpponents.Select(p => p.ReplayPlayer).ToArray(),
             };
 
-            games.Add(new GameData
+            Dictionary<ReplayPlayer, GamePlayer> playerDetails = new Dictionary<ReplayPlayer, GamePlayer>();
+            playerDetails[selfPlayer.ReplayPlayer] = selfPlayer;
+            foreach (var ally in rowAllies)
+                playerDetails[ally.ReplayPlayer] = ally;
+            foreach (var opponent in rowOpponents)
+                playerDetails[opponent.ReplayPlayer] = opponent;
+
+            games.Add(new GameData(replay, playerDetails)
             {
                 GameId = (int)row.Id,
                 Sc2ProfileId = row.Sc2ProfileId,
