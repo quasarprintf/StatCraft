@@ -242,7 +242,7 @@ public partial class GameDataRepository : SqliteRepository
 
             ParsedReplayData replay = new()
             {
-                Map = row.MapId != null && mapsById.TryGetValue(row.MapId.Value, out Map? map) ? map : null,
+                Map = mapsById[row.MapId!.Value],
                 GameLengthSeconds = row.GameLengthSeconds,
                 ReplayPath = row.ReplayPath,
                 ReplayTimestamp = row.ReplayTimestamp,
