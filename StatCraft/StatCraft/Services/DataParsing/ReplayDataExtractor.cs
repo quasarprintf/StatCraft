@@ -155,6 +155,7 @@ public class ReplayDataExtractor(MapRepository mapRepo)
 
         return new ParsedReplayData
         {
+            Map = map,
             GameLengthSeconds = rawReplayData.GameLengthSeconds,
             ReplayPath = rawReplayData.ReplayPath,
             ReplayTimestamp = rawReplayData.ReplayTimestamp,
