@@ -33,7 +33,7 @@ public class ReplayImportServiceTests : IDisposable
 
         _service = new ReplayImportService(
             new MockLogger(),
-            new ReplayDataExtractor(),
+            new ReplayDataExtractor(mapRepository),
             gameDataRepository,
             mapRepository,
             new Sc2LadderService(new HttpClient(), new StubTokenProvider(), new MockLogger()));

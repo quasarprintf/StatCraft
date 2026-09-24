@@ -18,7 +18,7 @@ public class GameDataRowViewModelTests : IDisposable
     private readonly GameDataRepository _gameDataRepository;
     private readonly ObservableCollection<AttributeDefinition> _gameAttributes = [];
     private readonly MockLogger _logger = new();
-    private readonly ReplayDataExtractor _replayDataExtractor = new();
+    private readonly ReplayDataExtractor _replayDataExtractor;
     private readonly int _sc2ProfileId;
 
     public GameDataRowViewModelTests()
@@ -28,7 +28,9 @@ public class GameDataRowViewModelTests : IDisposable
         AccountRepository accountRepository = new(_dbPath);
         accountRepository.Initialize();
         new BuildRepository(_dbPath).Initialize();
-        new MapRepository(_dbPath).Initialize();
+        MapRepository mapRepository = new(_dbPath);
+        mapRepository.Initialize();
+        _replayDataExtractor = new ReplayDataExtractor(mapRepository);
         _gameDataRepository = new GameDataRepository(_dbPath);
         _gameDataRepository.Initialize();
 

@@ -83,7 +83,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     private DataPageViewModel CreateViewModel()
     {
         Sc2LadderService ladderService = new(new HttpClient(), new StubTokenProvider(), new MockLogger());
-        ReplayDataExtractor replayDataExtractor = new();
+        ReplayDataExtractor replayDataExtractor = new(_mapRepository);
         ReplayImportService replayImportService = new(new MockLogger(), replayDataExtractor, _gameDataRepository,
             _mapRepository, ladderService);
 
@@ -400,6 +400,8 @@ public class DataPageViewModelTests : IAsyncDisposable
         filter.Min = min;
         filter.Max = max;
     }
+
+    private Map? _defaultMap;
 
     // Games store their map by id, so a game's map has to be a real row for it to come back on load.
     private Map InsertMap(string name)
@@ -1133,7 +1135,9 @@ public class DataPageViewModelTests : IAsyncDisposable
     {
         ParsedReplayData replay = new()
         {
-            Map = map,
+            // Every imported game has a map (ReplayDataExtractor.Parse refuses a replay without one),
+            // and loading a game assumes it, so a test that doesn't care which map still gets one.
+            Map = map ?? (_defaultMap ??= InsertMap("Ladder LE")),
             GameLengthSeconds = 600,
             ReplayPath = Guid.NewGuid() + ".SC2Replay",
             ReplayTimestamp = playedAt ?? DateTimeOffset.Now,

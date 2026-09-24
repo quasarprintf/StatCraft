@@ -2,13 +2,27 @@ using System.Collections.Generic;
 using System.Linq;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Maps;
+using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
 
 namespace StatCraft.Tests;
 
-public class ReplayDataExtractorTests
+public class ReplayDataExtractorTests : IDisposable
 {
-    private readonly ReplayDataExtractor _extractor = new();
+    // Parse resolves the replay's map name against the Maps table (creating the row if it's new), so
+    // these need a real repository rather than the bare extractor they used before.
+    private readonly string _dbPath;
+    private readonly MapRepository _mapRepository;
+    private readonly ReplayDataExtractor _extractor;
+
+    public ReplayDataExtractorTests()
+    {
+        _dbPath = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid() + ".db");
+        _mapRepository = new MapRepository(_dbPath);
+        _mapRepository.Initialize();
+        _extractor = new ReplayDataExtractor(_mapRepository);
+    }
 
     [Fact]
     public void Parse_PlayerWins_SetsWinToOne()
@@ -201,6 +215,69 @@ public class ReplayDataExtractorTests
         ProfileId = profileId,
         Name = name,
     };
+
+    // Parse resolves the replay's map name to a row in the Maps table, so every game imported on a map
+    // ends up pointing at the same map the Maps tab edits, rather than a name copied onto the game.
+    [Fact]
+    public void Parse_AttachesTheMapForTheReplaysMapName()
+    {
+        RawReplayData raw = CreateRawReplayData(
+            profileIds: [100, 200],
+            teams: [0, 1],
+            winningIndices: [0],
+            mapName: "Altitude LE");
+
+        ParsedReplayData result = _extractor.Parse(raw, CreateProfile(100));
+
+        Assert.Equal("Altitude LE", result.Map?.Name);
+        Assert.Equal(_mapRepository.GetAllMaps([]).Single(m => m.Name == "Altitude LE").Id, result.Map?.Id);
+    }
+
+    [Fact]
+    public void Parse_MapAlreadyKnown_ReusesTheExistingMapRatherThanAddingAnother()
+    {
+        Map existing = new() { Name = "Altitude LE" };
+        _mapRepository.InsertMap(existing);
+        RawReplayData raw = CreateRawReplayData(
+            profileIds: [100, 200],
+            teams: [0, 1],
+            winningIndices: [0],
+            mapName: "Altitude LE");
+
+        ParsedReplayData result = _extractor.Parse(raw, CreateProfile(100));
+
+        Assert.Equal(existing.Id, result.Map?.Id);
+        Assert.Single(_mapRepository.GetAllMaps([]));
+    }
+
+    // A replay with no map name has nothing to attach, and a game without a map can't be shown or
+    // filtered by map — so parsing fails rather than storing a game that points at nothing.
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Parse_ReplayHasNoMapName_Throws(string mapName)
+    {
+        RawReplayData raw = CreateRawReplayData(
+            profileIds: [100, 200],
+            teams: [0, 1],
+            winningIndices: [0],
+            mapName: mapName);
+
+        Assert.Throws<InvalidOperationException>(() => _extractor.Parse(raw, CreateProfile(100)));
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            if (File.Exists(_dbPath))
+                File.Delete(_dbPath);
+        }
+        catch (IOException)
+        {
+            // Best-effort cleanup.
+        }
+    }
 
     private static RawReplayData CreateRawReplayData(
         IReadOnlyList<int> profileIds,
