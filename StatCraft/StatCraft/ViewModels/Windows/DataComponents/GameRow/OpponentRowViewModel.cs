@@ -40,7 +40,7 @@ public partial class OpponentRowViewModel : ViewModelBase
         if (_player.ReplayPlayer.Mmr.OverrideMmr != newOverride)
         {
             _player.ReplayPlayer.Mmr.OverrideMmr = newOverride;
-            _repository.UpdateGamePlayerOverrideMmr(_player.ReplayPlayer.GamePlayerId!.Value, newOverride);
+            _repository.UpdateGamePlayerOverrideMmr(_player.GamePlayerId!.Value, newOverride);
         }
 
         if (value == null)

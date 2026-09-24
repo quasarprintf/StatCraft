@@ -372,7 +372,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     private GameData InsertGameWithBuild(BuildNode build)
     {
         GameData game = InsertGame();
-        _gameDataRepository.UpdateGameBuilds(game.ReplayData.Player.ReplayPlayer.GamePlayerId!.Value, [build.Id]);
+        _gameDataRepository.UpdateGameBuilds(game.ReplayData.Player.GamePlayerId!.Value, [build.Id]);
         _viewModel = CreateViewModel();
         return game;
     }

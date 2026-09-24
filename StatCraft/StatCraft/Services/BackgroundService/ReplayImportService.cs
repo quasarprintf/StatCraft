@@ -123,7 +123,7 @@ public class ReplayImportService(ILogger logger, ReplayDataExtractor replayDataE
             if (!replay.IsRatedOneVsOne || game.GameType != GameType.Ranked)
                 return;
 
-            int? gamePlayerId = replay.Player.ReplayPlayer.GamePlayerId;
+            int? gamePlayerId = replay.Player.GamePlayerId;
             if (gamePlayerId == null)
                 return;
 
@@ -174,7 +174,7 @@ public class ReplayImportService(ILogger logger, ReplayDataExtractor replayDataE
     private void TryCorrectOpponentMmr(ParsedReplayData replay, long playerMmrChange, Sc2Profile profile)
     {
         GamePlayer opponent = replay.Opponents[0];
-        if (opponent.ReplayPlayer.GamePlayerId == null)
+        if (opponent.GamePlayerId == null)
             return;
 
         double predictedChange = OpponentMmrEstimator.PredictedChange(replay.Player.ReplayPlayer.Mmr.ParsedMmr, opponent.ReplayPlayer.Mmr.ParsedMmr, replay.Win);
@@ -186,7 +186,7 @@ public class ReplayImportService(ILogger logger, ReplayDataExtractor replayDataE
             return;
 
         logger.LogInfo($"Opponent MMR {opponent.ReplayPlayer.Mmr.ParsedMmr} predicted a MmrChange of {predictedChange:0.#}, but the player's actual MmrChange was {playerMmrChange:+#;-#;0}; correcting to Elo-estimated {estimatedMmr.Value}.", profile);
-        gameDataRepository.UpdateGamePlayerEstimatedMmr(opponent.ReplayPlayer.GamePlayerId.Value, estimatedMmr.Value);
+        gameDataRepository.UpdateGamePlayerEstimatedMmr(opponent.GamePlayerId.Value, estimatedMmr.Value);
         opponent.ReplayPlayer.Mmr.EstimatedMmr = estimatedMmr.Value;
     }
 }

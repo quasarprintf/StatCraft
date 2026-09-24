@@ -7,8 +7,10 @@ namespace StatCraft.Models.GameData;
 
 public class GamePlayer
 {
+    public int? GamePlayerId { get; set; }
+
     // What the replay itself reported about this player — name, clan, race, in-game color, and the
-    // MMR going into the game. Everything below is recorded by StatCraft after the fact instead.
+    // MMR going into the game. Everything else here is recorded by StatCraft after the fact instead.
     public required ReplayPlayer ReplayPlayer { get; set; }
 
     // MMR read back from the Battle.net ladder API shortly after the game, i.e. coming *out* of it.

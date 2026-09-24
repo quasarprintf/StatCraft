@@ -8,8 +8,6 @@ namespace StatCraft.Models.GameData.Replays;
 // adds what StatCraft records on top of it afterwards (post-game MMR, build selections).
 public class ReplayPlayer
 {
-    public int? GamePlayerId { get; set; }
-
     public required string Clan { get; set; }
     public string FormattedClan => string.IsNullOrWhiteSpace(Clan) ? "" : $"[{Clan}]";
     public required string Name { get; set; }

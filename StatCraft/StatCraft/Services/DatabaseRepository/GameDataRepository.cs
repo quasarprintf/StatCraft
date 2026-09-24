@@ -33,7 +33,7 @@ public partial class GameDataRepository : SqliteRepository
         if (existingId != null)
         {
             game.GameId = (int)existingId.Value;
-            game.ReplayData.Player.ReplayPlayer.GamePlayerId = (int)conn.ExecuteScalar<long>(
+            game.ReplayData.Player.GamePlayerId = (int)conn.ExecuteScalar<long>(
                 "SELECT Id FROM GamePlayers WHERE GameId = @gameId AND Side = @side",
                 new { gameId = game.GameId, side = SideSelf });
             return;
@@ -62,7 +62,7 @@ public partial class GameDataRepository : SqliteRepository
                 createdAt = DateTimeOffset.UtcNow,
             });
 
-        replay.Player.ReplayPlayer.GamePlayerId = (int)conn.ExecuteScalar<long>(@"
+        replay.Player.GamePlayerId = (int)conn.ExecuteScalar<long>(@"
                 INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random, Color)
                 VALUES (@gameId, @side, 0, @name, @clan, @mmr, @race, @random, @color);
                 SELECT last_insert_rowid();",
@@ -90,7 +90,7 @@ public partial class GameDataRepository : SqliteRepository
         for (int i = 0; i < players.Length; i++)
         {
             GamePlayer player = players[i];
-            player.ReplayPlayer.GamePlayerId = (int)conn.ExecuteScalar<long>(@"
+            player.GamePlayerId = (int)conn.ExecuteScalar<long>(@"
                     INSERT INTO GamePlayers (GameId, Side, SortOrder, Name, Clan, Mmr, Race, Random, Color)
                     VALUES (@gameId, @side, @sortOrder, @name, @clan, @mmr, @race, @random, @color);
                     SELECT last_insert_rowid();",
@@ -186,9 +186,9 @@ public partial class GameDataRepository : SqliteRepository
         {
             GamePlayer player = new()
             {
+                GamePlayerId = (int)row.Id,
                 ReplayPlayer = new ReplayPlayer
                 {
-                    GamePlayerId = (int)row.Id,
                     Name = row.Name,
                     Clan = row.Clan,
                     Mmr = new PlayerMmr { ParsedMmr = row.Mmr, EstimatedMmr = row.EstimatedMmr, OverrideMmr = row.OverrideMmr },

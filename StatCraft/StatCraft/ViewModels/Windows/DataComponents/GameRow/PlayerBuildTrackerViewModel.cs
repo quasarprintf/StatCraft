@@ -99,8 +99,8 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
         }
 
         _player.ReplayPlayer.ColorArgb = colorArgb;
-        if (_player.ReplayPlayer.GamePlayerId.HasValue)
-            _repository.UpdateGamePlayerColor(_player.ReplayPlayer.GamePlayerId.Value, colorArgb.Value);
+        if (_player.GamePlayerId.HasValue)
+            _repository.UpdateGamePlayerColor(_player.GamePlayerId.Value, colorArgb.Value);
 
         Dispatcher.UIThread.Post(() =>
         {
@@ -182,11 +182,11 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     {
         try
         {
-            _repository.UpdateGameBuilds(_player.ReplayPlayer.GamePlayerId!.Value, buildIds);
+            _repository.UpdateGameBuilds(_player.GamePlayerId!.Value, buildIds);
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Failed to persist build selection for \"{_player.ReplayPlayer.Name}\" (GamePlayerId={_player.ReplayPlayer.GamePlayerId}): {ex}");
+            _logger.LogError($"Failed to persist build selection for \"{_player.ReplayPlayer.Name}\" (GamePlayerId={_player.GamePlayerId}): {ex}");
         }
     }
 
@@ -194,11 +194,11 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     {
         try
         {
-            _repository.UpsertBuildDetailValue(_player.ReplayPlayer.GamePlayerId!.Value, buildAttributeId, value);
+            _repository.UpsertBuildDetailValue(_player.GamePlayerId!.Value, buildAttributeId, value);
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Failed to persist attribute value (BuildAttributeId={buildAttributeId}) for \"{_player.ReplayPlayer.Name}\" (GamePlayerId={_player.ReplayPlayer.GamePlayerId}): {ex}");
+            _logger.LogError($"Failed to persist attribute value (BuildAttributeId={buildAttributeId}) for \"{_player.ReplayPlayer.Name}\" (GamePlayerId={_player.GamePlayerId}): {ex}");
         }
     }
 
@@ -206,11 +206,11 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     {
         try
         {
-            _repository.DeleteBuildDetailValue(_player.ReplayPlayer.GamePlayerId!.Value, buildAttributeId);
+            _repository.DeleteBuildDetailValue(_player.GamePlayerId!.Value, buildAttributeId);
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Failed to delete attribute value (BuildAttributeId={buildAttributeId}) for \"{_player.ReplayPlayer.Name}\" (GamePlayerId={_player.ReplayPlayer.GamePlayerId}): {ex}");
+            _logger.LogError($"Failed to delete attribute value (BuildAttributeId={buildAttributeId}) for \"{_player.ReplayPlayer.Name}\" (GamePlayerId={_player.GamePlayerId}): {ex}");
         }
     }
 
