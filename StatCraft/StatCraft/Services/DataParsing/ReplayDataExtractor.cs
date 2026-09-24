@@ -6,10 +6,12 @@ using s2protocol.NET;
 using s2protocol.NET.Models;
 using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Maps;
+using StatCraft.Services.DatabaseRepository;
 
 namespace StatCraft.Services.DataParsing;
 
-public class ReplayDataExtractor
+public class ReplayDataExtractor(MapRepository mapRepo)
 {
     internal RawReplayData Extract(Sc2Replay replay, DateTimeOffset replayTimestamp)
     {
@@ -120,6 +122,10 @@ public class ReplayDataExtractor
         int playerIndex = rawReplayData.PlayerProfileIds.ToList().FindIndex(i => i == profile.ProfileId);
         if (playerIndex < 0)
             throw new InvalidOperationException($"Could not find a player named '{profile.Name}' in the replay.");
+
+        Map? map = mapRepo.GetOrCreateMap(rawReplayData.MapName);
+        if (map == null)
+            throw new InvalidOperationException($"Failed to parse map {rawReplayData.MapName} from replay.");
 
         GamePlayer BuildPlayer(int i) => new()
         {
