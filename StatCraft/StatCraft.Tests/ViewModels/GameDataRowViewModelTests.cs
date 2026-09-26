@@ -91,6 +91,36 @@ public class GameDataRowViewModelTests : IDisposable
         Assert.Equal(3400, opponentRow.Mmr);
     }
 
+    // The Data tab tints the opponent's MMR field while the number on display is OpponentMmrEstimator's
+    // inference (see DataPage.axaml), so the flag driving that has to follow the same in-place PlayerMmr
+    // mutations the displayed value does — and stop flagging once a typed-in override supersedes the
+    // estimate, since from then on the number on display is the user's own.
+    [Fact]
+    public void OpponentMmrIsEstimated_IsFlaggedUntilAnOverrideReplacesIt()
+    {
+        GameData game = CreateGame();
+        _gameDataRepository.InsertGame(game, _sc2ProfileId);
+
+        GameDataRowViewModel row = new(game, _gameDataRepository, _gameAttributes, "Player", (_, _) => null, _logger, _replayDataExtractor);
+        OpponentRowViewModel opponentRow = Assert.Single(row.Opponents);
+        List<string?> changed = [];
+        opponentRow.PropertyChanged += (_, e) => changed.Add(e.PropertyName);
+
+        // A replay-parsed MMR is real data, not an estimate.
+        Assert.False(opponentRow.IsMmrEstimated);
+
+        game.ReplayData.Opponents[0].Mmr.EstimatedMmr = 3400;
+
+        Assert.True(opponentRow.IsMmrEstimated);
+        Assert.Contains(nameof(OpponentRowViewModel.IsMmrEstimated), changed);
+
+        changed.Clear();
+        opponentRow.Mmr = 3500;
+
+        Assert.False(opponentRow.IsMmrEstimated);
+        Assert.Contains(nameof(OpponentRowViewModel.IsMmrEstimated), changed);
+    }
+
     private GameData CreateGame()
     {
         ParsedReplayData replay = new()

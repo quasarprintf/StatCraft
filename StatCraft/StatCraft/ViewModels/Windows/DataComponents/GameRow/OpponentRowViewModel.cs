@@ -19,6 +19,11 @@ public partial class OpponentRowViewModel : ViewModelBase
     //mmr currently being displayed, not guaranteed to match player.mmr
     [ObservableProperty] private decimal? _mmr;
 
+    // Whether the MMR on display is OpponentMmrEstimator's inference rather than a value the replay
+    // itself reported or one typed in here — the view tints the field while it is (see DataPage.axaml).
+    public bool IsMmrEstimated =>
+        _player.ReplayPlayer.Mmr.OverrideMmr == null && _player.ReplayPlayer.Mmr.EstimatedMmr != null;
+
     internal OpponentRowViewModel(GamePlayer player, GameDataRepository repository)
     {
         _player = player;
@@ -30,6 +35,9 @@ public partial class OpponentRowViewModel : ViewModelBase
     private void PlayerMmrChanged(object? sender, EventArgs e)
     {
         Mmr = _player.ReplayPlayer.Mmr.Mmr;
+        // Which of the three MMR sources is in effect can change with it, including when OnMmrChanged
+        // below writes OverrideMmr, since that write raises MmrChanged too.
+        OnPropertyChanged(nameof(IsMmrEstimated));
     }
 
     partial void OnMmrChanged(decimal? value)

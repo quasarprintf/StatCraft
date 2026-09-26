@@ -12,6 +12,10 @@ public static class Colors
     public static readonly IBrush LossRed = Brushes.DarkRed;
     public static readonly IBrush DrawBlue = Brushes.DarkBlue;
 
+    // Backs an MMR that OpponentMmrEstimator inferred rather than the replay reporting it, so an
+    // estimate is visibly not real data (see the opponent MMR field in DataPage.axaml).
+    public static readonly IBrush EstimatedMmrOrange = Brushes.Orange;
+
     public static readonly IBrush AllyYellow = new SolidColorBrush(Color.Parse("#E0C82C"));
     public static readonly IBrush OpponentRed = Brushes.OrangeRed;
 

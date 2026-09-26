@@ -6,8 +6,23 @@
              xmlns:local="using:StatCraft.Views.Windows.DataComponents"
              xmlns:component="using:StatCraft.Views.Components"
              xmlns:filters="using:StatCraft.Views.Components.Filters"
+             xmlns:styles="using:StatCraft.Styles"
              x:Class="StatCraft.Views.Windows.DataPage"
              x:DataType="vmw:DataPageViewModel">
+    <UserControl.Styles>
+        <!-- Tints an opponent MMR that OpponentMmrEstimator inferred, so it doesn't read as a number the
+             replay itself reported. Both the field and its inner TextBox are set because the Fluent
+             NumericUpDown template gives that TextBox its own background; a class selector is what makes
+             these styles outrank the template's value, an unconditional one wouldn't. -->
+        <Style Selector="NumericUpDown.estimatedMmr">
+            <Setter Property="Background" Value="{x:Static styles:Colors.EstimatedMmrOrange}"/>
+        </Style>
+        <Style Selector="NumericUpDown.estimatedMmr /template/ TextBox#PART_TextBox">
+            <Setter Property="Background" Value="{x:Static styles:Colors.EstimatedMmrOrange}"/>
+            <!-- The theme's own foreground is near-white under the dark variant, which orange won't carry. -->
+            <Setter Property="Foreground" Value="Black"/>
+        </Style>
+    </UserControl.Styles>
     <DockPanel>
         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Spacing="12" Margin="8">
             <Button Content="Begin Session" Command="{Binding BeginSessionCommand}" IsVisible="{Binding !HasActiveSession}"/>
@@ -114,6 +129,7 @@
                                         <StackPanel Orientation="Horizontal" Spacing="2">
                                             <TextBlock Text="(" VerticalAlignment="Center"/>
                                             <NumericUpDown Value="{Binding Mmr}" FormatString="0" ShowButtonSpinner="False" BorderThickness="0"
+                                                           Classes.estimatedMmr="{Binding IsMmrEstimated}"
                                                            MinWidth="36" Padding="0,8" VerticalAlignment="Center"
                                                            LostFocus="OnOpponentMmrLostFocus"/>
                                             <TextBlock Text=") " VerticalAlignment="Center"/>
