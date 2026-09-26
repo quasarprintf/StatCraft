@@ -131,6 +131,15 @@ public class ReplayImportService(ILogger logger, ReplayDataExtractor replayDataE
             if (ladderRace == null)
                 return;
 
+            if (replay.Win == 0.5m)
+            {
+                //draw, mmr didn't change
+                gameDataRepository.UpdateGamePlayerMmrAfter(gamePlayerId.Value, gamePlayer.ReplayPlayer.Mmr.ParsedMmr);
+                gamePlayer.MmrAfter = gamePlayer.ReplayPlayer.Mmr.ParsedMmr;
+                GameMmrUpdated?.Invoke(game);
+                return;
+            }
+
             foreach (TimeSpan delay in MmrPollDelays)
             {
                 await Task.Delay(delay, CancellationToken.None);
