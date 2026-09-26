@@ -10,7 +10,7 @@ internal static class OpponentMmrEstimator
     private const double Slope = 0.0281;
     private const double Curvature = 0.0000080;
 
-    internal const double MaxPlausibleResidual = 3.5;
+    internal const double MaxPlausibleResidual = 1;
 
     // The curve is only meaningful while it is still falling: past its vertex a quadratic turns back up,
     // which would predict a *growing* reward for beating an ever-weaker opponent.
