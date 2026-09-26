@@ -8,8 +8,6 @@ public class OpponentMmrEstimatorTests
     // the relationship rather than just restating the implementation. Coefficients from the published
     // experimental fit this model came from, which differ slightly from the ones tuned to real ladder
     // history — hence the tolerances below.
-    private const double Floor = 3.0;
-
     private static double ForwardMmrChange(long playerMmr, long opponentMmr, decimal win)
     {
         if (win != 0m && win != 1m)
@@ -17,7 +15,7 @@ public class OpponentMmrEstimatorTests
 
         bool won = win == 1m;
         double gap = won ? opponentMmr - playerMmr : playerMmr - opponentMmr;
-        double magnitude = Math.Max(22.72 + 0.03115 * gap + 0.000012 * gap * gap, Floor);
+        double magnitude = Math.Max(22.72 + 0.03115 * gap + 0.000012 * gap * gap, 0);
         return won ? magnitude : -magnitude;
     }
 
@@ -62,15 +60,27 @@ public class OpponentMmrEstimatorTests
         Assert.InRange(predicted, -56, -48);
     }
 
-    // Past a large enough gap the reward flattens out rather than shrinking to nothing.
+    // Beating someone far enough below you really does round to +0 in game, so the reward has to decay
+    // to nothing rather than bottoming out — and it must not start growing again at absurd gaps.
     [Theory]
-    [InlineData(920)]
-    [InlineData(1500)]
-    public void PredictedChange_BeatingAFarWeakerOpponent_StillAwardsTheMinimum(long gap)
+    [InlineData(1200)]
+    [InlineData(2000)]
+    [InlineData(4000)]
+    public void PredictedChange_BeatingAFarWeakerOpponent_DecaysToZero(long gap)
     {
-        double predicted = OpponentMmrEstimator.PredictedChange(5300, 5300 - gap, 1m);
+        Assert.Equal(0, OpponentMmrEstimator.PredictedChange(5300, 5300 - gap, 1m));
+        Assert.Equal(0, OpponentMmrEstimator.PredictedChange(5300, 5300 + gap, 0m));
+    }
 
-        Assert.Equal(Floor, predicted, 1);
+    // And it shrinks smoothly on the way there, rather than stepping off a cliff.
+    [Fact]
+    public void PredictedChange_ShrinksMonotonicallyAsTheOpponentGetsWeaker()
+    {
+        long[] gaps = [900, 1000, 1100, 1200];
+        double[] rewards = gaps.Select(gap => OpponentMmrEstimator.PredictedChange(5300, 5300 - gap, 1m)).ToArray();
+
+        Assert.True(rewards[0] > rewards[1] && rewards[1] > rewards[2] && rewards[2] >= rewards[3]);
+        Assert.InRange(rewards[0], 1, 5);
     }
 
     // PredictedChange and Estimate are meant to be inverses: predicting from a known opponent MMR, then
@@ -139,15 +149,18 @@ public class OpponentMmrEstimatorTests
         Assert.Null(OpponentMmrEstimator.Estimate(4000, change, win));
     }
 
-    // At or below the flattened-out minimum, every sufficiently large gap produces the same change, so
-    // the gap can't be recovered from it.
+    // A change of nothing is produced by every gap past the flat end of the curve, so it cannot identify
+    // the opponent — while the smallest non-zero changes still can, near the tail.
     [Theory]
+    [InlineData(1, 1)]
     [InlineData(3, 1)]
     [InlineData(-3, 0)]
-    [InlineData(2, 1)]
-    public void Estimate_ChangeAtOrBelowTheMinimum_ReturnsNull(long change, decimal win)
+    public void Estimate_SmallestNonZeroChanges_StillIdentifyAFarOffOpponent(long change, decimal win)
     {
-        Assert.Null(OpponentMmrEstimator.Estimate(4000, change, win));
+        long? estimated = OpponentMmrEstimator.Estimate(5300, change, win);
+
+        Assert.NotNull(estimated);
+        Assert.InRange(Math.Abs(estimated.Value - 5300), 700, 1200);
     }
 
     [Fact]
