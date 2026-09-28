@@ -320,10 +320,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     // group further than its ancestor's.
     private void RebuildDetailEditors()
     {
-        AttributeValue[] detailValues = DetailGroups.SelectMany(g => g.Values).ToArray();
-        foreach (var detailValue in detailValues)
-            detailValue.PropertyChanged -= SaveBuildDetailChange;
-        List<int> oldIds = detailValues.Select(a => a.Definition.Id).ToList();
+        List<int> oldIds = DetailGroups.SelectMany(g => g.Values).Select(a => a.Definition.Id).ToList();
 
         List<(BuildNode Node, int Depth)> unionPath = new();
         HashSet<int> seen = new();
@@ -351,31 +348,39 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
             ObservableCollection<AttributeValue> groupEditors = [];
             foreach (AttributeDefinition template in node.Details)
             {
+                AttributeValue editor = template.DefaultValue.Clone();
                 BuildDetailValue? cached = _player.BuildDetailValues.FirstOrDefault(v => v.DetailValue.Definition.Id == template.Id);
-                AttributeValue editor = cached?.DetailValue ?? template.DefaultValue.Clone();
-                if (cached == null)
+                if (cached != null)
                 {
-                    _player.BuildDetailValues.Add(new BuildDetailValue { DetailValue = editor });
-                    TryUpsertDetailValue(template.Id, editor.Serialize() ?? "");
+                    editor.ApplyStoredValue(cached.DetailValue.Serialize() ?? "");
+                }
+                else
+                {
+                    string defaultValue = editor.Serialize() ?? "";
+                    _player.BuildDetailValues.Add(new BuildDetailValue { DetailValue = template.DefaultValue.Clone() });
+                    TryUpsertDetailValue(template.Id, defaultValue);
                 }
 
-                editor.PropertyChanged += SaveBuildDetailChange;
+                editor.PropertyChanged += (_, e) =>
+                {
+                    if (e.PropertyName is nameof(AttributeValue.NumericValue)
+                        or nameof(AttributeValue.BoolValue)
+                        or nameof(AttributeValue.PercentValue)
+                        or nameof(AttributeValue.SelectedValue))
+                    {
+                        string value = editor.Serialize() ?? "";
+                        BuildDetailValue? existing = _player.BuildDetailValues.FirstOrDefault(v => v.DetailValue.Definition.Id == template.Id);
+                        if (existing != null)
+                            existing.DetailValue.ApplyStoredValue(value);
+                        else
+                            _player.BuildDetailValues.Add(new BuildDetailValue { DetailValue = editor.Clone() });
+                        TryUpsertDetailValue(template.Id, value);
+                    }
+                };
                 groupEditors.Add(editor);
             }
 
             DetailGroups.Add(new BuildDetailGroupViewModel(node.Name, depth, groupEditors));
-        }
-    }
-
-    private void SaveBuildDetailChange(object? o, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName is nameof(AttributeValue.NumericValue)
-            or nameof(AttributeValue.BoolValue)
-            or nameof(AttributeValue.PercentValue)
-            or nameof(AttributeValue.SelectedValue))
-        {
-            AttributeValue value = (AttributeValue)o!;
-            TryUpsertDetailValue(value.Definition.Id, value.Serialize() ?? "");
         }
     }
 }
