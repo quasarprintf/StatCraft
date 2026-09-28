@@ -50,6 +50,42 @@ public class BuildRepositoryTests : IDisposable
         Assert.Equal("Child", loadedChild.Name);
     }
 
+    // GetAllBuilds returns the tree, so a nested build is only reachable by walking it. DataPageViewModel
+    // wants every build detail attribute that exists anywhere, whatever the shape of the tree, which is
+    // what the flat listing is for — the nodes still come back wired to their parents either way.
+    [Fact]
+    public void GetAllBuildNodes_ReturnsNestedBuildsAlongsideTheirRoots()
+    {
+        BuildNode parent = new BuildNode { Name = "Parent", PlayerRace = Race.Terran };
+        _repository.InsertBuild(parent, null, 0);
+        BuildNode child = new BuildNode { Name = "Child", PlayerRace = Race.Terran };
+        _repository.InsertBuild(child, parent.Id, 0);
+
+        List<BuildNode> allNodes = _repository.GetAllBuildNodes();
+
+        Assert.Equal(["Child", "Parent"], allNodes.Select(n => n.Name).OrderBy(n => n));
+        Assert.Equal("Parent", Assert.Single(allNodes, n => n.Name == "Child").Parent?.Name);
+        // The tree view of the same data still starts at the root only.
+        Assert.Equal("Parent", Assert.Single(_repository.GetAllBuilds()).Name);
+    }
+
+    // The detail attributes are the point of the flat listing, and they hang off whichever node declares
+    // them — including one nested deep enough that the tree APIs would never surface it on its own.
+    [Fact]
+    public void GetAllBuildNodes_CarriesEachNodesOwnDetailAttributes()
+    {
+        BuildNode parent = new BuildNode { Name = "Parent", PlayerRace = Race.Terran };
+        _repository.InsertBuild(parent, null, 0);
+        BuildNode child = new BuildNode { Name = "Child", PlayerRace = Race.Terran };
+        _repository.InsertBuild(child, parent.Id, 0);
+        _repository.InsertBuildDetailAttribute(new AttributeValue(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Supply", Type = AttributeType.Numeric }), child.Id, 0);
+
+        List<BuildNode> allNodes = _repository.GetAllBuildNodes();
+
+        AttributeDefinition detail = Assert.Single(allNodes.SelectMany(n => n.Details));
+        Assert.Equal("Supply", detail.Name);
+    }
+
     [Fact]
     public void DeleteBuild_RemovesItFromPlayerRace()
     {

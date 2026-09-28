@@ -61,15 +61,30 @@ public class OpponentMmrEstimatorTests
     }
 
     // Beating someone far enough below you really does round to +0 in game, so the reward has to decay
-    // to nothing rather than bottoming out — and it must not start growing again at absurd gaps.
+    // to nothing rather than bottoming out — and it must not start growing again at absurd gaps. Exactly
+    // where it first reaches zero moves whenever the curve is retuned, so these gaps sit well past it.
     [Theory]
-    [InlineData(1200)]
+    [InlineData(1500)]
     [InlineData(2000)]
     [InlineData(4000)]
     public void PredictedChange_BeatingAFarWeakerOpponent_DecaysToZero(long gap)
     {
         Assert.Equal(0, OpponentMmrEstimator.PredictedChange(5300, 5300 - gap, 1m));
         Assert.Equal(0, OpponentMmrEstimator.PredictedChange(5300, 5300 + gap, 0m));
+    }
+
+    // The tail of the curve is a quadratic on its way back up, so the whole stretch between where it
+    // crosses zero and where it turns is negative before it is clamped. Retuning the curve moves that
+    // stretch around, and an unclamped win would pay out as a loss — so the sign holds across the range,
+    // not just at the gaps the tests above happen to name.
+    [Fact]
+    public void PredictedChange_NeverContradictsTheResultAtAnyGap()
+    {
+        for (long gap = 0; gap <= 4000; gap += 50)
+        {
+            Assert.True(OpponentMmrEstimator.PredictedChange(5300, 5300 - gap, 1m) >= 0, $"win at gap {gap}");
+            Assert.True(OpponentMmrEstimator.PredictedChange(5300, 5300 + gap, 0m) <= 0, $"loss at gap {gap}");
+        }
     }
 
     // And it shrinks smoothly on the way there, rather than stepping off a cliff.

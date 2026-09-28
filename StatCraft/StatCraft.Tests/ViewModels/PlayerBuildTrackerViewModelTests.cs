@@ -108,6 +108,70 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         Assert.Equal(20, Assert.Single(tracker.DetailGroups.SelectMany(g => g.Values)).NumericValue);
     }
 
+    // The tracker hands out the player's own stored AttributeValue as the editor rather than a copy it
+    // syncs back on every change, so an edit has to reach both the player in memory — whatever else reads
+    // the same GamePlayer sees it, e.g. a row rebuilt after a filter change — and the database.
+    [Fact]
+    public void EditingADetailValue_UpdatesThePlayersStoredValueAndPersistsIt()
+    {
+        BuildNode build = new() { Name = "4 Gate", PlayerRace = Race.Zerg };
+        _buildRepository.InsertBuild(build, null, 0);
+        AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Supply", Type = AttributeType.Numeric }) { NumericValue = 10 };
+        _buildRepository.InsertBuildDetailAttribute(attr, build.Id, 0);
+
+        GameData game = CreateGame();
+        _gameDataRepository.InsertGame(game, _sc2ProfileId);
+        GamePlayer player = game.PlayerDetails[game.ReplayData.Player];
+
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
+        PlayerBuildTrackerViewModel tracker = new(player, _gameDataRepository, tree, _logger);
+        tracker.BuildSlots[0].SelectedBuildNode = tree.Single();
+
+        AttributeValue editor = Assert.Single(tracker.DetailGroups.SelectMany(g => g.Values));
+        editor.NumericValue = 17;
+
+        Assert.Equal("17", Assert.Single(player.BuildDetailValues).DetailValue.Serialize());
+
+        List<AttributeDefinition> detailAttributes = _buildRepository.GetAllBuildNodes().SelectMany(b => b.Details).ToList();
+        GameData reloaded = Assert.Single(_gameDataRepository.GetGamesForProfile(_sc2ProfileId, detailAttributes));
+        Assert.Equal(17, Assert.Single(reloaded.PlayerDetails[reloaded.ReplayData.Player].BuildDetailValues).DetailValue.NumericValue);
+    }
+
+    // The other half of that: a player loaded from the database arrives with its stored values already
+    // built, and the tracker edits those objects in place rather than rebuilding editors from the
+    // attribute's template — so the value on screen is this player's own, and editing it still lands in
+    // both places.
+    [Fact]
+    public void EditingADetailValue_OnAPlayerLoadedFromTheDatabase_UpdatesTheStoredValueInPlace()
+    {
+        BuildNode build = new() { Name = "4 Gate", PlayerRace = Race.Zerg };
+        _buildRepository.InsertBuild(build, null, 0);
+        AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Supply", Type = AttributeType.Numeric }) { NumericValue = 10 };
+        _buildRepository.InsertBuildDetailAttribute(attr, build.Id, 0);
+
+        GameData game = CreateGame();
+        _gameDataRepository.InsertGame(game, _sc2ProfileId);
+        _gameDataRepository.UpsertBuildDetailValue(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, attr.Definition.Id, "13");
+
+        List<AttributeDefinition> detailAttributes = _buildRepository.GetAllBuildNodes().SelectMany(b => b.Details).ToList();
+        GameData loaded = Assert.Single(_gameDataRepository.GetGamesForProfile(_sc2ProfileId, detailAttributes));
+        GamePlayer player = loaded.PlayerDetails[loaded.ReplayData.Player];
+
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
+        PlayerBuildTrackerViewModel tracker = new(player, _gameDataRepository, tree, _logger);
+        tracker.BuildSlots[0].SelectedBuildNode = tree.Single();
+
+        // The player's own stored 13, not the attribute's default of 10.
+        AttributeValue editor = Assert.Single(tracker.DetailGroups.SelectMany(g => g.Values));
+        Assert.Equal(13, editor.NumericValue);
+
+        editor.NumericValue = 17;
+
+        Assert.Equal("17", Assert.Single(player.BuildDetailValues).DetailValue.Serialize());
+        GameData reloaded = Assert.Single(_gameDataRepository.GetGamesForProfile(_sc2ProfileId, detailAttributes));
+        Assert.Equal(17, Assert.Single(reloaded.PlayerDetails[reloaded.ReplayData.Player].BuildDetailValues).DetailValue.NumericValue);
+    }
+
     // Reproduces the crash a real session hit: a build selected in a slot whose own BuildTree doesn't
     // (or no longer) contains it — e.g. a stale menu click racing a tree refresh. FindPath legitimately
     // returns null here; the slot must degrade to a blank label instead of throwing.

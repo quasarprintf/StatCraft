@@ -51,7 +51,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.InsertGame(game, _sc2ProfileId);
         Assert.NotNull(game.PlayerDetails[game.ReplayData.Player].GamePlayerId);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.Equal(game.GameId, loaded.GameId);
         Assert.Equal(game.PlayerDetails[game.ReplayData.Player].GamePlayerId, loaded.PlayerDetails[loaded.ReplayData.Player].GamePlayerId);
         Assert.NotNull(loaded.PlayerDetails[loaded.ReplayData.Player].GamePlayerId);
@@ -76,7 +76,7 @@ public class GameDataRepositoryTests : IDisposable
 
         Assert.Equal(firstId, second.GameId);
         Assert.Equal(first.PlayerDetails[first.ReplayData.Player].GamePlayerId, second.PlayerDetails[second.ReplayData.Player].GamePlayerId);
-        Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class GameDataRepositoryTests : IDisposable
         GameData game = CreateGame(allies: [ally], opponents: [opponent]);
         _repository.InsertGame(game, _sc2ProfileId);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         GamePlayer loadedAlly = loaded.PlayerDetails[Assert.Single(loaded.ReplayData.Allies)];
         GamePlayer loadedOpponent = loaded.PlayerDetails[Assert.Single(loaded.ReplayData.Opponents)];
         Assert.Equal("Ally", loadedAlly.ReplayPlayer.Name);
@@ -123,7 +123,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.UpdateGameBuilds(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, [selfBuild.Id]);
         _repository.UpdateGameBuilds(game.PlayerDetails[ally].GamePlayerId!.Value, [allyBuild.Id]);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.Equal([selfBuild.Id], loaded.PlayerDetails[loaded.ReplayData.Player].BuildIds);
         GamePlayer loadedAlly = loaded.PlayerDetails[Assert.Single(loaded.ReplayData.Allies)];
         Assert.Equal([allyBuild.Id], loadedAlly.BuildIds);
@@ -139,7 +139,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.InsertGame(game, _sc2ProfileId);
         _repository.UpdateGameBuilds(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, [build.Id]);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.Equal([build.Id], loaded.PlayerDetails[loaded.ReplayData.Player].BuildIds);
     }
 
@@ -155,7 +155,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.InsertGame(game, _sc2ProfileId);
         _repository.UpdateGameBuilds(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, [buildB.Id, buildA.Id]);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.Equal([buildB.Id, buildA.Id], loaded.PlayerDetails[loaded.ReplayData.Player].BuildIds);
     }
 
@@ -172,7 +172,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.UpdateGameBuilds(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, [buildA.Id, buildB.Id]);
         _repository.UpdateGameBuilds(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, [buildB.Id]);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.Equal([buildB.Id], loaded.PlayerDetails[loaded.ReplayData.Player].BuildIds);
     }
 
@@ -191,7 +191,7 @@ public class GameDataRepositoryTests : IDisposable
 
         _repository.DeleteGame(game.GameId!.Value);
 
-        Assert.Empty(_repository.GetGamesForProfile(_sc2ProfileId));
+        Assert.Empty(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.False(_repository.IsAnyBuildReferenced([build.Id]));
     }
 
@@ -205,7 +205,7 @@ public class GameDataRepositoryTests : IDisposable
 
         _repository.DeleteGame(delete.GameId!.Value);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.Equal(keep.GameId, loaded.GameId);
     }
 
@@ -216,7 +216,7 @@ public class GameDataRepositoryTests : IDisposable
         game.GameType = GameType.Unranked;
         _repository.InsertGame(game, _sc2ProfileId);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.Equal(GameType.Unranked, loaded.GameType);
     }
 
@@ -230,7 +230,7 @@ public class GameDataRepositoryTests : IDisposable
 
         _repository.UpdateGameType(game.GameId!.Value, GameType.Unranked);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.Equal(GameType.Unranked, loaded.GameType);
     }
 
@@ -246,7 +246,7 @@ public class GameDataRepositoryTests : IDisposable
 
         _repository.UpdateGameType(first.GameId!.Value, GameType.Unranked);
 
-        List<GameData> loaded = _repository.GetGamesForProfile(_sc2ProfileId);
+        List<GameData> loaded = _repository.GetGamesForProfile(_sc2ProfileId, []);
         Assert.Equal(GameType.Unranked, loaded.Single(g => g.GameId == first.GameId).GameType);
         Assert.Equal(GameType.Ranked, loaded.Single(g => g.GameId == second.GameId).GameType);
     }
@@ -257,7 +257,7 @@ public class GameDataRepositoryTests : IDisposable
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.Null(loaded.PlayerDetails[loaded.ReplayData.Player].MmrAfter);
         Assert.Null(loaded.PlayerDetails[loaded.ReplayData.Player].MmrChange);
     }
@@ -271,7 +271,7 @@ public class GameDataRepositoryTests : IDisposable
         // CreateGame gives the self player an Mmr of 3000 going into the game.
         _repository.UpdateGamePlayerMmrAfter(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, 3024);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.Equal(3024, loaded.PlayerDetails[loaded.ReplayData.Player].MmrAfter);
         Assert.Equal(24, loaded.PlayerDetails[loaded.ReplayData.Player].MmrChange);
     }
@@ -284,7 +284,7 @@ public class GameDataRepositoryTests : IDisposable
 
         _repository.UpdateGamePlayerMmrAfter(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, 2976);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.Equal(-24, loaded.PlayerDetails[loaded.ReplayData.Player].MmrChange);
     }
 
@@ -297,7 +297,7 @@ public class GameDataRepositoryTests : IDisposable
 
         _repository.UpdateGamePlayerMmrAfter(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, 3024);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.Equal(3024, loaded.PlayerDetails[loaded.ReplayData.Player].MmrAfter);
         Assert.Null(loaded.PlayerDetails[Assert.Single(loaded.ReplayData.Opponents)].MmrAfter);
     }
@@ -309,7 +309,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.InsertGame(game, _sc2ProfileId);
         _repository.UpdateGameNotes(game.GameId!.Value, "GG well played");
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.Equal("GG well played", loaded.Notes);
     }
 
@@ -322,7 +322,7 @@ public class GameDataRepositoryTests : IDisposable
 
         _repository.UpsertBuildDetailValue(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, attr.Definition.Id, "14");
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, AllBuildDetailAttributes()));
         BuildDetailValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues);
         Assert.Equal(attr.Definition.Id, value.DetailValue.Definition.Id);
         Assert.Equal("14", value.DetailValue.Serialize());
@@ -338,7 +338,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.UpsertBuildDetailValue(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, attr.Definition.Id, "14");
         _repository.UpsertBuildDetailValue(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, attr.Definition.Id, "16");
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, AllBuildDetailAttributes()));
         BuildDetailValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues);
         Assert.Equal("16", value.DetailValue.Serialize());
     }
@@ -360,9 +360,43 @@ public class GameDataRepositoryTests : IDisposable
 
         _repository.DeleteBuildDetailValue(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, attr1.Definition.Id);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, AllBuildDetailAttributes()));
         BuildDetailValue remaining = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues);
         Assert.Equal(attr2.Definition.Id, remaining.DetailValue.Definition.Id);
+    }
+
+    // A stored detail value is just a serialized string plus an attribute id, so loading one means
+    // rebuilding the typed AttributeValue its definition describes — the definition itself comes from
+    // the caller, since the games table knows nothing about the build tree it belongs to.
+    [Fact]
+    public void GetGamesForProfile_BuildDetailValue_IsRebuiltAsATypedValueOfItsOwnAttribute()
+    {
+        AttributeValue attr = InsertBuildDetailAttribute();
+        GameData game = CreateGame();
+        _repository.InsertGame(game, _sc2ProfileId);
+        _repository.UpsertBuildDetailValue(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, attr.Definition.Id, "14");
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, AllBuildDetailAttributes()));
+
+        BuildDetailValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues);
+        Assert.Equal("Supply", value.DetailValue.Definition.Name);
+        Assert.Equal(AttributeType.Numeric, value.DetailValue.Definition.Type);
+        Assert.Equal(14, value.DetailValue.NumericValue);
+    }
+
+    // With no definition to rebuild from there is nothing to load — e.g. the attribute was deleted from
+    // the build tree after the value was stored. The row is skipped rather than guessed at.
+    [Fact]
+    public void GetGamesForProfile_BuildDetailValueWhoseAttributeIsNotSupplied_IsSkipped()
+    {
+        AttributeValue attr = InsertBuildDetailAttribute();
+        GameData game = CreateGame();
+        _repository.InsertGame(game, _sc2ProfileId);
+        _repository.UpsertBuildDetailValue(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, attr.Definition.Id, "14");
+
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
+
+        Assert.Empty(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues);
     }
 
     [Fact]
@@ -375,7 +409,7 @@ public class GameDataRepositoryTests : IDisposable
 
         _repository.SaveGameAttributeValue(game.GameId!.Value, attribute.Id, "14");
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, [attribute]));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, [], [attribute]));
         AttributeValue value = Assert.Single(loaded.AttributeValues);
         Assert.Equal(attribute.Id, value.Definition.Id);
         Assert.Equal(14m, value.NumericValue);
@@ -392,7 +426,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.SaveGameAttributeValue(game.GameId!.Value, attribute.Id, "14");
         _repository.SaveGameAttributeValue(game.GameId!.Value, attribute.Id, "16");
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, [attribute]));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, [], [attribute]));
         AttributeValue value = Assert.Single(loaded.AttributeValues);
         Assert.Equal(16m, value.NumericValue);
     }
@@ -408,7 +442,7 @@ public class GameDataRepositoryTests : IDisposable
 
         _repository.SaveGameAttributeValue(game.GameId!.Value, attribute.Id, null);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, [attribute]));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, [], [attribute]));
         Assert.Empty(loaded.AttributeValues);
     }
 
@@ -423,7 +457,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.InsertGame(game, _sc2ProfileId);
         _repository.SaveGameAttributeValue(game.GameId!.Value, attribute.Id, "14");
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.Empty(loaded.AttributeValues);
     }
 
@@ -435,7 +469,7 @@ public class GameDataRepositoryTests : IDisposable
         GameData game = CreateGame();
         _repository.InsertGame(game, _sc2ProfileId);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, [attribute]));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, [], [attribute]));
         AttributeValue value = Assert.Single(loaded.AttributeValues);
         Assert.Equal(attribute.Id, value.Definition.Id);
     }
@@ -450,7 +484,7 @@ public class GameDataRepositoryTests : IDisposable
         GameData otherGame = CreateGame(replayPath: "theirs.SC2Replay");
         _repository.InsertGame(otherGame, otherProfileId);
 
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
+        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
         Assert.Equal("mine.SC2Replay", loaded.ReplayData.ReplayPath);
     }
 
@@ -464,7 +498,7 @@ public class GameDataRepositoryTests : IDisposable
         GameData otherGame = CreateGame(replayPath: "theirs.SC2Replay");
         _repository.InsertGame(otherGame, otherProfileId);
 
-        List<GameData> loaded = _repository.GetGamesForProfiles([_sc2ProfileId, otherProfileId]);
+        List<GameData> loaded = _repository.GetGamesForProfiles([_sc2ProfileId, otherProfileId], []);
         Assert.Equal(2, loaded.Count);
         Assert.Contains(loaded, g => g.ReplayData.ReplayPath == "mine.SC2Replay");
         Assert.Contains(loaded, g => g.ReplayData.ReplayPath == "theirs.SC2Replay");
@@ -475,7 +509,7 @@ public class GameDataRepositoryTests : IDisposable
     {
         _repository.InsertGame(CreateGame(), _sc2ProfileId);
 
-        Assert.Empty(_repository.GetGamesForProfiles([]));
+        Assert.Empty(_repository.GetGamesForProfiles([], []));
     }
 
     [Fact]
@@ -488,7 +522,7 @@ public class GameDataRepositoryTests : IDisposable
         GameData earlier = CreateGame(replayPath: "earlier.SC2Replay", replayTimestamp: new DateTimeOffset(2026, 1, 10, 0, 0, 0, TimeSpan.Zero));
         _repository.InsertGame(earlier, otherProfileId);
 
-        List<GameData> loaded = _repository.GetGamesForProfiles([_sc2ProfileId, otherProfileId]);
+        List<GameData> loaded = _repository.GetGamesForProfiles([_sc2ProfileId, otherProfileId], []);
         Assert.Equal(["earlier.SC2Replay", "later.SC2Replay"], loaded.Select(g => g.ReplayData.ReplayPath));
     }
 
@@ -497,8 +531,8 @@ public class GameDataRepositoryTests : IDisposable
     {
         _repository.InsertGame(CreateGame(replayPath: "solo.SC2Replay"), _sc2ProfileId);
 
-        List<GameData> viaSingle = _repository.GetGamesForProfile(_sc2ProfileId);
-        List<GameData> viaMulti = _repository.GetGamesForProfiles([_sc2ProfileId]);
+        List<GameData> viaSingle = _repository.GetGamesForProfile(_sc2ProfileId, []);
+        List<GameData> viaMulti = _repository.GetGamesForProfiles([_sc2ProfileId], []);
         Assert.Equal(viaSingle.Select(g => g.GameId), viaMulti.Select(g => g.GameId));
     }
 
@@ -570,6 +604,12 @@ public class GameDataRepositoryTests : IDisposable
         _accountRepository.UpsertProfile(profile);
         return profile;
     }
+
+    // Mirrors what DataPageViewModel hands GetGamesForProfiles: every build detail attribute defined
+    // anywhere in the build tree. A stored BuildDetailValue can only be rebuilt into an AttributeValue
+    // if its definition is in here, so a test that expects values back has to supply them the same way.
+    private List<AttributeDefinition> AllBuildDetailAttributes() =>
+        _buildRepository.GetAllBuildNodes().SelectMany(b => b.Details).ToList();
 
     private AttributeValue InsertBuildDetailAttribute()
     {
