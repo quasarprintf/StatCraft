@@ -324,8 +324,8 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         BuildDetailValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues);
-        Assert.Equal(attr.Definition.Id, value.BuildAttributeId);
-        Assert.Equal("14", value.Value);
+        Assert.Equal(attr.Definition.Id, value.DetailValue.Definition.Id);
+        Assert.Equal("14", value.DetailValue.Serialize());
     }
 
     [Fact]
@@ -340,7 +340,7 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         BuildDetailValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues);
-        Assert.Equal("16", value.Value);
+        Assert.Equal("16", value.DetailValue.Serialize());
     }
 
     [Fact]
@@ -362,7 +362,7 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId));
         BuildDetailValue remaining = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues);
-        Assert.Equal(attr2.Definition.Id, remaining.BuildAttributeId);
+        Assert.Equal(attr2.Definition.Id, remaining.DetailValue.Definition.Id);
     }
 
     [Fact]

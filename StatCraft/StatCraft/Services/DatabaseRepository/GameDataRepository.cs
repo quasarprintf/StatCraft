@@ -109,8 +109,8 @@ public partial class GameDataRepository : SqliteRepository
         }
     }
 
-    internal List<GameData> GetGamesForProfile(int sc2ProfileId, IReadOnlyCollection<AttributeDefinition>? gameAttributes = null) =>
-        GetGamesForProfiles([sc2ProfileId], gameAttributes);
+    internal List<GameData> GetGamesForProfile(int sc2ProfileId, List<AttributeDefinition> buildAttributes, IReadOnlyCollection<AttributeDefinition>? gameAttributes = null) =>
+        GetGamesForProfiles([sc2ProfileId], buildAttributes, gameAttributes);
 
     // Loads and merges games across every given profile, ordered by when they were actually played
     // rather than by Id — each profile has its own independent Id sequence, so merging by Id would
@@ -121,7 +121,7 @@ public partial class GameDataRepository : SqliteRepository
     // whatever editor is displaying them. Left null — the default, so every pre-existing caller/test
     // keeps working unchanged — each game's AttributeValues is simply left empty, same as before this
     // parameter existed.
-    internal List<GameData> GetGamesForProfiles(IReadOnlyCollection<int> sc2ProfileIds, IReadOnlyCollection<AttributeDefinition>? gameAttributes = null)
+    internal List<GameData> GetGamesForProfiles(IReadOnlyCollection<int> sc2ProfileIds, List<AttributeDefinition> buildAttributes, IReadOnlyCollection<AttributeDefinition>? gameAttributes = null)
     {
         if (sc2ProfileIds.Count == 0)
             return [];
@@ -226,7 +226,17 @@ public partial class GameDataRepository : SqliteRepository
             IEnumerable<BuildDetailValueRow> buildDetailValueRows = conn.Query<BuildDetailValueRow>(
                 $"SELECT GamePlayerId, BuildAttributeId, Value FROM BuildDetailValues WHERE GamePlayerId IN ({playerIdList})");
             foreach (BuildDetailValueRow row in buildDetailValueRows)
-                playersById[row.GamePlayerId].BuildDetailValues.Add(new BuildDetailValue { BuildAttributeId = row.BuildAttributeId, Value = row.Value });
+            {
+                AttributeDefinition? definition = buildAttributes.FirstOrDefault(a => a.Id == row.BuildAttributeId);
+                if (definition == null)
+                {
+                    //TODO: log this, it shouldn't happen
+                    continue;
+                }
+                AttributeValue value = new AttributeValue(definition);
+                value.ApplyStoredValue(row.Value);
+                playersById[row.GamePlayerId].BuildDetailValues.Add(new BuildDetailValue { DetailValue = value });
+            }
         }
 
         List<GameData> games = new();

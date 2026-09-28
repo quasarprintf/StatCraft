@@ -451,7 +451,10 @@ public partial class DataPageViewModel : ViewModelBase
     private async Task ReloadGamesFromDatabase()
     {
         List<int> profileIds = Filters.ProfileSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToList();
-        _loadedGames = profileIds.Count == 0 ? [] : _gameDataRepo.GetGamesForProfiles(profileIds, _attributeRepo.GetAllAttributes(AttributeScope.Game));
+        List<AttributeDefinition> gameAttributes = _attributeRepo.GetAllAttributes(AttributeScope.Game);
+        List<AttributeDefinition> buildAttributes = _attributeRepo.GetAllAttributes(AttributeScope.Build);
+        List<AttributeDefinition> buildDetails = _buildRepo.GetAllBuildNodes(buildAttributes).SelectMany(b => b.Details).ToList();
+        _loadedGames = profileIds.Count == 0 ? [] : _gameDataRepo.GetGamesForProfiles(profileIds, buildDetails, gameAttributes);
         Filters.RefreshMapOptions(_loadedGames.Select(g => g.ReplayData.Map).Distinct());
         ApplyFilters();
         await Task.CompletedTask;

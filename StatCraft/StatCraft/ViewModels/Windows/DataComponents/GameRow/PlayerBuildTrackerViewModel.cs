@@ -349,17 +349,12 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
             ObservableCollection<AttributeValue> groupEditors = [];
             foreach (AttributeDefinition template in node.Details)
             {
-                AttributeValue editor = template.DefaultValue.Clone();
-                BuildDetailValue? cached = _player.BuildDetailValues.FirstOrDefault(v => v.BuildAttributeId == template.Id);
-                if (cached != null)
+                BuildDetailValue? cached = _player.BuildDetailValues.FirstOrDefault(v => v.DetailValue.Definition.Id == template.Id);
+                AttributeValue editor = cached?.DetailValue ?? template.DefaultValue.Clone();
+                if (cached == null)
                 {
-                    editor.ApplyStoredValue(cached.Value);
-                }
-                else
-                {
-                    string defaultValue = editor.Serialize() ?? "";
-                    _player.BuildDetailValues.Add(new BuildDetailValue { BuildAttributeId = template.Id, Value = defaultValue });
-                    TryUpsertDetailValue(template.Id, defaultValue);
+                    _player.BuildDetailValues.Add(new BuildDetailValue { DetailValue = editor });
+                    TryUpsertDetailValue(template.Id, editor.Serialize() ?? "");
                 }
 
                 editor.PropertyChanged += (_, e) =>
@@ -369,13 +364,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
                         or nameof(AttributeValue.PercentValue)
                         or nameof(AttributeValue.SelectedValue))
                     {
-                        string value = editor.Serialize() ?? "";
-                        BuildDetailValue? existing = _player.BuildDetailValues.FirstOrDefault(v => v.BuildAttributeId == template.Id);
-                        if (existing != null)
-                            existing.Value = value;
-                        else
-                            _player.BuildDetailValues.Add(new BuildDetailValue { BuildAttributeId = template.Id, Value = value });
-                        TryUpsertDetailValue(template.Id, value);
+                        TryUpsertDetailValue(template.Id, editor.Serialize() ?? "");
                     }
                 };
                 groupEditors.Add(editor);

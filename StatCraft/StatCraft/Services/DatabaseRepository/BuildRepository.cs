@@ -34,8 +34,12 @@ public class BuildRepository : SqliteRepository
     {
         return LoadTree("1=1", new { }, attributes ?? []);
     }
+    public List<BuildNode> GetAllBuildNodes(IReadOnlyCollection<AttributeDefinition>? attributes = null)
+    {
+        return LoadNodes("1=1", new { }, attributes ?? []);
+    }
 
-    private List<BuildNode> LoadTree(string whereClause, object parameters, IReadOnlyCollection<AttributeDefinition> attributes)
+    private List<BuildNode> LoadNodes(string whereClause, object parameters, IReadOnlyCollection<AttributeDefinition> attributes)
     {
         using SqliteConnection conn = OpenConnection();
 
@@ -98,16 +102,20 @@ public class BuildRepository : SqliteRepository
                 }
             }
         }
-
-        List<BuildNode> roots = new List<BuildNode>();
         foreach ((long id, BuildNode node) in nodeDict)
         {
             long? parentId = parentMap[id];
             if (parentId.HasValue && nodeDict.TryGetValue(parentId.Value, out BuildNode? parent))
                 parent.AddChild(node);
-            else
-                roots.Add(node);
         }
+
+        return nodeDict.Values.ToList();
+    }
+    private List<BuildNode> LoadTree(string whereClause, object parameters, IReadOnlyCollection<AttributeDefinition> attributes)
+    {
+        List<BuildNode> allNodes = LoadNodes(whereClause, parameters, attributes);
+
+        List<BuildNode> roots = allNodes.Where(n => n.Parent == null).ToList();
 
         // Children can override parent, but don't have to, so only roots are updated for new mandatory attributes
         foreach (AttributeDefinition definition in attributes.Where(a => a.IsMandatory))
