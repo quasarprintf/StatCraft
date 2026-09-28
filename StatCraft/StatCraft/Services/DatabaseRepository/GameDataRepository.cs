@@ -112,15 +112,7 @@ public partial class GameDataRepository : SqliteRepository
     internal List<GameData> GetGamesForProfile(int sc2ProfileId, List<AttributeDefinition> buildAttributes, IReadOnlyCollection<AttributeDefinition>? gameAttributes = null) =>
         GetGamesForProfiles([sc2ProfileId], buildAttributes, gameAttributes);
 
-    // Loads and merges games across every given profile, ordered by when they were actually played
-    // rather than by Id — each profile has its own independent Id sequence, so merging by Id would
-    // interleave profiles inconsistently.
-    //
-    // gameAttributes mirrors MapRepository.GetAllMaps: taking the Game-scoped AttributeDefinitions as a
-    // parameter (rather than looking them up here) keeps a single source of truth for them, shared with
-    // whatever editor is displaying them. Left null — the default, so every pre-existing caller/test
-    // keeps working unchanged — each game's AttributeValues is simply left empty, same as before this
-    // parameter existed.
+    // Loads and merges games across every given profile, ordered by datetime
     internal List<GameData> GetGamesForProfiles(IReadOnlyCollection<int> sc2ProfileIds, List<AttributeDefinition> buildAttributes, IReadOnlyCollection<AttributeDefinition>? gameAttributes = null)
     {
         if (sc2ProfileIds.Count == 0)
