@@ -225,14 +225,11 @@ public partial class GameDataRepository : SqliteRepository
 
             IEnumerable<BuildDetailValueRow> buildDetailValueRows = conn.Query<BuildDetailValueRow>(
                 $"SELECT GamePlayerId, BuildAttributeId, Value FROM BuildDetailValues WHERE GamePlayerId IN ({playerIdList})");
+
+            Dictionary<int, AttributeDefinition> buildDetailDict = buildAttributes.ToDictionary(b => b.Id);
             foreach (BuildDetailValueRow row in buildDetailValueRows)
             {
-                AttributeDefinition? definition = buildAttributes.FirstOrDefault(a => a.Id == row.BuildAttributeId);
-                if (definition == null)
-                {
-                    //TODO: log this, it shouldn't happen
-                    continue;
-                }
+                AttributeDefinition definition = buildDetailDict[row.BuildAttributeId];
                 AttributeValue value = new AttributeValue(definition);
                 value.ApplyStoredValue(row.Value);
                 playersById[row.GamePlayerId].BuildDetailValues.Add(new BuildDetailValue { DetailValue = value });
