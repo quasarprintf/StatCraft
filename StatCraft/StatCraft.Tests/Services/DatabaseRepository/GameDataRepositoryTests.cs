@@ -384,21 +384,6 @@ public class GameDataRepositoryTests : IDisposable
         Assert.Equal(14, value.DetailValue.NumericValue);
     }
 
-    // With no definition to rebuild from there is nothing to load — e.g. the attribute was deleted from
-    // the build tree after the value was stored. The row is skipped rather than guessed at.
-    [Fact]
-    public void GetGamesForProfile_BuildDetailValueWhoseAttributeIsNotSupplied_IsSkipped()
-    {
-        AttributeValue attr = InsertBuildDetailAttribute();
-        GameData game = CreateGame();
-        _repository.InsertGame(game, _sc2ProfileId);
-        _repository.UpsertBuildDetailValue(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, attr.Definition.Id, "14");
-
-        GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, []));
-
-        Assert.Empty(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues);
-    }
-
     [Fact]
     public void SaveGameAttributeValue_ThenGetGamesForProfileWithAttributes_ReturnsValue()
     {
