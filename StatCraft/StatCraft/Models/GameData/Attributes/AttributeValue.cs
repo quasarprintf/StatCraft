@@ -11,7 +11,7 @@ public partial class AttributeValue : ObservableObject
 {
     public event EventHandler<PropertyChangedEventArgs>? ValueChanged;
 
-    public AttributeDefinition Definition { get; }
+    public AttributeDefinition Definition { get; private set; }
 
     [NotifyPropertyChangedFor(nameof(HasValue))]
     [ObservableProperty] private decimal? _numericValue;
@@ -49,6 +49,17 @@ public partial class AttributeValue : ObservableObject
     internal string? Serialize() => HasValue
         ? AttributeValueSerializer.Serialize(Definition.Type, NumericValue ?? 0m, BoolValue ?? false, PercentValue ?? 0m, SelectedValue)
         : null;
+
+    public void RefreshDefinition(AttributeDefinition definition)
+    {
+        if (definition.Id != Definition.Id)
+        {
+            //TODO: log this
+            throw new InvalidOperationException("refreshed attribute definition must have the same id as existing definition");
+        }
+        Definition = definition;
+        OnPropertyChanged(nameof(HasValue));
+    }
 
     internal void ApplyStoredValue(string stored)
     {
