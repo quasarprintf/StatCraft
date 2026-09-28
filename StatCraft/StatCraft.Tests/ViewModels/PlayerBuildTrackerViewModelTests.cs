@@ -251,21 +251,23 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         Assert.Equal(2, Assert.Single(ReloadStoredDetailValues()).DetailValue.NumericValue);
     }
 
-    // Deselecting a build deletes its detail values from the database on purpose, keeping them in memory
-    // so re-selecting the same build restores them. Restoring them only on screen isn't a restore: the
-    // row they came from is still gone, so the next reload drops the value the user can see.
+    // Deselecting a build discards its detail values outright — the build is no longer part of this
+    // game, so neither are the numbers recorded against it. Selecting it again is therefore a fresh
+    // start: its details come back at the attribute's own default, in memory and on disk alike, exactly
+    // as they would have on a first selection, rather than resurrecting what was typed before.
     [Fact]
-    public void DeselectingABuild_ThenSelectingItAgain_RestoresItsDetailValueOnDiskToo()
+    public void DeselectingABuild_ThenSelectingItAgain_StartsItsDetailsFromTheAttributeDefault()
     {
         BuildNode build = new() { Name = "4 Gate", PlayerRace = Race.Zerg };
         _buildRepository.InsertBuild(build, null, 0);
-        AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Supply", Type = AttributeType.Numeric });
+        AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Supply", Type = AttributeType.Numeric }) { NumericValue = 10 };
         _buildRepository.InsertBuildDetailAttribute(attr, build.Id, 0);
 
         GameData game = CreateGame();
         _gameDataRepository.InsertGame(game, _sc2ProfileId);
+        GamePlayer player = game.PlayerDetails[game.ReplayData.Player];
         ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
-        PlayerBuildTrackerViewModel tracker = new(game.PlayerDetails[game.ReplayData.Player], _gameDataRepository, tree, _logger);
+        PlayerBuildTrackerViewModel tracker = new(player, _gameDataRepository, tree, _logger);
         tracker.BuildSlots[0].SelectedBuildNode = tree.Single();
         Editor(tracker).NumericValue = 17;
 
@@ -275,8 +277,9 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
 
         tracker.BuildSlots[0].SelectedBuildNode = tree.Single();
 
-        Assert.Equal(17, Editor(tracker).NumericValue);
-        Assert.Equal(17, Assert.Single(ReloadStoredDetailValues()).DetailValue.NumericValue);
+        Assert.Equal(10, Editor(tracker).NumericValue);
+        Assert.Equal(10, Assert.Single(player.BuildDetailValues).DetailValue.NumericValue);
+        Assert.Equal(10, Assert.Single(ReloadStoredDetailValues()).DetailValue.NumericValue);
     }
 
     private static AttributeValue Editor(PlayerBuildTrackerViewModel tracker) =>
