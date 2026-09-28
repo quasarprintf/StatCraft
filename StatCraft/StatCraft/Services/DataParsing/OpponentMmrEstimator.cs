@@ -8,7 +8,7 @@ internal static class OpponentMmrEstimator
     //with constants modified a bit to match my own data, and combined into one equation for both win and loss, instead of separate equations per the reddit post
     private const double Base = 21.56;
     private const double Slope = 0.0281;
-    private const double Curvature = 0.0000080;
+    private const double Curvature = 0.0000090;
 
     internal const double MaxPlausibleResidual = 1;
 
