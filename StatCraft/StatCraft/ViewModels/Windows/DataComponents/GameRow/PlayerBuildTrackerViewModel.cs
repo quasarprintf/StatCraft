@@ -352,10 +352,12 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
                 BuildDetailValue? cached = _player.BuildDetailValues.FirstOrDefault(v => v.DetailValue.Definition.Id == template.Id);
                 if (cached != null)
                 {
+                    bool needsWrite = cached.DetailValue.Definition.Type != template.Type;
                     cached.DetailValue.RefreshDefinition(template);
                     string savedValue = cached.DetailValue.Serialize() ?? "";
                     editor.ApplyStoredValue(savedValue);
-                    TryUpsertDetailValue(template.Id, savedValue);
+                    if (needsWrite)
+                        TryUpsertDetailValue(template.Id, savedValue);
                 }
                 else
                 {
