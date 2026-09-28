@@ -206,6 +206,14 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
         try
         {
             _repository.DeleteBuildDetailValue(_player.GamePlayerId!.Value, buildAttributeId);
+            for (int index = 0; index < _player.BuildDetailValues.Count; index++)
+            {
+                if (_player.BuildDetailValues[index].DetailValue.Definition.Id == buildAttributeId)
+                {
+                    _player.BuildDetailValues.RemoveAt(index);
+                    break;
+                }
+            }
         }
         catch (Exception ex)
         {
@@ -335,7 +343,6 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
         }
         List<int> newIds = unionPath.SelectMany(p => p.Node.Details).Select(a => a.Id).ToList();
 
-        // drop the stored value from the DB, but leave it in memory so re-selecting the build within this session restores it
         foreach (int leftId in oldIds.Except(newIds))
             TryDeleteDetailValue(leftId);
 
