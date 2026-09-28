@@ -7,12 +7,11 @@ using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataParsing;
-using StatCraft.ViewModels.Windows.DataComponents.GameRow;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
-using System.Numerics;
 using System.Threading.Tasks;
 
 namespace StatCraft.ViewModels.Windows.DataComponents.GameRow;
@@ -321,7 +320,10 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     // group further than its ancestor's.
     private void RebuildDetailEditors()
     {
-        List<int> oldIds = DetailGroups.SelectMany(g => g.Values).Select(a => a.Definition.Id).ToList();
+        AttributeValue[] detailValues = DetailGroups.SelectMany(g => g.Values).ToArray();
+        foreach (var detailValue in detailValues)
+            detailValue.PropertyChanged -= SaveBuildDetailChange;
+        List<int> oldIds = detailValues.Select(a => a.Definition.Id).ToList();
 
         List<(BuildNode Node, int Depth)> unionPath = new();
         HashSet<int> seen = new();
@@ -357,20 +359,23 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
                     TryUpsertDetailValue(template.Id, editor.Serialize() ?? "");
                 }
 
-                editor.PropertyChanged += (_, e) =>
-                {
-                    if (e.PropertyName is nameof(AttributeValue.NumericValue)
-                        or nameof(AttributeValue.BoolValue)
-                        or nameof(AttributeValue.PercentValue)
-                        or nameof(AttributeValue.SelectedValue))
-                    {
-                        TryUpsertDetailValue(template.Id, editor.Serialize() ?? "");
-                    }
-                };
+                editor.PropertyChanged += SaveBuildDetailChange;
                 groupEditors.Add(editor);
             }
 
             DetailGroups.Add(new BuildDetailGroupViewModel(node.Name, depth, groupEditors));
+        }
+    }
+
+    private void SaveBuildDetailChange(object? o, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName is nameof(AttributeValue.NumericValue)
+            or nameof(AttributeValue.BoolValue)
+            or nameof(AttributeValue.PercentValue)
+            or nameof(AttributeValue.SelectedValue))
+        {
+            AttributeValue value = (AttributeValue)o!;
+            TryUpsertDetailValue(value.Definition.Id, value.Serialize() ?? "");
         }
     }
 }
