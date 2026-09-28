@@ -357,7 +357,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
                 else
                 {
                     string defaultValue = editor.Serialize() ?? "";
-                    _player.BuildDetailValues.Add(new BuildDetailValue { DetailValue = template.DefaultValue.Clone() });
+                    _player.BuildDetailValues.Add(new BuildDetailValue { DetailValue = editor.Clone() });
                     TryUpsertDetailValue(template.Id, defaultValue);
                 }
 
@@ -371,7 +371,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
                         string value = editor.Serialize() ?? "";
                         BuildDetailValue? existing = _player.BuildDetailValues.FirstOrDefault(v => v.DetailValue.Definition.Id == template.Id);
                         if (existing != null)
-                            existing.DetailValue.ApplyStoredValue(value);
+                            existing.DetailValue = editor.Clone();
                         else
                             _player.BuildDetailValues.Add(new BuildDetailValue { DetailValue = editor.Clone() });
                         TryUpsertDetailValue(template.Id, value);
