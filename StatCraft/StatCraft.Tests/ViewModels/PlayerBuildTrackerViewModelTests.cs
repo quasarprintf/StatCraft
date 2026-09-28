@@ -172,6 +172,46 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         Assert.Equal(17, Assert.Single(reloaded.PlayerDetails[reloaded.ReplayData.Player].BuildDetailValues).DetailValue.NumericValue);
     }
 
+    // Retyping a detail attribute on the Builds tab rebuilds the editor from the new definition, while
+    // the player's stored copy still carries the old one — so an edit is serialized as one type and read
+    // back as the other. Whatever was actually saved has to survive that, or the next rebuild of this row
+    // (any filter change re-wraps it) reads a blank out of memory that the database disagrees with.
+    [Fact]
+    public void EditingADetailValue_AfterItsAttributeWasRetyped_KeepsTheStoredValueInStepWithTheDatabase()
+    {
+        BuildNode build = new() { Name = "4 Gate", PlayerRace = Race.Zerg };
+        _buildRepository.InsertBuild(build, null, 0);
+        AttributeValue attr = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = "Supply", Type = AttributeType.Numeric }) { NumericValue = 10 };
+        _buildRepository.InsertBuildDetailAttribute(attr, build.Id, 0);
+
+        GameData game = CreateGame();
+        _gameDataRepository.InsertGame(game, _sc2ProfileId);
+        GamePlayer player = game.PlayerDetails[game.ReplayData.Player];
+
+        ObservableCollection<BuildNode> tree = new(_buildRepository.GetBuildsForPlayerRace(Race.Zerg));
+        PlayerBuildTrackerViewModel tracker = new(player, _gameDataRepository, tree, _logger);
+        tracker.BuildSlots[0].SelectedBuildNode = tree.Single();
+
+        // The Builds tab changes the attribute's type, then DataPageViewModel refreshes the cached tree
+        // and asks every open row to re-derive its editors — no reload of the games themselves.
+        attr.Definition.Type = AttributeType.Bool;
+        _buildRepository.UpdateBuildDetailAttribute(attr);
+        tree.Clear();
+        foreach (BuildNode node in _buildRepository.GetBuildsForPlayerRace(Race.Zerg))
+            tree.Add(node);
+        tracker.RefreshDetailEditors();
+
+        AttributeValue editor = Assert.Single(tracker.DetailGroups.SelectMany(g => g.Values));
+        Assert.Equal(AttributeType.Bool, editor.Definition.Type);
+        editor.BoolValue = true;
+
+        List<AttributeDefinition> detailAttributes = _buildRepository.GetAllBuildNodes().SelectMany(b => b.Details).ToList();
+        GameData reloaded = Assert.Single(_gameDataRepository.GetGamesForProfile(_sc2ProfileId, detailAttributes));
+        Assert.Equal(true, Assert.Single(reloaded.PlayerDetails[reloaded.ReplayData.Player].BuildDetailValues).DetailValue.BoolValue);
+
+        Assert.Equal("True", Assert.Single(player.BuildDetailValues).DetailValue.Serialize());
+    }
+
     // Reproduces the crash a real session hit: a build selected in a slot whose own BuildTree doesn't
     // (or no longer) contains it — e.g. a stale menu click racing a tree refresh. FindPath legitimately
     // returns null here; the slot must degrade to a blank label instead of throwing.
