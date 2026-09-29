@@ -46,12 +46,14 @@ public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewMode
     public void Rebuild()
     {
         var oldFilter = _wrappedFilter;
-        WrappedFilter = CreateWrapped(Attribute);
+        var newFilter = CreateWrapped(Attribute);
 
-        WrappedFilter.IsApplied = oldFilter.IsApplied;
-        WrappedFilter.AllowIncludeUnset = oldFilter.AllowIncludeUnset;
-        WrappedFilter.IncludeUnset = oldFilter.IncludeUnset;
-        WrappedFilter.Mandatory = oldFilter.Mandatory;
+        newFilter.IsApplied = oldFilter.IsApplied;
+        newFilter.AllowIncludeUnset = oldFilter.AllowIncludeUnset;
+        newFilter.IncludeUnset = oldFilter.IncludeUnset;
+        newFilter.Mandatory = oldFilter.Mandatory;
+
+        WrappedFilter = newFilter;
     }
     public void Refresh()
     {
