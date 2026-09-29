@@ -1,5 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Models.GameData;
+using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataFiltering.CollatedFilters;
@@ -35,10 +36,7 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
         BuildDetailSlots = new ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>>();
         foreach (var detail in build.Details)
         {
-            var detailSlot = new AttributeFilterSlotViewModel<BuildDetailValues>(detail);
-            BuildDetailSlots.Add(detailSlot);
-            detailSlot.Changed += RaiseChanged;
-            detailSlot.PropertyChanged += ForwardPropertyChanged;
+            BuildDetailSlots.Add(CreateFilterSlot(detail));
         }
     }
 
@@ -88,10 +86,7 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
             }
             else
             {
-                var detailSlot = new AttributeFilterSlotViewModel<BuildDetailValues>(newDetail);
-                newSlots.Add(detailSlot);
-                detailSlot.Changed += RaiseChanged;
-                detailSlot.PropertyChanged += ForwardPropertyChanged;
+                newSlots.Add(CreateFilterSlot(newDetail));
             }
         }
         foreach (var oldDetail in BuildDetailSlots.Except(newSlots))
@@ -103,6 +98,17 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
     }
 
     partial void OnIncludeDescendantsChanged(bool value) => RaiseChanged();
+
+    private AttributeFilterSlotViewModel<BuildDetailValues> CreateFilterSlot(AttributeDefinition definition)
+    {
+        var detailSlot = new AttributeFilterSlotViewModel<BuildDetailValues>(definition)
+        {
+            AllowIncludeUnset = true
+        };
+        detailSlot.Changed += RaiseChanged;
+        detailSlot.PropertyChanged += ForwardPropertyChanged;
+        return detailSlot;
+    }
 
     public override void Clear()
     {
