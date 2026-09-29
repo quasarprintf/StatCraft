@@ -206,14 +206,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
         try
         {
             _repository.DeleteBuildDetailValue(_player.GamePlayerId!.Value, buildAttributeId);
-            for (int index = 0; index < _player.BuildDetailValues.Values.Count; index++)
-            {
-                if (_player.BuildDetailValues.Values[index].Definition.Id == buildAttributeId)
-                {
-                    _player.BuildDetailValues.Values.RemoveAt(index);
-                    break;
-                }
-            }
+            _player.BuildDetailValues.RemoveAttribute(buildAttributeId);
         }
         catch (Exception ex)
         {
@@ -356,7 +349,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
             foreach (AttributeDefinition template in node.Details)
             {
                 AttributeValue editor = template.DefaultValue.Clone();
-                AttributeValue? cached = _player.BuildDetailValues.Values.FirstOrDefault(v => v.Definition.Id == template.Id);
+                AttributeValue? cached = _player.BuildDetailValues.GetAttributeByDefinitionId(template.Id);
                 if (cached != null)
                 {
                     bool needsWrite = cached.Definition.Type != template.Type;
@@ -369,7 +362,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
                 else
                 {
                     string defaultValue = editor.Serialize() ?? "";
-                    _player.BuildDetailValues.Values.Add(editor.Clone());
+                    _player.BuildDetailValues.AddAttribute(template);
                     TryUpsertDetailValue(template.Id, defaultValue);
                 }
 
@@ -381,11 +374,11 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
                         or nameof(AttributeValue.SelectedValue))
                     {
                         string value = editor.Serialize() ?? "";
-                        AttributeValue? existing = _player.BuildDetailValues.Values.FirstOrDefault(v => v.Definition.Id == template.Id);
+                        AttributeValue? existing = _player.BuildDetailValues.AttributeValues.FirstOrDefault(v => v.Definition.Id == template.Id);
                         if (existing != null)
                             existing.ApplyStoredValue(value);
                         else
-                            _player.BuildDetailValues.Values.Add(editor.Clone());
+                            _player.BuildDetailValues.AttributeValues.Add(editor.Clone());
                         TryUpsertDetailValue(template.Id, value);
                     }
                 };

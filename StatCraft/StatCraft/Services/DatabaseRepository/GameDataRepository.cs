@@ -224,7 +224,7 @@ public partial class GameDataRepository : SqliteRepository
                 AttributeDefinition definition = buildDetailDict[row.BuildAttributeId];
                 AttributeValue value = new AttributeValue(definition);
                 value.ApplyStoredValue(row.Value);
-                playersById[row.GamePlayerId].BuildDetailValues.Values.Add(value);
+                playersById[row.GamePlayerId].BuildDetailValues.AddAttribute(value);
             }
         }
 

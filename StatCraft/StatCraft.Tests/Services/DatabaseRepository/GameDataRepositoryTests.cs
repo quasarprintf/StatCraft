@@ -323,7 +323,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.UpsertBuildDetailValue(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, attr.Definition.Id, "14");
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, AllBuildDetailAttributes()));
-        AttributeValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues.Values);
+        AttributeValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues.AttributeValues);
         Assert.Equal(attr.Definition.Id, value.Definition.Id);
         Assert.Equal("14", value.Serialize());
     }
@@ -339,7 +339,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.UpsertBuildDetailValue(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, attr.Definition.Id, "16");
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, AllBuildDetailAttributes()));
-        AttributeValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues.Values);
+        AttributeValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues.AttributeValues);
         Assert.Equal("16", value.Serialize());
     }
 
@@ -361,7 +361,7 @@ public class GameDataRepositoryTests : IDisposable
         _repository.DeleteBuildDetailValue(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, attr1.Definition.Id);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, AllBuildDetailAttributes()));
-        AttributeValue remaining = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues.Values);
+        AttributeValue remaining = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues.AttributeValues);
         Assert.Equal(attr2.Definition.Id, remaining.Definition.Id);
     }
 
@@ -378,7 +378,7 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, AllBuildDetailAttributes()));
 
-        AttributeValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues.Values);
+        AttributeValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues.AttributeValues);
         Assert.Equal("Supply", value.Definition.Name);
         Assert.Equal(AttributeType.Numeric, value.Definition.Type);
         Assert.Equal(14, value.NumericValue);

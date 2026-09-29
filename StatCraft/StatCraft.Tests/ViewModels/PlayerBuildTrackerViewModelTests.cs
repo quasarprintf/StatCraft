@@ -130,11 +130,11 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         AttributeValue editor = Assert.Single(tracker.DetailGroups.SelectMany(g => g.Values));
         editor.NumericValue = 17;
 
-        Assert.Equal("17", Assert.Single(player.BuildDetailValues.Values).Serialize());
+        Assert.Equal("17", Assert.Single(player.BuildDetailValues.AttributeValues).Serialize());
 
         List<AttributeDefinition> detailAttributes = _buildRepository.GetAllBuildNodes().SelectMany(b => b.Details).ToList();
         GameData reloaded = Assert.Single(_gameDataRepository.GetGamesForProfile(_sc2ProfileId, detailAttributes));
-        Assert.Equal(17, Assert.Single(reloaded.PlayerDetails[reloaded.ReplayData.Player].BuildDetailValues.Values).NumericValue);
+        Assert.Equal(17, Assert.Single(reloaded.PlayerDetails[reloaded.ReplayData.Player].BuildDetailValues.AttributeValues).NumericValue);
     }
 
     // The other half of that: a player loaded from the database arrives with its stored values already
@@ -167,9 +167,9 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
 
         editor.NumericValue = 17;
 
-        Assert.Equal("17", Assert.Single(player.BuildDetailValues.Values).Serialize());
+        Assert.Equal("17", Assert.Single(player.BuildDetailValues.AttributeValues).Serialize());
         GameData reloaded = Assert.Single(_gameDataRepository.GetGamesForProfile(_sc2ProfileId, detailAttributes));
-        Assert.Equal(17, Assert.Single(reloaded.PlayerDetails[reloaded.ReplayData.Player].BuildDetailValues.Values).NumericValue);
+        Assert.Equal(17, Assert.Single(reloaded.PlayerDetails[reloaded.ReplayData.Player].BuildDetailValues.AttributeValues).NumericValue);
     }
 
     // Retyping a detail attribute on the Builds tab rebuilds the editor from the new definition, while
@@ -207,9 +207,9 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
 
         List<AttributeDefinition> detailAttributes = _buildRepository.GetAllBuildNodes().SelectMany(b => b.Details).ToList();
         GameData reloaded = Assert.Single(_gameDataRepository.GetGamesForProfile(_sc2ProfileId, detailAttributes));
-        Assert.Equal(true, Assert.Single(reloaded.PlayerDetails[reloaded.ReplayData.Player].BuildDetailValues.Values).BoolValue);
+        Assert.Equal(true, Assert.Single(reloaded.PlayerDetails[reloaded.ReplayData.Player].BuildDetailValues.AttributeValues).BoolValue);
 
-        Assert.Equal("True", Assert.Single(player.BuildDetailValues.Values).Serialize());
+        Assert.Equal("True", Assert.Single(player.BuildDetailValues.AttributeValues).Serialize());
     }
 
     // The database holds one string per detail, so once a value is re-entered under a changed type the
@@ -278,7 +278,7 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
         tracker.BuildSlots[0].SelectedBuildNode = tree.Single();
 
         Assert.Equal(10, Editor(tracker).NumericValue);
-        Assert.Equal(10, Assert.Single(player.BuildDetailValues.Values).NumericValue);
+        Assert.Equal(10, Assert.Single(player.BuildDetailValues.AttributeValues).NumericValue);
         Assert.Equal(10, Assert.Single(ReloadStoredDetailValues()).NumericValue);
     }
 
@@ -287,11 +287,11 @@ public class PlayerBuildTrackerViewModelTests : IDisposable
 
     // Everything a restart would see: the game re-read from the database, with the build detail
     // definitions gathered the way DataPageViewModel gathers them.
-    private List<AttributeValue> ReloadStoredDetailValues()
+    private ObservableCollection<AttributeValue> ReloadStoredDetailValues()
     {
         List<AttributeDefinition> detailAttributes = _buildRepository.GetAllBuildNodes().SelectMany(b => b.Details).ToList();
         GameData reloaded = Assert.Single(_gameDataRepository.GetGamesForProfile(_sc2ProfileId, detailAttributes));
-        return reloaded.PlayerDetails[reloaded.ReplayData.Player].BuildDetailValues.Values;
+        return reloaded.PlayerDetails[reloaded.ReplayData.Player].BuildDetailValues.AttributeValues;
     }
 
     // Reproduces the crash a real session hit: a build selected in a slot whose own BuildTree doesn't
