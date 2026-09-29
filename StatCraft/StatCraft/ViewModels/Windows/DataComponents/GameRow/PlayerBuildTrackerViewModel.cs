@@ -374,11 +374,11 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
                         or nameof(AttributeValue.SelectedValue))
                     {
                         string value = editor.Serialize() ?? "";
-                        AttributeValue? existing = _player.BuildDetailValues.AttributeValues.FirstOrDefault(v => v.Definition.Id == template.Id);
+                        AttributeValue? existing = _player.BuildDetailValues.GetAttributeByDefinitionId(template.Id);
                         if (existing != null)
                             existing.ApplyStoredValue(value);
                         else
-                            _player.BuildDetailValues.AttributeValues.Add(editor.Clone());
+                            _player.BuildDetailValues.AddAttribute(editor.Clone());
                         TryUpsertDetailValue(template.Id, value);
                     }
                 };

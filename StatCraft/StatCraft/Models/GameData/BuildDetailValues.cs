@@ -10,7 +10,7 @@ namespace StatCraft.Models.GameData;
 // identifies the detail it belongs to.
 public class BuildDetailValues : IAttributedObject
 {
-    public ObservableCollection<AttributeValue> AttributeValues { get; private set; } = [];
+    public ObservableCollection<AttributeValue> AttributeValues { get; } = [];
 
     public void AddAttribute(AttributeValue value) 
     {
