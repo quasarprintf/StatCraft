@@ -11,7 +11,7 @@ namespace StatCraft.ViewModels.Windows.Filters.WrappedFilters;
 public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewModel<T>, IFilterSlotViewModel<T> where T : IAttributedObject
 {
     private IFilterSlotViewModel<AttributeValue> _wrappedFilter => (IFilterSlotViewModel<AttributeValue>)WrappedFilter;
-    public AttributeDefinition Attribute { get; }
+    public AttributeDefinition Attribute { get; private set; }
     public AttributeFilterSlotViewModel(AttributeDefinition attribute)
     {
         Attribute = attribute;
@@ -41,6 +41,16 @@ public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewMode
         IFilter<AttributeValue> filter = _wrappedFilter.GetFilter();
         SequentialAllFilter<T, AttributeValue> wrapper = new SequentialAllFilter<T, AttributeValue>(filter, m => [m.GetAttributeByDefinitionId(Attribute.Id)]);
         return wrapper;
+    }
+
+    public void UpdateDefinition(AttributeDefinition newDefinition)
+    {
+        bool needsRebuild = newDefinition.Type != Attribute.Type;
+        Attribute = newDefinition;
+        if (needsRebuild)
+            Rebuild();
+        else
+            Refresh();
     }
 
     public void Rebuild()
