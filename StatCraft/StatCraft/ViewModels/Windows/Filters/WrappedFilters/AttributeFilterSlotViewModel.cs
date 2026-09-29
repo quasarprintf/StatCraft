@@ -73,5 +73,6 @@ public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewMode
             stringSlot.ReplaceOptions(Attribute.ValueOptions
                 .Select(o => new CheckboxFilterOptionViewModel<string>(o, o) { IsChecked = previouslyChecked.Contains(o) }));
         }
+        WrappedFilter.Title = Attribute.Name;
     }
 }
