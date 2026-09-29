@@ -303,59 +303,87 @@ public class DataPageViewModelTests : IAsyncDisposable
         Assert.Equal(["Rush"], filter.CheckedLabels);
     }
 
-    // Recreated from the deleted GameDataFilterTests, which were the only cover for build filtering. The
-    // rule is unchanged — checking a build matches games that picked it, or any build beneath it — but
-    // the implementation inverted: instead of expanding a checked build down to its subtree, the tab now
-    // walks each game's chosen builds up through their ancestors and tests set membership.
+    // Recreated from the deleted GameDataFilterTests, which were the only cover for build filtering. Each
+    // build in the tree is its own entry in the add menu now, rather than one "Build" filter with a
+    // checkbox per build, so filtering on a build means adding that build's own entry.
     [Fact]
-    public async Task Filter_Build_CheckedBuild_KeepsAGameThatPickedIt()
+    public async Task Filter_Build_AddedBuild_KeepsAGameThatPickedIt()
     {
         BuildNode build = InsertBuild("4 Gate");
         GameData game = InsertGameWithBuild(build);
 
         await LoadGamesWithNoDateRange();
-        CheckBuild(build);
+        Filters.Add(build.Name);
 
         Assert.Contains(_viewModel.Games, r => r.GameId == game.GameId);
     }
 
-    // The case the subtree expansion existed for: the game picked the child, the filter checks the parent.
+    // A build entry covers its own subtree by default (BuildFilterSlotViewModel.IncludeDescendants), so
+    // the game picked the child and the filter is the parent's.
     [Fact]
-    public async Task Filter_Build_CheckedBuild_KeepsAGameThatPickedADescendant()
+    public async Task Filter_Build_AddedBuild_KeepsAGameThatPickedADescendant()
     {
         BuildNode parent = InsertBuild("4 Gate");
         BuildNode child = InsertBuild("4 Gate into Blink", parent);
         GameData game = InsertGameWithBuild(child);
 
         await LoadGamesWithNoDateRange();
-        CheckBuild(parent);
+        Filters.Add(parent.Name);
 
         Assert.Contains(_viewModel.Games, r => r.GameId == game.GameId);
     }
 
+    // Turning that off narrows the filter to the build itself.
+    [Fact]
+    public async Task Filter_Build_DescendantsExcluded_DropsAGameThatPickedADescendant()
+    {
+        BuildNode parent = InsertBuild("4 Gate");
+        BuildNode child = InsertBuild("4 Gate into Blink", parent);
+        InsertGameWithBuild(child);
+
+        await LoadGamesWithNoDateRange();
+        Filters.Add(parent.Name).IncludeDescendants = false;
+
+        Assert.Empty(_viewModel.Games);
+    }
+
     // The other direction must not match: picking the parent is not picking the child.
     [Fact]
-    public async Task Filter_Build_CheckedDescendant_ExcludesAGameThatPickedTheParent()
+    public async Task Filter_Build_AddedDescendant_ExcludesAGameThatPickedTheParent()
     {
         BuildNode parent = InsertBuild("4 Gate");
         BuildNode child = InsertBuild("4 Gate into Blink", parent);
         InsertGameWithBuild(parent);
 
         await LoadGamesWithNoDateRange();
-        CheckBuild(child);
+        Filters.Add(child.Name);
 
         Assert.Empty(_viewModel.Games);
     }
 
     [Fact]
-    public async Task Filter_Build_UncheckedBuild_IsExcluded()
+    public async Task Filter_Build_AddedBuild_ExcludesAGameThatPickedAnotherOne()
     {
         BuildNode picked = InsertBuild("4 Gate");
         BuildNode other = InsertBuild("Cannon Rush");
         InsertGameWithBuild(picked);
 
         await LoadGamesWithNoDateRange();
-        CheckBuild(other);
+        Filters.Add(other.Name);
+
+        Assert.Empty(_viewModel.Games);
+    }
+
+    // A game with no build at all is excluded by any build filter.
+    [Fact]
+    public async Task Filter_Build_AddedBuild_ExcludesAGameWithNoBuild()
+    {
+        BuildNode build = InsertBuild("4 Gate");
+        InsertGame();
+        _viewModel = CreateViewModel();
+
+        await LoadGamesWithNoDateRange();
+        Filters.Add(build.Name);
 
         Assert.Empty(_viewModel.Games);
     }
@@ -367,22 +395,14 @@ public class DataPageViewModelTests : IAsyncDisposable
         return node;
     }
 
-    // The Build slot reads the build tree once, when the page is constructed, so the page is rebuilt
-    // after the builds exist — otherwise neither the options nor the id lookup would know about them.
+    // The build menu is derived from the build tree once, when the page is constructed, so the page is
+    // rebuilt after the builds exist — otherwise the menu would have no entry for them.
     private GameData InsertGameWithBuild(BuildNode build)
     {
         GameData game = InsertGame();
         _gameDataRepository.UpdateGameBuilds(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, [build.Id]);
         _viewModel = CreateViewModel();
         return game;
-    }
-
-    // Build options are labelled with their place in the tree (race prefix, indentation), so match on the
-    // name the label ends with rather than the exact decoration.
-    private void CheckBuild(BuildNode build)
-    {
-        FilterHandle filter = Filters.Add("Build");
-        filter.Check(filter.OptionLabels.Single(l => l.EndsWith(build.Name)));
     }
 
     // SetActiveProfile resets the date range to today, per spec. These tests set dates themselves (or
@@ -443,7 +463,9 @@ public class DataPageViewModelTests : IAsyncDisposable
     private FilterHandle DateFilter => Filters.Applied("Date");
 
     private static readonly string[] AlwaysApplied = ["Profile", "Date"];
-    private static readonly string[] BuiltInFilterTitles = ["Map", "Matchup", "Outcome", "Opponent MMR", "Build"];
+    // Build isn't here: it is a submenu of the build tree, and these tests seed no builds, so it is empty
+    // and hidden exactly like the empty Game Attributes submenu.
+    private static readonly string[] BuiltInFilterTitles = ["Map", "Matchup", "Outcome", "Opponent MMR"];
 
     [Fact]
     public void BuiltInFilters_StartUnappliedAndAreOfferedInTheirFixedOrder()
@@ -553,18 +575,18 @@ public class DataPageViewModelTests : IAsyncDisposable
         Filters.Add("Outcome");
 
         Assert.Equal([.. AlwaysApplied, "Outcome"], Filters.AppliedTitles);
-        Assert.Equal(["Map", "Matchup", "Opponent MMR", "Build"], Filters.AddableTitles);
+        Assert.Equal(["Map", "Matchup", "Opponent MMR"], Filters.AddableTitles);
     }
 
     // The bar keeps the same fixed order as the menu, not the order filters were added in.
     [Fact]
     public void AppliedFilters_ShowInTheirFixedOrderRegardlessOfTheOrderAdded()
     {
-        Filters.Add("Build");
         Filters.Add("Outcome");
         Filters.Add("Map");
+        Filters.Add("Matchup");
 
-        Assert.Equal([.. AlwaysApplied, "Map", "Outcome", "Build"], Filters.AppliedTitles);
+        Assert.Equal([.. AlwaysApplied, "Map", "Matchup", "Outcome"], Filters.AppliedTitles);
     }
 
     [Fact]
@@ -617,18 +639,18 @@ public class DataPageViewModelTests : IAsyncDisposable
         Assert.Equal(2, _viewModel.Games.Count);
     }
 
-    // Separate from the theory above because only games that picked a build have anything for the build
-    // filter to look at; one without a build is excluded as soon as the filter is applied.
+    // Separate from the theory above because a build entry always constrains to its own subtree; what it
+    // doesn't do is constrain any further until criteria are entered in its own flyout.
     [Fact]
-    public async Task AddedBuildFilterWithNoCriteria_StillShowsEveryGameThatPickedABuild()
+    public async Task AddedBuildFilterWithNoCriteria_StillShowsEveryGameInThatBuildsSubtree()
     {
-        BuildNode gate = InsertBuild("4 Gate");
-        BuildNode cannon = InsertBuild("Cannon Rush");
-        InsertGameWithBuild(gate);
-        InsertGameWithBuild(cannon);
+        BuildNode parent = InsertBuild("4 Gate");
+        BuildNode child = InsertBuild("4 Gate into Blink", parent);
+        InsertGameWithBuild(parent);
+        InsertGameWithBuild(child);
         await LoadGamesWithNoDateRange();
 
-        Filters.Add("Build");
+        Filters.Add(parent.Name);
 
         Assert.Equal(2, _viewModel.Games.Count);
     }

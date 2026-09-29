@@ -226,6 +226,13 @@ internal sealed class FilterHandle(IFilterSlotViewModel slot)
         set => Kind<INumericRangeFilterSlotViewModel>().Max = value;
     }
 
+    // A build filter covers the builds nested under it unless this is turned off.
+    public bool IncludeDescendants
+    {
+        get => Kind<IBuildFilterSlotViewModel>().IncludeDescendants;
+        set => Kind<IBuildFilterSlotViewModel>().IncludeDescendants = value;
+    }
+
     public bool IsCheckboxFilter => TryKind<ICheckboxFilterSlotViewModel>() != null;
     public bool IsBoolFilter => TryKind<IBoolFilterSlotViewModel>() != null;
     public DateTime? FromDate

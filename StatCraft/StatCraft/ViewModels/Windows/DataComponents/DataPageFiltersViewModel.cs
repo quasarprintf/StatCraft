@@ -40,7 +40,10 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public CheckboxFilterSlotViewModel<GameData, (Race, Race)> MatchupSlot { get; }
     public CheckboxFilterSlotViewModel<GameData, GameOutcome> OutcomeSlot { get; }
     public TemplatedFilterSlotViewModel<GameData,PlayerMmr> MmrSlot { get; }
-    public CheckboxFilterSlotViewModel<GameData, BuildNode> BuildSlot { get; }
+    // The whole build tree as one nested menu entry: a submenu per race, holding that race's root builds,
+    // each of which carries its own children the same way. Every build entry filters on that build (see
+    // BuildFilterSlotViewModel) as well as listing the builds beneath it.
+    public FilterMenuItemViewModel<GameData> BuildSlots { get; }
     public ObservableCollection<FilterMenuItemViewModel<GameData>> GameAttributeSlots { get; private set; }
 
     public FilterMenuViewModel<GameData> FilterMenu { get; private set; }
@@ -83,14 +86,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             AllowIncludeUnset=false 
         };
 
-        //TODO: builds filter needs to be completely redesigned
-        List<BuildNode> allBuilds = buildRepository.GetAllBuilds();
-        Dictionary<int, BuildNode> buildsMap = allBuilds.SelectMany(b => b.EnumerateDescendants().Append(b)).ToDictionary(b => b.Id);
-        BuildSlot = new CheckboxFilterSlotViewModel<GameData, BuildNode>("Build", BuildBuildOptions(allBuilds), 
-            g => g.PlayerDetails[g.ReplayData.Player].BuildIds.SelectMany(b => buildsMap.TryGetValue(b, out BuildNode? build) ? build.EnumerateAncestors().Append(build) : Enumerable.Empty<BuildNode>())) 
-        { 
-            AllowIncludeUnset=false 
-        };
+        BuildSlots = BuildBuildMenu(buildRepository.GetAllBuilds());
 
         GameAttributeSlots = new ObservableCollection<FilterMenuItemViewModel<GameData>>();
         foreach (var attribute in gameAttributes)
@@ -108,7 +104,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             new FilterMenuItemViewModel<GameData>(MatchupSlot), 
             new FilterMenuItemViewModel<GameData>(OutcomeSlot),
             new FilterMenuItemViewModel<GameData>(MmrSlot),
-            new FilterMenuItemViewModel<GameData>(BuildSlot),
+            BuildSlots,
             new FilterMenuItemViewModel<GameData>(GameAttributeSlots, "Game Attributes")
         ];
         FilterMenu = new FilterMenuViewModel<GameData>(filterSlots);
@@ -244,22 +240,27 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             .Select(outcome => new CheckboxFilterOptionViewModel<GameOutcome>(outcome, outcome.ToString()))
             .ToList();
 
-    // Every build across every race, grouped by race (Z, T, P) and flattened depth-first with an
-    // indentation prefix so the tree structure is still legible in a flat checkbox list.
-    private static List<CheckboxFilterOptionViewModel<BuildNode>> BuildBuildOptions(List<BuildNode> allNodes)
+    // One submenu per race holding that race's root builds, so the menu mirrors the build tree: picking a
+    // build filters on it directly, while its own children stay reachable underneath it.
+    private static FilterMenuItemViewModel<GameData> BuildBuildMenu(List<BuildNode> roots)
     {
-        List<CheckboxFilterOptionViewModel<BuildNode>> options = new();
+        ObservableCollection<FilterMenuItemViewModel<GameData>> raceItems = [];
         foreach (Race race in Enum.GetValues<Race>())
-            foreach (BuildNode root in allNodes.Where(n => n.PlayerRace == race))
-                AddBuildOption(root, 0, options);
-        return options;
+        {
+            ObservableCollection<FilterMenuItemViewModel<GameData>> raceBuilds =
+                new(roots.Where(b => b.PlayerRace == race).Select(BuildMenuItem));
+            raceItems.Add(new FilterMenuItemViewModel<GameData>(raceBuilds, race.Display()));
+        }
+        return new FilterMenuItemViewModel<GameData>(raceItems, "Build");
     }
 
-    private static void AddBuildOption(BuildNode node, int depth, List<CheckboxFilterOptionViewModel<BuildNode>> options)
+    private static FilterMenuItemViewModel<GameData> BuildMenuItem(BuildNode build)
     {
-        string label = depth == 0 ? $"{node.PlayerRace.Display()} — {node.Name}" : new string(' ', depth * 2) + node.Name;
-        options.Add(new CheckboxFilterOptionViewModel<BuildNode>(node, label));
-        foreach (BuildNode child in node.Children)
-            AddBuildOption(child, depth + 1, options);
+        BuildFilterSlotViewModel slot = new(build, g => g.PlayerDetails[g.ReplayData.Player]);
+        if (build.Children.Count == 0)
+            return new FilterMenuItemViewModel<GameData>(slot);
+
+        ObservableCollection<FilterMenuItemViewModel<GameData>> children = new(build.Children.Select(BuildMenuItem));
+        return new FilterMenuItemViewModel<GameData>(slot, children);
     }
 }

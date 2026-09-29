@@ -36,8 +36,9 @@ public class DataPageFiltersViewModelTests : IDisposable
         IFilterMenuViewModel menu = _filters.FilterMenu;
 
         Assert.All(menu.MenuItems, slot => Assert.True(slot.Filter == null || slot.Filter.Mandatory || !slot.IsApplied));
-        // Map, Matchup, Outcome, Opponent MMR and Build. The empty Game Attributes submenu counts as applied.
-        Assert.Equal(5, menu.MenuItems.Count(s => !s.IsApplied));
+        // Map, Matchup, Outcome and Opponent MMR. The Game Attributes and Build submenus are both empty
+        // with nothing seeded, which counts as applied.
+        Assert.Equal(4, menu.MenuItems.Count(s => !s.IsApplied));
         Assert.Equal([_filters.ProfileSlot, _filters.DateSlot], menu.AppliedFilters);
     }
 
