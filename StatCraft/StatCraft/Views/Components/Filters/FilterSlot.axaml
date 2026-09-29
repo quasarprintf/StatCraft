@@ -9,6 +9,9 @@
             <DataTemplate x:DataType="vmw:Filters.WrappedFilters.IWrappedFilterSlotViewModel">
                 <local:FilterSlot DataContext="{Binding WrappedFilter}"/>
             </DataTemplate>
+            <DataTemplate x:DataType="vmw:Filters.IBuildFilterSlotViewModel">
+                <local:BuildFilter />
+            </DataTemplate>
             <DataTemplate x:DataType="vmw:Filters.IBoolFilterSlotViewModel" >
                 <local:BoolFilter />
             </DataTemplate>

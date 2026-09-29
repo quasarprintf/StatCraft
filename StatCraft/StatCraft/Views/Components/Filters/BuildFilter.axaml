@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vmw="using:StatCraft.ViewModels.Windows"
+             xmlns:filters="using:StatCraft.Views.Components.Filters"
+             x:Class="StatCraft.Views.Components.Filters.BuildFilter"
+             x:DataType="vmw:Filters.IBuildFilterSlotViewModel">
+    <Grid ColumnDefinitions="Auto,*,Auto">
+        <Button Grid.Column="0" Classes="removeFilter" Command="{Binding RemoveCommand}" IsVisible="{Binding !Mandatory}"/>
+        <Button Grid.Column="1" Content="{Binding Title}">
+            <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft">
+                    <ScrollViewer MaxHeight="480">
+                        <ItemsControl ItemsSource="{Binding BuildDetailSlots}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Vertical" Spacing="2"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <filters:FilterSlot />
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </Flyout>
+            </Button.Flyout>
+        </Button>
+        <CheckBox Grid.Column="2" Content="Include descendants" IsChecked="{Binding IncludeDescendants}" FontSize="11"/>
+    </Grid>
+</UserControl>
