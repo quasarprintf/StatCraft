@@ -1,3 +1,4 @@
+using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Services.DataFiltering;
@@ -16,16 +17,18 @@ namespace StatCraft.ViewModels.Windows.Filters;
 public interface IBuildFilterSlotViewModel : IFilterSlotViewModel
 {
     ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>> BuildDetailSlots { get; }
+    bool IncludeDescendants { get; set; }
 }
 
 public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameData,GamePlayer?>, IBuildFilterSlotViewModel
 {
     public ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>> BuildDetailSlots { get; private set; }
-    private int buildId { get; set; }
+    [ObservableProperty] public partial bool IncludeDescendants { get; set; } = true;
+    private BuildNode _build;
 
     internal BuildFilterSlotViewModel(string title, BuildNode build, Func<GameData,GamePlayer?> filteredPropertyMap) : base(title, filteredPropertyMap)
     {
-        buildId = build.Id;
+        _build = build;
         BuildDetailSlots = new ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>>();
         foreach (var detail in build.Details)
         {
@@ -45,17 +48,33 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
         }
         var detailFilters = new AndFilter<GameData, BuildDetailValues>(filters, g => FilteredPropertyMap(g)?.BuildDetailValues);
 
-        ComparableFilter<int,int> buildIdFilter = new ComparableFilter<int, int>(b=>b)
+        IFilter<int> buildIdFilter;
+        if (IncludeDescendants)
         {
-            FilterValue = buildId
-        }.SetMatchExact();
+            buildIdFilter = new SetMemberFilter<int, int>(b=>b)
+            {
+                AcceptNull = false,
+                FilterValue = _build.EnumerateDescendants().Select(b => b.Id).Append(_build.Id).ToHashSet()
+            };
+        }
+        else
+        {
+            buildIdFilter = new ComparableFilter<int, int>(b=>b)
+            {
+                FilterValue = _build.Id,
+                AcceptNull = false
+            }.SetMatchExact();
+        }
         SequentialAnyFilter<GameData, int> buildDefinedFilter = new SequentialAnyFilter<GameData, int>(buildIdFilter, g => FilteredPropertyMap(g)?.BuildIds);
 
         return new AndFilter<GameData>([detailFilters, buildDefinedFilter]);
     }
 
+    partial void OnIncludeDescendantsChanged(bool value) => RaiseChanged();
+
     public override void Clear()
     {
+        IncludeDescendants = true;
         foreach (var slot in BuildDetailSlots)
         {
             slot.Clear();
