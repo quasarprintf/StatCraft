@@ -18,17 +18,20 @@ public interface IBuildFilterSlotViewModel : IFilterSlotViewModel
 {
     ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>> BuildDetailSlots { get; }
     bool IncludeDescendants { get; set; }
+    BuildNode Build { get; }
+
+    void Rebuild(BuildNode build);
 }
 
 public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameData,GamePlayer?>, IBuildFilterSlotViewModel
 {
-    public ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>> BuildDetailSlots { get; private set; }
+    [ObservableProperty] public partial ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>> BuildDetailSlots { get; private set; }
     [ObservableProperty] public partial bool IncludeDescendants { get; set; } = true;
-    private BuildNode _build;
+    public BuildNode Build { get; private set; }
 
-    internal BuildFilterSlotViewModel(string title, BuildNode build, Func<GameData,GamePlayer?> filteredPropertyMap) : base(title, filteredPropertyMap)
+    internal BuildFilterSlotViewModel(BuildNode build, Func<GameData,GamePlayer?> filteredPropertyMap) : base(build.Name, filteredPropertyMap)
     {
-        _build = build;
+        Build = build;
         BuildDetailSlots = new ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>>();
         foreach (var detail in build.Details)
         {
@@ -54,20 +57,52 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
             buildIdFilter = new SetMemberFilter<int, int>(b=>b)
             {
                 AcceptNull = false,
-                FilterValue = _build.EnumerateDescendants().Select(b => b.Id).Append(_build.Id).ToHashSet()
+                FilterValue = Build.EnumerateDescendants().Select(b => b.Id).Append(Build.Id).ToHashSet()
             };
         }
         else
         {
             buildIdFilter = new ComparableFilter<int, int>(b=>b)
             {
-                FilterValue = _build.Id,
+                FilterValue = Build.Id,
                 AcceptNull = false
             }.SetMatchExact();
         }
         SequentialAnyFilter<GameData, int> buildDefinedFilter = new SequentialAnyFilter<GameData, int>(buildIdFilter, g => FilteredPropertyMap(g)?.BuildIds);
 
         return new AndFilter<GameData>([detailFilters, buildDefinedFilter]);
+    }
+
+    public void Rebuild(BuildNode build)
+    {
+        Title = build.Name;
+        Build = build;
+        var newSlots = new ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>>();
+        foreach (var newDetail in build.Details)
+        {
+            var existing = BuildDetailSlots.FirstOrDefault(s => s.Attribute.Id == newDetail.Id);
+            if (existing != null)
+            {
+                newSlots.Add(existing);
+                if (newDetail.Type != existing.Attribute.Type)
+                    existing.Rebuild();
+                else
+                    existing.Refresh();
+            }
+            else
+            {
+                var detailSlot = new AttributeFilterSlotViewModel<BuildDetailValues>(newDetail);
+                newSlots.Add(detailSlot);
+                detailSlot.Changed += RaiseChanged;
+                detailSlot.PropertyChanged += ForwardPropertyChanged;
+            }
+        }
+        foreach (var oldDetail in BuildDetailSlots.Except(newSlots))
+        {
+            oldDetail.Changed -= RaiseChanged;
+            oldDetail.PropertyChanged -= ForwardPropertyChanged;
+        }
+        BuildDetailSlots = newSlots;
     }
 
     partial void OnIncludeDescendantsChanged(bool value) => RaiseChanged();
