@@ -206,11 +206,11 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
         try
         {
             _repository.DeleteBuildDetailValue(_player.GamePlayerId!.Value, buildAttributeId);
-            for (int index = 0; index < _player.BuildDetailValues.Count; index++)
+            for (int index = 0; index < _player.BuildDetailValues.Values.Count; index++)
             {
-                if (_player.BuildDetailValues[index].DetailValue.Definition.Id == buildAttributeId)
+                if (_player.BuildDetailValues.Values[index].Definition.Id == buildAttributeId)
                 {
-                    _player.BuildDetailValues.RemoveAt(index);
+                    _player.BuildDetailValues.Values.RemoveAt(index);
                     break;
                 }
             }
@@ -356,12 +356,12 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
             foreach (AttributeDefinition template in node.Details)
             {
                 AttributeValue editor = template.DefaultValue.Clone();
-                BuildDetailValue? cached = _player.BuildDetailValues.FirstOrDefault(v => v.DetailValue.Definition.Id == template.Id);
+                AttributeValue? cached = _player.BuildDetailValues.Values.FirstOrDefault(v => v.Definition.Id == template.Id);
                 if (cached != null)
                 {
-                    bool needsWrite = cached.DetailValue.Definition.Type != template.Type;
-                    cached.DetailValue.RefreshDefinition(template);
-                    string savedValue = cached.DetailValue.Serialize() ?? "";
+                    bool needsWrite = cached.Definition.Type != template.Type;
+                    cached.RefreshDefinition(template);
+                    string savedValue = cached.Serialize() ?? "";
                     editor.ApplyStoredValue(savedValue);
                     if (needsWrite)
                         TryUpsertDetailValue(template.Id, savedValue);
@@ -369,7 +369,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
                 else
                 {
                     string defaultValue = editor.Serialize() ?? "";
-                    _player.BuildDetailValues.Add(new BuildDetailValue { DetailValue = editor.Clone() });
+                    _player.BuildDetailValues.Values.Add(editor.Clone());
                     TryUpsertDetailValue(template.Id, defaultValue);
                 }
 
@@ -381,11 +381,11 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
                         or nameof(AttributeValue.SelectedValue))
                     {
                         string value = editor.Serialize() ?? "";
-                        BuildDetailValue? existing = _player.BuildDetailValues.FirstOrDefault(v => v.DetailValue.Definition.Id == template.Id);
+                        AttributeValue? existing = _player.BuildDetailValues.Values.FirstOrDefault(v => v.Definition.Id == template.Id);
                         if (existing != null)
-                            existing.DetailValue.ApplyStoredValue(value);
+                            existing.ApplyStoredValue(value);
                         else
-                            _player.BuildDetailValues.Add(new BuildDetailValue { DetailValue = editor.Clone() });
+                            _player.BuildDetailValues.Values.Add(editor.Clone());
                         TryUpsertDetailValue(template.Id, value);
                     }
                 };

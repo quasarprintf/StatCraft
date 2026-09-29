@@ -323,9 +323,9 @@ public class GameDataRepositoryTests : IDisposable
         _repository.UpsertBuildDetailValue(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, attr.Definition.Id, "14");
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, AllBuildDetailAttributes()));
-        BuildDetailValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues);
-        Assert.Equal(attr.Definition.Id, value.DetailValue.Definition.Id);
-        Assert.Equal("14", value.DetailValue.Serialize());
+        AttributeValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues.Values);
+        Assert.Equal(attr.Definition.Id, value.Definition.Id);
+        Assert.Equal("14", value.Serialize());
     }
 
     [Fact]
@@ -339,8 +339,8 @@ public class GameDataRepositoryTests : IDisposable
         _repository.UpsertBuildDetailValue(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, attr.Definition.Id, "16");
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, AllBuildDetailAttributes()));
-        BuildDetailValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues);
-        Assert.Equal("16", value.DetailValue.Serialize());
+        AttributeValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues.Values);
+        Assert.Equal("16", value.Serialize());
     }
 
     [Fact]
@@ -361,8 +361,8 @@ public class GameDataRepositoryTests : IDisposable
         _repository.DeleteBuildDetailValue(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, attr1.Definition.Id);
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, AllBuildDetailAttributes()));
-        BuildDetailValue remaining = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues);
-        Assert.Equal(attr2.Definition.Id, remaining.DetailValue.Definition.Id);
+        AttributeValue remaining = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues.Values);
+        Assert.Equal(attr2.Definition.Id, remaining.Definition.Id);
     }
 
     // A stored detail value is just a serialized string plus an attribute id, so loading one means
@@ -378,10 +378,10 @@ public class GameDataRepositoryTests : IDisposable
 
         GameData loaded = Assert.Single(_repository.GetGamesForProfile(_sc2ProfileId, AllBuildDetailAttributes()));
 
-        BuildDetailValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues);
-        Assert.Equal("Supply", value.DetailValue.Definition.Name);
-        Assert.Equal(AttributeType.Numeric, value.DetailValue.Definition.Type);
-        Assert.Equal(14, value.DetailValue.NumericValue);
+        AttributeValue value = Assert.Single(loaded.PlayerDetails[loaded.ReplayData.Player].BuildDetailValues.Values);
+        Assert.Equal("Supply", value.Definition.Name);
+        Assert.Equal(AttributeType.Numeric, value.Definition.Type);
+        Assert.Equal(14, value.NumericValue);
     }
 
     [Fact]
@@ -591,7 +591,7 @@ public class GameDataRepositoryTests : IDisposable
     }
 
     // Mirrors what DataPageViewModel hands GetGamesForProfiles: every build detail attribute defined
-    // anywhere in the build tree. A stored BuildDetailValue can only be rebuilt into an AttributeValue
+    // anywhere in the build tree. A stored build detail value can only be rebuilt into an AttributeValue
     // if its definition is in here, so a test that expects values back has to supply them the same way.
     private List<AttributeDefinition> AllBuildDetailAttributes() =>
         _buildRepository.GetAllBuildNodes().SelectMany(b => b.Details).ToList();

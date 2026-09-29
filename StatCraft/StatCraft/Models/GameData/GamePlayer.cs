@@ -14,7 +14,7 @@ public class GamePlayer
     public long? MmrChange => MmrAfter.HasValue ? MmrAfter.Value - ReplayPlayer.Mmr.Mmr : null;
 
     public List<int> BuildIds { get; set; } = [];
-    public List<BuildDetailValue> BuildDetailValues { get; set; } = [];
+    public BuildDetailValues BuildDetailValues { get; set; } = new();
 
     public GamePlayer(ReplayPlayer replayPlayer)
     {
