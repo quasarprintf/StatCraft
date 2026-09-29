@@ -43,8 +43,13 @@ public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewMode
         return wrapper;
     }
 
-    public void UpdateDefinition(AttributeDefinition newDefinition)
+    public void RefreshDefinition(AttributeDefinition newDefinition)
     {
+        if (newDefinition.Id != Attribute.Id)
+        {
+            //TODO: log this
+            throw new InvalidOperationException("refreshed attribute definition must have the same id as existing definition");
+        }
         bool needsRebuild = newDefinition.Type != Attribute.Type;
         Attribute = newDefinition;
         if (needsRebuild)

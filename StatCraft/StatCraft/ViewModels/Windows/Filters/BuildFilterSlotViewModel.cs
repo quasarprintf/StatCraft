@@ -83,7 +83,7 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
             var existing = BuildDetailSlots.FirstOrDefault(s => s.Attribute.Id == newDetail.Id);
             if (existing != null)
             {
-                existing.UpdateDefinition(newDetail);
+                existing.RefreshDefinition(newDetail);
                 newSlots.Add(existing);
             }
             else
