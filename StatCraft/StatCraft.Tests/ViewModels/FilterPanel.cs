@@ -90,12 +90,23 @@ internal sealed class FilterPanel
         // AddFilterMenu's item theme binds IsVisible to !IsApplied, so an applied entry (a filter already in
         // the bar, or a submenu with nothing left to add) is hidden, again only as of its last announcement.
         IFilterMenuItemViewModel item when Hidden(item) => [],
-        // A submenu lists only the entries not applied yet, re-read when the submenu announces a change.
-        IFilterMenuItemViewModel { Filter: null } subMenu => SubMenu(subMenu).Items.Cast<object>().SelectMany(Leaves),
-        IFilterMenuItemViewModel { Filter: { } slot } item => [new MenuLeaf(Header(item), slot)],
+        // An entry can carry a filter, a submenu, or both: it offers itself first, then whatever its
+        // submenu still has left. A submenu lists only the entries not applied yet, re-read when the
+        // submenu announces a change.
+        IFilterMenuItemViewModel item => Offerings(item),
         IFilterSlotViewModel slot => [new MenuLeaf(slot.Title, slot)],
         _ => throw new InvalidOperationException($"Unrecognised add-menu entry {entry.GetType().Name}"),
     };
+
+    private IEnumerable<MenuLeaf> Offerings(IFilterMenuItemViewModel item)
+    {
+        if (item.Filter is { } slot)
+            yield return new MenuLeaf(Header(item), slot);
+        if (item.SubMenuItems == null)
+            yield break;
+        foreach (MenuLeaf leaf in SubMenu(item).Items.Cast<object>().SelectMany(Leaves))
+            yield return leaf;
+    }
 
     private BoundList SubMenu(IFilterMenuItemViewModel subMenu)
     {

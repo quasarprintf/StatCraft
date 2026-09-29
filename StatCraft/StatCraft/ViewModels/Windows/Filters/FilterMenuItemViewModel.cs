@@ -26,29 +26,61 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
     public event Action? Changed;
     public event EventHandler? IsAppliedChanged;
     [ObservableProperty] private string _displayText;
-    //should either have a Filter or SubMenuItems, but not both
     IFilterSlotViewModel? IFilterMenuItemViewModel.Filter => Filter;
     public IFilterSlotViewModel<T>? Filter { get; private set; }
 
     private ObservableCollection<FilterMenuItemViewModel<T>>? _subMenuItems { get; set; }
     public IEnumerable<IFilterMenuItemViewModel>? SubMenuItems => _subMenuItems;
     public IEnumerable<IFilterMenuItemViewModel>? UnAppliedSubMenuItems => _subMenuItems?.Where(i => !i.IsApplied);
-    public bool IsApplied => Filter != null ? Filter.IsApplied : SubMenuItems!.All(i => i.IsApplied);
+
+    // Applied means "nothing left here to add", which is what hides the entry from the add menu. An
+    // entry carrying both a filter and a submenu keeps offering itself until both halves are applied.
+    public bool IsApplied => (Filter?.IsApplied ?? true) && (_subMenuItems?.All(i => i.IsApplied) ?? true);
 
     IEnumerable<IFilterSlotViewModel> IFilterMenuItemViewModel.ContainedFilters => ContainedFilters;
-    public IEnumerable<IFilterSlotViewModel<T>> ContainedFilters => Filter != null ? [Filter] : _subMenuItems!.SelectMany(i => i.ContainedFilters);
+    public IEnumerable<IFilterSlotViewModel<T>> ContainedFilters
+    {
+        get
+        {
+            if (Filter != null)
+                yield return Filter;
+            if (_subMenuItems == null)
+                yield break;
+            foreach (FilterMenuItemViewModel<T> subMenuItem in _subMenuItems)
+                foreach (IFilterSlotViewModel<T> containedFilter in subMenuItem.ContainedFilters)
+                    yield return containedFilter;
+        }
+    }
 
     public FilterMenuItemViewModel(IFilterSlotViewModel<T> filter)
     {
-        Filter = filter;
         _displayText = filter.Title;
-        Filter.PropertyChanged += (_,e) => { if (e.PropertyName == nameof(Filter.Title)) DisplayText = Filter.Title; };
-        Filter.IsAppliedChanged += RefreshIsApplied;
-        Filter.Changed += ForwardChangedEvent;
+        WireFilter(filter);
     }
     public FilterMenuItemViewModel(ObservableCollection<FilterMenuItemViewModel<T>> subMenu, string name)
     {
         _displayText = name;
+        WireSubMenu(subMenu);
+    }
+    // An entry that is both a filter of its own and a submenu of related ones — e.g. a build that can be
+    // filtered on directly, with the builds nested under it offered beneath it.
+    public FilterMenuItemViewModel(IFilterSlotViewModel<T> filter, ObservableCollection<FilterMenuItemViewModel<T>> subMenu)
+    {
+        _displayText = filter.Title;
+        WireFilter(filter);
+        WireSubMenu(subMenu);
+    }
+
+    private void WireFilter(IFilterSlotViewModel<T> filter)
+    {
+        Filter = filter;
+        filter.PropertyChanged += (_,e) => { if (e.PropertyName == nameof(filter.Title)) DisplayText = filter.Title; };
+        filter.IsAppliedChanged += RefreshIsApplied;
+        filter.Changed += ForwardChangedEvent;
+    }
+
+    private void WireSubMenu(ObservableCollection<FilterMenuItemViewModel<T>> subMenu)
+    {
         _subMenuItems = subMenu;
         _subMenuItems.CollectionChanged += SubMenuChanged;
         foreach (var item in _subMenuItems)
