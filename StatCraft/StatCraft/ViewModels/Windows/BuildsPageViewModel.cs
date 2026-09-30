@@ -4,6 +4,7 @@ using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
+using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataFiltering.CollatedFilters;
@@ -33,6 +34,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     // confirmation dialog and, if accepted, calls ConfirmDeleteBuild.
     public event Action<BuildNode>? DeleteConfirmationRequested;
 
+    private readonly ILogger _logger;
     private readonly BuildRepository _buildRepo;
     private readonly AttributeRepository _attributeRepo;
     private readonly GameDataRepository _gameDataRepo;
@@ -58,8 +60,9 @@ public partial class BuildsPageViewModel : ViewModelBase
     public FilterMenuViewModel<BuildNode> FilterMenu { get; set; }
     private readonly Dictionary<AttributeDefinition, FilterMenuItemViewModel<BuildNode>> _filterMenuItems = [];
 
-    public BuildsPageViewModel(BuildRepository buildRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository)
+    public BuildsPageViewModel(BuildRepository buildRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository, ILogger logger)
     {
+        _logger = logger;
         _buildRepo = buildRepository;
         _attributeRepo = attributeRepository;
         _gameDataRepo = gameDataRepository;
@@ -344,7 +347,10 @@ public partial class BuildsPageViewModel : ViewModelBase
     private void AttributeValueDeleted(object? s, AttributeValue value)
     {
         if (s is not BuildNode build)
-            return; //TODO: log this, it's unexpected
+        {
+            _logger.LogWarning($"Build attribute \"{value.Definition.Name}\" was deleted by a {s?.GetType().Name ?? "null"} rather than a BuildNode; nothing saved.");
+            return;
+        }
 
         // SaveValue deletes if value is null
         _buildRepo.SaveStaticAttribute(build.Id, value.Definition.Id, null);
@@ -353,7 +359,10 @@ public partial class BuildsPageViewModel : ViewModelBase
     private void AttributeValueChanged(object? s, AttributeValue value)
     {
         if (s is not BuildNode build)
-            return; //TODO: log this, it's unexpected
+        {
+            _logger.LogWarning($"Build attribute \"{value.Definition.Name}\" was edited on a {s?.GetType().Name ?? "null"} rather than a BuildNode; nothing saved.");
+            return;
+        }
 
         _buildRepo.SaveStaticAttribute(build.Id, value.Definition.Id, value.Serialize());
         ApplyFilters();
@@ -519,15 +528,21 @@ public partial class BuildsPageViewModel : ViewModelBase
     public void ChangeDetailIndex(int sourceIndex, int targetIndex)
     {
         if (SelectedBuild == null)
-            return; //TODO: log this, it shouldn't happen
+        {
+            _logger.LogWarning($"Ignored a detail reorder ({sourceIndex} -> {targetIndex}) with no build selected.");
+            return;
+        }
         _buildRepo.ChangeBuildDetailSortOrder(SelectedBuild.Id, sourceIndex, targetIndex);
         SelectedBuild.Details.Move(sourceIndex, targetIndex);
     }
     [RelayCommand]
     public void AddDetail()
     {
-        if (SelectedBuild == null) 
-            return; //TODO: log this, it shouldn't happen
+        if (SelectedBuild == null)
+        {
+            _logger.LogWarning("Ignored an add-detail request with no build selected.");
+            return;
+        }
         AttributeDefinition definition = new AttributeDefinition(AttributeScope.BuildDetail);
         AttributeValue attr = definition.DefaultValue;
         _buildRepo.InsertBuildDetailAttribute(attr, SelectedBuild.Id, SelectedBuild.Details.Count);
@@ -539,7 +554,10 @@ public partial class BuildsPageViewModel : ViewModelBase
     public void RemoveDetail(AttributeDefinition detail)
     {
         if (SelectedBuild == null)
-            return; //TODO: log this, it shouldn't happen
+        {
+            _logger.LogWarning($"Ignored a request to remove detail \"{detail.Name}\" with no build selected.");
+            return;
+        }
         _buildRepo.DeleteBuildDetailAttribute(SelectedBuild.Id, detail.Id);
         UnWireDetail(detail);
         SelectedBuild.Details.Remove(detail);

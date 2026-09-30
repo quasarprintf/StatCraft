@@ -1,4 +1,5 @@
 using StatCraft.Models.GameData.Attributes;
+using StatCraft.Tests.Mocks;
 using StatCraft.Models.GameData.Maps;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.ViewModels.Windows;
@@ -34,7 +35,7 @@ public class MapsPageViewModelTests : IDisposable
     public void NameFilter_IsCaseInsensitiveSubstringMatch(string filter, bool expected)
     {
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
 
         vm.NameFilter = filter;
 
@@ -48,7 +49,7 @@ public class MapsPageViewModelTests : IDisposable
     public void AttributeAddedElsewhere_AppearsHereAndOnEveryExistingMap()
     {
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
 
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Rush Distance", IsMandatory = true };
         _attributeRepo.InsertAttribute(attribute, 0);
@@ -63,7 +64,7 @@ public class MapsPageViewModelTests : IDisposable
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Doomed" };
         _attributeRepo.InsertAttribute(attribute, 0);
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
 
         _attributeRepo.DeleteAttribute(attribute.Id);
 
@@ -76,7 +77,7 @@ public class MapsPageViewModelTests : IDisposable
     [Fact]
     public void AttributeAddedElsewhereForADifferentScope_IsIgnored()
     {
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
 
         _attributeRepo.InsertAttribute(new(AttributeScope.Game) { Name = "Apm" }, 0);
 
@@ -95,7 +96,7 @@ public class MapsPageViewModelTests : IDisposable
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Rush Distance", Type = AttributeType.Numeric, IsMandatory = true };
         _attributeRepo.InsertAttribute(attribute, 0);
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         FilterPanel filters = FilterPanel.Of(vm);
         AttributeDefinition held = Assert.Single(vm.AllAttributes);
         Assert.True(filters.Offered("Rush Distance").IsNumericRangeFilter);
@@ -116,7 +117,7 @@ public class MapsPageViewModelTests : IDisposable
     {
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Old Name" };
         _attributeRepo.InsertAttribute(attribute, 0);
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         AttributeDefinition held = Assert.Single(vm.AllAttributes);
 
         AttributeDefinition editedElsewhere = Assert.Single(_attributeRepo.GetAllAttributes(AttributeScope.Map));
@@ -132,7 +133,7 @@ public class MapsPageViewModelTests : IDisposable
     {
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
         _attributeRepo.InsertAttribute(attribute, 0);
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         AttributeDefinition held = Assert.Single(vm.AllAttributes);
 
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
@@ -148,7 +149,7 @@ public class MapsPageViewModelTests : IDisposable
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
         _attributeRepo.InsertAttribute(attribute, 0);
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         FilterHandle filter = FilterPanel.Of(vm).Offered("Style").Check("Rush");
 
         _attributeRepo.InsertValueOption(attribute.Id, "Macro");
@@ -253,7 +254,7 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertAttribute(attribute, 0);
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         Assert.Empty(vm.FilteredMaps.Single().AttributeValues);
 
         FilterHandle filter = FilterPanel.Of(vm).Add("Style");
@@ -298,7 +299,7 @@ public class MapsPageViewModelTests : IDisposable
     public void BlankMapName_IsStillListedWhenNoNameFilterIsSet(string name)
     {
         _mapRepo.InsertMap(new() { Name = name });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
 
         Assert.Single(vm.FilteredMaps);
 
@@ -313,7 +314,7 @@ public class MapsPageViewModelTests : IDisposable
     public void BlankMapName_IsStillExcludedByANonEmptyNameFilter()
     {
         _mapRepo.InsertMap(new() { Name = "" });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
 
         vm.NameFilter = "Altitude";
 
@@ -331,7 +332,7 @@ public class MapsPageViewModelTests : IDisposable
     {
         _attributeRepo.InsertAttribute(new(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values }, 0);
         _attributeRepo.InsertAttribute(new(AttributeScope.Map) { Name = "Ramped", Type = AttributeType.Bool }, 1);
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         FilterPanel filters = FilterPanel.Of(vm);
 
         Assert.Empty(filters.AppliedTitles);
@@ -423,7 +424,7 @@ public class MapsPageViewModelTests : IDisposable
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Attribute", Type = type };
         _attributeRepo.InsertAttribute(attribute, 0);
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         Map map = AddMapWithValue(vm, "Attribute", v =>
         {
             v.SelectedValue = "Rush";
@@ -444,7 +445,7 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertAttribute(attribute, 0);
         foreach (string option in new[] { "Rush", "Macro", "Cheese" })
             _attributeRepo.InsertValueOption(attribute.Id, option);
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         Map rush = AddMapWithValue(vm, "Style", v => v.SelectedValue = "Rush");
         Map macro = AddMapWithValue(vm, "Style", v => v.SelectedValue = "Macro");
         Map cheese = AddMapWithValue(vm, "Style", v => v.SelectedValue = "Cheese");
@@ -571,7 +572,7 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertValueOption(style.Id, "Rush");
         _attributeRepo.InsertValueOption(style.Id, "Macro");
         _attributeRepo.InsertAttribute(new(AttributeScope.Map) { Name = "Ramped", Type = AttributeType.Bool }, 1);
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         Map both = AddMapWithValues(vm, ("Style", v => v.SelectedValue = "Rush"), ("Ramped", v => v.BoolValue = true));
         Map styleOnly = AddMapWithValues(vm, ("Style", v => v.SelectedValue = "Rush"), ("Ramped", v => v.BoolValue = false));
         Map rampedOnly = AddMapWithValues(vm, ("Style", v => v.SelectedValue = "Macro"), ("Ramped", v => v.BoolValue = true));
@@ -603,7 +604,7 @@ public class MapsPageViewModelTests : IDisposable
     [Fact]
     public void RenamingTheSelectedMap_ReappliesTheNameFilter()
     {
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         Map map = AddMapWithValueRows(vm);
         map.Name = "Altitude LE";
         vm.NameFilter = "Altitude";
@@ -620,7 +621,7 @@ public class MapsPageViewModelTests : IDisposable
     public void AttributeAddedElsewhere_IsOfferedAndFilters()
     {
         _mapRepo.InsertMap(new() { Name = "Altitude LE" });
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         FilterPanel filters = FilterPanel.Of(vm);
 
         _attributeRepo.InsertAttribute(new(AttributeScope.Map) { Name = "Ramped", Type = AttributeType.Bool, IsMandatory = true }, 0);
@@ -640,7 +641,7 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertAttribute(attribute, 0);
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
         _attributeRepo.InsertValueOption(attribute.Id, "Macro");
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         Map map = AddMapWithValue(vm, "Style", v => v.SelectedValue = "Macro");
         FilterPanel filters = FilterPanel.Of(vm);
         filters.Add("Style").Check("Rush");
@@ -659,7 +660,7 @@ public class MapsPageViewModelTests : IDisposable
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Style", Type = AttributeType.Values };
         _attributeRepo.InsertAttribute(attribute, 0);
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         FilterPanel filters = FilterPanel.Of(vm);
         filters.Add("Style").Check("Rush");
 
@@ -678,7 +679,7 @@ public class MapsPageViewModelTests : IDisposable
     {
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Contested", Type = AttributeType.Numeric };
         _attributeRepo.InsertAttribute(attribute, 0);
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         Map map = AddMapWithValueRows(vm);
         FilterPanel filters = FilterPanel.Of(vm);
         filters.Add("Contested");
@@ -705,7 +706,7 @@ public class MapsPageViewModelTests : IDisposable
     {
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Contested", Type = AttributeType.Numeric };
         _attributeRepo.InsertAttribute(attribute, 0);
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         Map map = AddMapWithValueRows(vm);
         FilterPanel filters = FilterPanel.Of(vm);
         FilterHandle filter = filters.Add("Contested");
@@ -728,7 +729,7 @@ public class MapsPageViewModelTests : IDisposable
     {
         AttributeDefinition attribute = new(AttributeScope.Map) { Name = "Contested", Type = AttributeType.Numeric };
         _attributeRepo.InsertAttribute(attribute, 0);
-        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo);
+        MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         FilterPanel filters = FilterPanel.Of(vm);
 
         AttributeDefinition editedElsewhere = Assert.Single(_attributeRepo.GetAllAttributes(AttributeScope.Map));
@@ -747,13 +748,13 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertAttribute(attribute, 0);
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
         _attributeRepo.InsertValueOption(attribute.Id, "Macro");
-        return new MapsPageViewModel(_mapRepo, _attributeRepo, _gameDataRepo);
+        return new MapsPageViewModel(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
     }
 
     private MapsPageViewModel AttributeVm(string name, AttributeType type)
     {
         _attributeRepo.InsertAttribute(new(AttributeScope.Map) { Name = name, Type = type }, 0);
-        return new MapsPageViewModel(_mapRepo, _attributeRepo, _gameDataRepo);
+        return new MapsPageViewModel(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
     }
 
     // Adding through the page is what gives a map a value row per attribute; maps loaded straight from

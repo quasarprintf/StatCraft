@@ -3,7 +3,9 @@ using Avalonia.Controls;
 using Avalonia.Controls.Presenters;
 using Avalonia.Input;
 using Avalonia.VisualTree;
+using Microsoft.Extensions.DependencyInjection;
 using StatCraft.Models.GameData.Attributes;
+using StatCraft.Services.BackgroundService;
 using StatCraft.ViewModels.Windows;
 using System.Collections;
 using System.Collections.ObjectModel;
@@ -14,6 +16,7 @@ namespace StatCraft.Views.Windows.BuildsComponents;
 public partial class BuildDetailsPanel : UserControl
 {
     private BuildsPageViewModel _vm => (BuildsPageViewModel)DataContext!;
+    private static ILogger Logger => App.Services.GetRequiredService<ILogger>();
     public BuildDetailsPanel()
     {
         InitializeComponent();
@@ -25,12 +28,12 @@ public partial class BuildDetailsPanel : UserControl
     {
         if (!(sender is Control control))
         {
-            //TODO: log unexpected case
+            Logger.LogWarning($"Build detail drag started from a {sender?.GetType().Name ?? "null"} rather than a Control; drag ignored.");
             return;
         }
         if (!(control.DataContext is AttributeDefinition definition))
         {
-            //TODO: log unexpected case
+            Logger.LogWarning($"Build detail drag started from a control holding a {control.DataContext?.GetType().Name ?? "null"} rather than an AttributeDefinition; drag ignored.");
             return;
         }
         DataFormat<AttributeDefinition> format = GetDragFormat();
@@ -132,16 +135,25 @@ public partial class BuildDetailsPanel : UserControl
 
         Control? targetRow = GetRowByY(e.GetPosition(DetailsList).Y, DetailsList, out bool belowCenter);
         if (targetRow == null)
-            return (null, null, false); //TODO: log this, shouldn't happen
+        {
+            Logger.LogWarning($"Build detail dropped at y={e.GetPosition(DetailsList).Y:0.#}, which matched no detail row; drop ignored.");
+            return (null, null, false);
+        }
 
         if (!(targetRow?.DataContext is AttributeDefinition targetAttribute))
-            return (null, null, false); //TODO: log this, shouldn't happen
+        {
+            Logger.LogWarning($"Build detail dropped on a row holding a {targetRow?.DataContext?.GetType().Name ?? "null"} rather than an AttributeDefinition; drop ignored.");
+            return (null, null, false);
+        }
 
         int sourceIndex = details.IndexOf(sourceAttribute);
         int targetIndex = details.IndexOf(targetAttribute);
 
         if (sourceIndex == -1 || targetIndex == -1)
-            return (null, null, false); //TODO: log this, shouldn't happen
+        {
+            Logger.LogWarning($"Build detail drag from \"{sourceAttribute.Name}\" to \"{targetAttribute.Name}\" referenced a detail the selected build no longer has (source index {sourceIndex}, target index {targetIndex}); drop ignored.");
+            return (null, null, false);
+        }
 
         return (sourceIndex, targetIndex, belowCenter);
     }
@@ -153,7 +165,10 @@ public partial class BuildDetailsPanel : UserControl
         belowCenter = false;
 
         if (!(itemList.ItemsSource is ICollection source))
-            return null; //TODO: log this, shouldn't happen
+        {
+            Logger.LogWarning($"Detail list is bound to a {itemList.ItemsSource?.GetType().Name ?? "null"}, which has no count to scan for the row under the pointer.");
+            return null;
+        }
         int itemsCount = source.Count;
 
         Control? foundControl = null;

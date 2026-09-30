@@ -26,6 +26,7 @@ public partial class GameDataRowViewModel : ViewModelBase
     [ObservableProperty] private bool _buildsVisible;
     [ObservableProperty] private bool _attributesVisible;
 
+    private readonly ILogger _logger;
     private readonly GameDataRepository _repository;
     private readonly GameData _game;
     public int GameId => _game.GameId!.Value;
@@ -88,6 +89,7 @@ public partial class GameDataRowViewModel : ViewModelBase
     {
         _game = game;
         _repository = repository;
+        _logger = logger;
         ProfileLabel = profileLabel;
 
         AttributeValuesSelect = new AttributeValuesSelectViewModel(allAttributes);
@@ -152,7 +154,10 @@ public partial class GameDataRowViewModel : ViewModelBase
     private void AttributeValueDeleted(object? s, AttributeValue value)
     {
         if (s is not GameData game)
-            return; //TODO: log this, it's unexpected
+        {
+            _logger.LogWarning($"Game attribute \"{value.Definition.Name}\" was deleted by a {s?.GetType().Name ?? "null"} rather than a GameData; nothing saved.");
+            return;
+        }
 
         // A null value deletes the row — see GameDataRepository.SaveGameAttributeValue.
         _repository.SaveGameAttributeValue(game.GameId!.Value, value.Definition.Id, null);
@@ -162,7 +167,10 @@ public partial class GameDataRowViewModel : ViewModelBase
     private void AttributeValueChanged(object? s, AttributeValue value)
     {
         if (s is not GameData game)
-            return; //TODO: log this, it's unexpected
+        {
+            _logger.LogWarning($"Game attribute \"{value.Definition.Name}\" was edited on a {s?.GetType().Name ?? "null"} rather than a GameData; nothing saved.");
+            return;
+        }
 
         _repository.SaveGameAttributeValue(game.GameId!.Value, value.Definition.Id, value.Serialize());
         OnPropertyChanged(nameof(AttributesSummary));

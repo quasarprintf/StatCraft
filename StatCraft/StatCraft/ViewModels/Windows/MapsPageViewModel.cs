@@ -3,6 +3,7 @@ using CommunityToolkit.Mvvm.Input;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Maps;
+using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataFiltering.CollatedFilters;
@@ -20,6 +21,7 @@ namespace StatCraft.ViewModels.Windows;
 
 public partial class MapsPageViewModel : ViewModelBase
 {
+    private readonly ILogger _logger;
     private readonly MapRepository _mapRepo;
     private readonly AttributeRepository _attributeRepo;
     private readonly GameDataRepository _gameDataRepo;
@@ -38,8 +40,9 @@ public partial class MapsPageViewModel : ViewModelBase
     // Raised instead of deleting when the map still has games recorded on it
     public event Action<Map>? DeleteBlocked;
 
-    public MapsPageViewModel(MapRepository mapRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository)
+    public MapsPageViewModel(MapRepository mapRepository, AttributeRepository attributeRepository, GameDataRepository gameDataRepository, ILogger logger)
     {
+        _logger = logger;
         _mapRepo = mapRepository;
         _attributeRepo = attributeRepository;
         _gameDataRepo = gameDataRepository;
@@ -269,7 +272,10 @@ public partial class MapsPageViewModel : ViewModelBase
     private void AttributeValueDeleted(object? s, AttributeValue value)
     {
         if (s is not Map map)
-            return; //TODO: log this, it's unexpected
+        {
+            _logger.LogWarning($"Map attribute \"{value.Definition.Name}\" was deleted by a {s?.GetType().Name ?? "null"} rather than a Map; nothing saved.");
+            return;
+        }
 
         // SaveValue deletes if value is null
         _mapRepo.SaveValue(map.Id, value.Definition.Id, null);
@@ -278,7 +284,10 @@ public partial class MapsPageViewModel : ViewModelBase
     private void AttributeValueChanged(object? s, AttributeValue value)
     {
         if (s is not Map map)
-            return; //TODO: log this, it's unexpected
+        {
+            _logger.LogWarning($"Map attribute \"{value.Definition.Name}\" was edited on a {s?.GetType().Name ?? "null"} rather than a Map; nothing saved.");
+            return;
+        }
 
         _mapRepo.SaveValue(map.Id, value.Definition.Id, value.Serialize());
         ApplyFilters();

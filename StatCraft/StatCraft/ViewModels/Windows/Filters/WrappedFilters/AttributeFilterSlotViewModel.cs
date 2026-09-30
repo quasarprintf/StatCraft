@@ -47,7 +47,8 @@ public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewMode
     {
         if (newDefinition.Id != Attribute.Id)
         {
-            //TODO: log this
+            //no logger to hand here (a model, and a slot built in places that have none), but App's
+            //unhandled-exception handlers log this throw with its stack trace either way
             throw new InvalidOperationException("refreshed attribute definition must have the same id as existing definition");
         }
         bool needsRebuild = newDefinition.Type != Attribute.Type;

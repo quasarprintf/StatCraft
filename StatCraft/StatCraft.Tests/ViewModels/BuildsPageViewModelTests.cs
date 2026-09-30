@@ -1,3 +1,4 @@
+using StatCraft.Tests.Mocks;
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Race;
@@ -27,7 +28,7 @@ public class BuildsPageViewModelTests : IDisposable
         _attributeRepo = new AttributeRepository(_dbPath);
         _attributeRepo.Initialize();
 
-        _vm = new BuildsPageViewModel(_buildRepo, _attributeRepo, _gameDataRepo)
+        _vm = new BuildsPageViewModel(_buildRepo, _attributeRepo, _gameDataRepo, new MockLogger())
         {
             PlayerRace = Race.Protoss,
         };
@@ -152,7 +153,7 @@ public class BuildsPageViewModelTests : IDisposable
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
         // A page built after the attribute exists, so the slot starts with the option already on it —
         // the same starting point as the Maps test.
-        BuildsPageViewModel vm = new(_buildRepo, _attributeRepo, _gameDataRepo)
+        BuildsPageViewModel vm = new(_buildRepo, _attributeRepo, _gameDataRepo, new MockLogger())
         {
             PlayerRace = Race.Protoss,
         };
