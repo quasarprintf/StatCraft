@@ -299,6 +299,9 @@ public partial class DataPageViewModel : ViewModelBase
         if (_attributesCacheDirty)
             RefreshAttributesCache();
 
+        if (_buildTreeCacheDirty || _attributesCacheDirty)
+            ApplyFilters();
+
         _buildTreeCacheDirty = false;
         _attributesCacheDirty = false;
     }
@@ -398,8 +401,6 @@ public partial class DataPageViewModel : ViewModelBase
                 _gameDataRepo.SaveGameAttributeValues(gamesToSave, dbAttr.Id);
             }
         }
-
-        ApplyFilters();
     }
 
     private void SyncValueOptions(AttributeDefinition attribute, ObservableCollection<string> latest)
@@ -443,6 +444,8 @@ public partial class DataPageViewModel : ViewModelBase
 
         foreach (GameDataRowViewModel row in Games)
             row.RefreshDetailEditors();
+
+        Filters.RefreshBuildMenu(_buildRepo.GetAllBuilds());
     }
 
     // Re-queries the database for every currently-checked profile — the only filter dimension that
