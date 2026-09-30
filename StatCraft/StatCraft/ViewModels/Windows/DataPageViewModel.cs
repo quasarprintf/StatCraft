@@ -85,7 +85,7 @@ public partial class DataPageViewModel : ViewModelBase
     }
 
     [NotifyPropertyChangedFor(nameof(ActiveProfileLabel), nameof(HasActiveSession))]
-    [ObservableProperty] private Sc2Profile? _activeProfile;
+    [ObservableProperty] public partial Sc2Profile? ActiveProfile { get; set; }
 
     public string ActiveProfileLabel => ActiveProfile == null ? "No active session" : ActiveProfile.DisplayName;
 
@@ -101,7 +101,7 @@ public partial class DataPageViewModel : ViewModelBase
     // Win/loss over exactly the games the table is currently showing, aggregated across every ladder
     // race and game mode. Recomputed by ApplyFilters, so narrowing to a matchup or map reports the
     // rate for that matchup or map. Blank when nothing is in view.
-    [ObservableProperty] private string _winRateLabel = "";
+    [ObservableProperty] public partial string WinRateLabel { get; set; } = "";
 
     public event Action? SessionRequested;
 

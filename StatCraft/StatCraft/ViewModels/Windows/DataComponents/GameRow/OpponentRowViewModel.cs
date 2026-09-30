@@ -17,7 +17,7 @@ public partial class OpponentRowViewModel : ViewModelBase
     public string FormattedClan => _player.ReplayPlayer.FormattedClan;
 
     //mmr currently being displayed, not guaranteed to match player.mmr
-    [ObservableProperty] private decimal? _mmr;
+    [ObservableProperty] public partial decimal? Mmr { get; set; }
 
     // Whether the MMR on display is OpponentMmrEstimator's inference rather than a value the replay
     // itself reported or one typed in here — the view tints the field while it is (see DataPage.axaml).
@@ -28,7 +28,7 @@ public partial class OpponentRowViewModel : ViewModelBase
     {
         _player = player;
         _repository = repository;
-        _mmr = player.ReplayPlayer.Mmr.Mmr;
+        Mmr = player.ReplayPlayer.Mmr.Mmr;
         _player.ReplayPlayer.Mmr.MmrChanged += PlayerMmrChanged;
     }
 

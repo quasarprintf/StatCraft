@@ -29,8 +29,8 @@ public partial class BuildSelectionSlotViewModel : ObservableObject
 
     public bool IsBuildPickerEnabled { get; }
 
-    [ObservableProperty] private BuildNode? _selectedBuildNode;
-    [ObservableProperty] private string _selectedBuildLabel = DEFAULT_BUILD_TEXT;
+    [ObservableProperty] public partial BuildNode? SelectedBuildNode { get; set; }
+    [ObservableProperty] public partial string SelectedBuildLabel { get; set; } = DEFAULT_BUILD_TEXT;
 
     // Raised whenever SelectedBuildNode changes, passing the value it changed from. Callers that need
     // to hydrate a saved selection without triggering side effects should set SelectedBuildNode via

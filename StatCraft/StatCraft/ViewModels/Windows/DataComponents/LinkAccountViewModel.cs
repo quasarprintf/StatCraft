@@ -39,7 +39,7 @@ public partial class LinkAccountViewModel : ViewModelBase
     }
 
     [NotifyPropertyChangedFor(nameof(IsEnterCredentials), nameof(IsConnecting), nameof(IsSelectingProfile), nameof(IsFailed))]
-    [ObservableProperty] private LinkAccountStage _stage;
+    [ObservableProperty] public partial LinkAccountStage Stage { get; set; }
 
     public bool IsEnterCredentials => Stage == LinkAccountStage.EnterCredentials;
     public bool IsConnecting => Stage == LinkAccountStage.Connecting;
@@ -47,17 +47,17 @@ public partial class LinkAccountViewModel : ViewModelBase
     public bool IsFailed => Stage == LinkAccountStage.Failed;
 
     [NotifyCanExecuteChangedFor(nameof(SubmitCredentialsCommand))]
-    [ObservableProperty] private string _clientId = "";
+    [ObservableProperty] public partial string ClientId { get; set; } = "";
 
     [NotifyCanExecuteChangedFor(nameof(SubmitCredentialsCommand))]
-    [ObservableProperty] private string _clientSecret = "";
+    [ObservableProperty] public partial string ClientSecret { get; set; } = "";
 
-    [ObservableProperty] private string _statusMessage = "";
+    [ObservableProperty] public partial string StatusMessage { get; set; } = "";
 
     public ObservableCollection<Sc2Profile> Sc2Profiles { get; } = [];
 
     [NotifyCanExecuteChangedFor(nameof(ConfirmProfileCommand))]
-    [ObservableProperty] private Sc2Profile? _selectedSc2Profile;
+    [ObservableProperty] public partial Sc2Profile? SelectedSc2Profile { get; set; }
 
     public Sc2Profile? LinkedProfile { get; private set; }
 

@@ -17,10 +17,10 @@ public partial class SettingsPromptViewModel : ViewModelBase
     }
 
     [NotifyCanExecuteChangedFor(nameof(ContinueCommand))]
-    [ObservableProperty] private string _baseReplayFolderPath = "";
+    [ObservableProperty] public partial string BaseReplayFolderPath { get; set; } = "";
 
     [NotifyPropertyChangedFor(nameof(HasError))]
-    [ObservableProperty] private string _errorMessage = "";
+    [ObservableProperty] public partial string ErrorMessage { get; set; } = "";
 
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 

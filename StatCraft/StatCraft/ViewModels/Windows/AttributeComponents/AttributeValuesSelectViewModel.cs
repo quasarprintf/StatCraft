@@ -19,7 +19,7 @@ public partial class AttributeValuesSelectViewModel : ViewModelBase
 
     public ObservableCollection<AttributeDefinition> AllAttributes { get; } = [];
     public IEnumerable<AttributeDefinition> UnusedAttributes => Object == null ? Enumerable.Empty<AttributeDefinition>() : AllAttributes.Where(a => !Object.AttributeValues.Any(v => v.Definition.Id == a.Id));
-    [ObservableProperty]private IAttributedObject? _object;
+    [ObservableProperty] public partial IAttributedObject? Object { get; set; }
     public bool HasUnusedAttributes => UnusedAttributes.Any();
 
     public AttributeValuesSelectViewModel(ObservableCollection<AttributeDefinition> attributes)
@@ -31,8 +31,8 @@ public partial class AttributeValuesSelectViewModel : ViewModelBase
     #region property changed events
     partial void OnObjectChanging(IAttributedObject? value)
     {
-        if (_object != null)
-            UnWireObject(_object);
+        if (Object != null)
+            UnWireObject(Object);
         if (value != null)
             WireObject(value);
     }

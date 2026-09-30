@@ -17,21 +17,21 @@ public partial class AttributeDefinition : ObservableObject
 
     public int Id { get; set; }
 
-    [ObservableProperty] private string _name = string.Empty;
+    [ObservableProperty] public partial string Name { get; set; } = string.Empty;
 
-    [ObservableProperty] private string _description = string.Empty;
+    [ObservableProperty] public partial string Description { get; set; } = string.Empty;
 
     [NotifyPropertyChangedFor(nameof(IsNumeric), nameof(IsBool), nameof(IsPercent), nameof(IsValues))]
-    [ObservableProperty] private AttributeType _type = AttributeType.Numeric;
+    [ObservableProperty] public partial AttributeType Type { get; set; } = AttributeType.Numeric;
 
     public AttributeScope Scope { get; private set; }
-    [ObservableProperty] private bool _isMandatory;
+    [ObservableProperty] public partial bool IsMandatory { get; set; }
     public bool IsNullable => Scope != AttributeScope.BuildDetail;
 
     // Options for a Values-type attribute
     public ObservableCollection<string> ValueOptions { get; protected set; } = [];
 
-    [ObservableProperty] private string _newOptionText = string.Empty;
+    [ObservableProperty] public partial string NewOptionText { get; set; } = string.Empty;
 
     public bool IsNumeric => Type == AttributeType.Numeric;
     public bool IsBool    => Type == AttributeType.Bool;

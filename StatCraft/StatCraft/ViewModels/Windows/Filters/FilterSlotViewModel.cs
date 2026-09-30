@@ -35,16 +35,16 @@ public abstract partial class FilterSlotViewModel<T,F> : ViewModelBase, IFilterS
     // Mutable rather than the more usual get-only, so the Maps tab can rename a filter's attribute in
     // place (MapsPageViewModel.WireAttribute) without recreating the slot itself — recreating it would
     // drop whatever criteria the user already entered.
-    [ObservableProperty] private string _title = "";
+    [ObservableProperty] public partial string Title { get; set; } = "";
 
-    [ObservableProperty] private bool _mandatory;
-    [ObservableProperty] private bool _isApplied;
+    [ObservableProperty] public partial bool Mandatory { get; set; }
+    [ObservableProperty] public partial bool IsApplied { get; set; }
 
     // Whether entities with no value at all for this dimension still pass. Only the Maps tab binds
     // it: a newly defined map attribute is unset on every map, so without an opt-in an attribute
     // filter would hide the very maps the user most likely wants to find and fill in. The Data tab's
     // dimensions all come from the replay and are never unset, so its templates simply don't show it.
-    [ObservableProperty] private bool _includeUnset;
+    [ObservableProperty] public partial bool IncludeUnset { get; set; }
 
     public bool AllowIncludeUnset { get; set; }
 

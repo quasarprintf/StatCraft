@@ -28,9 +28,9 @@ public partial class MapsPageViewModel : ViewModelBase
 
     private readonly List<Map> _allMaps = [];
     public ObservableCollection<Map> FilteredMaps { get; } = [];
-    [ObservableProperty] private Map? _selectedMap;
+    [ObservableProperty] public partial Map? SelectedMap { get; set; }
 
-    [ObservableProperty] private string _nameFilter = "";
+    [ObservableProperty] public partial string NameFilter { get; set; } = "";
     public FilterMenuViewModel<Map> FilterMenu { get; set; }
     private readonly Dictionary<AttributeDefinition, FilterMenuItemViewModel<Map>> _filterMenuItems = [];
 

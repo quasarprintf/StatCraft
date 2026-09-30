@@ -14,16 +14,16 @@ public partial class AttributeValue : ObservableObject
     public AttributeDefinition Definition { get; private set; }
 
     [NotifyPropertyChangedFor(nameof(HasValue))]
-    [ObservableProperty] private decimal? _numericValue;
+    [ObservableProperty] public partial decimal? NumericValue { get; set; }
 
     [NotifyPropertyChangedFor(nameof(HasValue))]
-    [ObservableProperty] private bool? _boolValue;
+    [ObservableProperty] public partial bool? BoolValue { get; set; }
 
     [NotifyPropertyChangedFor(nameof(HasValue))]
-    [ObservableProperty] private decimal? _percentValue;
+    [ObservableProperty] public partial decimal? PercentValue { get; set; }
 
     [NotifyPropertyChangedFor(nameof(HasValue))]
-    [ObservableProperty] private string? _selectedValue;
+    [ObservableProperty] public partial string? SelectedValue { get; set; }
 
     // Only the slot matching the attribute's type counts — switching an attribute's type leaves the
     // old slot populated, and that stale value must not read as "set".

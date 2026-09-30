@@ -25,22 +25,22 @@ public partial class AttributesPageViewModel : ViewModelBase
     [NotifyPropertyChangedFor(nameof(SelectedGame))]
     [NotifyPropertyChangedFor(nameof(SelectedBuild))]
     [NotifyPropertyChangedFor(nameof(SelectedMap))]
-    [ObservableProperty] private AttributeScope _selectedScope;
+    [ObservableProperty] public partial AttributeScope SelectedScope { get; set; }
 
-    public bool SelectedGame => _selectedScope == AttributeScope.Game;
-    public bool SelectedBuild => _selectedScope == AttributeScope.Build;
-    public bool SelectedMap => _selectedScope == AttributeScope.Map;
+    public bool SelectedGame => SelectedScope == AttributeScope.Game;
+    public bool SelectedBuild => SelectedScope == AttributeScope.Build;
+    public bool SelectedMap => SelectedScope == AttributeScope.Map;
 
     public ObservableCollection<AttributeDefinition> Attributes => _attributesByScope[SelectedScope];
 
     public ObservableCollection<AttributeDefinition> FilteredAttributes { get; } = [];
 
-    [ObservableProperty] private string _nameFilter = "";
-    [ObservableProperty] private bool? _mandatoryFilter;
+    [ObservableProperty] public partial string NameFilter { get; set; } = "";
+    [ObservableProperty] public partial bool? MandatoryFilter { get; set; }
 
     [NotifyPropertyChangedFor(nameof(SelectedAttributeValue))]
-    [ObservableProperty] private AttributeDefinition? _selectedAttribute;
-    public AttributeValue? SelectedAttributeValue => _selectedAttribute?.DefaultValue;
+    [ObservableProperty] public partial AttributeDefinition? SelectedAttribute { get; set; }
+    public AttributeValue? SelectedAttributeValue => SelectedAttribute?.DefaultValue;
 
     public AttributesPageViewModel(AttributeRepository attributeRepository)
     {

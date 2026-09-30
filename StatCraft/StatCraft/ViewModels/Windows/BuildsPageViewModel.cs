@@ -24,7 +24,7 @@ public partial class RaceOption(Race value) : ObservableObject
     public string Display => Value.Display();
     public Race Value { get; } = value;
 
-    [ObservableProperty] private bool _isSelected;
+    [ObservableProperty] public partial bool IsSelected { get; set; }
 }
 
 public partial class BuildsPageViewModel : ViewModelBase
@@ -42,9 +42,9 @@ public partial class BuildsPageViewModel : ViewModelBase
     private readonly HashSet<Race> _loadedPlayerRaces = [];
 
     [NotifyPropertyChangedFor(nameof(Builds))]
-    [ObservableProperty] private Race _playerRace = Race.Zerg;
+    [ObservableProperty] public partial Race PlayerRace { get; set; } = Race.Zerg;
 
-    [ObservableProperty] private BuildNode? _selectedBuild;
+    [ObservableProperty] public partial BuildNode? SelectedBuild { get; set; }
 
     public IReadOnlyList<RaceOption> PlayerRaceOptions { get; }
     public IReadOnlyList<RaceOption> OpponentRaceOptions { get; }
@@ -56,7 +56,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     public ObservableCollection<AttributeDefinition> AllAttributes { get; } = [];
     public AttributeValuesSelectViewModel AttributeValuesSelect { get; }
 
-    [ObservableProperty] private string _nameFilter = "";
+    [ObservableProperty] public partial string NameFilter { get; set; } = "";
     public FilterMenuViewModel<BuildNode> FilterMenu { get; set; }
     private readonly Dictionary<AttributeDefinition, FilterMenuItemViewModel<BuildNode>> _filterMenuItems = [];
 

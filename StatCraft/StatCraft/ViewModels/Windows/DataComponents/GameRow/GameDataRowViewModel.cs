@@ -23,8 +23,13 @@ namespace StatCraft.ViewModels.Windows.DataComponents.GameRow;
 public partial class GameDataRowViewModel : ViewModelBase
 {
     public event EventHandler? RenderHeightChanged;
-    [ObservableProperty] private bool _buildsVisible;
-    [ObservableProperty] private bool _attributesVisible;
+    [ObservableProperty] public partial bool BuildsVisible { get; set; }
+    [ObservableProperty] public partial bool AttributesVisible { get; set; }
+
+    // Set while the constructor hydrates this row from its GameData. Those assignments go through the
+    // same properties a user edit does, and the handlers below write every change straight to the
+    // database — so they have to be able to tell the two apart.
+    private readonly bool _hydrated;
 
     private readonly ILogger _logger;
     private readonly GameDataRepository _repository;
@@ -43,7 +48,7 @@ public partial class GameDataRowViewModel : ViewModelBase
     public string GameLength { get; }
 
     // User-overridable. Ranked vs Unranked is inferred rather than read from the replay, so it can be wrong
-    [ObservableProperty] private GameType _gameType;
+    [ObservableProperty] public partial GameType GameType { get; set; }
 
     public IReadOnlyList<GameType> GameTypeOptions => AllGameTypes;
 
@@ -74,7 +79,7 @@ public partial class GameDataRowViewModel : ViewModelBase
         }
     }
 
-    [ObservableProperty] private string _notes;
+    [ObservableProperty] public partial string Notes { get; set; }
     public IReadOnlyList<ColoredCharacter> MatchupCharacters { get; }
     public ObservableCollection<OpponentRowViewModel> Opponents { get; } = [];
 
@@ -109,13 +114,12 @@ public partial class GameDataRowViewModel : ViewModelBase
             _ => Styles.Colors.DrawBlue,
         };
         GameLength = TimeSpan.FromSeconds(replay.GameLengthSeconds).ToString(@"mm\:ss");
-        // Assigned to the backing field, not the property, so hydrating a row doesn't look like a
-        // user edit and write straight back to the database (same reason as _notes below).
-        _gameType = game.GameType;
+        GameType = game.GameType;
         MatchupCharacters = BuildMatchupCharacters(replay);
         foreach (ReplayPlayer opponent in replay.Opponents)
             Opponents.Add(new OpponentRowViewModel(game.PlayerDetails[opponent], repository));
-        _notes = game.Notes;
+        Notes = game.Notes;
+        _hydrated = true;
 
         // Allies share the self player's own opponents (same enemy team), so their build tree uses
         // the same matchup; opponents face the self player's team instead, so their matchup is
@@ -179,12 +183,18 @@ public partial class GameDataRowViewModel : ViewModelBase
 
     partial void OnNotesChanged(string value)
     {
+        if (!_hydrated)
+            return;
+
         _game.Notes = value;
         _repository.UpdateGameNotes(_game.GameId!.Value, value);
     }
 
     partial void OnGameTypeChanged(GameType value)
     {
+        if (!_hydrated)
+            return;
+
         _game.GameType = value;
         _repository.UpdateGameType(_game.GameId!.Value, value);
     }

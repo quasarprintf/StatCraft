@@ -14,14 +14,14 @@ public partial class BuildNode : ObservableObject, IAttributedObject
 
     public BuildNode? Parent { get; set; }
 
-    [ObservableProperty] private string _name = string.Empty;
-    [ObservableProperty] private string _description = string.Empty;
-    [ObservableProperty] private bool _isExpanded;
+    [ObservableProperty] public partial string Name { get; set; } = string.Empty;
+    [ObservableProperty] public partial string Description { get; set; } = string.Empty;
+    [ObservableProperty] public partial bool IsExpanded { get; set; }
 
-    [ObservableProperty] private Race.Race _playerRace = Race.Race.Zerg;
+    [ObservableProperty] public partial Race.Race PlayerRace { get; set; } = Race.Race.Zerg;
 
     [NotifyPropertyChangedFor(nameof(VsZ), nameof(VsT), nameof(VsP))]
-    [ObservableProperty] private Matchups _matchups = Race.Matchups.None;
+    [ObservableProperty] public partial Matchups Matchups { get; set; } = Race.Matchups.None;
 
     public bool VsZ => Matchups.HasFlag(Matchups.VsZ);
     public bool VsT => Matchups.HasFlag(Matchups.VsT);
@@ -35,10 +35,10 @@ public partial class BuildNode : ObservableObject, IAttributedObject
     // BuildsPageViewModel.RefreshFilterMatch folds in "or any descendant matches" when computing it,
     // to keep a match's ancestor chain visible.
     [NotifyPropertyChangedFor(nameof(IsVisibleInTree))]
-    [ObservableProperty] private bool _matchesOpponentFilter = true;
+    [ObservableProperty] public partial bool MatchesOpponentFilter { get; set; } = true;
 
     [NotifyPropertyChangedFor(nameof(IsVisibleInTree))]
-    [ObservableProperty] private bool _matchesFilter = true;
+    [ObservableProperty] public partial bool MatchesFilter { get; set; } = true;
 
     public bool IsVisibleInTree => MatchesOpponentFilter && MatchesFilter;
 
@@ -46,7 +46,7 @@ public partial class BuildNode : ObservableObject, IAttributedObject
     public ObservableCollection<AttributeValue> AttributeValues { get; } = [];
 
     [NotifyPropertyChangedFor(nameof(HasChildren))]
-    [ObservableProperty] private ObservableCollection<BuildNode> _children = [];
+    [ObservableProperty] public partial ObservableCollection<BuildNode> Children { get; set; } = [];
     public bool HasChildren => Children.Count > 0;
 
     public BuildNode()

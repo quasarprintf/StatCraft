@@ -15,7 +15,7 @@ public interface ICheckboxFilterOptionViewModel
 public partial class CheckboxFilterOptionViewModel<T> : ObservableObject, ICheckboxFilterOptionViewModel
 {
     public string Label { get; protected init; } = "";
-    [ObservableProperty] private bool _isChecked;
+    [ObservableProperty] public partial bool IsChecked { get; set; }
 
     public T Value { get; }
 

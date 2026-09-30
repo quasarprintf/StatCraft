@@ -20,7 +20,7 @@ public partial class AccountPickerViewModel : ViewModelBase
 
     public ObservableCollection<Sc2Profile> Profiles { get; }
 
-    [ObservableProperty] private Sc2Profile? _selectedProfile;
+    [ObservableProperty] public partial Sc2Profile? SelectedProfile { get; set; }
 
     public event Action<AccountPickerResult>? Closed;
 

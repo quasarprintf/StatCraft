@@ -14,32 +14,40 @@ public partial class SettingsPageViewModel : ViewModelBase
 {
     private readonly SettingsRepository _settingsRepo;
 
+    // Set once the constructor has finished reading the saved settings in. Until then, assigning those
+    // properties is hydration rather than a user edit, and must not save the file it just read.
+    private readonly bool _loaded;
+
     public SettingsPageViewModel(SettingsRepository settingsRepository)
     {
         _settingsRepo = settingsRepository;
         AppSettingsData settings = _settingsRepo.Load();
         BaseReplayFolderPath = settings.BaseReplayFolderPath ?? "";
-        // Assigned to the backing field, not the property, so hydrating this from disk doesn't
-        // immediately trigger OnUseTeamColorsChanged and re-save the file it was just read from.
-        _useTeamColors = settings.UseTeamColors;
+        UseTeamColors = settings.UseTeamColors;
+        _loaded = true;
     }
 
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
-    [ObservableProperty] private string _baseReplayFolderPath = "";
+    [ObservableProperty] public partial string BaseReplayFolderPath { get; set; } = "";
 
-    [ObservableProperty] private bool _useTeamColors;
+    [ObservableProperty] public partial bool UseTeamColors { get; set; }
 
-    partial void OnUseTeamColorsChanged(bool value) =>
+    partial void OnUseTeamColorsChanged(bool value)
+    {
+        if (!_loaded)
+            return;
+
         _settingsRepo.Save(new AppSettingsData { BaseReplayFolderPath = BaseReplayFolderPath, UseTeamColors = value });
+    }
 
     [NotifyPropertyChangedFor(nameof(HasError))]
-    [ObservableProperty] private string _errorMessage = "";
+    [ObservableProperty] public partial string ErrorMessage { get; set; } = "";
 
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
     // Shown only until the path is touched again, so it can't be mistaken for still describing the
     // current (possibly since-edited) text in the box.
-    [ObservableProperty] private bool _justSaved;
+    [ObservableProperty] public partial bool JustSaved { get; set; }
 
     partial void OnBaseReplayFolderPathChanged(string value)
     {

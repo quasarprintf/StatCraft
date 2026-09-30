@@ -24,7 +24,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     public string TabHeader => _player.ReplayPlayer.Name;
 
     // Null for self player, since only allies/opponents are tabulated
-    [ObservableProperty] private IBrush? _nameColor;
+    [ObservableProperty] public partial IBrush? NameColor { get; set; }
 
     private readonly GamePlayer _player;
     private readonly GameDataRepository _repository;
@@ -38,7 +38,7 @@ public partial class PlayerBuildTrackerViewModel : ViewModelBase
     // up-to-date color ready immediately instead of needing a fresh replay re-read.
     private IBrush? _replayNameColor => _player?.ReplayPlayer.ColorArgb == null ? null : Styles.Colors.FromArgb(_player.ReplayPlayer.ColorArgb.Value);
 
-    [ObservableProperty] private string _selectedBuildsSummary = "";
+    [ObservableProperty] public partial string SelectedBuildsSummary { get; set; } = "";
 
     // Slots are always [...persisted selections, one trailing blank] — selecting a build in the
     // trailing slot appends a new blank after it, and clearing a non-trailing slot removes it.

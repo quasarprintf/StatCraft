@@ -25,7 +25,7 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
 {
     public event Action? Changed;
     public event EventHandler? IsAppliedChanged;
-    [ObservableProperty] private string _displayText;
+    [ObservableProperty] public partial string DisplayText { get; set; }
     IFilterSlotViewModel? IFilterMenuItemViewModel.Filter => Filter;
     public IFilterSlotViewModel<T>? Filter { get; private set; }
 
@@ -54,19 +54,19 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
 
     public FilterMenuItemViewModel(IFilterSlotViewModel<T> filter)
     {
-        _displayText = filter.Title;
+        DisplayText = filter.Title;
         WireFilter(filter);
     }
     public FilterMenuItemViewModel(ObservableCollection<FilterMenuItemViewModel<T>> subMenu, string name)
     {
-        _displayText = name;
+        DisplayText = name;
         WireSubMenu(subMenu);
     }
     // An entry that is both a filter of its own and a submenu of related ones — e.g. a build that can be
     // filtered on directly, with the builds nested under it offered beneath it.
     public FilterMenuItemViewModel(IFilterSlotViewModel<T> filter, ObservableCollection<FilterMenuItemViewModel<T>> subMenu)
     {
-        _displayText = filter.Title;
+        DisplayText = filter.Title;
         WireFilter(filter);
         WireSubMenu(subMenu);
     }

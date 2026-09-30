@@ -37,7 +37,7 @@ public sealed partial class CheckboxFilterSlotViewModel<T,F> : FilterSlotViewMod
     // filter's fixed 9 options read better as a 3x3 grid than one long column.
     public int Columns { get; }
 
-    [ObservableProperty] private string _searchText = "";
+    [ObservableProperty] public partial string SearchText { get; set; } = "";
 
     IEnumerable<ICheckboxFilterOptionViewModel> ICheckboxFilterSlotViewModel.Options => Options;
     public ObservableCollection<CheckboxFilterOptionViewModel<F>> Options { get; } = [];

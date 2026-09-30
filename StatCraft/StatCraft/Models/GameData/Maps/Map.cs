@@ -9,7 +9,7 @@ namespace StatCraft.Models.GameData.Maps;
 public partial class Map : ObservableObject, IAttributedObject
 {
     public int Id { get; set; }
-    [ObservableProperty] private string _name = string.Empty;
+    [ObservableProperty] public partial string Name { get; set; } = string.Empty;
     public ObservableCollection<AttributeValue> AttributeValues { get; } = [];
 
     public void AddAttribute(AttributeDefinition definition) 

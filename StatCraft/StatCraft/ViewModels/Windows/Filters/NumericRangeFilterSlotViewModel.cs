@@ -18,8 +18,8 @@ public interface INumericRangeFilterSlotViewModel : IFilterSlotViewModel
 // tab narrows back to long when it builds its criteria.
 public sealed partial class NumericRangeFilterSlotViewModel<T> : FilterSlotViewModel<T,decimal?>, INumericRangeFilterSlotViewModel
 {
-    [ObservableProperty] private decimal? _min;
-    [ObservableProperty] private decimal? _max;
+    [ObservableProperty] public partial decimal? Min { get; set; }
+    [ObservableProperty] public partial decimal? Max { get; set; }
 
     internal NumericRangeFilterSlotViewModel(string title, Func<T,decimal?> filteredPropertyMap) : base(title, filteredPropertyMap)
     {

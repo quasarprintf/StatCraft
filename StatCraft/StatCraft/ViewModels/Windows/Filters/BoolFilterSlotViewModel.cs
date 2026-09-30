@@ -13,7 +13,7 @@ public interface IBoolFilterSlotViewModel : IFilterSlotViewModel
 // null (indeterminate) means no constraint on this dimension, matching both true and false.
 public sealed partial class BoolFilterSlotViewModel<T> : FilterSlotViewModel<T,bool?>, IBoolFilterSlotViewModel
 {
-    [ObservableProperty] private bool? _value;
+    [ObservableProperty] public partial bool? Value { get; set; }
 
     internal BoolFilterSlotViewModel(string title, Func<T,bool?> filteredPropertyMap) : base(title, filteredPropertyMap)
     {

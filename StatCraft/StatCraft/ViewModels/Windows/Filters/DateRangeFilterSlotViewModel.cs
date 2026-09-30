@@ -21,8 +21,8 @@ public interface IDateRangeFilterSlotViewModel : IFilterSlotViewModel
 // right time zone first (e.g. ToLocalTime) is up to the caller's filteredPropertyMap.
 public sealed partial class DateRangeFilterSlotViewModel<T> : FilterSlotViewModel<T,DateTime?>, IDateRangeFilterSlotViewModel
 {
-    [ObservableProperty] private DateTime? _fromDate;
-    [ObservableProperty] private DateTime? _toDate;
+    [ObservableProperty] public partial DateTime? FromDate { get; set; }
+    [ObservableProperty] public partial DateTime? ToDate { get; set; }
 
     internal DateRangeFilterSlotViewModel(string title, Func<T,DateTime?> filteredPropertyMap) : base(title, filteredPropertyMap)
     {
