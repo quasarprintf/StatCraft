@@ -31,7 +31,10 @@ public partial class AddFilterMenu : UserControl
 
             Popup? popup = item.GetVisualDescendants().OfType<Popup>().FirstOrDefault();
             if (popup != null)
+            {
                 popup.Placement = PlacementMode.LeftEdgeAlignedTop;
+                popup.HorizontalOffset = 0;
+            }
         });
     }
 
