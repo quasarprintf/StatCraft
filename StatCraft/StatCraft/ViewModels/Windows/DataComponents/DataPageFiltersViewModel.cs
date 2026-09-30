@@ -240,7 +240,11 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
     public void RefreshBuildMenu(List<BuildNode> roots)
     {
-        BuildMatchupSlots.Clear();
+        for (int index = BuildMatchupSlots.Count - 1; index >= 0; index--)
+        {
+            BuildMatchupSlots[index].DestroyRecursively();
+            BuildMatchupSlots.RemoveAt(index); //do not replace this with an outside-of-loop .Clear() call. .Clear doesn't include OldItems in its notify event
+        }
         foreach (Race race in Enum.GetValues<Race>())
         {
             ObservableCollection<FilterMenuItemViewModel<GameData>> raceBuilds =

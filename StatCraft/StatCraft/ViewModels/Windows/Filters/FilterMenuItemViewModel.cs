@@ -71,12 +71,47 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
         WireSubMenu(subMenu);
     }
 
+    public void Destroy()
+    {
+        UnWireFilter();
+        if (_subMenuItems != null)
+        {
+            foreach (var item in _subMenuItems)
+                UnWireSubMenuItem(item);
+            _subMenuItems.CollectionChanged -= SubMenuChanged;
+        }
+        Filter = null;
+        _subMenuItems = null;
+    }
+    public void DestroyRecursively()
+    {
+        if (_subMenuItems != null)
+        {
+            foreach (var item in _subMenuItems)
+                item.DestroyRecursively();
+        }
+        Destroy();
+    }
+
     private void WireFilter(IFilterSlotViewModel<T> filter)
     {
         Filter = filter;
-        filter.PropertyChanged += (_,e) => { if (e.PropertyName == nameof(filter.Title)) DisplayText = filter.Title; };
+        filter.PropertyChanged += HandleFilterPropertyChanged;
         filter.IsAppliedChanged += RefreshIsApplied;
         filter.Changed += ForwardChangedEvent;
+    }
+    private void UnWireFilter()
+    {
+        if (Filter == null)
+            return;
+        Filter.PropertyChanged -= HandleFilterPropertyChanged;
+        Filter.IsAppliedChanged -= RefreshIsApplied;
+        Filter.Changed -= ForwardChangedEvent;
+    }
+    private void HandleFilterPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(Filter.Title))
+            DisplayText = Filter!.Title;
     }
 
     private void WireSubMenu(ObservableCollection<FilterMenuItemViewModel<T>> subMenu)
