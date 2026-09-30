@@ -3,7 +3,7 @@
              xmlns:vmw="using:StatCraft.ViewModels.Windows"
              x:DataType="vmw:Filters.IFilterMenuViewModel"
              x:Class="StatCraft.Views.Components.Filters.AddFilterMenu">
-    <Button Content="+ Filters" VerticalAlignment="Center">
+    <Button x:Name="FilterButton" Content="+ Filters" VerticalAlignment="Center">
         <Button.Flyout>
             <MenuFlyout ItemsSource="{Binding MenuItems}" Placement="BottomEdgeAlignedRight">
                 <MenuFlyout.ItemContainerTheme>
