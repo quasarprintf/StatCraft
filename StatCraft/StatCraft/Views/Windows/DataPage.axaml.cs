@@ -36,8 +36,7 @@ public partial class DataPage : UserControl
         vm.DeleteGameConfirmationRequested += async row => await OnDeleteGameConfirmationRequestedAsync(row);
         vm.ImportReplayRequested += async () => await OnImportReplayRequestedAsync();
         vm.LaunchReplayFailed += async message => await OnLaunchReplayFailedAsync(message);
-        // Same treatment a click on the row's Build cell gives it: details open, row scrolled to.
-        vm.ImportedGameFocusRequested += row => SetRowDetailsItem(isBuilds: true, isAttributes: false, row);
+        vm.ShowNewlyImportedGame += row => SetRowDetailsItem(isBuilds: true, isAttributes: false, row);
         DataContext = vm;
 
         GamesGrid.CellPointerPressed += OnGamesGridCellPointerPressed;
