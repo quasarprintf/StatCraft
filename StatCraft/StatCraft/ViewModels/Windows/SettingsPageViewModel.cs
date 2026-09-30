@@ -14,29 +14,23 @@ public partial class SettingsPageViewModel : ViewModelBase
 {
     private readonly SettingsRepository _settingsRepo;
 
-    // Set once the constructor has finished reading the saved settings in. Until then, assigning those
-    // properties is hydration rather than a user edit, and must not save the file it just read.
-    private readonly bool _loaded;
-
     public SettingsPageViewModel(SettingsRepository settingsRepository)
     {
         _settingsRepo = settingsRepository;
         AppSettingsData settings = _settingsRepo.Load();
         BaseReplayFolderPath = settings.BaseReplayFolderPath ?? "";
-        UseTeamColors = settings.UseTeamColors;
-        _loaded = true;
+
+        //write to private field instead of property to avoid raising event during initialization
+        _useTeamColors = settings.UseTeamColors;
     }
 
     [NotifyCanExecuteChangedFor(nameof(SaveCommand))]
     [ObservableProperty] public partial string BaseReplayFolderPath { get; set; } = "";
 
-    [ObservableProperty] public partial bool UseTeamColors { get; set; }
+    [ObservableProperty] private bool _useTeamColors;
 
     partial void OnUseTeamColorsChanged(bool value)
     {
-        if (!_loaded)
-            return;
-
         _settingsRepo.Save(new AppSettingsData { BaseReplayFolderPath = BaseReplayFolderPath, UseTeamColors = value });
     }
 
