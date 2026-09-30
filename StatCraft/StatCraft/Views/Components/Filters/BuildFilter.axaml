@@ -26,6 +26,6 @@
                 </Flyout>
             </Button.Flyout>
         </Button>
-        <CheckBox Grid.Column="2" Content="Include descendants" IsChecked="{Binding IncludeDescendants}" FontSize="11"/>
+        <CheckBox Grid.Column="2" MaxWidth="100" Content="Include Descendants" IsChecked="{Binding IncludeDescendants}" FontSize="11"/>
     </Grid>
 </UserControl>
