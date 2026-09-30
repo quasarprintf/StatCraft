@@ -251,6 +251,13 @@ public partial class DataPageFiltersViewModel : ViewModelBase
                 new(roots.Where(b => b.PlayerRace == race).Select(BuildMenuItem));
             BuildMatchupSlots.Add(new FilterMenuItemViewModel<GameData>(raceBuilds, race.Display()));
         }
+
+        HashSet<int> newBuildIds = roots.SelectMany(b => b.EnumerateDescendants().Append(b)).Select(b => b.Id).ToHashSet();
+        foreach (int oldBuildId in _buildFilters.Keys)
+        {
+            if (!newBuildIds.Contains(oldBuildId))
+                _buildFilters.Remove(oldBuildId);
+        }
     }
 
     private FilterMenuItemViewModel<GameData> BuildMenuItem(BuildNode build)
