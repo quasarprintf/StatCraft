@@ -36,6 +36,8 @@ public partial class DataPage : UserControl
         vm.DeleteGameConfirmationRequested += async row => await OnDeleteGameConfirmationRequestedAsync(row);
         vm.ImportReplayRequested += async () => await OnImportReplayRequestedAsync();
         vm.LaunchReplayFailed += async message => await OnLaunchReplayFailedAsync(message);
+        // Same treatment a click on the row's Build cell gives it: details open, row scrolled to.
+        vm.ImportedGameFocusRequested += row => SetRowDetailsItem(isBuilds: true, isAttributes: false, row);
         DataContext = vm;
 
         GamesGrid.CellPointerPressed += OnGamesGridCellPointerPressed;
@@ -242,7 +244,13 @@ public partial class DataPage : UserControl
         base.OnAttachedToVisualTree(e);
         ViewModel.NotifyActivated();
         if (_buildDetailsItem != null)
+        {
+            // A row's details can be opened while this tab is inactive (an import landing in the
+            // background), where there are no rows to scroll — so the attempt budget starts over here
+            // rather than carrying over a run that never had a grid to work with.
+            _scrollToTopAttempts = 0;
             Dispatcher.UIThread.Post(AdvanceIterativeScroll, DispatcherPriority.Background);
+        }
     }
 
     private async Task OnSessionRequestedAsync()

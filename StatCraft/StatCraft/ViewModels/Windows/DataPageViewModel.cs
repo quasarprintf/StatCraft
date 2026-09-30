@@ -225,11 +225,17 @@ public partial class DataPageViewModel : ViewModelBase
         await _replayImportService.ImportReplay(filePath, ActiveProfile);
     }
 
+    // Raised when a replay that just finished importing has a row in the table, so the page can bring it
+    // into view with its build details already open — recording what was played is the first thing wanted
+    // after a game, and the row is otherwise easy to miss at the far end of a long table.
+    public event Action<GameDataRowViewModel>? ImportedGameFocusRequested;
+
     // Guards against a duplicate entry if the same underlying game is reported twice — e.g. a manual
     // import (via ImportReplayFile) of a replay the folder watcher already picked up, or vice versa.
     // InsertGame itself already dedupes by ReplayPath, so this only ever skips the redundant add.
     // A freshly-imported replay may not immediately show up in Games if the current filters exclude
-    // it (e.g. the date range no longer covers today) — that's the correct result of real filtering.
+    // it (e.g. the date range no longer covers today) — that's the correct result of real filtering,
+    // and there is then no row to focus.
     private void OnGameParsed(GameData game) => Dispatcher.UIThread.Post(() =>
     {
         if (_loadedGames.Any(g => g.GameId == game.GameId))
@@ -237,6 +243,9 @@ public partial class DataPageViewModel : ViewModelBase
         _loadedGames.Add(game);
         SeedSessionBaselineFrom(game);
         ApplyFilters();
+
+        if (Games.FirstOrDefault(row => row.GameId == game.GameId) is { } importedRow)
+            ImportedGameFocusRequested?.Invoke(importedRow);
     });
 
     // The replay records the rating going *into* the game, which is precisely where that ladder stood
