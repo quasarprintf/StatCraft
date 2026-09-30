@@ -8,7 +8,8 @@
             <MenuFlyout ItemsSource="{Binding MenuItems}" Placement="BottomEdgeAlignedRight">
                 <MenuFlyout.ItemContainerTheme>
                     <ControlTheme TargetType="MenuItem" BasedOn="{StaticResource {x:Type MenuItem}}" x:DataType="vmw:Filters.IFilterMenuItemViewModel">
-                        <!-- Submenus are misaligned by default for some reason. Shift up to fix -->
+                        <!-- Submenus are misaligned by default for some reason. Shift up to fix. Their left-hand
+                             placement is set in the code-behind instead of here - see the comment there. -->
                         <Style Selector="^ /template/ Popup">
                             <Setter Property="VerticalOffset" Value="-5"/>
                         </Style>
