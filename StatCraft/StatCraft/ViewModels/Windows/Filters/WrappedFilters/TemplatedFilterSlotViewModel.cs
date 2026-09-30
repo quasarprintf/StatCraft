@@ -1,6 +1,7 @@
 ﻿using StatCraft.Services.DataFiltering;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 
@@ -10,6 +11,8 @@ public partial class TemplatedFilterSlotViewModel<T,F> : WrappedFilterSlotViewMo
 {
     private Func<IFilter<F>, IFilter<T>> FilterTemplate { get; set; }
     private IFilterSlotViewModel<F> _wrappedFilter => (IFilterSlotViewModel<F>)WrappedFilter;
+
+    [SetsRequiredMembers]
     public TemplatedFilterSlotViewModel(Func<IFilter<F>, IFilter<T>> filterTemplate, IFilterSlotViewModel<F> wrappedSlot)
     {
         FilterTemplate = filterTemplate;

@@ -3,6 +3,7 @@ using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataFiltering.SequentialFilters;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 
@@ -12,6 +13,8 @@ public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewMode
 {
     private IFilterSlotViewModel<AttributeValue> _wrappedFilter => (IFilterSlotViewModel<AttributeValue>)WrappedFilter;
     public AttributeDefinition Attribute { get; private set; }
+
+    [SetsRequiredMembers]
     public AttributeFilterSlotViewModel(AttributeDefinition attribute)
     {
         Attribute = attribute;

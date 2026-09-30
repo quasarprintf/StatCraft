@@ -17,7 +17,7 @@ public abstract partial class WrappedFilterSlotViewModel<T> : ViewModelBase, IWr
     public event Action? Changed;
     public event EventHandler? IsAppliedChanged;
 
-    [ObservableProperty] public partial IFilterSlotViewModel WrappedFilter { get; set; }
+    [ObservableProperty] public required partial IFilterSlotViewModel WrappedFilter { get; set; }
 
     public string Title
     {
