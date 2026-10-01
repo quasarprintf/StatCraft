@@ -268,7 +268,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         }
         else
         {
-            slot = new(build, g => g.PlayerDetails[g.ReplayData.Player]);
+            slot = new(build, g => [g.PlayerDetails[g.ReplayData.Player]]);
             _buildFilters[build.Id] = slot;
         }
         if (build.Children.Count == 0)

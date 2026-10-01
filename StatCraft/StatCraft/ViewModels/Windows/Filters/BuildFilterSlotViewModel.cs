@@ -24,13 +24,13 @@ public interface IBuildFilterSlotViewModel : IFilterSlotViewModel
     void Rebuild(BuildNode build);
 }
 
-public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameData,GamePlayer?>, IBuildFilterSlotViewModel
+public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameData,IEnumerable<GamePlayer>>, IBuildFilterSlotViewModel
 {
     [ObservableProperty] public partial ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>> BuildDetailSlots { get; private set; }
     [ObservableProperty] public partial bool IncludeDescendants { get; set; } = true;
     public BuildNode Build { get; private set; }
 
-    internal BuildFilterSlotViewModel(BuildNode build, Func<GameData,GamePlayer?> filteredPropertyMap) : base(build.Name, filteredPropertyMap)
+    internal BuildFilterSlotViewModel(BuildNode build, Func<GameData,IEnumerable<GamePlayer>> filteredPropertyMap) : base(build.Name, filteredPropertyMap)
     {
         Build = build;
         BuildDetailSlots = new ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>>();
@@ -47,7 +47,7 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
         {
             filters[i] = BuildDetailSlots[i].GetFilter();
         }
-        var detailFilters = new AndFilter<GameData, BuildDetailValues>(filters, g => FilteredPropertyMap(g)?.BuildDetailValues);
+        var playerDetailFilter = new AndFilter<GamePlayer, BuildDetailValues>(filters, p => p.BuildDetailValues);
 
         IFilter<int> buildIdFilter;
         if (IncludeDescendants)
@@ -66,9 +66,10 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
                 AcceptNull = false
             }.SetMatchExact();
         }
-        SequentialAnyFilter<GameData, int> buildDefinedFilter = new SequentialAnyFilter<GameData, int>(buildIdFilter, g => FilteredPropertyMap(g)?.BuildIds);
+        SequentialAnyFilter<GamePlayer, int> playerBuildDefinedFilter = new SequentialAnyFilter<GamePlayer, int>(buildIdFilter, p => p.BuildIds);
 
-        return new AndFilter<GameData>([detailFilters, buildDefinedFilter]);
+        var playerFinalFilter = new AndFilter<GamePlayer>([playerDetailFilter, playerBuildDefinedFilter]);
+        return new SequentialAnyFilter<GameData, GamePlayer>(playerFinalFilter, FilteredPropertyMap);
     }
 
     public void Rebuild(BuildNode build)
