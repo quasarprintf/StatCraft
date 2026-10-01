@@ -49,21 +49,32 @@ internal sealed class FilterPanel
     public IReadOnlyList<string> AddableTitles => MenuLeaves().Select(l => l.Text).ToList();
 
     // Clicks the filter's entry in the "+" menu.
-    public FilterHandle Add(string title)
+    public FilterHandle Add(string title) => Add(null, title);
+
+    // The same leaf can be offered under more than one menu — the build tree is offered once per set of
+    // players — so this names the menu it should be taken from.
+    public FilterHandle Add(string? menu, string title)
     {
-        IFilterSlotViewModel slot = OfferedSlot(title);
+        IFilterSlotViewModel slot = OfferedSlot(menu, title);
         slot.AddCommand.Execute(null);
         return new FilterHandle(slot);
     }
 
     // A filter the "+" menu offers, without adding it.
-    public FilterHandle Offered(string title) => new(OfferedSlot(title));
+    public FilterHandle Offered(string title) => new(OfferedSlot(null, title));
 
-    private IFilterSlotViewModel OfferedSlot(string title)
+    public FilterHandle Offered(string? menu, string title) => new(OfferedSlot(menu, title));
+
+    private IFilterSlotViewModel OfferedSlot(string? menu, string title)
     {
-        List<MenuLeaf> matches = MenuLeaves().Where(l => l.Text == title).ToList();
+        List<MenuLeaf> matches = MenuLeaves()
+            .Where(l => l.Text == title && (menu == null || l.Path.Contains(menu)))
+            .ToList();
         if (matches.Count != 1)
-            throw new InvalidOperationException($"Expected one \"{title}\" entry in the add menu, found {matches.Count}. Offered: [{string.Join(", ", AddableTitles)}]");
+        {
+            string where = menu == null ? "the add menu" : $"the \"{menu}\" menu";
+            throw new InvalidOperationException($"Expected one \"{title}\" entry in {where}, found {matches.Count}. Offered: [{string.Join(", ", AddableTitles)}]");
+        }
         return matches[0].Slot;
     }
 
@@ -85,7 +96,9 @@ internal sealed class FilterPanel
     // submenu has to announce its own changes rather than rely on a rebuild to pick them up.
     private readonly Dictionary<IFilterMenuItemViewModel, BoundList> _subMenus = new(ReferenceEqualityComparer.Instance);
 
-    private IEnumerable<MenuLeaf> Leaves(object entry) => entry switch
+    private IEnumerable<MenuLeaf> Leaves(object entry) => Leaves(entry, []);
+
+    private IEnumerable<MenuLeaf> Leaves(object entry, IReadOnlyList<string> path) => entry switch
     {
         // AddFilterMenu's item theme binds IsVisible to !IsApplied, so an applied entry (a filter already in
         // the bar, or a submenu with nothing left to add) is hidden, again only as of its last announcement.
@@ -93,18 +106,19 @@ internal sealed class FilterPanel
         // An entry can carry a filter, a submenu, or both: it offers itself first, then whatever its
         // submenu still has left. A submenu lists only the entries not applied yet, re-read when the
         // submenu announces a change.
-        IFilterMenuItemViewModel item => Offerings(item),
-        IFilterSlotViewModel slot => [new MenuLeaf(slot.Title, slot)],
+        IFilterMenuItemViewModel item => Offerings(item, path),
+        IFilterSlotViewModel slot => [new MenuLeaf(slot.Title, slot, path)],
         _ => throw new InvalidOperationException($"Unrecognised add-menu entry {entry.GetType().Name}"),
     };
 
-    private IEnumerable<MenuLeaf> Offerings(IFilterMenuItemViewModel item)
+    private IEnumerable<MenuLeaf> Offerings(IFilterMenuItemViewModel item, IReadOnlyList<string> path)
     {
         if (item.Filter is { } slot)
-            yield return new MenuLeaf(Header(item), slot);
+            yield return new MenuLeaf(Header(item), slot, path);
         if (item.SubMenuItems == null)
             yield break;
-        foreach (MenuLeaf leaf in SubMenu(item).Items.Cast<object>().SelectMany(Leaves))
+        List<string> childPath = [.. path, Header(item)];
+        foreach (MenuLeaf leaf in SubMenu(item).Items.Cast<object>().SelectMany(entry => Leaves(entry, childPath)))
             yield return leaf;
     }
 
@@ -141,7 +155,8 @@ internal sealed class FilterPanel
         return bound.Value;
     }
 
-    private sealed record MenuLeaf(string Text, IFilterSlotViewModel Slot);
+    // Path is the headers of the menus the leaf sits under, outermost first.
+    private sealed record MenuLeaf(string Text, IFilterSlotViewModel Slot, IReadOnlyList<string> Path);
 
     private sealed class BoundValue<TValue>
     {

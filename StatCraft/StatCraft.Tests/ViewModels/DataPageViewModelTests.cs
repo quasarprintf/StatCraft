@@ -313,7 +313,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         GameData game = InsertGameWithBuild(build);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add(build.Name);
+        Filters.Add("My Build", build.Name);
 
         Assert.Contains(_viewModel.Games, r => r.GameId == game.GameId);
     }
@@ -328,7 +328,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         GameData game = InsertGameWithBuild(child);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add(parent.Name);
+        Filters.Add("My Build", parent.Name);
 
         Assert.Contains(_viewModel.Games, r => r.GameId == game.GameId);
     }
@@ -342,7 +342,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGameWithBuild(child);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add(parent.Name).IncludeDescendants = false;
+        Filters.Add("My Build", parent.Name).IncludeDescendants = false;
 
         Assert.Empty(_viewModel.Games);
     }
@@ -356,7 +356,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGameWithBuild(parent);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add(child.Name);
+        Filters.Add("My Build", child.Name);
 
         Assert.Empty(_viewModel.Games);
     }
@@ -369,7 +369,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGameWithBuild(picked);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add(other.Name);
+        Filters.Add("My Build", other.Name);
 
         Assert.Empty(_viewModel.Games);
     }
@@ -383,9 +383,61 @@ public class DataPageViewModelTests : IAsyncDisposable
         _viewModel = CreateViewModel();
 
         await LoadGamesWithNoDateRange();
-        Filters.Add(build.Name);
+        Filters.Add("My Build", build.Name);
 
         Assert.Empty(_viewModel.Games);
+    }
+
+    // The same build tree is offered once per set of players, each with its own filters, so the build the
+    // user played and the build they played against are separate questions.
+    [Fact]
+    public async Task Filter_Build_OpponentsBuild_KeepsAGameWhoseOpponentPickedIt()
+    {
+        BuildNode build = InsertBuild("4 Gate");
+        GameData game = InsertGameWithOpponentBuild(build);
+
+        await LoadGamesWithNoDateRange();
+        Filters.Add("Opponents Build", build.Name);
+
+        Assert.Contains(_viewModel.Games, r => r.GameId == game.GameId);
+    }
+
+    [Fact]
+    public async Task Filter_Build_MyBuild_ExcludesAGameOnlyTheOpponentPickedItIn()
+    {
+        BuildNode build = InsertBuild("4 Gate");
+        InsertGameWithOpponentBuild(build);
+
+        await LoadGamesWithNoDateRange();
+        Filters.Add("My Build", build.Name);
+
+        Assert.Empty(_viewModel.Games);
+    }
+
+    [Fact]
+    public async Task Filter_Build_OpponentsBuild_ExcludesAGameOnlyThePlayerPickedItIn()
+    {
+        BuildNode build = InsertBuild("4 Gate");
+        InsertGameWithBuild(build);
+
+        await LoadGamesWithNoDateRange();
+        Filters.Add("Opponents Build", build.Name);
+
+        Assert.Empty(_viewModel.Games);
+    }
+
+    // Each set of players gets its own slot for the same build, so adding one leaves the others on offer.
+    [Fact]
+    public void Filter_Build_AddingOneSetsBuild_LeavesTheOtherSetsOffered()
+    {
+        BuildNode build = InsertBuild("4 Gate");
+        _viewModel = CreateViewModel();
+
+        Filters.Add("My Build", build.Name);
+
+        Assert.False(Filters.Offered("Allies Build", build.Name).IsApplied);
+        Assert.False(Filters.Offered("Opponents Build", build.Name).IsApplied);
+        Assert.Equal([build.Name], Filters.AppliedTitles.Where(t => t == build.Name));
     }
 
     private BuildNode InsertBuild(string name, BuildNode? parent = null)
@@ -401,6 +453,16 @@ public class DataPageViewModelTests : IAsyncDisposable
     {
         GameData game = InsertGame();
         _gameDataRepository.UpdateGameBuilds(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, [build.Id]);
+        _viewModel = CreateViewModel();
+        return game;
+    }
+
+    // Tags the opponent with the build rather than the session player, for the "Opponents Build" filters.
+    private GameData InsertGameWithOpponentBuild(BuildNode build)
+    {
+        GameData game = InsertGame();
+        ReplayPlayer opponent = game.ReplayData.Opponents[0];
+        _gameDataRepository.UpdateGameBuilds(game.PlayerDetails[opponent].GamePlayerId!.Value, [build.Id]);
         _viewModel = CreateViewModel();
         return game;
     }
@@ -650,7 +712,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGameWithBuild(child);
         await LoadGamesWithNoDateRange();
 
-        Filters.Add(parent.Name);
+        Filters.Add("My Build", parent.Name);
 
         Assert.Equal(2, _viewModel.Games.Count);
     }

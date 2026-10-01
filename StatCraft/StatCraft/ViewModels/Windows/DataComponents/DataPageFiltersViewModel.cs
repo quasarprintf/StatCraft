@@ -37,8 +37,9 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public CheckboxFilterSlotViewModel<GameData, (Race, Race)> MatchupSlot { get; }
     public CheckboxFilterSlotViewModel<GameData, GameOutcome> OutcomeSlot { get; }
     public TemplatedFilterSlotViewModel<GameData,PlayerMmr> MmrSlot { get; }
-    public ObservableCollection<FilterMenuItemViewModel<GameData>> BuildMatchupSlots { get; }
-    private Dictionary<int, BuildFilterSlotViewModel> _buildFilters;
+    // The same build tree offered once per set of players, so "I played this build" and "my opponent
+    // played this build" are separate criteria rather than one shared setting.
+    private readonly BuildFilterScope[] _buildScopes;
     public ObservableCollection<FilterMenuItemViewModel<GameData>> GameAttributeSlots { get; private set; }
 
     public FilterMenuViewModel<GameData> FilterMenu { get; private set; }
@@ -81,9 +82,12 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             AllowIncludeUnset=false 
         };
 
-        _buildFilters = new Dictionary<int, BuildFilterSlotViewModel>();
-        BuildMatchupSlots = new ObservableCollection<FilterMenuItemViewModel<GameData>>();
-        FilterMenuItemViewModel<GameData> buildSlot = new FilterMenuItemViewModel<GameData>(BuildMatchupSlots, "Builds");
+        _buildScopes =
+        [
+            new BuildFilterScope("My Build", g => [g.PlayerDetails[g.ReplayData.Player]]),
+            new BuildFilterScope("Allies Build", g => g.ReplayData.Allies.Select(a => g.PlayerDetails[a])),
+            new BuildFilterScope("Opponents Build", g => g.ReplayData.Opponents.Select(o => g.PlayerDetails[o])),
+        ];
         RefreshBuildMenu(buildRepository.GetAllBuilds());
 
         GameAttributeSlots = new ObservableCollection<FilterMenuItemViewModel<GameData>>();
@@ -102,7 +106,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             new FilterMenuItemViewModel<GameData>(MatchupSlot), 
             new FilterMenuItemViewModel<GameData>(OutcomeSlot),
             new FilterMenuItemViewModel<GameData>(MmrSlot),
-            buildSlot,
+            .. _buildScopes.Select(scope => scope.MenuItem),
             new FilterMenuItemViewModel<GameData>(GameAttributeSlots, "Game Attributes")
         ];
         FilterMenu = new FilterMenuViewModel<GameData>(filterSlots);
@@ -240,41 +244,64 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
     public void RefreshBuildMenu(List<BuildNode> roots)
     {
-        for (int index = BuildMatchupSlots.Count - 1; index >= 0; index--)
+        HashSet<int> newBuildIds = roots.SelectMany(b => b.EnumerateDescendants().Append(b)).Select(b => b.Id).ToHashSet();
+        foreach (BuildFilterScope scope in _buildScopes)
+            RefreshBuildMenu(scope, roots, newBuildIds);
+    }
+
+    private void RefreshBuildMenu(BuildFilterScope scope, List<BuildNode> roots, HashSet<int> newBuildIds)
+    {
+        for (int index = scope.RaceItems.Count - 1; index >= 0; index--)
         {
-            BuildMatchupSlots[index].DestroyRecursively();
-            BuildMatchupSlots.RemoveAt(index); //do not replace this with an outside-of-loop .Clear() call. .Clear doesn't include OldItems in its notify event
+            scope.RaceItems[index].DestroyRecursively();
+            scope.RaceItems.RemoveAt(index); //do not replace this with an outside-of-loop .Clear() call. .Clear doesn't include OldItems in its notify event
         }
         foreach (Race race in Enum.GetValues<Race>())
         {
             ObservableCollection<FilterMenuItemViewModel<GameData>> raceBuilds =
-                new(roots.Where(b => b.PlayerRace == race).Select(BuildMenuItem));
-            BuildMatchupSlots.Add(new FilterMenuItemViewModel<GameData>(raceBuilds, race.Display()));
+                new(roots.Where(b => b.PlayerRace == race).Select(build => BuildMenuItem(scope, build)));
+            scope.RaceItems.Add(new FilterMenuItemViewModel<GameData>(raceBuilds, race.Display()));
         }
 
-        HashSet<int> newBuildIds = roots.SelectMany(b => b.EnumerateDescendants().Append(b)).Select(b => b.Id).ToHashSet();
-        foreach (int oldBuildId in _buildFilters.Keys)
+        foreach (int oldBuildId in scope.Filters.Keys)
         {
             if (!newBuildIds.Contains(oldBuildId))
-                _buildFilters.Remove(oldBuildId);
+                scope.Filters.Remove(oldBuildId);
         }
     }
 
-    private FilterMenuItemViewModel<GameData> BuildMenuItem(BuildNode build)
+    private FilterMenuItemViewModel<GameData> BuildMenuItem(BuildFilterScope scope, BuildNode build)
     {
-        if (_buildFilters.TryGetValue(build.Id, out BuildFilterSlotViewModel? slot))
+        if (scope.Filters.TryGetValue(build.Id, out BuildFilterSlotViewModel? slot))
         {
             slot.Rebuild(build);
         }
         else
         {
-            slot = new(build, g => [g.PlayerDetails[g.ReplayData.Player]]);
-            _buildFilters[build.Id] = slot;
+            slot = new(build, scope.Players);
+            scope.Filters[build.Id] = slot;
         }
         if (build.Children.Count == 0)
             return new FilterMenuItemViewModel<GameData>(slot);
 
-        ObservableCollection<FilterMenuItemViewModel<GameData>> children = new(build.Children.Select(BuildMenuItem));
+        ObservableCollection<FilterMenuItemViewModel<GameData>> children = new(build.Children.Select(child => BuildMenuItem(scope, child)));
         return new FilterMenuItemViewModel<GameData>(slot, children);
+    }
+
+    // One set of players' builds: its own menu entry, its own slots, and its own criteria, all built from
+    // the same build tree. Filters are kept by build id across a refresh so an edit on the Builds tab
+    // doesn't discard what the user has already entered here (see BuildFilterSlotViewModel.Rebuild).
+    private sealed class BuildFilterScope
+    {
+        public Func<GameData, IEnumerable<GamePlayer>> Players { get; }
+        public ObservableCollection<FilterMenuItemViewModel<GameData>> RaceItems { get; } = [];
+        public Dictionary<int, BuildFilterSlotViewModel> Filters { get; } = new();
+        public FilterMenuItemViewModel<GameData> MenuItem { get; }
+
+        public BuildFilterScope(string title, Func<GameData, IEnumerable<GamePlayer>> players)
+        {
+            Players = players;
+            MenuItem = new FilterMenuItemViewModel<GameData>(RaceItems, title);
+        }
     }
 }
