@@ -33,7 +33,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public CheckboxFilterSlotViewModel<GameData, int> ProfileSlot { get; }
 
     public DateRangeFilterSlotViewModel<GameData> DateSlot { get; }
-    public CheckboxFilterSlotViewModel<GameData, Map> MapSlot { get; }
+    public CheckboxFilterSlotViewModel<GameData, int> MapSlot { get; }
     public CheckboxFilterSlotViewModel<GameData, (Race, Race)> MatchupSlot { get; }
     public CheckboxFilterSlotViewModel<GameData, GameOutcome> OutcomeSlot { get; }
     public TemplatedFilterSlotViewModel<GameData,PlayerMmr> MmrSlot { get; }
@@ -70,7 +70,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             Mandatory = true
         };
 
-        MapSlot = new CheckboxFilterSlotViewModel<GameData, Map>("Map", [], g => [g.ReplayData.Map], showSearch: true) { AllowIncludeUnset=false };
+        MapSlot = new CheckboxFilterSlotViewModel<GameData, int>("Map", [], g => [g.ReplayData.Map.Id], showSearch: true) { AllowIncludeUnset=false };
         MatchupSlot = new CheckboxFilterSlotViewModel<GameData, (Race, Race)>("Matchup", BuildMatchupOptions(), GetGameMatchups, columns: 3) { AllowIncludeUnset=false };
         OutcomeSlot = new CheckboxFilterSlotViewModel<GameData, GameOutcome>("Outcome", BuildOutcomeOptions(), g => [g.ReplayData.Win.AsGameOutcome()]) { AllowIncludeUnset=false };
 
@@ -163,11 +163,11 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     // preserving checked state by map name across the rebuild.
     internal void RefreshMapOptions(IEnumerable<Map> distinctMapNames)
     {
-        HashSet<int> previouslyChecked = MapSlot.Options.Where(o => o.IsChecked).Select(o => o.Value.Id).ToHashSet();
+        HashSet<int> previouslyChecked = MapSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
 
-        IEnumerable<CheckboxFilterOptionViewModel<Map>> newOptions = distinctMapNames
+        IEnumerable<CheckboxFilterOptionViewModel<int>> newOptions = distinctMapNames
             .OrderBy(m => m.Name)
-            .Select(m => new CheckboxFilterOptionViewModel<Map>(m, m.Name) { IsChecked = previouslyChecked.Contains(m.Id) });
+            .Select(m => new CheckboxFilterOptionViewModel<int>(m.Id, m.Name) { IsChecked = previouslyChecked.Contains(m.Id) });
         MapSlot.ReplaceOptions(newOptions);
     }
 

@@ -59,7 +59,7 @@ public class DataPageFiltersViewModelTests : IDisposable
         Map deathaura = new() { Name = "Deauthaura LE" };
         _filters.RefreshMapOptions([altitude, deathaura]);
         _filters.MapSlot.AddCommand.Execute(null);
-        CheckboxFilterOptionViewModel<Map> option = _filters.MapSlot.Options[0];
+        CheckboxFilterOptionViewModel<int> option = _filters.MapSlot.Options[0];
         option.IsChecked = true;
 
         _filters.MapSlot.RemoveCommand.Execute(null);
