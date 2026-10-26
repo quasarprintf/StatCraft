@@ -13,6 +13,7 @@ using StatCraft.ViewModels.Windows.AttributeComponents;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
 
 namespace StatCraft.ViewModels.Windows.DataComponents.GameRow;
@@ -31,6 +32,7 @@ public partial class GameDataRowViewModel : ViewModelBase
     private readonly GameData _game;
     public int GameId => _game.GameId!.Value;
     public string ReplayPath => _game.ReplayData.ReplayPath;
+    public string ReplayName => _game.ReplayData.ReplayPath.Split(Path.DirectorySeparatorChar).Last().Split('.')[0];
 
     // Which profile this game belongs to — meaningful once the Data tab's profile filter can merge
     // games from more than one profile into a single table.

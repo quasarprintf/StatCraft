@@ -156,7 +156,7 @@
                         <DataTemplate x:DataType="vmc:GameRow.GameDataRowViewModel">
                             <Button Content="▶" Background="Transparent" BorderThickness="0"
                                     FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
-                                    ToolTip.Tip="Watch Replay"
+                                    ToolTip.Tip="{Binding ReplayName}"
                                     Command="{Binding $parent[DataGrid].((vmw:DataPageViewModel)DataContext).LaunchReplayCommand}"
                                     CommandParameter="{Binding}"/>
                         </DataTemplate>
