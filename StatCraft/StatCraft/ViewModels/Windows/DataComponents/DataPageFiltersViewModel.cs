@@ -40,6 +40,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     // filter the menu entry builds gets its own options made from them (see RefreshMapOptions).
     private List<Map> _mapOptions = [];
     private readonly FilterMenuItemViewModel<GameData> _mapMenuItem;
+    private CheckboxFilterSlotViewModel<GameData, int>? AppliedMapSlot => _mapMenuItem.AppliedFilters.OfType<CheckboxFilterSlotViewModel<GameData, int>>().FirstOrDefault();
 
     // One menu entry per game attribute, by definition, so a rename or a retype can find the entry it
     // belongs to (and whatever has already been added from it).
@@ -212,11 +213,10 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         applied.ReplaceOptions(MapOptions().Select(o => { o.IsChecked = previouslyChecked.Contains(o.Value); return o; }));
     }
 
-    private List<CheckboxFilterOptionViewModel<int>> MapOptions() =>
-        _mapOptions.Select(m => new CheckboxFilterOptionViewModel<int>(m.Id, m.Name)).ToList();
-
-    private CheckboxFilterSlotViewModel<GameData, int>? AppliedMapSlot =>
-        _mapMenuItem.AppliedFilters.OfType<CheckboxFilterSlotViewModel<GameData, int>>().FirstOrDefault();
+    private List<CheckboxFilterOptionViewModel<int>> MapOptions()
+    {
+        return _mapOptions.Select(m => new CheckboxFilterOptionViewModel<int>(m.Id, m.Name)).ToList();
+    }
 
     private void GameAttributesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
