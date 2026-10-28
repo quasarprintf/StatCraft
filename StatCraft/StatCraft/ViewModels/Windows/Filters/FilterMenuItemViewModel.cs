@@ -22,18 +22,10 @@ public interface IFilterMenuItemViewModel : INotifyPropertyChanged
     IEnumerable<IFilterMenuItemViewModel>? SubMenuItems { get; }
     IEnumerable<IFilterSlotViewModel> ContainedFilters { get; }
 
-    // Whether this entry may be added more than once. Dimensions a game has exactly one of (its profile,
-    // when it was played, its map) are unique; anything that can be asked more than one question of —
-    // an attribute, a build — is not.
-    public bool IsUnique { get; set; }
-
-    // Whether the add menu still has something to offer here, which is what shows or hides the entry.
+    public bool IsUnique { get; set; } //unique items can only be added once
     public bool IsAvailable { get; }
 }
 
-// One entry in the "+" menu: a factory for the filter it adds, a submenu of related entries, or both.
-// Adding runs the factory, so each add produces its own slot with its own criteria, and the slots an
-// entry has produced are the ones showing in the bar — removing one in the bar drops it from here.
 public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItemViewModel
 {
     public event Action? Changed;
@@ -49,12 +41,7 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
     public IEnumerable<IFilterMenuItemViewModel>? SubMenuItems => _subMenuItems;
     public bool IsUnique { get; set; }
 
-    // A unique entry drops out of the menu once it has been added; a submenu is only worth showing while
-    // something under it is still addable, which is what hides an empty "Game Attributes" or a race with
-    // no builds.
-    public bool IsAvailable =>
-        (FilterFactory != null && (!IsUnique || AppliedFilters.Count == 0))
-        || (_subMenuItems?.Any(i => i.IsAvailable) ?? false);
+    public bool IsAvailable => (FilterFactory != null && (!IsUnique || AppliedFilters.Count == 0)) || (_subMenuItems?.Any(i => i.IsAvailable) ?? false);
 
     IEnumerable<IFilterSlotViewModel> IFilterMenuItemViewModel.ContainedFilters => ContainedFilters;
     public IEnumerable<IFilterSlotViewModel<T>> ContainedFilters
