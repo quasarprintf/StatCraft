@@ -91,8 +91,6 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         dateMenuItem.Add();
         DateSlot = (DateRangeFilterSlotViewModel<GameData>)dateMenuItem.AppliedFilters[0];
 
-        // A game has one map, one profile and one date, so asking about any of them twice over says
-        // nothing new — those three are unique. Everything else can be asked of more than once.
         _mapMenuItem = new FilterMenuItemViewModel<GameData>(() =>
             new CheckboxFilterSlotViewModel<GameData, int>("Map", MapOptions(), g => [g.ReplayData.Map.Id], showSearch: true) { AllowIncludeUnset = false },
             "Map"
@@ -107,7 +105,10 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
         FilterMenuItemViewModel<GameData> outcomeMenuItem = new FilterMenuItemViewModel<GameData>(() =>
             new CheckboxFilterSlotViewModel<GameData, GameOutcome>("Outcome", BuildOutcomeOptions(), g => [g.ReplayData.Win.AsGameOutcome()]) { AllowIncludeUnset = false },
-            "Outcome");
+            "Outcome")
+        {
+            IsUnique = true
+        };
 
         FilterMenuItemViewModel<GameData> mmrMenuItem = new FilterMenuItemViewModel<GameData>(() =>
             new TemplatedFilterSlotViewModel<GameData, PlayerMmr>(
