@@ -297,10 +297,7 @@ public partial class MapsPageViewModel : ViewModelBase
     #region filters
     private void AddFilterSlot(AttributeDefinition attribute)
     {
-        IFilterSlotViewModel<Map> slot = new AttributeFilterSlotViewModel<Map>(attribute);
-        slot.AllowIncludeUnset = true;
-        FilterMenuItemViewModel<Map> menuItem = new FilterMenuItemViewModel<Map>(slot);
-
+        FilterMenuItemViewModel<Map> menuItem = new FilterMenuItemViewModel<Map>(() => new AttributeFilterSlotViewModel<Map>(attribute) { AllowIncludeUnset = true }, attribute.Name);
         _filterMenuItems[attribute] = menuItem;
         FilterMenu.AddFilter(menuItem);
     }

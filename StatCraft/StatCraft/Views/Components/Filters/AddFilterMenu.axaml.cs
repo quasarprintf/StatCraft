@@ -105,7 +105,7 @@ public partial class AddFilterMenu : UserControl
     // "Game Attributes" — is left alone, so clicking it still opens its submenu as before.
     private void OnMenuItemPointerPressed(object? sender, PointerPressedEventArgs e)
     {
-        if (sender is not MenuItem { DataContext: IFilterMenuItemViewModel { Filter: { } filter } } menuItem) return;
+        if (sender is not MenuItem { DataContext: IFilterMenuItemViewModel filter } menuItem) return;
         if (!e.GetCurrentPoint(menuItem).Properties.IsLeftButtonPressed) return;
 
         e.Handled = true;

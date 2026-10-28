@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -13,37 +14,41 @@ namespace StatCraft.ViewModels.Windows.Filters;
 public interface IFilterMenuItemViewModel : INotifyPropertyChanged
 {
     event EventHandler? IsAppliedChanged;
+    IRelayCommand AddCommand { get; }
     event Action? Changed;
     string DisplayText { get; set; }
-    IFilterSlotViewModel? Filter { get; }
+    Func<IFilterSlotViewModel>? FilterFactory { get; }
+    IEnumerable<IFilterSlotViewModel> AppliedFilters { get; }
     IEnumerable<IFilterMenuItemViewModel>? SubMenuItems { get; }
     IEnumerable<IFilterMenuItemViewModel>? UnAppliedSubMenuItems { get; }
-    bool IsApplied { get; }
     IEnumerable<IFilterSlotViewModel> ContainedFilters { get; }
+    public bool IsUnique { get; set; }
+    public bool IsAvailable { get; }
 }
 public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItemViewModel
 {
     public event Action? Changed;
     public event EventHandler? IsAppliedChanged;
     [ObservableProperty] public partial string DisplayText { get; set; }
-    IFilterSlotViewModel? IFilterMenuItemViewModel.Filter => Filter;
-    public IFilterSlotViewModel<T>? Filter { get; private set; }
+    Func<IFilterSlotViewModel>? IFilterMenuItemViewModel.FilterFactory => FilterFactory;
+    public Func<IFilterSlotViewModel<T>>? FilterFactory { get; private set; }
+
+    IEnumerable<IFilterSlotViewModel> IFilterMenuItemViewModel.AppliedFilters => AppliedFilters;
+    public ObservableCollection<IFilterSlotViewModel<T>> AppliedFilters { get; private set; } = new ObservableCollection<IFilterSlotViewModel<T>>();
 
     private ObservableCollection<FilterMenuItemViewModel<T>>? _subMenuItems { get; set; }
     public IEnumerable<IFilterMenuItemViewModel>? SubMenuItems => _subMenuItems;
-    public IEnumerable<IFilterMenuItemViewModel>? UnAppliedSubMenuItems => _subMenuItems?.Where(i => !i.IsApplied);
-
-    // Applied means "nothing left here to add", which is what hides the entry from the add menu. An
-    // entry carrying both a filter and a submenu keeps offering itself until both halves are applied.
-    public bool IsApplied => (Filter?.IsApplied ?? true) && (_subMenuItems?.All(i => i.IsApplied) ?? true);
+    public IEnumerable<IFilterMenuItemViewModel>? UnAppliedSubMenuItems => _subMenuItems;
+    public bool IsUnique { get; set; }
+    public bool IsAvailable => !IsUnique || AppliedFilters.Count == 0;
 
     IEnumerable<IFilterSlotViewModel> IFilterMenuItemViewModel.ContainedFilters => ContainedFilters;
     public IEnumerable<IFilterSlotViewModel<T>> ContainedFilters
     {
         get
         {
-            if (Filter != null)
-                yield return Filter;
+            foreach (var filter in AppliedFilters)
+                yield return filter;
             if (_subMenuItems == null)
                 yield break;
             foreach (FilterMenuItemViewModel<T> subMenuItem in _subMenuItems)
@@ -52,35 +57,33 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
         }
     }
 
-    public FilterMenuItemViewModel(IFilterSlotViewModel<T> filter)
+    public FilterMenuItemViewModel(Func<IFilterSlotViewModel<T>> filterFactory, string name)
     {
-        DisplayText = filter.Title;
-        WireFilter(filter);
+        DisplayText = name;
+        FilterFactory = filterFactory;
     }
     public FilterMenuItemViewModel(ObservableCollection<FilterMenuItemViewModel<T>> subMenu, string name)
     {
         DisplayText = name;
         WireSubMenu(subMenu);
     }
-    // An entry that is both a filter of its own and a submenu of related ones — e.g. a build that can be
-    // filtered on directly, with the builds nested under it offered beneath it.
-    public FilterMenuItemViewModel(IFilterSlotViewModel<T> filter, ObservableCollection<FilterMenuItemViewModel<T>> subMenu)
+    public FilterMenuItemViewModel(Func<IFilterSlotViewModel<T>> filterFactory, string name, ObservableCollection<FilterMenuItemViewModel<T>> subMenu)
     {
-        DisplayText = filter.Title;
-        WireFilter(filter);
+        DisplayText = name;
+        FilterFactory = filterFactory;
         WireSubMenu(subMenu);
     }
 
     public void Destroy()
     {
-        UnWireFilter();
         if (_subMenuItems != null)
         {
             foreach (var item in _subMenuItems)
                 UnWireSubMenuItem(item);
             _subMenuItems.CollectionChanged -= SubMenuChanged;
         }
-        Filter = null;
+        FilterFactory = null;
+        AppliedFilters = null;
         _subMenuItems = null;
     }
     public void DestroyRecursively()
@@ -91,27 +94,6 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
                 item.DestroyRecursively();
         }
         Destroy();
-    }
-
-    private void WireFilter(IFilterSlotViewModel<T> filter)
-    {
-        Filter = filter;
-        filter.PropertyChanged += HandleFilterPropertyChanged;
-        filter.IsAppliedChanged += RefreshIsApplied;
-        filter.Changed += ForwardChangedEvent;
-    }
-    private void UnWireFilter()
-    {
-        if (Filter == null)
-            return;
-        Filter.PropertyChanged -= HandleFilterPropertyChanged;
-        Filter.IsAppliedChanged -= RefreshIsApplied;
-        Filter.Changed -= ForwardChangedEvent;
-    }
-    private void HandleFilterPropertyChanged(object? sender, PropertyChangedEventArgs e)
-    {
-        if (e.PropertyName == nameof(Filter.Title))
-            DisplayText = Filter!.Title;
     }
 
     private void WireSubMenu(ObservableCollection<FilterMenuItemViewModel<T>> subMenu)
@@ -135,7 +117,6 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
                 UnWireSubMenuItem((FilterMenuItemViewModel<T>)oldItem);
         }
         IsAppliedChanged?.Invoke(this, EventArgs.Empty); 
-        OnPropertyChanged(nameof(IsApplied)); 
         OnPropertyChanged(nameof(UnAppliedSubMenuItems)); 
     }
 
@@ -152,11 +133,24 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
     private void RefreshIsApplied(object? sender, EventArgs e)
     {
         IsAppliedChanged?.Invoke(this, EventArgs.Empty); 
-        OnPropertyChanged(nameof(IsApplied)); 
         OnPropertyChanged(nameof(UnAppliedSubMenuItems)); 
     }
     private void ForwardChangedEvent()
     {
         Changed?.Invoke();
+    }
+
+    [RelayCommand]
+    public void Add()
+    {
+        if (FilterFactory == null)
+        {
+            //TODO: log this, shouldn't happen
+            return;
+        }
+        if (!IsAvailable)
+            return;
+        AppliedFilters.Add(FilterFactory());
+        RefreshIsApplied(null, null); //TODO: clean this up
     }
 }

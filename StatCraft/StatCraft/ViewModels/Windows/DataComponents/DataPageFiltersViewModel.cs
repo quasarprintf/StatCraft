@@ -52,11 +52,18 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
     internal DataPageFiltersViewModel(BuildRepository buildRepository, ObservableCollection<AttributeDefinition> gameAttributes)
     {
-        ProfileSlot = new CheckboxFilterSlotViewModel<GameData, int>("Profile", [], g => [g.Sc2ProfileId], showSearch: true)
+        FilterMenuItemViewModel<GameData> profileMenuItem = new FilterMenuItemViewModel<GameData>(() => 
+            new CheckboxFilterSlotViewModel<GameData, int>("Profile", [], g => [g.Sc2ProfileId], showSearch: true)
+            {
+                Mandatory = true
+            }, "Profile"
+        )
         {
-            Mandatory = true
+            IsUnique = true
         };
+        profileMenuItem.Add();
         // Checking/unchecking a profile requires a database reload
+        ProfileSlot = (CheckboxFilterSlotViewModel<GameData, int>)profileMenuItem.AppliedFilters[0];
         ProfileSlot.Changed += () =>
         {
             if (!_suppressChangeEvents)
@@ -93,14 +100,13 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         GameAttributeSlots = new ObservableCollection<FilterMenuItemViewModel<GameData>>();
         foreach (var attribute in gameAttributes)
         {
-            IFilterSlotViewModel<GameData> filterSlot = new AttributeFilterSlotViewModel<GameData>(attribute);
-            GameAttributeSlots.Add(new FilterMenuItemViewModel<GameData>(filterSlot));
+            GameAttributeSlots.Add(new FilterMenuItemViewModel<GameData>(() => new AttributeFilterSlotViewModel<GameData>(attribute), attribute.Name));
         }
         gameAttributes.CollectionChanged += GameAttributesChanged;
 
         FilterMenuItemViewModel<GameData>[] filterSlots = 
         [
-            new FilterMenuItemViewModel<GameData>(ProfileSlot),
+            profileMenuItem,
             new FilterMenuItemViewModel<GameData>(DateSlot),
             new FilterMenuItemViewModel<GameData>(MapSlot),
             new FilterMenuItemViewModel<GameData>(MatchupSlot), 

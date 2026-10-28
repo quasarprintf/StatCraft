@@ -566,10 +566,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     #region filters
     private void AddFilterSlot(AttributeDefinition attribute)
     {
-        IFilterSlotViewModel<BuildNode> slot = new AttributeFilterSlotViewModel<BuildNode>(attribute);
-        slot.AllowIncludeUnset = true;
-        FilterMenuItemViewModel<BuildNode> menuItem = new FilterMenuItemViewModel<BuildNode>(slot);
-
+        FilterMenuItemViewModel<BuildNode> menuItem = new FilterMenuItemViewModel<BuildNode>(() => new AttributeFilterSlotViewModel<BuildNode>(attribute){ AllowIncludeUnset = true }, attribute.Name);
         _filterMenuItems[attribute] = menuItem;
         FilterMenu.AddFilter(menuItem);
     }

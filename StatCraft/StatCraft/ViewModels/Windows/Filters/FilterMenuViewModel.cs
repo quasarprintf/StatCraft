@@ -22,7 +22,7 @@ public class FilterMenuViewModel<T> : ViewModelBase, IFilterMenuViewModel
 
     IEnumerable<IFilterMenuItemViewModel> IFilterMenuViewModel.MenuItems => MenuItems;
     private ObservableCollection<FilterMenuItemViewModel<T>> MenuItems { get; set; }
-    public IEnumerable<IFilterSlotViewModel> AppliedFilters => MenuItems.SelectMany(i => i.ContainedFilters).Where(s => s.IsApplied);
+    public IEnumerable<IFilterSlotViewModel> AppliedFilters => MenuItems.SelectMany(i => i.ContainedFilters);
 
     public FilterMenuViewModel(IEnumerable<FilterMenuItemViewModel<T>> filters)
     {
@@ -66,7 +66,7 @@ public class FilterMenuViewModel<T> : ViewModelBase, IFilterMenuViewModel
     {
         UnWireSlotChanged(filter);
         MenuItems.Remove(filter);
-        if (filter.IsApplied)
+        if (filter.AppliedFilters.Count > 0)
         {
             OnPropertyChanged(nameof(AppliedFilters));
             InvokeFiltersChanged();
@@ -80,8 +80,7 @@ public class FilterMenuViewModel<T> : ViewModelBase, IFilterMenuViewModel
         {
             foreach (var filterSlot in filterMenuItem.ContainedFilters)
             {
-                if (filterSlot.IsApplied)
-                    appliedFilters.Add(filterSlot.GetFilter());
+                appliedFilters.Add(filterSlot.GetFilter());
             }
         }
 
