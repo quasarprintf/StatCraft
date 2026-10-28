@@ -99,7 +99,7 @@ public class MapsPageViewModelTests : IDisposable
         MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
         FilterPanel filters = FilterPanel.Of(vm);
         AttributeDefinition held = Assert.Single(vm.AllAttributes);
-        Assert.True(filters.Offered("Rush Distance").IsNumericRangeFilter);
+        Assert.True(filters.Preview("Rush Distance").IsNumericRangeFilter);
 
         AttributeDefinition editedElsewhere = Assert.Single(_attributeRepo.GetAllAttributes(AttributeScope.Map));
         editedElsewhere.Type = AttributeType.Bool;
@@ -109,7 +109,7 @@ public class MapsPageViewModelTests : IDisposable
         Assert.Same(held, Assert.Single(vm.AllAttributes));
         Assert.Same(held, Assert.Single(vm.FilteredMaps.Single().AttributeValues).Definition);
         // The filter has to become the new kind too, not keep offering a range for a yes/no attribute.
-        Assert.True(filters.Offered("Rush Distance").IsBoolFilter);
+        Assert.True(filters.Preview("Rush Distance").IsBoolFilter);
     }
 
     [Fact]
@@ -150,7 +150,7 @@ public class MapsPageViewModelTests : IDisposable
         _attributeRepo.InsertAttribute(attribute, 0);
         _attributeRepo.InsertValueOption(attribute.Id, "Rush");
         MapsPageViewModel vm = new(_mapRepo, _attributeRepo, _gameDataRepo, new MockLogger());
-        FilterHandle filter = FilterPanel.Of(vm).Offered("Style").Check("Rush");
+        FilterHandle filter = FilterPanel.Of(vm).Add("Style").Check("Rush");
 
         _attributeRepo.InsertValueOption(attribute.Id, "Macro");
 
@@ -349,20 +349,20 @@ public class MapsPageViewModelTests : IDisposable
     {
         MapsPageViewModel vm = AttributeVm("Attribute", type);
 
-        Assert.True(FilterPanel.Of(vm).Offered("Attribute").AllowIncludeUnset);
+        Assert.True(FilterPanel.Of(vm).Preview("Attribute").AllowIncludeUnset);
     }
 
     [Fact]
-    public void AddingAFilter_MovesItFromTheAddMenuToTheFilterBar()
+    public void AddingAFilter_PutsItInTheBarAndKeepsOfferingIt()
     {
         MapsPageViewModel vm = ValuesAttributeVm();
         FilterPanel filters = FilterPanel.Of(vm);
 
         FilterHandle filter = filters.Add("Style");
 
-        Assert.True(filter.IsApplied);
         Assert.Equal(["Style"], filters.AppliedTitles);
-        Assert.Empty(filters.AddableTitles);
+        // An attribute can be asked more than one question, so it stays on offer.
+        Assert.Equal(["Style"], filters.AddableTitles);
     }
 
     [Fact]
@@ -379,7 +379,6 @@ public class MapsPageViewModelTests : IDisposable
         Assert.Contains(map, vm.FilteredMaps);
         Assert.Empty(filters.AppliedTitles);
         Assert.Equal(["Style"], filters.AddableTitles);
-        Assert.False(filter.IsApplied);
     }
 
     // A removed filter must not come back with the criteria it had, or re-adding it would silently

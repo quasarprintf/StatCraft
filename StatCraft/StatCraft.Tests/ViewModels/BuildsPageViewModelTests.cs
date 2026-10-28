@@ -157,7 +157,7 @@ public class BuildsPageViewModelTests : IDisposable
         {
             PlayerRace = Race.Protoss,
         };
-        FilterHandle filter = FilterPanel.Of(vm).Offered("Style").Check("Rush");
+        FilterHandle filter = FilterPanel.Of(vm).Add("Style").Check("Rush");
 
         _attributeRepo.InsertValueOption(attribute.Id, "Macro");
 
@@ -180,12 +180,12 @@ public class BuildsPageViewModelTests : IDisposable
 
         Assert.Empty(filters.AppliedTitles);
         Assert.Equal(["Cheese", "Style"], filters.AddableTitles.Order());
-        Assert.True(filters.Offered("Style").AllowIncludeUnset);
-        Assert.True(filters.Offered("Cheese").AllowIncludeUnset);
+        Assert.True(filters.Preview("Style").AllowIncludeUnset);
+        Assert.True(filters.Preview("Cheese").AllowIncludeUnset);
     }
 
     [Fact]
-    public void AddingAFilter_MovesItFromTheAddMenuToTheFilterBar()
+    public void AddingAFilter_PutsItInTheBarAndKeepsOfferingIt()
     {
         InsertStyleAttribute();
         FilterPanel filters = FilterPanel.Of(_vm);
@@ -193,7 +193,8 @@ public class BuildsPageViewModelTests : IDisposable
         filters.Add("Style");
 
         Assert.Equal(["Style"], filters.AppliedTitles);
-        Assert.Empty(filters.AddableTitles);
+        // An attribute can be asked more than one question, so it stays on offer.
+        Assert.Equal(["Style"], filters.AddableTitles);
     }
 
     [Fact]

@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using StatCraft.ViewModels.Windows;
+using StatCraft.ViewModels.Windows.DataComponents;
 using StatCraft.ViewModels.Windows.Filters;
 using StatCraft.ViewModels.Windows.Filters.WrappedFilters;
 
@@ -36,8 +37,12 @@ internal sealed class FilterPanel
     // The Data tab, including its mandatory profile and date range filters.
     public static FilterPanel Of(DataPageViewModel page) => OfMenu(page.Filters.FilterMenu);
 
+    // The Data tab's filters on their own, without the page around them.
+    public static FilterPanel Of(DataPageFiltersViewModel filters) => OfMenu(filters.FilterMenu);
+
     // A page whose filters live in a FilterMenuViewModel, shown by FilterBar and AddFilterMenu: the bar
-    // binds AppliedFilters, and the menu binds MenuItems and hides the applied entries itself (see Leaves).
+    // binds AppliedFilters, and the menu binds MenuItems and hides whatever has nothing left to offer
+    // (see Leaves).
     private static FilterPanel OfMenu(IFilterMenuViewModel menu) =>
         new(menu, nameof(menu.AppliedFilters), () => menu.AppliedFilters,
             nameof(menu.MenuItems), () => menu.MenuItems);
@@ -48,24 +53,47 @@ internal sealed class FilterPanel
     // Every filter the "+" menu offers, flattened through any submenus.
     public IReadOnlyList<string> AddableTitles => MenuLeaves().Select(l => l.Text).ToList();
 
-    // Clicks the filter's entry in the "+" menu.
+    // Every filter the "+" menu offers under one of its menus.
+    public IReadOnlyList<string> AddableTitlesIn(string menu) =>
+        MenuLeaves().Where(l => l.Path.Contains(menu)).Select(l => l.Text).ToList();
+
+    // Clicks the filter's entry in the "+" menu. A click builds a filter and puts it in the bar, so the
+    // handle is on the filter that click produced — clicking twice gives two filters, unless the entry is
+    // unique, in which case it leaves the menu after the first.
     public FilterHandle Add(string title) => Add(null, title);
 
     // The same leaf can be offered under more than one menu — the build tree is offered once per set of
     // players — so this names the menu it should be taken from.
     public FilterHandle Add(string? menu, string title)
     {
-        IFilterSlotViewModel slot = OfferedSlot(menu, title);
-        slot.AddCommand.Execute(null);
-        return new FilterHandle(slot);
+        IFilterMenuItemViewModel item = OfferedItem(menu, title);
+        int before = item.AppliedFilters.Count();
+        item.AddCommand.Execute(null);
+
+        IFilterSlotViewModel? added = item.AppliedFilters.Skip(before).LastOrDefault();
+        if (added == null)
+            throw new InvalidOperationException($"Clicking \"{title}\" added no filter to the bar.");
+        return new FilterHandle(added);
     }
 
-    // A filter the "+" menu offers, without adding it.
-    public FilterHandle Offered(string title) => new(OfferedSlot(null, title));
+    // What this entry would put in the bar, without leaving it there: the filter is built, handed back for
+    // inspection and taken straight out again, so the page's own results are untouched.
+    public FilterHandle Preview(string title) => Preview(null, title);
 
-    public FilterHandle Offered(string? menu, string title) => new(OfferedSlot(menu, title));
+    public FilterHandle Preview(string? menu, string title)
+    {
+        FilterHandle handle = Add(menu, title);
+        handle.Remove();
+        return handle;
+    }
 
-    private IFilterSlotViewModel OfferedSlot(string? menu, string title)
+    // Whether the "+" menu still offers this entry.
+    public bool IsOffered(string title) => IsOffered(null, title);
+
+    public bool IsOffered(string? menu, string title) =>
+        MenuLeaves().Any(l => l.Text == title && (menu == null || l.Path.Contains(menu)));
+
+    private IFilterMenuItemViewModel OfferedItem(string? menu, string title)
     {
         List<MenuLeaf> matches = MenuLeaves()
             .Where(l => l.Text == title && (menu == null || l.Path.Contains(menu)))
@@ -75,7 +103,7 @@ internal sealed class FilterPanel
             string where = menu == null ? "the add menu" : $"the \"{menu}\" menu";
             throw new InvalidOperationException($"Expected one \"{title}\" entry in {where}, found {matches.Count}. Offered: [{string.Join(", ", AddableTitles)}]");
         }
-        return matches[0].Slot;
+        return matches[0].Item;
     }
 
     // A filter already showing in the filter bar.
@@ -100,21 +128,20 @@ internal sealed class FilterPanel
 
     private IEnumerable<MenuLeaf> Leaves(object entry, IReadOnlyList<string> path) => entry switch
     {
-        // AddFilterMenu's item theme binds IsVisible to !IsApplied, so an applied entry (a filter already in
-        // the bar, or a submenu with nothing left to add) is hidden, again only as of its last announcement.
-        IFilterMenuItemViewModel item when Hidden(item) => [],
-        // An entry can carry a filter, a submenu, or both: it offers itself first, then whatever its
-        // submenu still has left. A submenu lists only the entries not applied yet, re-read when the
-        // submenu announces a change.
+        // AddFilterMenu's item theme binds IsVisible to IsAvailable, so an entry with nothing left to add
+        // (a unique filter already in the bar, or a submenu whose entries are all taken) is hidden, again
+        // only as of its last announcement.
+        IFilterMenuItemViewModel item when !Available(item) => [],
+        // An entry can add a filter, hold a submenu, or both: it offers itself first, then whatever its
+        // submenu offers, re-read when the submenu announces a change.
         IFilterMenuItemViewModel item => Offerings(item, path),
-        IFilterSlotViewModel slot => [new MenuLeaf(slot.Title, slot, path)],
         _ => throw new InvalidOperationException($"Unrecognised add-menu entry {entry.GetType().Name}"),
     };
 
     private IEnumerable<MenuLeaf> Offerings(IFilterMenuItemViewModel item, IReadOnlyList<string> path)
     {
-        if (item.Filter is { } slot)
-            yield return new MenuLeaf(Header(item), slot, path);
+        if (item.FilterFactory != null)
+            yield return new MenuLeaf(Header(item), item, path);
         if (item.SubMenuItems == null)
             yield break;
         List<string> childPath = [.. path, Header(item)];
@@ -126,8 +153,8 @@ internal sealed class FilterPanel
     {
         if (!_subMenus.TryGetValue(subMenu, out BoundList? bound))
         {
-            bound = new BoundList(subMenu, nameof(subMenu.UnAppliedSubMenuItems),
-                () => subMenu.UnAppliedSubMenuItems ?? Enumerable.Empty<IFilterMenuItemViewModel>());
+            bound = new BoundList(subMenu, nameof(subMenu.SubMenuItems),
+                () => subMenu.SubMenuItems ?? Enumerable.Empty<IFilterMenuItemViewModel>());
             _subMenus[subMenu] = bound;
         }
         return bound;
@@ -135,11 +162,11 @@ internal sealed class FilterPanel
 
     // The IsVisible and Header bindings of each menu entry, made the first time the entry is read, like
     // the submenu bindings above. An entry that changes without announcing it stays as it was.
-    private readonly Dictionary<IFilterMenuItemViewModel, BoundValue<bool>> _hidden = new(ReferenceEqualityComparer.Instance);
+    private readonly Dictionary<IFilterMenuItemViewModel, BoundValue<bool>> _available = new(ReferenceEqualityComparer.Instance);
     private readonly Dictionary<IFilterMenuItemViewModel, BoundValue<string>> _headers = new(ReferenceEqualityComparer.Instance);
 
-    private bool Hidden(IFilterMenuItemViewModel item) =>
-        Bound(_hidden, item, nameof(item.IsApplied), () => item.IsApplied);
+    private bool Available(IFilterMenuItemViewModel item) =>
+        Bound(_available, item, nameof(item.IsAvailable), () => item.IsAvailable);
 
     private string Header(IFilterMenuItemViewModel item) =>
         Bound(_headers, item, nameof(item.DisplayText), () => item.DisplayText);
@@ -155,8 +182,8 @@ internal sealed class FilterPanel
         return bound.Value;
     }
 
-    // Path is the headers of the menus the leaf sits under, outermost first.
-    private sealed record MenuLeaf(string Text, IFilterSlotViewModel Slot, IReadOnlyList<string> Path);
+    // One clickable entry in the menu. Path is the headers of the menus it sits under, outermost first.
+    private sealed record MenuLeaf(string Text, IFilterMenuItemViewModel Item, IReadOnlyList<string> Path);
 
     private sealed class BoundValue<TValue>
     {
@@ -202,7 +229,6 @@ internal sealed class FilterPanel
 internal sealed class FilterHandle(IFilterSlotViewModel slot)
 {
     public string Title => slot.Title;
-    public bool IsApplied => slot.IsApplied;
 
     // A mandatory filter is always showing and has no ✕ button.
     public bool Mandatory => slot.Mandatory;

@@ -37,7 +37,7 @@ public class FilterMenuViewModel<T> : ViewModelBase, IFilterMenuViewModel
         if (filter == null)
             return;
 
-        filter.IsAppliedChanged += AppliedFiltersChanged;
+        filter.AppliedFiltersChanged += AppliedFiltersChanged;
         filter.Changed += InvokeFiltersChanged;
     }
     private void UnWireSlotChanged(IFilterMenuItemViewModel? filter)
@@ -45,7 +45,7 @@ public class FilterMenuViewModel<T> : ViewModelBase, IFilterMenuViewModel
         if (filter == null)
             return;
 
-        filter.IsAppliedChanged -= AppliedFiltersChanged;
+        filter.AppliedFiltersChanged -= AppliedFiltersChanged;
         filter.Changed -= InvokeFiltersChanged;
     }
     private void InvokeFiltersChanged()

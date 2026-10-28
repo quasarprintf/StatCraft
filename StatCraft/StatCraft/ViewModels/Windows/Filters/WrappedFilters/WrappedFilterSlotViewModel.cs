@@ -15,7 +15,7 @@ public interface IWrappedFilterSlotViewModel : IFilterSlotViewModel
 public abstract partial class WrappedFilterSlotViewModel<T> : ViewModelBase, IWrappedFilterSlotViewModel
 {
     public event Action? Changed;
-    public event EventHandler? IsAppliedChanged;
+    public event EventHandler? Removed;
 
     [ObservableProperty] public required partial IFilterSlotViewModel WrappedFilter { get; set; }
 
@@ -29,11 +29,6 @@ public abstract partial class WrappedFilterSlotViewModel<T> : ViewModelBase, IWr
     {
         get => WrappedFilter.Mandatory;
         set => WrappedFilter.Mandatory = value;
-    }
-    public bool IsApplied
-    {
-        get => WrappedFilter.IsApplied;
-        set => WrappedFilter.IsApplied = value;
     }
     public bool IncludeUnset
     {
@@ -50,28 +45,27 @@ public abstract partial class WrappedFilterSlotViewModel<T> : ViewModelBase, IWr
     {
         WrappedFilter.Clear();
     }
-    public IRelayCommand AddCommand => WrappedFilter.AddCommand;
     public IRelayCommand RemoveCommand => WrappedFilter.RemoveCommand;
 
     partial void OnWrappedFilterChanging(IFilterSlotViewModel value)
     {
         if (WrappedFilter != null)
         {
-            WrappedFilter.IsAppliedChanged -= ForwardIsAppliedChanged;
+            WrappedFilter.Removed -= ForwardRemoved;
             WrappedFilter.Changed -= ForwardChanged;
             WrappedFilter.PropertyChanged -= ForwardPropertyChanged;
         }
         if (value != null)
         {
-            value.IsAppliedChanged += ForwardIsAppliedChanged;
+            value.Removed += ForwardRemoved;
             value.Changed += ForwardChanged;
             value.PropertyChanged += ForwardPropertyChanged;
         }
     }
 
-    private void ForwardIsAppliedChanged(object? sender, EventArgs e)
+    private void ForwardRemoved(object? sender, EventArgs e)
     {
-        IsAppliedChanged?.Invoke(this, e);
+        Removed?.Invoke(this, e);
     }
     private void ForwardChanged()
     {

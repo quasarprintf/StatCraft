@@ -136,14 +136,15 @@ public partial class MapsPageViewModel : ViewModelBase
             {
                 cachedAttr.Name = dbAttr.Name;
                 if (_filterMenuItems.TryGetValue(cachedAttr, out FilterMenuItemViewModel<Map>? slot))
-                    slot.Filter!.Title = dbAttr.Name;
+                    slot.Rename(dbAttr.Name);
             }
 
             if (cachedAttr.Type != dbAttr.Type)
             {
                 cachedAttr.Type = dbAttr.Type;
                 if (_filterMenuItems.TryGetValue(cachedAttr, out FilterMenuItemViewModel<Map>? slot))
-                    ((AttributeFilterSlotViewModel<Map>)slot.Filter!).Rebuild();
+                    foreach (AttributeFilterSlotViewModel<Map> applied in slot.AppliedFilters.OfType<AttributeFilterSlotViewModel<Map>>().ToList())
+                        applied.Rebuild();
             }
 
             if (dbAttr.IsMandatory != cachedAttr.IsMandatory)
@@ -233,11 +234,11 @@ public partial class MapsPageViewModel : ViewModelBase
         if (!changed)
             return;
 
-        if (_filterMenuItems.TryGetValue(attribute, out FilterMenuItemViewModel<Map>? slot) &&
-            slot.Filter is AttributeFilterSlotViewModel<Map> attributeSlot)
-        {
-            attributeSlot.Refresh();
-        }
+        if (!_filterMenuItems.TryGetValue(attribute, out FilterMenuItemViewModel<Map>? slot))
+            return;
+
+        foreach (AttributeFilterSlotViewModel<Map> applied in slot.AppliedFilters.OfType<AttributeFilterSlotViewModel<Map>>().ToList())
+            applied.Refresh();
     }
 
     #region event handling for selected map

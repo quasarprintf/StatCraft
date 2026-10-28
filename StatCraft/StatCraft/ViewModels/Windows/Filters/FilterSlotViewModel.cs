@@ -10,13 +10,15 @@ public interface IFilterSlotViewModel : INotifyPropertyChanged
 {
     string Title { get; set; }
     bool Mandatory { get; set; }
-    bool IsApplied { get; set; }
     bool IncludeUnset { get; set; }
     bool AllowIncludeUnset { get; set; }
     event Action? Changed;
-    event EventHandler? IsAppliedChanged;
+
+    // Raised when the user clicks this slot's remove button and it isn't mandatory. A slot exists only
+    // while it is in the filter bar, so the menu entry that created it (see FilterMenuItemViewModel)
+    // drops it on this rather than the slot marking itself inactive.
+    event EventHandler? Removed;
     void Clear();
-    IRelayCommand AddCommand { get; }
     IRelayCommand RemoveCommand { get; }
 }
 
@@ -25,7 +27,8 @@ public interface IFilterSlotViewModel<T> : IFilterSlotViewModel
     IFilter<T> GetFilter();
 }
 
-// One "extra filter" the Data tab's filter bar can show or hide. Two concrete subclasses (rather
+// One filter in the bar. A slot is created by its menu entry when the user adds it and discarded when
+// they remove it, so its lifetime *is* "this filter is applied". Several concrete subclasses (rather
 // than one class with a "kind" flag) so Avalonia's implicit per-x:DataType DataTemplate dispatch can
 // pick the right visual (checkbox dropdown vs. numeric range) automatically.
 public abstract partial class FilterSlotViewModel<T,F> : ViewModelBase, IFilterSlotViewModel<T>
@@ -37,8 +40,9 @@ public abstract partial class FilterSlotViewModel<T,F> : ViewModelBase, IFilterS
     // drop whatever criteria the user already entered.
     [ObservableProperty] public partial string Title { get; set; } = "";
 
+    // A mandatory filter can't be taken out of the bar at all, so it has no remove button and its own
+    // remove command clears its criteria instead.
     [ObservableProperty] public partial bool Mandatory { get; set; }
-    [ObservableProperty] public partial bool IsApplied { get; set; }
 
     // Whether entities with no value at all for this dimension still pass. Only the Maps tab binds
     // it: a newly defined map attribute is unset on every map, so without an opt-in an attribute
@@ -53,7 +57,7 @@ public abstract partial class FilterSlotViewModel<T,F> : ViewModelBase, IFilterS
     public event Action? Changed;
     protected void RaiseChanged() => Changed?.Invoke();
 
-    public event EventHandler? IsAppliedChanged;
+    public event EventHandler? Removed;
 
     protected FilterSlotViewModel(string title, Func<T,F> filteredPropertyMap)
     {
@@ -67,28 +71,18 @@ public abstract partial class FilterSlotViewModel<T,F> : ViewModelBase, IFilterS
     // hidden filter never silently keeps constraining results.
     public abstract void Clear();
 
-    partial void OnIsAppliedChanged(bool value)
-    {
-        IsAppliedChanged?.Invoke(this, EventArgs.Empty);
-        RaiseChanged();
-    }
-
     partial void OnIncludeUnsetChanged(bool value) => RaiseChanged();
-
-    [RelayCommand]
-    private void Add() => IsApplied = true;
 
     [RelayCommand]
     private void Remove()
     {
-        if (!Mandatory)
-            IsApplied = false;
-        IncludeUnset = false;
-        Clear();
-    }
-    partial void OnMandatoryChanged(bool value)
-    {
-        if (value)
-            IsApplied = true;
+        if (Mandatory)
+        {
+            // Nothing to take out of the bar, so the button clears the criteria rather than doing nothing.
+            IncludeUnset = false;
+            Clear();
+            return;
+        }
+        Removed?.Invoke(this, EventArgs.Empty);
     }
 }

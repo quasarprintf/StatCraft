@@ -294,7 +294,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         _attributeRepository.InsertValueOption(attribute.Id, "Rush");
         _viewModel.NotifyActivated();
 
-        FilterHandle filter = Filters.Offered("Style").Check("Rush");
+        FilterHandle filter = Filters.Add("Style").Check("Rush");
 
         _attributeRepository.InsertValueOption(attribute.Id, "Macro");
         _viewModel.NotifyActivated();
@@ -435,8 +435,8 @@ public class DataPageViewModelTests : IAsyncDisposable
 
         Filters.Add("My Build", build.Name);
 
-        Assert.False(Filters.Offered("Allies Build", build.Name).IsApplied);
-        Assert.False(Filters.Offered("Opponents Build", build.Name).IsApplied);
+        Assert.True(Filters.IsOffered("Allies Build", build.Name));
+        Assert.True(Filters.IsOffered("Opponents Build", build.Name));
         Assert.Equal([build.Name], Filters.AppliedTitles.Where(t => t == build.Name));
     }
 
@@ -540,7 +540,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     [Fact]
     public void BuiltInFilters_DoNotOfferIncludeUnset()
     {
-        Assert.All(BuiltInFilterTitles, title => Assert.False(Filters.Offered(title).AllowIncludeUnset));
+        Assert.All(BuiltInFilterTitles, title => Assert.False(Filters.Preview(title).AllowIncludeUnset));
         Assert.False(DateFilter.AllowIncludeUnset);
         Assert.False(ProfileFilter.AllowIncludeUnset);
     }
@@ -631,13 +631,33 @@ public class DataPageViewModelTests : IAsyncDisposable
         Assert.Single(_viewModel.Games);
     }
 
+    // Only the dimensions a game has exactly one of leave the menu once added — a game has one map, so a
+    // second map filter would say nothing new. Everything else can be asked of twice.
     [Fact]
-    public void AddingAFilter_MovesItFromTheAddMenuToTheFilterBar()
+    public void AddingAFilter_PutsItInTheBarAndKeepsOfferingTheNonUniqueOnes()
     {
         Filters.Add("Outcome");
 
         Assert.Equal([.. AlwaysApplied, "Outcome"], Filters.AppliedTitles);
-        Assert.Equal(["Map", "Matchup", "Opponent MMR"], Filters.AddableTitles);
+        Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
+    }
+
+    [Fact]
+    public void AddingAUniqueFilter_TakesItOutOfTheMenu()
+    {
+        Filters.Add("Map");
+
+        Assert.Equal([.. AlwaysApplied, "Map"], Filters.AppliedTitles);
+        Assert.Equal(["Matchup", "Outcome", "Opponent MMR"], Filters.AddableTitles);
+    }
+
+    [Fact]
+    public void AddingANonUniqueFilterTwice_PutsTwoOfThemInTheBar()
+    {
+        Filters.Add("Outcome").Check("Win");
+        Filters.Add("Outcome").Check("Loss");
+
+        Assert.Equal(["Outcome", "Outcome"], Filters.AppliedTitles.Where(t => t == "Outcome"));
     }
 
     // The bar keeps the same fixed order as the menu, not the order filters were added in.
@@ -771,7 +791,7 @@ public class DataPageViewModelTests : IAsyncDisposable
 
         await LoadGamesWithNoDateRange();
 
-        Assert.Equal(["Altitude LE", "Deathaura LE"], Filters.Offered("Map").OptionLabels);
+        Assert.Equal(["Altitude LE", "Deathaura LE"], Filters.Preview("Map").OptionLabels);
     }
 
     // Reloading from the database (a profile change, a session start) rebuilds the map options from the
@@ -1005,7 +1025,7 @@ public class DataPageViewModelTests : IAsyncDisposable
 
         Assert.Single(_viewModel.Games);
         Assert.Equal(AlwaysApplied, Filters.AppliedTitles);
-        Assert.Empty(Filters.Offered("Style").CheckedLabels);
+        Assert.Empty(Filters.Add("Style").CheckedLabels);
     }
 
     // A filter slot created by the lazy attribute sync has to be wired up like the original ones, or
@@ -1093,7 +1113,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     // Game attributes share one submenu, which only lists the attributes not already showing in the
     // filter bar — the same as every other entry in the menu.
     [Fact]
-    public void ApplyingAGameAttribute_TakesItOutOfTheMenuWhileTheOthersStay()
+    public void ApplyingAGameAttribute_PutsItInTheBarAndLeavesThemAllOffered()
     {
         InsertStyleAttribute();
         InsertProxyAttribute();
@@ -1102,11 +1122,13 @@ public class DataPageViewModelTests : IAsyncDisposable
 
         Filters.Add("Style");
 
-        Assert.Equal([.. BuiltInFilterTitles, "Proxy"], Filters.AddableTitles);
+        Assert.Equal([.. AlwaysApplied, "Style"], Filters.AppliedTitles);
+        // An attribute can be asked more than one question, so it stays on offer.
+        Assert.Equal([.. BuiltInFilterTitles, "Style", "Proxy"], Filters.AddableTitles);
     }
 
     [Fact]
-    public void RemovingAGameAttributeFilter_PutsItBackInTheMenu()
+    public void RemovingAGameAttributeFilter_TakesItOutOfTheBar()
     {
         InsertStyleAttribute();
         InsertProxyAttribute();
@@ -1115,13 +1137,14 @@ public class DataPageViewModelTests : IAsyncDisposable
 
         Filters.Applied("Style").Remove();
 
+        Assert.Equal(AlwaysApplied, Filters.AppliedTitles);
         Assert.Equal([.. BuiltInFilterTitles, "Style", "Proxy"], Filters.AddableTitles);
     }
 
     // With nothing left in it to add, the submenu itself leaves the menu, and comes back when one of its
     // filters is removed.
     [Fact]
-    public void ApplyingEveryGameAttribute_TakesTheSubmenuOutOfTheMenuUntilOneIsRemoved()
+    public void ApplyingEveryGameAttribute_LeavesTheSubmenuOfferingThemAll()
     {
         InsertStyleAttribute();
         InsertProxyAttribute();
@@ -1129,10 +1152,9 @@ public class DataPageViewModelTests : IAsyncDisposable
 
         Filters.Add("Style");
         Filters.Add("Proxy");
-        Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
 
-        Filters.Applied("Proxy").Remove();
-        Assert.Equal([.. BuiltInFilterTitles, "Proxy"], Filters.AddableTitles);
+        Assert.Equal([.. AlwaysApplied, "Style", "Proxy"], Filters.AppliedTitles);
+        Assert.Equal([.. BuiltInFilterTitles, "Style", "Proxy"], Filters.AddableTitles);
     }
 
     [Fact]
@@ -1141,12 +1163,12 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertStyleAttribute();
         _viewModel = CreateViewModel();
         Filters.Add("Style");
-        Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
+        Assert.Equal([.. BuiltInFilterTitles, "Style"], Filters.AddableTitles);
 
         InsertProxyAttribute();
         _viewModel.NotifyActivated();
 
-        Assert.Equal([.. BuiltInFilterTitles, "Proxy"], Filters.AddableTitles);
+        Assert.Equal([.. BuiltInFilterTitles, "Style", "Proxy"], Filters.AddableTitles);
     }
 
     [Fact]
@@ -1166,12 +1188,12 @@ public class DataPageViewModelTests : IAsyncDisposable
     // The type change rebuilds the applied filter's menu entry; the rebuilt entry must still count as
     // applied and stay out of the menu.
     [Fact]
-    public void GameAttributeTypeChangedElsewhere_WhileApplied_StaysOutOfTheMenu()
+    public void GameAttributeTypeChangedElsewhere_WhileApplied_RebuildsTheFilterInTheBar()
     {
         AttributeDefinition style = InsertStyleAttribute();
         InsertProxyAttribute();
         _viewModel = CreateViewModel();
-        Filters.Add("Style");
+        Assert.True(Filters.Add("Style").IsCheckboxFilter);
 
         AttributeDefinition editedElsewhere = _attributeRepository.GetAllAttributes(AttributeScope.Game).Single(a => a.Id == style.Id);
         editedElsewhere.Type = AttributeType.Bool;
@@ -1179,7 +1201,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         _viewModel.NotifyActivated();
 
         Assert.Equal([.. AlwaysApplied, "Style"], Filters.AppliedTitles);
-        Assert.Equal([.. BuiltInFilterTitles, "Proxy"], Filters.AddableTitles);
+        Assert.True(Filters.Applied("Style").IsBoolFilter);
     }
 
     private AttributeDefinition InsertProxyAttribute()

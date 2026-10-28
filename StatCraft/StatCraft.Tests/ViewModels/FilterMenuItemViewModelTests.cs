@@ -3,103 +3,216 @@ using System.Collections.ObjectModel;
 
 namespace StatCraft.Tests;
 
-// An add-menu entry used to be either one filter or a submenu of them. It can now be both at once — a
-// filter that is itself addable, with related filters nested beneath it — so everything the menu derives
-// from an entry has to account for both halves rather than picking one.
+// An add-menu entry is a factory for the filter it adds plus, optionally, a submenu of related entries.
+// Adding runs the factory, so the filters an entry has produced are the ones showing in the bar, and
+// removing one in the bar takes it back out of the entry.
 public class FilterMenuItemViewModelTests
 {
     [Fact]
-    public void ContainedFilters_EntryWithBothAFilterAndASubMenu_ReturnsItsOwnFilterAndTheNestedOnes()
+    public void Add_RunsTheFactoryAndKeepsWhatItProduced()
     {
-        BoolFilterSlotViewModel<string> own = Slot("4 Gate");
-        BoolFilterSlotViewModel<string> nested = Slot("4 Gate Proxy");
-        FilterMenuItemViewModel<string> item = new(own, SubMenu(nested));
+        FilterMenuItemViewModel<string> item = Item("Supply");
 
-        Assert.Equal([own, nested], item.ContainedFilters);
+        item.Add();
+
+        IFilterSlotViewModel<string> added = Assert.Single(item.AppliedFilters);
+        Assert.Equal("Supply", added.Title);
+        Assert.Equal([added], item.ContainedFilters);
     }
 
-    // ContainedFilters is what the menu collects applied filters from, so a nested filter has to reach the
-    // filter bar even when its parent entry carries a filter of its own.
+    // Each add builds its own filter, so the same dimension can be asked two different questions.
     [Fact]
-    public void AppliedFilters_NestedFilterUnderAFilterEntry_ShowsInTheBar()
+    public void Add_OnANonUniqueEntry_BuildsAFilterEachTime()
     {
-        BoolFilterSlotViewModel<string> own = Slot("4 Gate");
-        BoolFilterSlotViewModel<string> nested = Slot("4 Gate Proxy");
-        FilterMenuViewModel<string> menu = new([new FilterMenuItemViewModel<string>(own, SubMenu(nested))]);
+        FilterMenuItemViewModel<string> item = Item("Supply");
 
-        nested.IsApplied = true;
+        item.Add();
+        item.Add();
 
-        Assert.Equal([nested], menu.AppliedFilters);
+        Assert.Equal(2, item.AppliedFilters.Count);
+        Assert.NotSame(item.AppliedFilters[0], item.AppliedFilters[1]);
+        Assert.True(item.IsAvailable);
     }
 
-    // IsApplied hides the entry from the add menu, so it can only be true once there is nothing left to
-    // add — neither the entry's own filter nor anything beneath it.
+    // A unique entry leaves the menu while its filter is in the bar, and is offered again once it's gone.
     [Fact]
-    public void IsApplied_EntryWithBothAFilterAndASubMenu_IsTrueOnlyOnceBothHalvesAre()
+    public void IsAvailable_UniqueEntry_FollowsWhetherItsFilterIsInTheBar()
     {
-        BoolFilterSlotViewModel<string> own = Slot("4 Gate");
-        BoolFilterSlotViewModel<string> nested = Slot("4 Gate Proxy");
-        FilterMenuItemViewModel<string> item = new(own, SubMenu(nested));
+        FilterMenuItemViewModel<string> item = Item("Profile");
+        item.IsUnique = true;
         List<string?> changes = [];
         item.PropertyChanged += (_, e) => changes.Add(e.PropertyName);
 
-        Assert.False(item.IsApplied);
+        item.Add();
 
-        own.IsApplied = true;
-        Assert.False(item.IsApplied);
-        Assert.Contains(nameof(item.IsApplied), changes);
+        Assert.False(item.IsAvailable);
+        Assert.Contains(nameof(item.IsAvailable), changes);
 
-        nested.IsApplied = true;
-        Assert.True(item.IsApplied);
+        item.AppliedFilters[0].RemoveCommand.Execute(null);
+
+        Assert.Empty(item.AppliedFilters);
+        Assert.True(item.IsAvailable);
     }
 
-    // Only the half that still has something to offer stays in the menu.
     [Fact]
-    public void UnAppliedSubMenuItems_NestedFilterApplied_LeavesTheParentEntryOffered()
+    public void Add_OnAUniqueEntryAlreadyInTheBar_DoesNothing()
     {
-        BoolFilterSlotViewModel<string> own = Slot("4 Gate");
-        BoolFilterSlotViewModel<string> nested = Slot("4 Gate Proxy");
-        FilterMenuItemViewModel<string> item = new(own, SubMenu(nested));
+        FilterMenuItemViewModel<string> item = Item("Profile");
+        item.IsUnique = true;
+        item.Add();
 
-        nested.IsApplied = true;
+        item.Add();
 
-        Assert.False(item.IsApplied);
-        Assert.Empty(item.UnAppliedSubMenuItems!);
+        Assert.Single(item.AppliedFilters);
     }
 
-    // Criteria typed into either half have to reach whoever re-runs the filters.
+    // A mandatory filter can't be taken out of the bar at all, so its remove button clears it instead.
     [Fact]
-    public void Changed_RaisedByEitherHalf_IsForwarded()
+    public void RemovingAMandatoryFilter_LeavesItInTheBar()
     {
-        BoolFilterSlotViewModel<string> own = Slot("4 Gate");
-        BoolFilterSlotViewModel<string> nested = Slot("4 Gate Proxy");
-        FilterMenuItemViewModel<string> item = new(own, SubMenu(nested));
+        FilterMenuItemViewModel<string> item = new(() => new BoolFilterSlotViewModel<string>("Date", _ => true) { Mandatory = true }, "Date");
+        item.Add();
+        IBoolFilterSlotViewModel filter = (IBoolFilterSlotViewModel)item.AppliedFilters[0];
+        filter.Value = true;
+
+        filter.RemoveCommand.Execute(null);
+
+        Assert.Single(item.AppliedFilters);
+        Assert.Null(filter.Value);
+    }
+
+    // ContainedFilters is what the menu collects the bar's contents from, so a nested entry's filters have
+    // to reach it through every level above them.
+    [Fact]
+    public void ContainedFilters_ReturnsItsOwnFiltersAndThoseOfNestedEntries()
+    {
+        FilterMenuItemViewModel<string> nested = Item("4 Gate Proxy");
+        FilterMenuItemViewModel<string> item = new(() => Slot("4 Gate"), "4 Gate", [nested]);
+
+        item.Add();
+        nested.Add();
+
+        Assert.Equal([item.AppliedFilters[0], nested.AppliedFilters[0]], item.ContainedFilters);
+    }
+
+    [Fact]
+    public void AppliedFilters_NestedEntrysFilter_ShowsInTheMenusBar()
+    {
+        FilterMenuItemViewModel<string> nested = Item("4 Gate Proxy");
+        FilterMenuItemViewModel<string> item = new(() => Slot("4 Gate"), "4 Gate", [nested]);
+        FilterMenuViewModel<string> menu = new([item]);
+
+        nested.Add();
+
+        Assert.Equal([nested.AppliedFilters[0]], menu.AppliedFilters);
+    }
+
+    // A submenu is only worth showing while something under it can still be added, which is what keeps an
+    // empty "Game Attributes" or a race with no builds out of the menu.
+    [Fact]
+    public void IsAvailable_SubMenuEntry_FollowsWhetherAnythingUnderItIsAvailable()
+    {
+        FilterMenuItemViewModel<string> empty = new([], "Game Attributes");
+        Assert.False(empty.IsAvailable);
+
+        FilterMenuItemViewModel<string> unique = Item("Only One");
+        unique.IsUnique = true;
+        FilterMenuItemViewModel<string> parent = new([unique], "Game Attributes");
+        Assert.True(parent.IsAvailable);
+
+        unique.Add();
+
+        Assert.False(parent.IsAvailable);
+    }
+
+    // Criteria typed into any of an entry's filters, at any depth, have to reach whoever re-runs them.
+    [Fact]
+    public void Changed_RaisedByAnyOfItsFilters_IsForwarded()
+    {
+        FilterMenuItemViewModel<string> nested = Item("4 Gate Proxy");
+        FilterMenuItemViewModel<string> item = new(() => Slot("4 Gate"), "4 Gate", [nested]);
         int changed = 0;
         item.Changed += () => changed++;
 
-        own.Value = true;
-        Assert.Equal(1, changed);
+        item.Add();
+        nested.Add();
+        Assert.Equal(2, changed); //adding a filter is itself a change: an empty filter can still exclude
 
-        nested.Value = false;
-        Assert.Equal(2, changed);
+        ((IBoolFilterSlotViewModel)item.AppliedFilters[0]).Value = true;
+        ((IBoolFilterSlotViewModel)nested.AppliedFilters[0]).Value = false;
+
+        Assert.Equal(4, changed);
     }
 
-    // The entry names itself after its own filter, and follows a rename the same way a filter-only entry does.
     [Fact]
-    public void DisplayText_EntryWithBothAFilterAndASubMenu_FollowsItsOwnFiltersTitle()
+    public void Changed_FilterRemovedFromTheBar_IsForwarded()
     {
-        BoolFilterSlotViewModel<string> own = Slot("4 Gate");
-        FilterMenuItemViewModel<string> item = new(own, SubMenu(Slot("4 Gate Proxy")));
+        FilterMenuItemViewModel<string> item = Item("Supply");
+        item.Add();
+        int changed = 0;
+        item.Changed += () => changed++;
 
-        Assert.Equal("4 Gate", item.DisplayText);
+        item.AppliedFilters[0].RemoveCommand.Execute(null);
 
-        own.Title = "Four Gate";
-
-        Assert.Equal("Four Gate", item.DisplayText);
+        Assert.Equal(1, changed);
     }
+
+    // A renamed attribute keeps whatever was already added from it, under its new name.
+    [Fact]
+    public void Rename_RenamesTheEntryAndTheFiltersAlreadyAddedFromIt()
+    {
+        FilterMenuItemViewModel<string> item = Item("Supply");
+        item.Add();
+
+        item.Rename("Worker Count");
+
+        Assert.Equal("Worker Count", item.DisplayText);
+        Assert.Equal("Worker Count", item.AppliedFilters[0].Title);
+    }
+
+    // Build entries are rebuilt from a fresh tree whenever the Builds tab changes, and the filters the user
+    // had added have to carry over to the replacement entry still wired up.
+    [Fact]
+    public void AdoptAppliedFilters_MovesThemOverAndKeepsThemLive()
+    {
+        FilterMenuItemViewModel<string> previous = Item("4 Gate");
+        previous.Add();
+        IFilterSlotViewModel<string> filter = previous.AppliedFilters[0];
+
+        FilterMenuItemViewModel<string> replacement = Item("4 Gate");
+        int changed = 0;
+        replacement.Changed += () => changed++;
+        int previousChanged = 0;
+        previous.Changed += () => previousChanged++;
+
+        replacement.AdoptAppliedFilters(previous);
+
+        Assert.Empty(previous.AppliedFilters);
+        Assert.Equal([filter], replacement.AppliedFilters);
+
+        ((IBoolFilterSlotViewModel)filter).Value = true;
+
+        Assert.Equal(1, changed);
+        Assert.Equal(0, previousChanged);
+    }
+
+    [Fact]
+    public void Destroy_UnwiresTheFiltersItHadAdded()
+    {
+        FilterMenuItemViewModel<string> item = Item("Supply");
+        item.Add();
+        IFilterSlotViewModel<string> filter = item.AppliedFilters[0];
+        int changed = 0;
+        item.Changed += () => changed++;
+
+        item.Destroy();
+        ((IBoolFilterSlotViewModel)filter).Value = true;
+
+        Assert.Empty(item.AppliedFilters);
+        Assert.Equal(0, changed);
+    }
+
+    private static FilterMenuItemViewModel<string> Item(string title) => new(() => Slot(title), title);
 
     private static BoolFilterSlotViewModel<string> Slot(string title) => new(title, _ => true);
-
-    private static ObservableCollection<FilterMenuItemViewModel<string>> SubMenu(params BoolFilterSlotViewModel<string>[] slots) =>
-        new(slots.Select(s => new FilterMenuItemViewModel<string>(s)));
 }

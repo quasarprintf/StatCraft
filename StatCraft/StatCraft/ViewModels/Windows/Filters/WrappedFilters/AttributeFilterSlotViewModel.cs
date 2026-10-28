@@ -67,7 +67,6 @@ public partial class AttributeFilterSlotViewModel<T> : WrappedFilterSlotViewMode
         var oldFilter = _wrappedFilter;
         var newFilter = CreateWrapped(Attribute);
 
-        newFilter.IsApplied = oldFilter.IsApplied;
         newFilter.AllowIncludeUnset = oldFilter.AllowIncludeUnset;
         newFilter.IncludeUnset = oldFilter.IncludeUnset;
         newFilter.Mandatory = oldFilter.Mandatory;

@@ -31,56 +31,88 @@ public class DataPageFiltersViewModelTests : IDisposable
     }
 
     [Fact]
-    public void ExtraFilterSlots_AreHiddenByDefault_ExceptTheMandatoryProfileAndDateRange()
+    public void ExtraFilters_StartOutOfTheBar_ExceptTheMandatoryProfileAndDateRange()
     {
-        IFilterMenuViewModel menu = _filters.FilterMenu;
+        FilterPanel panel = FilterPanel.Of(_filters);
 
-        Assert.All(menu.MenuItems, slot => Assert.True(slot.Filter == null || slot.Filter.Mandatory || !slot.IsApplied));
-        // Map, Matchup, Outcome and Opponent MMR. The Game Attributes and Build submenus are both empty
-        // with nothing seeded, which counts as applied.
-        Assert.Equal(4, menu.MenuItems.Count(s => !s.IsApplied));
-        Assert.Equal([_filters.ProfileSlot, _filters.DateSlot], menu.AppliedFilters);
+        // Map, Matchup, Outcome and Opponent MMR. The Game Attributes and Build submenus are empty with
+        // nothing seeded, so they offer nothing and stay hidden.
+        Assert.Equal(["Map", "Matchup", "Outcome", "Opponent MMR"], panel.AddableTitles);
+        Assert.Equal(["Profile", "Date"], panel.AppliedTitles);
     }
 
     [Fact]
-    public void AddCommand_MakesSlotVisible()
+    public void AddingAnEntry_PutsItsFilterInTheBarAndLeavesTheMenuIfUnique()
     {
-        _filters.MapSlot.AddCommand.Execute(null);
+        FilterPanel panel = FilterPanel.Of(_filters);
 
-        Assert.True(_filters.MapSlot.IsApplied);
-        Assert.Contains(_filters.MapSlot, _filters.FilterMenu.AppliedFilters);
-        Assert.DoesNotContain(_filters.MapSlot, ((IFilterMenuViewModel)_filters.FilterMenu).MenuItems.Where(s => !s.IsApplied).Select(s => s.Filter));
+        panel.Add("Map");
+
+        Assert.Contains("Map", panel.AppliedTitles);
+        // The map a game was played on is one value, so asking about it twice says nothing new.
+        Assert.False(panel.IsOffered("Map"));
     }
 
     [Fact]
-    public void RemoveCommand_HidesSlotAndClearsSelection()
+    public void AddingANonUniqueEntry_CanBeDoneMoreThanOnce()
     {
-        Map altitude = new() { Name = "Altitude LE" };
-        Map deathaura = new() { Name = "Deauthaura LE" };
+        FilterPanel panel = FilterPanel.Of(_filters);
+
+        panel.Add("Outcome");
+        panel.Add("Outcome");
+
+        Assert.Equal(["Outcome", "Outcome"], panel.AppliedTitles.Where(t => t == "Outcome"));
+        Assert.True(panel.IsOffered("Outcome"));
+    }
+
+    [Fact]
+    public void RemovingAFilter_TakesItOutOfTheBarAndOffersItAgain()
+    {
+        Map altitude = new() { Name = "Altitude LE", Id = 1 };
+        Map deathaura = new() { Name = "Deauthaura LE", Id = 2 };
         _filters.RefreshMapOptions([altitude, deathaura]);
-        _filters.MapSlot.AddCommand.Execute(null);
-        CheckboxFilterOptionViewModel<int> option = _filters.MapSlot.Options[0];
-        option.IsChecked = true;
+        FilterPanel panel = FilterPanel.Of(_filters);
+        FilterHandle map = panel.Add("Map").Check("Altitude LE");
 
-        _filters.MapSlot.RemoveCommand.Execute(null);
+        map.Remove();
 
-        Assert.False(_filters.MapSlot.IsApplied);
-        Assert.All(_filters.MapSlot.Options, o => Assert.False(o.IsChecked));
+        Assert.DoesNotContain("Map", panel.AppliedTitles);
+        Assert.True(panel.IsOffered("Map"));
+        // Adding it again starts from scratch rather than resurrecting the old criteria.
+        Assert.Empty(panel.Add("Map").CheckedLabels);
     }
 
     [Fact]
-    public void RemoveCommand_OnNumericRangeSlot_ClearsMinAndMax()
+    public void RemovingAMandatoryFilter_KeepsItInTheBarAndClearsIt()
     {
-        // The MMR slot wraps a range slot per opponent, so its bounds are reached the way the page tests do.
-        FilterHandle mmr = new(_filters.MmrSlot);
+        FilterPanel panel = FilterPanel.Of(_filters);
+        FilterHandle date = panel.Applied("Date");
+        date.FromDate = new DateTime(2026, 1, 1);
+
+        date.Remove();
+
+        Assert.Contains("Date", panel.AppliedTitles);
+        Assert.Null(date.FromDate);
+    }
+
+    // A removed filter is discarded rather than reset, so the bounds can't come back with it.
+    [Fact]
+    public void RemovingANumericRangeFilter_ThenAddingItAgain_StartsWithNoBounds()
+    {
+        // The MMR filter wraps a range per opponent, so its bounds are reached the way the page tests do.
+        FilterPanel panel = FilterPanel.Of(_filters);
+        FilterHandle mmr = panel.Add("Opponent MMR");
         mmr.Min = 1000;
         mmr.Max = 2000;
 
-        _filters.MmrSlot.RemoveCommand.Execute(null);
+        mmr.Remove();
 
-        Assert.False(_filters.MmrSlot.IsApplied);
-        Assert.Null(mmr.Min);
-        Assert.Null(mmr.Max);
+        Assert.DoesNotContain("Opponent MMR", panel.AppliedTitles);
+
+        FilterHandle readded = panel.Add("Opponent MMR");
+
+        Assert.Null(readded.Min);
+        Assert.Null(readded.Max);
     }
 
     [Fact]
@@ -98,18 +130,31 @@ public class DataPageFiltersViewModelTests : IDisposable
     }
 
     [Fact]
-    public void RefreshMapOptions_PreservesCheckedStateByName()
+    public void RefreshMapOptions_PreservesCheckedStateById()
     {
         Map altitude = new() { Name = "Altitude", Id = 1 };
         Map deathaura = new() { Name = "Deauthaura", Id = 2 };
         Map leylines = new() { Name = "Ley Lines", Id = 3 };
         _filters.RefreshMapOptions([altitude, deathaura]);
-        _filters.MapSlot.Options.Single(o => o.Label == "Altitude").IsChecked = true;
+        FilterHandle map = FilterPanel.Of(_filters).Add("Map").Check("Altitude");
 
         _filters.RefreshMapOptions([altitude, deathaura, leylines]);
 
-        Assert.True(_filters.MapSlot.Options.Single(o => o.Label == "Altitude").IsChecked);
-        Assert.False(_filters.MapSlot.Options.Single(o => o.Label == "Ley Lines").IsChecked);
+        Assert.Equal(["Altitude"], map.CheckedLabels);
+        Assert.Equal(["Altitude", "Deauthaura", "Ley Lines"], map.OptionLabels);
+    }
+
+    // The map filter only exists while it is in the bar, so the options it is built with have to be the
+    // ones known at that point — including whichever were checked before it was last removed.
+    [Fact]
+    public void RefreshMapOptions_WithNoMapFilterInTheBar_StillFeedsTheNextOneAdded()
+    {
+        Map altitude = new() { Name = "Altitude", Id = 1 };
+        Map leylines = new() { Name = "Ley Lines", Id = 3 };
+
+        _filters.RefreshMapOptions([altitude, leylines]);
+
+        Assert.Equal(["Altitude", "Ley Lines"], FilterPanel.Of(_filters).Add("Map").OptionLabels);
     }
 
     [Fact]
@@ -155,8 +200,8 @@ public class DataPageFiltersViewModelTests : IDisposable
     public void GetFilter_Matchup_TeamGame_MatchesWhenAnyOpponentsMatchupIsChecked(Race checkedOpponent, bool expected)
     {
         GameData game = CreateGame(selfRace: 'T', opponents: [Opponent('Z'), Opponent('P')]);
-        _filters.MatchupSlot.AddCommand.Execute(null);
-        _filters.MatchupSlot.Options.Single(o => o.Value == (Race.Terran, checkedOpponent)).IsChecked = true;
+        FilterHandle matchup = FilterPanel.Of(_filters).Add("Matchup");
+        matchup.Check($"{Race.Terran.Display()}v{checkedOpponent.Display()}");
 
         Assert.Equal(expected, _filters.GetFilter().MatchesFilter(game));
     }
@@ -169,8 +214,8 @@ public class DataPageFiltersViewModelTests : IDisposable
     public void GetFilter_Matchup_OneVsOne_MatchesOnlyTheCheckedMatchup(Race checkedOpponent, bool expected)
     {
         GameData game = CreateGame(selfRace: 'T', opponents: [Opponent('P')]);
-        _filters.MatchupSlot.AddCommand.Execute(null);
-        _filters.MatchupSlot.Options.Single(o => o.Value == (Race.Terran, checkedOpponent)).IsChecked = true;
+        FilterHandle matchup = FilterPanel.Of(_filters).Add("Matchup");
+        matchup.Check($"{Race.Terran.Display()}v{checkedOpponent.Display()}");
 
         Assert.Equal(expected, _filters.GetFilter().MatchesFilter(game));
     }

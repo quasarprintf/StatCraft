@@ -1,53 +1,67 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
-using System.Text;
 
 namespace StatCraft.ViewModels.Windows.Filters;
 
 public interface IFilterMenuItemViewModel : INotifyPropertyChanged
 {
-    event EventHandler? IsAppliedChanged;
+    // Raised whenever this entry's own applied filters, or those of anything beneath it, are added to or
+    // removed from — what the bar and the menu both redraw off.
+    event EventHandler? AppliedFiltersChanged;
     IRelayCommand AddCommand { get; }
     event Action? Changed;
     string DisplayText { get; set; }
     Func<IFilterSlotViewModel>? FilterFactory { get; }
     IEnumerable<IFilterSlotViewModel> AppliedFilters { get; }
     IEnumerable<IFilterMenuItemViewModel>? SubMenuItems { get; }
-    IEnumerable<IFilterMenuItemViewModel>? UnAppliedSubMenuItems { get; }
     IEnumerable<IFilterSlotViewModel> ContainedFilters { get; }
+
+    // Whether this entry may be added more than once. Dimensions a game has exactly one of (its profile,
+    // when it was played, its map) are unique; anything that can be asked more than one question of —
+    // an attribute, a build — is not.
     public bool IsUnique { get; set; }
+
+    // Whether the add menu still has something to offer here, which is what shows or hides the entry.
     public bool IsAvailable { get; }
 }
+
+// One entry in the "+" menu: a factory for the filter it adds, a submenu of related entries, or both.
+// Adding runs the factory, so each add produces its own slot with its own criteria, and the slots an
+// entry has produced are the ones showing in the bar — removing one in the bar drops it from here.
 public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItemViewModel
 {
     public event Action? Changed;
-    public event EventHandler? IsAppliedChanged;
+    public event EventHandler? AppliedFiltersChanged;
     [ObservableProperty] public partial string DisplayText { get; set; }
     Func<IFilterSlotViewModel>? IFilterMenuItemViewModel.FilterFactory => FilterFactory;
     public Func<IFilterSlotViewModel<T>>? FilterFactory { get; private set; }
 
     IEnumerable<IFilterSlotViewModel> IFilterMenuItemViewModel.AppliedFilters => AppliedFilters;
-    public ObservableCollection<IFilterSlotViewModel<T>> AppliedFilters { get; private set; } = new ObservableCollection<IFilterSlotViewModel<T>>();
+    public ObservableCollection<IFilterSlotViewModel<T>> AppliedFilters { get; } = [];
 
     private ObservableCollection<FilterMenuItemViewModel<T>>? _subMenuItems { get; set; }
     public IEnumerable<IFilterMenuItemViewModel>? SubMenuItems => _subMenuItems;
-    public IEnumerable<IFilterMenuItemViewModel>? UnAppliedSubMenuItems => _subMenuItems;
     public bool IsUnique { get; set; }
-    public bool IsAvailable => !IsUnique || AppliedFilters.Count == 0;
+
+    // A unique entry drops out of the menu once it has been added; a submenu is only worth showing while
+    // something under it is still addable, which is what hides an empty "Game Attributes" or a race with
+    // no builds.
+    public bool IsAvailable =>
+        (FilterFactory != null && (!IsUnique || AppliedFilters.Count == 0))
+        || (_subMenuItems?.Any(i => i.IsAvailable) ?? false);
 
     IEnumerable<IFilterSlotViewModel> IFilterMenuItemViewModel.ContainedFilters => ContainedFilters;
     public IEnumerable<IFilterSlotViewModel<T>> ContainedFilters
     {
         get
         {
-            foreach (var filter in AppliedFilters)
+            foreach (IFilterSlotViewModel<T> filter in AppliedFilters)
                 yield return filter;
             if (_subMenuItems == null)
                 yield break;
@@ -67,6 +81,8 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
         DisplayText = name;
         WireSubMenu(subMenu);
     }
+    // An entry that is both a filter of its own and a submenu of related ones — e.g. a build that can be
+    // filtered on directly, with the builds nested under it offered beneath it.
     public FilterMenuItemViewModel(Func<IFilterSlotViewModel<T>> filterFactory, string name, ObservableCollection<FilterMenuItemViewModel<T>> subMenu)
     {
         DisplayText = name;
@@ -76,31 +92,59 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
 
     public void Destroy()
     {
+        foreach (IFilterSlotViewModel<T> filter in AppliedFilters)
+            UnWireFilter(filter);
+        AppliedFilters.Clear();
+
         if (_subMenuItems != null)
         {
-            foreach (var item in _subMenuItems)
+            foreach (FilterMenuItemViewModel<T> item in _subMenuItems)
                 UnWireSubMenuItem(item);
             _subMenuItems.CollectionChanged -= SubMenuChanged;
         }
         FilterFactory = null;
-        AppliedFilters = null;
         _subMenuItems = null;
     }
     public void DestroyRecursively()
     {
         if (_subMenuItems != null)
         {
-            foreach (var item in _subMenuItems)
+            foreach (FilterMenuItemViewModel<T> item in _subMenuItems)
                 item.DestroyRecursively();
         }
         Destroy();
+    }
+
+    // Renames the entry and every filter already added from it. The factory reads whatever it closed over,
+    // so filters added after this pick the new name up on their own.
+    public void Rename(string name)
+    {
+        DisplayText = name;
+        foreach (IFilterSlotViewModel<T> filter in AppliedFilters)
+            filter.Title = name;
+    }
+
+    // Moves another entry's applied filters onto this one, used where an entry is rebuilt from fresh
+    // source data (see DataPageFiltersViewModel.RefreshBuildMenu) — the filters are the user's own work
+    // and must survive a menu that was thrown away and rebuilt underneath them.
+    public void AdoptAppliedFilters(FilterMenuItemViewModel<T> previous)
+    {
+        foreach (IFilterSlotViewModel<T> filter in previous.AppliedFilters.ToList())
+        {
+            previous.UnWireFilter(filter);
+            previous.AppliedFilters.Remove(filter);
+            WireFilter(filter);
+            AppliedFilters.Add(filter);
+        }
+        previous.RaiseAppliedFiltersChanged();
+        RaiseAppliedFiltersChanged();
     }
 
     private void WireSubMenu(ObservableCollection<FilterMenuItemViewModel<T>> subMenu)
     {
         _subMenuItems = subMenu;
         _subMenuItems.CollectionChanged += SubMenuChanged;
-        foreach (var item in _subMenuItems)
+        foreach (FilterMenuItemViewModel<T> item in _subMenuItems)
             WireSubMenuItem(item);
     }
 
@@ -108,33 +152,47 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
     {
         if (e.NewItems != null)
         {
-            foreach (var newItem in e.NewItems)
+            foreach (object newItem in e.NewItems)
                 WireSubMenuItem((FilterMenuItemViewModel<T>)newItem);
         }
         if (e.OldItems != null)
         {
-            foreach (var oldItem in e.OldItems)
+            foreach (object oldItem in e.OldItems)
                 UnWireSubMenuItem((FilterMenuItemViewModel<T>)oldItem);
         }
-        IsAppliedChanged?.Invoke(this, EventArgs.Empty); 
-        OnPropertyChanged(nameof(UnAppliedSubMenuItems)); 
+        RaiseAppliedFiltersChanged();
     }
 
     private void WireSubMenuItem(IFilterMenuItemViewModel menuItem)
     {
-        menuItem.IsAppliedChanged += RefreshIsApplied;
+        menuItem.AppliedFiltersChanged += ForwardAppliedFiltersChanged;
         menuItem.Changed += ForwardChangedEvent;
     }
     private void UnWireSubMenuItem(IFilterMenuItemViewModel menuItem)
     {
-        menuItem.IsAppliedChanged -= RefreshIsApplied;
+        menuItem.AppliedFiltersChanged -= ForwardAppliedFiltersChanged;
         menuItem.Changed -= ForwardChangedEvent;
     }
-    private void RefreshIsApplied(object? sender, EventArgs e)
+
+    private void WireFilter(IFilterSlotViewModel<T> filter)
     {
-        IsAppliedChanged?.Invoke(this, EventArgs.Empty); 
-        OnPropertyChanged(nameof(UnAppliedSubMenuItems)); 
+        filter.Changed += ForwardChangedEvent;
+        filter.Removed += RemoveFilter;
     }
+    private void UnWireFilter(IFilterSlotViewModel<T> filter)
+    {
+        filter.Changed -= ForwardChangedEvent;
+        filter.Removed -= RemoveFilter;
+    }
+
+    private void ForwardAppliedFiltersChanged(object? sender, EventArgs e) => RaiseAppliedFiltersChanged();
+
+    private void RaiseAppliedFiltersChanged()
+    {
+        AppliedFiltersChanged?.Invoke(this, EventArgs.Empty);
+        OnPropertyChanged(nameof(IsAvailable));
+    }
+
     private void ForwardChangedEvent()
     {
         Changed?.Invoke();
@@ -143,14 +201,26 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
     [RelayCommand]
     public void Add()
     {
-        if (FilterFactory == null)
-        {
-            //TODO: log this, shouldn't happen
+        if (FilterFactory == null || !IsAvailable)
             return;
-        }
-        if (!IsAvailable)
+
+        IFilterSlotViewModel<T> filter = FilterFactory();
+        WireFilter(filter);
+        AppliedFilters.Add(filter);
+        RaiseAppliedFiltersChanged();
+
+        // A filter with no criteria of its own still constrains in one way: an attribute filter excludes
+        // whatever has no value for it at all, so the results have to be re-derived on an add as well.
+        Changed?.Invoke();
+    }
+
+    private void RemoveFilter(object? sender, EventArgs e)
+    {
+        if (sender is not IFilterSlotViewModel<T> filter || !AppliedFilters.Remove(filter))
             return;
-        AppliedFilters.Add(FilterFactory());
-        RefreshIsApplied(null, null); //TODO: clean this up
+
+        UnWireFilter(filter);
+        RaiseAppliedFiltersChanged();
+        Changed?.Invoke();
     }
 }

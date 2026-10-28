@@ -30,13 +30,20 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     // exactly one explicit reload right afterward.
     private bool _suppressChangeEvents;
 
+    // Profile and date range are mandatory as well as unique: they are added once here and can never be
+    // taken out of the bar, so unlike every other filter they have a slot for the page's whole lifetime.
     public CheckboxFilterSlotViewModel<GameData, int> ProfileSlot { get; }
-
     public DateRangeFilterSlotViewModel<GameData> DateSlot { get; }
-    public CheckboxFilterSlotViewModel<GameData, int> MapSlot { get; }
-    public CheckboxFilterSlotViewModel<GameData, (Race, Race)> MatchupSlot { get; }
-    public CheckboxFilterSlotViewModel<GameData, GameOutcome> OutcomeSlot { get; }
-    public TemplatedFilterSlotViewModel<GameData,PlayerMmr> MmrSlot { get; }
+
+    // The map filter's options come from the loaded games rather than being fixed, and the filter itself
+    // only exists while it is in the bar — so the maps currently worth offering are kept here, and each
+    // filter the menu entry builds gets its own options made from them (see RefreshMapOptions).
+    private List<Map> _mapOptions = [];
+    private readonly FilterMenuItemViewModel<GameData> _mapMenuItem;
+
+    // One menu entry per game attribute, by definition, so a rename or a retype can find the entry it
+    // belongs to (and whatever has already been added from it).
+    private readonly Dictionary<AttributeDefinition, FilterMenuItemViewModel<GameData>> _gameAttributeItems = new();
     // The same build tree offered once per set of players, so "I played this build" and "my opponent
     // played this build" are separate criteria rather than one shared setting.
     private readonly BuildFilterScope[] _buildScopes;
@@ -70,24 +77,45 @@ public partial class DataPageFiltersViewModel : ViewModelBase
                 ProfileSelectionChanged?.Invoke();
         };
 
-        DateSlot = new DateRangeFilterSlotViewModel<GameData>("Date", g => g.ReplayData.ReplayTimestamp.ToLocalTime().Date)
+        FilterMenuItemViewModel<GameData> dateMenuItem = new FilterMenuItemViewModel<GameData>(() =>
+            new DateRangeFilterSlotViewModel<GameData>("Date", g => g.ReplayData.ReplayTimestamp.ToLocalTime().Date)
+            {
+                FromDate = DateTime.Today,
+                ToDate = DateTime.Today,
+                Mandatory = true
+            }, "Date"
+        )
         {
-            FromDate = DateTime.Today,
-            ToDate = DateTime.Today,
-            Mandatory = true
+            IsUnique = true
+        };
+        dateMenuItem.Add();
+        DateSlot = (DateRangeFilterSlotViewModel<GameData>)dateMenuItem.AppliedFilters[0];
+
+        // A game has one map, one profile and one date, so asking about any of them twice over says
+        // nothing new — those three are unique. Everything else can be asked of more than once.
+        _mapMenuItem = new FilterMenuItemViewModel<GameData>(() =>
+            new CheckboxFilterSlotViewModel<GameData, int>("Map", MapOptions(), g => [g.ReplayData.Map.Id], showSearch: true) { AllowIncludeUnset = false },
+            "Map"
+        )
+        {
+            IsUnique = true
         };
 
-        MapSlot = new CheckboxFilterSlotViewModel<GameData, int>("Map", [], g => [g.ReplayData.Map.Id], showSearch: true) { AllowIncludeUnset=false };
-        MatchupSlot = new CheckboxFilterSlotViewModel<GameData, (Race, Race)>("Matchup", BuildMatchupOptions(), GetGameMatchups, columns: 3) { AllowIncludeUnset=false };
-        OutcomeSlot = new CheckboxFilterSlotViewModel<GameData, GameOutcome>("Outcome", BuildOutcomeOptions(), g => [g.ReplayData.Win.AsGameOutcome()]) { AllowIncludeUnset=false };
+        FilterMenuItemViewModel<GameData> matchupMenuItem = new FilterMenuItemViewModel<GameData>(() =>
+            new CheckboxFilterSlotViewModel<GameData, (Race, Race)>("Matchup", BuildMatchupOptions(), GetGameMatchups, columns: 3) { AllowIncludeUnset = false },
+            "Matchup");
 
-        var innerMmrSlot = new NumericRangeFilterSlotViewModel<PlayerMmr>("Opponent MMR", m => m.Mmr) { AllowIncludeUnset=false };
-        MmrSlot = new TemplatedFilterSlotViewModel<GameData, PlayerMmr>(
-            f => new SequentialAnyFilter<GameData, PlayerMmr>(f, g => g.ReplayData.Opponents.Select(o => o.Mmr)),
-            innerMmrSlot)
-        {
-            AllowIncludeUnset=false 
-        };
+        FilterMenuItemViewModel<GameData> outcomeMenuItem = new FilterMenuItemViewModel<GameData>(() =>
+            new CheckboxFilterSlotViewModel<GameData, GameOutcome>("Outcome", BuildOutcomeOptions(), g => [g.ReplayData.Win.AsGameOutcome()]) { AllowIncludeUnset = false },
+            "Outcome");
+
+        FilterMenuItemViewModel<GameData> mmrMenuItem = new FilterMenuItemViewModel<GameData>(() =>
+            new TemplatedFilterSlotViewModel<GameData, PlayerMmr>(
+                f => new SequentialAnyFilter<GameData, PlayerMmr>(f, g => g.ReplayData.Opponents.Select(o => o.Mmr)),
+                new NumericRangeFilterSlotViewModel<PlayerMmr>("Opponent MMR", m => m.Mmr) { AllowIncludeUnset = false })
+            {
+                AllowIncludeUnset = false
+            }, "Opponent MMR");
 
         _buildScopes =
         [
@@ -98,20 +126,18 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         RefreshBuildMenu(buildRepository.GetAllBuilds());
 
         GameAttributeSlots = new ObservableCollection<FilterMenuItemViewModel<GameData>>();
-        foreach (var attribute in gameAttributes)
-        {
-            GameAttributeSlots.Add(new FilterMenuItemViewModel<GameData>(() => new AttributeFilterSlotViewModel<GameData>(attribute), attribute.Name));
-        }
+        foreach (AttributeDefinition attribute in gameAttributes)
+            GameAttributeSlots.Add(GameAttributeMenuItem(attribute));
         gameAttributes.CollectionChanged += GameAttributesChanged;
 
         FilterMenuItemViewModel<GameData>[] filterSlots = 
         [
             profileMenuItem,
-            new FilterMenuItemViewModel<GameData>(DateSlot),
-            new FilterMenuItemViewModel<GameData>(MapSlot),
-            new FilterMenuItemViewModel<GameData>(MatchupSlot), 
-            new FilterMenuItemViewModel<GameData>(OutcomeSlot),
-            new FilterMenuItemViewModel<GameData>(MmrSlot),
+            dateMenuItem,
+            _mapMenuItem,
+            matchupMenuItem,
+            outcomeMenuItem,
+            mmrMenuItem,
             .. _buildScopes.Select(scope => scope.MenuItem),
             new FilterMenuItemViewModel<GameData>(GameAttributeSlots, "Game Attributes")
         ];
@@ -123,35 +149,40 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         };
     }
 
-    private FilterMenuItemViewModel<GameData>? MenuItemFor(AttributeDefinition attribute)
+    // The factory closes over the definition, so an entry's future filters always read the current name
+    // and type; these three only have to catch up whatever has already been added from it.
+    private FilterMenuItemViewModel<GameData> GameAttributeMenuItem(AttributeDefinition attribute)
     {
-        //TODO: look for better way to do this
-        return GameAttributeSlots.FirstOrDefault(m => (m.Filter as AttributeFilterSlotViewModel<GameData>)?.Attribute.Id == attribute.Id);
+        FilterMenuItemViewModel<GameData> item = new FilterMenuItemViewModel<GameData>(
+            () => new AttributeFilterSlotViewModel<GameData>(attribute), attribute.Name);
+        _gameAttributeItems[attribute] = item;
+        return item;
     }
+
+    private IEnumerable<AttributeFilterSlotViewModel<GameData>> AppliedAttributeSlots(AttributeDefinition attribute) =>
+        _gameAttributeItems.TryGetValue(attribute, out FilterMenuItemViewModel<GameData>? item)
+            ? item.AppliedFilters.OfType<AttributeFilterSlotViewModel<GameData>>().ToList()
+            : [];
+
     internal void RenameAttributeSlot(AttributeDefinition attribute)
     {
-        FilterMenuItemViewModel<GameData>? item = MenuItemFor(attribute);
-        if (item?.Filter == null)
-            return;
-
-        item.Filter.Title = attribute.Name;
+        if (_gameAttributeItems.TryGetValue(attribute, out FilterMenuItemViewModel<GameData>? item))
+            item.Rename(attribute.Name);
     }
 
     //underlying slot type is tied to attribute type, needs to be rebuilt when type changes
     internal void ReplaceAttributeSlot(AttributeDefinition attribute)
     {
-        FilterMenuItemViewModel<GameData>? item = MenuItemFor(attribute);
-        if (item == null)
-            return;
-
-        ((AttributeFilterSlotViewModel<GameData>)item.Filter!).Rebuild();
+        foreach (AttributeFilterSlotViewModel<GameData> applied in AppliedAttributeSlots(attribute))
+            applied.Rebuild();
     }
 
     // A Values slot builds its checkbox list when it's created, so options added or removed afterwards
     // have to be patched in.
     internal void RefreshAttributeSlotOptions(AttributeDefinition attribute)
     {
-        (MenuItemFor(attribute)?.Filter as AttributeFilterSlotViewModel<GameData>)?.Refresh();
+        foreach (AttributeFilterSlotViewModel<GameData> applied in AppliedAttributeSlots(attribute))
+            applied.Refresh();
     }
 
     // Rebuilds the profile checkbox list (e.g. after linking a new account), preserving checked
@@ -165,17 +196,26 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         ProfileSlot.ReplaceOptions(newOptions);
     }
 
-    // Rebuilds the map filter's option list from the currently-loaded games' distinct map names,
-    // preserving checked state by map name across the rebuild.
-    internal void RefreshMapOptions(IEnumerable<Map> distinctMapNames)
+    // Rebuilds the map filter's option list from the currently-loaded games' maps, preserving checked
+    // state by map id across the rebuild — both for the filter currently in the bar, if there is one, and
+    // for whichever one the menu entry builds next.
+    internal void RefreshMapOptions(IEnumerable<Map> distinctMaps)
     {
-        HashSet<int> previouslyChecked = MapSlot.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
+        _mapOptions = distinctMaps.OrderBy(m => m.Name).ToList();
 
-        IEnumerable<CheckboxFilterOptionViewModel<int>> newOptions = distinctMapNames
-            .OrderBy(m => m.Name)
-            .Select(m => new CheckboxFilterOptionViewModel<int>(m.Id, m.Name) { IsChecked = previouslyChecked.Contains(m.Id) });
-        MapSlot.ReplaceOptions(newOptions);
+        CheckboxFilterSlotViewModel<GameData, int>? applied = AppliedMapSlot;
+        if (applied == null)
+            return;
+
+        HashSet<int> previouslyChecked = applied.Options.Where(o => o.IsChecked).Select(o => o.Value).ToHashSet();
+        applied.ReplaceOptions(MapOptions().Select(o => { o.IsChecked = previouslyChecked.Contains(o.Value); return o; }));
     }
+
+    private List<CheckboxFilterOptionViewModel<int>> MapOptions() =>
+        _mapOptions.Select(m => new CheckboxFilterOptionViewModel<int>(m.Id, m.Name)).ToList();
+
+    private CheckboxFilterSlotViewModel<GameData, int>? AppliedMapSlot =>
+        _mapMenuItem.AppliedFilters.OfType<CheckboxFilterSlotViewModel<GameData, int>>().FirstOrDefault();
 
     private void GameAttributesChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
@@ -184,15 +224,17 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             for (int i = 0; i < e.NewItems.Count; ++i) 
             {
                 AttributeDefinition attribute = (AttributeDefinition)e.NewItems[i]!;
-                IFilterSlotViewModel<GameData> filterSlot = new AttributeFilterSlotViewModel<GameData>(attribute);
-                GameAttributeSlots.Insert(i + e.NewStartingIndex, new FilterMenuItemViewModel<GameData>(filterSlot));
+                GameAttributeSlots.Insert(i + e.NewStartingIndex, GameAttributeMenuItem(attribute));
             }
         }
         if (e.OldItems != null)
         {
-            for (int i = 0; i < e.OldItems.Count; ++i) 
+            foreach (object oldItem in e.OldItems)
             {
+                FilterMenuItemViewModel<GameData> item = GameAttributeSlots[e.OldStartingIndex];
                 GameAttributeSlots.RemoveAt(e.OldStartingIndex);
+                _gameAttributeItems.Remove((AttributeDefinition)oldItem);
+                item.Destroy();
             }
         }
     }
@@ -250,58 +292,66 @@ public partial class DataPageFiltersViewModel : ViewModelBase
 
     public void RefreshBuildMenu(List<BuildNode> roots)
     {
-        HashSet<int> newBuildIds = roots.SelectMany(b => b.EnumerateDescendants().Append(b)).Select(b => b.Id).ToHashSet();
         foreach (BuildFilterScope scope in _buildScopes)
-            RefreshBuildMenu(scope, roots, newBuildIds);
+            RefreshBuildMenu(scope, roots);
     }
 
-    private void RefreshBuildMenu(BuildFilterScope scope, List<BuildNode> roots, HashSet<int> newBuildIds)
+    private void RefreshBuildMenu(BuildFilterScope scope, List<BuildNode> roots)
     {
+        Dictionary<int, FilterMenuItemViewModel<GameData>> previousItems = scope.ItemsByBuildId;
+        scope.ItemsByBuildId = new Dictionary<int, FilterMenuItemViewModel<GameData>>();
+
+        // Built before the old entries are torn down, because each new entry takes over the filters its
+        // predecessor had added — an edit on the Builds tab mustn't discard criteria entered here. A build
+        // that no longer exists simply isn't adopted, so its filters leave the bar with it.
+        List<FilterMenuItemViewModel<GameData>> raceItems = [];
+        foreach (Race race in Enum.GetValues<Race>())
+        {
+            ObservableCollection<FilterMenuItemViewModel<GameData>> raceBuilds =
+                new(roots.Where(b => b.PlayerRace == race).Select(build => BuildMenuItem(scope, build, previousItems)));
+            raceItems.Add(new FilterMenuItemViewModel<GameData>(raceBuilds, race.Display()));
+        }
+
         for (int index = scope.RaceItems.Count - 1; index >= 0; index--)
         {
             scope.RaceItems[index].DestroyRecursively();
             scope.RaceItems.RemoveAt(index); //do not replace this with an outside-of-loop .Clear() call. .Clear doesn't include OldItems in its notify event
         }
-        foreach (Race race in Enum.GetValues<Race>())
-        {
-            ObservableCollection<FilterMenuItemViewModel<GameData>> raceBuilds =
-                new(roots.Where(b => b.PlayerRace == race).Select(build => BuildMenuItem(scope, build)));
-            scope.RaceItems.Add(new FilterMenuItemViewModel<GameData>(raceBuilds, race.Display()));
-        }
-
-        foreach (int oldBuildId in scope.Filters.Keys)
-        {
-            if (!newBuildIds.Contains(oldBuildId))
-                scope.Filters.Remove(oldBuildId);
-        }
+        foreach (FilterMenuItemViewModel<GameData> raceItem in raceItems)
+            scope.RaceItems.Add(raceItem);
     }
 
-    private FilterMenuItemViewModel<GameData> BuildMenuItem(BuildFilterScope scope, BuildNode build)
+    private FilterMenuItemViewModel<GameData> BuildMenuItem(BuildFilterScope scope, BuildNode build,
+        Dictionary<int, FilterMenuItemViewModel<GameData>> previousItems)
     {
-        if (scope.Filters.TryGetValue(build.Id, out BuildFilterSlotViewModel? slot))
-        {
-            slot.Rebuild(build);
-        }
-        else
-        {
-            slot = new(build, scope.Players);
-            scope.Filters[build.Id] = slot;
-        }
-        if (build.Children.Count == 0)
-            return new FilterMenuItemViewModel<GameData>(slot);
+        FilterMenuItemViewModel<GameData> item = build.Children.Count == 0
+            ? new FilterMenuItemViewModel<GameData>(() => new BuildFilterSlotViewModel(build, scope.Players), build.Name)
+            : new FilterMenuItemViewModel<GameData>(() => new BuildFilterSlotViewModel(build, scope.Players), build.Name,
+                new ObservableCollection<FilterMenuItemViewModel<GameData>>(build.Children.Select(child => BuildMenuItem(scope, child, previousItems))));
 
-        ObservableCollection<FilterMenuItemViewModel<GameData>> children = new(build.Children.Select(child => BuildMenuItem(scope, child)));
-        return new FilterMenuItemViewModel<GameData>(slot, children);
+        if (previousItems.TryGetValue(build.Id, out FilterMenuItemViewModel<GameData>? previousItem))
+        {
+            item.AdoptAppliedFilters(previousItem);
+            // The adopted filters were built against the previous tree's node, which may have been
+            // renamed, retyped or given new details since.
+            foreach (BuildFilterSlotViewModel adopted in item.AppliedFilters.OfType<BuildFilterSlotViewModel>())
+                adopted.Rebuild(build);
+        }
+
+        scope.ItemsByBuildId[build.Id] = item;
+        return item;
     }
 
-    // One set of players' builds: its own menu entry, its own slots, and its own criteria, all built from
-    // the same build tree. Filters are kept by build id across a refresh so an edit on the Builds tab
-    // doesn't discard what the user has already entered here (see BuildFilterSlotViewModel.Rebuild).
+    // One set of players' builds: its own menu entries, and its own filters once the user adds any, all
+    // built from the same build tree.
     private sealed class BuildFilterScope
     {
         public Func<GameData, IEnumerable<GamePlayer>> Players { get; }
         public ObservableCollection<FilterMenuItemViewModel<GameData>> RaceItems { get; } = [];
-        public Dictionary<int, BuildFilterSlotViewModel> Filters { get; } = new();
+
+        // The entries from the last refresh, by build id, so the next one can hand each build's filters to
+        // its replacement entry.
+        public Dictionary<int, FilterMenuItemViewModel<GameData>> ItemsByBuildId { get; set; } = new();
         public FilterMenuItemViewModel<GameData> MenuItem { get; }
 
         public BuildFilterScope(string title, Func<GameData, IEnumerable<GamePlayer>> players)

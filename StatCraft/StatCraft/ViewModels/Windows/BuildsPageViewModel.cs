@@ -199,14 +199,15 @@ public partial class BuildsPageViewModel : ViewModelBase
             {
                 cachedAttr.Name = dbAttr.Name;
                 if (_filterMenuItems.TryGetValue(cachedAttr, out FilterMenuItemViewModel<BuildNode>? slot))
-                    slot.Filter!.Title = dbAttr.Name;
+                    slot.Rename(dbAttr.Name);
             }
 
             if (cachedAttr.Type != dbAttr.Type)
             {
                 cachedAttr.Type = dbAttr.Type;
                 if (_filterMenuItems.TryGetValue(cachedAttr, out FilterMenuItemViewModel<BuildNode>? slot))
-                    ((AttributeFilterSlotViewModel<BuildNode>)slot.Filter!).Rebuild();
+                    foreach (AttributeFilterSlotViewModel<BuildNode> applied in slot.AppliedFilters.OfType<AttributeFilterSlotViewModel<BuildNode>>().ToList())
+                        applied.Rebuild();
             }
 
             if (dbAttr.IsMandatory != cachedAttr.IsMandatory)
@@ -294,11 +295,11 @@ public partial class BuildsPageViewModel : ViewModelBase
         if (!changed)
             return;
 
-        if (_filterMenuItems.TryGetValue(attribute, out FilterMenuItemViewModel<BuildNode>? slot) &&
-            slot.Filter is AttributeFilterSlotViewModel<BuildNode> attributeSlot)
-        {
-            attributeSlot.Refresh();
-        }
+        if (!_filterMenuItems.TryGetValue(attribute, out FilterMenuItemViewModel<BuildNode>? slot))
+            return;
+
+        foreach (AttributeFilterSlotViewModel<BuildNode> applied in slot.AppliedFilters.OfType<AttributeFilterSlotViewModel<BuildNode>>().ToList())
+            applied.Refresh();
     }
 
     private void RemoveAttributeRecursively(BuildNode node, AttributeDefinition attribute)
