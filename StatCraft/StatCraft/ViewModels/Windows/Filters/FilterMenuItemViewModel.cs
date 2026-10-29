@@ -92,15 +92,6 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
         FilterFactory = null;
         _subMenuItems = null;
     }
-    public void DestroyRecursively()
-    {
-        if (_subMenuItems != null)
-        {
-            foreach (FilterMenuItemViewModel<T> item in _subMenuItems)
-                item.DestroyRecursively();
-        }
-        Destroy();
-    }
 
     // Renames the entry and every filter already added from it. The factory reads whatever it closed over,
     // so filters added after this pick the new name up on their own.
@@ -109,22 +100,6 @@ public partial class FilterMenuItemViewModel<T> : ViewModelBase, IFilterMenuItem
         DisplayText = name;
         foreach (IFilterSlotViewModel<T> filter in AppliedFilters)
             filter.Title = name;
-    }
-
-    // Moves another entry's applied filters onto this one, used where an entry is rebuilt from fresh
-    // source data (see DataPageFiltersViewModel.RefreshBuildMenu) — the filters are the user's own work
-    // and must survive a menu that was thrown away and rebuilt underneath them.
-    public void AdoptAppliedFilters(FilterMenuItemViewModel<T> previous)
-    {
-        foreach (IFilterSlotViewModel<T> filter in previous.AppliedFilters.ToList())
-        {
-            previous.UnWireFilter(filter);
-            previous.AppliedFilters.Remove(filter);
-            WireFilter(filter);
-            AppliedFilters.Add(filter);
-        }
-        previous.RaiseAppliedFiltersChanged();
-        RaiseAppliedFiltersChanged();
     }
 
     private void WireSubMenu(ObservableCollection<FilterMenuItemViewModel<T>> subMenu)

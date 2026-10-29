@@ -79,7 +79,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     }
 
     // Separate from the constructor because some filters snapshot the database when the page is built —
-    // the Build slot reads the whole build tree once — so a test needing those has to seed first and
+    // the build filters read one build tree per matchup — so a test needing those has to seed first and
     // then rebuild the page.
     private DataPageViewModel CreateViewModel()
     {
@@ -303,37 +303,37 @@ public class DataPageViewModelTests : IAsyncDisposable
         Assert.Equal(["Rush"], filter.CheckedLabels);
     }
 
-    // Recreated from the deleted GameDataFilterTests, which were the only cover for build filtering. Each
-    // build in the tree is its own entry in the add menu now, rather than one "Build" filter with a
-    // checkbox per build, so filtering on a build means adding that build's own entry.
+    // Recreated from the deleted GameDataFilterTests, which were the only cover for build filtering. The
+    // add menu offers one entry per matchup rather than one per build, so filtering on a build means
+    // adding its matchup's entry and picking the build in the filter that puts in the bar.
     [Fact]
-    public async Task Filter_Build_AddedBuild_KeepsAGameThatPickedIt()
+    public async Task Filter_Build_PickedBuild_KeepsAGameThatPickedIt()
     {
         BuildNode build = InsertBuild("4 Gate");
         GameData game = InsertGameWithBuild(build);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("My Build", build.Name);
+        Filters.Add("My Build", "PvT").SelectBuild(build.Name);
 
         Assert.Contains(_viewModel.Games, r => r.GameId == game.GameId);
     }
 
-    // A build entry covers its own subtree by default (BuildFilterSlotViewModel.IncludeDescendants), so
-    // the game picked the child and the filter is the parent's.
+    // A picked build covers its own subtree by default (BuildFilterSlotViewModel.IncludeDescendants), so
+    // the game picked the child and the filter is on the parent.
     [Fact]
-    public async Task Filter_Build_AddedBuild_KeepsAGameThatPickedADescendant()
+    public async Task Filter_Build_PickedBuild_KeepsAGameThatPickedADescendant()
     {
         BuildNode parent = InsertBuild("4 Gate");
         BuildNode child = InsertBuild("4 Gate into Blink", parent);
         GameData game = InsertGameWithBuild(child);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("My Build", parent.Name);
+        Filters.Add("My Build", "PvT").SelectBuild(parent.Name);
 
         Assert.Contains(_viewModel.Games, r => r.GameId == game.GameId);
     }
 
-    // Turning that off narrows the filter to the build itself.
+    // Turning that off narrows the filter to the picked build itself.
     [Fact]
     public async Task Filter_Build_DescendantsExcluded_DropsAGameThatPickedADescendant()
     {
@@ -342,53 +342,86 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGameWithBuild(child);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("My Build", parent.Name).IncludeDescendants = false;
+        Filters.Add("My Build", "PvT").SelectBuild(parent.Name).IncludeDescendants = false;
 
         Assert.Empty(_viewModel.Games);
     }
 
     // The other direction must not match: picking the parent is not picking the child.
     [Fact]
-    public async Task Filter_Build_AddedDescendant_ExcludesAGameThatPickedTheParent()
+    public async Task Filter_Build_PickedDescendant_ExcludesAGameThatPickedTheParent()
     {
         BuildNode parent = InsertBuild("4 Gate");
         BuildNode child = InsertBuild("4 Gate into Blink", parent);
         InsertGameWithBuild(parent);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("My Build", child.Name);
+        Filters.Add("My Build", "PvT").SelectBuild(child.Name);
 
         Assert.Empty(_viewModel.Games);
     }
 
     [Fact]
-    public async Task Filter_Build_AddedBuild_ExcludesAGameThatPickedAnotherOne()
+    public async Task Filter_Build_PickedBuild_ExcludesAGameThatPickedAnotherOne()
     {
         BuildNode picked = InsertBuild("4 Gate");
         BuildNode other = InsertBuild("Cannon Rush");
         InsertGameWithBuild(picked);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("My Build", other.Name);
+        Filters.Add("My Build", "PvT").SelectBuild(other.Name);
 
         Assert.Empty(_viewModel.Games);
     }
 
-    // A game with no build at all is excluded by any build filter.
+    // A game with no build at all is excluded by a build filter with a build picked.
     [Fact]
-    public async Task Filter_Build_AddedBuild_ExcludesAGameWithNoBuild()
+    public async Task Filter_Build_PickedBuild_ExcludesAGameWithNoBuild()
     {
         BuildNode build = InsertBuild("4 Gate");
-        InsertGame();
+        InsertGame(selfRace: 'P');
         _viewModel = CreateViewModel();
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("My Build", build.Name);
+        Filters.Add("My Build", "PvT").SelectBuild(build.Name);
 
         Assert.Empty(_viewModel.Games);
     }
 
-    // The same build tree is offered once per set of players, each with its own filters, so the build the
+    // Until a build is picked the filter is in the bar without asking anything of a game — a build filter
+    // with no build is the same "added but empty" state as every other filter's.
+    [Fact]
+    public async Task Filter_Build_NoBuildPicked_ShowsEveryGame()
+    {
+        BuildNode build = InsertBuild("4 Gate");
+        InsertGameWithBuild(build);
+        InsertGame(selfRace: 'P');
+        _viewModel = CreateViewModel();
+        await LoadGamesWithNoDateRange();
+
+        Filters.Add("My Build", "PvT");
+
+        Assert.Equal(2, _viewModel.Games.Count);
+    }
+
+    // And picking "(none)" again goes back to that state, rather than leaving the last build in force.
+    [Fact]
+    public async Task Filter_Build_BuildUnpicked_ShowsEveryGameAgain()
+    {
+        BuildNode build = InsertBuild("4 Gate");
+        InsertGameWithBuild(build);
+        InsertGame(selfRace: 'P');
+        _viewModel = CreateViewModel();
+        await LoadGamesWithNoDateRange();
+        FilterHandle filter = Filters.Add("My Build", "PvT").SelectBuild(build.Name);
+        Assert.Single(_viewModel.Games);
+
+        filter.SelectBuild(null);
+
+        Assert.Equal(2, _viewModel.Games.Count);
+    }
+
+    // The same matchup is offered once per set of players, each with its own filters, so the build the
     // user played and the build they played against are separate questions.
     [Fact]
     public async Task Filter_Build_OpponentsBuild_KeepsAGameWhoseOpponentPickedIt()
@@ -397,7 +430,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         GameData game = InsertGameWithOpponentBuild(build);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("Opponents Build", build.Name);
+        Filters.Add("Opponents Build", "PvZ").SelectBuild(build.Name);
 
         Assert.Contains(_viewModel.Games, r => r.GameId == game.GameId);
     }
@@ -409,7 +442,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGameWithOpponentBuild(build);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("My Build", build.Name);
+        Filters.Add("My Build", "PvZ").SelectBuild(build.Name);
 
         Assert.Empty(_viewModel.Games);
     }
@@ -421,46 +454,180 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGameWithBuild(build);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("Opponents Build", build.Name);
+        Filters.Add("Opponents Build", "PvT").SelectBuild(build.Name);
 
         Assert.Empty(_viewModel.Games);
     }
 
-    // Each set of players gets its own slot for the same build, so adding one leaves the others on offer.
+    // Each set of players gets its own entry for the same matchup, and the entries are not unique, so
+    // adding one leaves it and every other set on offer.
     [Fact]
-    public void Filter_Build_AddingOneSetsBuild_LeavesTheOtherSetsOffered()
+    public void Filter_Build_AddingOneSetsMatchup_LeavesTheOtherSetsOffered()
     {
         BuildNode build = InsertBuild("4 Gate");
         _viewModel = CreateViewModel();
 
-        Filters.Add("My Build", build.Name);
+        Filters.Add("My Build", "PvT").SelectBuild(build.Name);
 
-        Assert.True(Filters.IsOffered("Allies Build", build.Name));
-        Assert.True(Filters.IsOffered("Opponents Build", build.Name));
-        Assert.Equal([build.Name], Filters.AppliedTitles.Where(t => t == build.Name));
+        Assert.True(Filters.IsOffered("My Build", "PvT"));
+        Assert.True(Filters.IsOffered("Allies Build", "PvT"));
+        Assert.True(Filters.IsOffered("Opponents Build", "PvT"));
+        // The scope and the matchup both have to be visible in the bar, since neither is implied by the
+        // build the user then picks.
+        Assert.Equal(["My Build PvT"], Filters.AppliedTitles.Where(t => t.Contains("PvT")));
     }
 
-    private BuildNode InsertBuild(string name, BuildNode? parent = null)
+    // Each entry offers only the builds filed under its own matchup — the reason there is one entry per
+    // matchup rather than one per build.
+    [Fact]
+    public void Filter_Build_MatchupEntry_OffersOnlyTheBuildsFiledUnderThatMatchup()
     {
-        BuildNode node = new() { Name = name, PlayerRace = Race.Protoss };
+        InsertBuild("Cannon Rush", matchups: Matchups.VsZ);
+        InsertBuild("Blink All In", matchups: Matchups.VsT);
+        _viewModel = CreateViewModel();
+
+        Assert.Equal(["Cannon Rush"], Filters.Preview("My Build", "PvZ").BuildOptions);
+        Assert.Equal(["Blink All In"], Filters.Preview("My Build", "PvT").BuildOptions);
+    }
+
+    // A matchup with no builds filed under it has nothing for a filter to pick, so it isn't offered — nor
+    // is a player race with no builds at all, nor the whole scope before any build exists.
+    [Fact]
+    public void Filter_Build_OnlyMatchupsWithBuildsAreOffered()
+    {
+        Assert.Empty(Filters.AddableTitlesIn("My Build"));
+
+        InsertBuild("4 Gate", matchups: Matchups.VsT | Matchups.VsP);
+        _viewModel = CreateViewModel();
+
+        Assert.Equal(["PvT", "PvP"], Filters.AddableTitlesIn("My Build"));
+    }
+
+    // The builds a matchup offers come from the same live tree the Data tab's rows pick from, so a build
+    // added on the Builds tab is offered here as soon as the tab is activated again.
+    [Fact]
+    public void Filter_Build_BuildAddedElsewhere_IsOfferedByItsMatchupsPicker()
+    {
+        InsertBuild("4 Gate");
+        _viewModel = CreateViewModel();
+        FilterHandle filter = Filters.Add("My Build", "PvT");
+
+        InsertBuild("Cannon Rush");
+        _viewModel.NotifyActivated();
+
+        Assert.Equal(["4 Gate", "Cannon Rush"], filter.BuildOptions);
+    }
+
+    // The tree is refilled with fresh BuildNode instances on every reload, so what a filter in the bar is
+    // holding has to be looked up again rather than left pointing at the old one.
+    [Fact]
+    public async Task Filter_Build_PickedBuildDeletedElsewhere_ClearsThePick()
+    {
+        BuildNode picked = InsertBuild("4 Gate");
+        InsertBuild("Cannon Rush");
+        InsertGameWithBuild(picked);
+        await LoadGamesWithNoDateRange();
+        FilterHandle filter = Filters.Add("My Build", "PvT").SelectBuild(picked.Name);
+        Assert.Single(_viewModel.Games);
+
+        _buildRepository.DeleteBuild(picked.Id);
+        _viewModel.NotifyActivated();
+
+        Assert.Null(filter.PickedBuild);
+        Assert.Equal(["Cannon Rush"], filter.BuildOptions);
+        // Nothing picked, so nothing constrained — the game it was keeping is back.
+        Assert.Single(_viewModel.Games);
+    }
+
+    // With the last of a matchup's builds gone the entry stops being offered, and the filters added from
+    // it go out of the bar with it: there is no build left for them to pick.
+    [Fact]
+    public async Task Filter_Build_LastBuildOfAMatchupDeletedElsewhere_TakesItsFiltersOutOfTheBar()
+    {
+        BuildNode build = InsertBuild("4 Gate");
+        InsertGameWithBuild(build);
+        await LoadGamesWithNoDateRange();
+        Filters.Add("My Build", "PvT").SelectBuild(build.Name);
+
+        _buildRepository.DeleteBuild(build.Id);
+        _viewModel.NotifyActivated();
+
+        Assert.Equal(AlwaysApplied, Filters.AppliedTitles);
+        Assert.Empty(Filters.AddableTitlesIn("My Build"));
+    }
+
+    // Picking a build shows a filter field for each detail it records, so the games that picked it can be
+    // narrowed by what was recorded for them.
+    [Fact]
+    public void Filter_Build_PickingABuild_ShowsAFilterFieldForEachOfItsDetails()
+    {
+        BuildNode build = InsertBuild("4 Gate");
+        InsertBuildDetail(build, "Supply", AttributeType.Numeric);
+        BuildNode other = InsertBuild("Cannon Rush");
+        _viewModel = CreateViewModel();
+
+        FilterHandle filter = Filters.Add("My Build", "PvT");
+        Assert.Empty(filter.DetailTitles);
+
+        filter.SelectBuild(build.Name);
+
+        Assert.Equal(["Supply"], filter.DetailTitles);
+        Assert.True(filter.Detail("Supply").IsNumericRangeFilter);
+
+        // The fields belong to the build that was picked, so picking another takes them away with it.
+        filter.SelectBuild(other.Name);
+
+        Assert.Empty(filter.DetailTitles);
+    }
+
+    // A detail added on the Builds tab while a filter is already on that build shows up as a field for it,
+    // the same way it shows up as an editor on a row that picked it.
+    [Fact]
+    public void Filter_Build_DetailAddedElsewhere_WhilePicked_ShowsUpAsAField()
+    {
+        BuildNode build = InsertBuild("4 Gate");
+        _viewModel = CreateViewModel();
+        FilterHandle filter = Filters.Add("My Build", "PvT").SelectBuild(build.Name);
+        Assert.Empty(filter.DetailTitles);
+
+        InsertBuildDetail(build, "Supply", AttributeType.Numeric);
+        _viewModel.NotifyActivated();
+
+        Assert.Equal("4 Gate", filter.PickedBuild);
+        Assert.Equal(["Supply"], filter.DetailTitles);
+    }
+
+    private BuildNode InsertBuild(string name, BuildNode? parent = null,
+        Matchups matchups = Matchups.VsZ | Matchups.VsT | Matchups.VsP)
+    {
+        BuildNode node = new() { Name = name, PlayerRace = Race.Protoss, Matchups = matchups };
         _buildRepository.InsertBuild(node, parent?.Id, 0);
         return node;
     }
 
-    // The build menu is derived from the build tree once, when the page is constructed, so the page is
-    // rebuilt after the builds exist — otherwise the menu would have no entry for them.
+    private AttributeDefinition InsertBuildDetail(BuildNode build, string name, AttributeType type)
+    {
+        AttributeValue detail = new(new AttributeDefinition(AttributeScope.BuildDetail) { Name = name, Type = type });
+        _buildRepository.InsertBuildDetailAttribute(detail, build.Id, 0);
+        return detail.Definition;
+    }
+
+    // The build filters read one tree per matchup when the page is built, so the page is rebuilt after the
+    // builds exist — otherwise no matchup would have anything to offer yet. The games are the Protoss side
+    // of a PvT, so the builds they pick (filed under Race.Protoss) are ones that player could have played.
     private GameData InsertGameWithBuild(BuildNode build)
     {
-        GameData game = InsertGame();
+        GameData game = InsertGame(selfRace: 'P');
         _gameDataRepository.UpdateGameBuilds(game.PlayerDetails[game.ReplayData.Player].GamePlayerId!.Value, [build.Id]);
         _viewModel = CreateViewModel();
         return game;
     }
 
-    // Tags the opponent with the build rather than the session player, for the "Opponents Build" filters.
+    // Tags the opponent with the build rather than the session player, for the "Opponents Build" filters —
+    // so here it is the opponent who is Protoss, playing their own PvZ.
     private GameData InsertGameWithOpponentBuild(BuildNode build)
     {
-        GameData game = InsertGame();
+        GameData game = InsertGame(selfRace: 'Z', opponents: [Opponent('P', 3100)]);
         ReplayPlayer opponent = game.ReplayData.Opponents[0];
         _gameDataRepository.UpdateGameBuilds(game.PlayerDetails[opponent].GamePlayerId!.Value, [build.Id]);
         _viewModel = CreateViewModel();
@@ -525,8 +692,9 @@ public class DataPageViewModelTests : IAsyncDisposable
     private FilterHandle DateFilter => Filters.Applied("Date");
 
     private static readonly string[] AlwaysApplied = ["Profile", "Date"];
-    // Build isn't here: it is a submenu of the build tree, and these tests seed no builds, so it is empty
-    // and hidden exactly like the empty Game Attributes submenu.
+    // The build scopes aren't here: each offers one entry per matchup that has builds filed under it, and
+    // these tests seed no builds, so all three are empty and hidden exactly like the empty Game Attributes
+    // submenu.
     private static readonly string[] BuiltInFilterTitles = ["Map", "Matchup", "Outcome", "Opponent MMR"];
 
     [Fact]
@@ -631,14 +799,15 @@ public class DataPageViewModelTests : IAsyncDisposable
         Assert.Single(_viewModel.Games);
     }
 
-    // Only the dimensions a game has exactly one of leave the menu once added — a game has one map, so a
-    // second map filter would say nothing new. Everything else can be asked of twice.
+    // Only the dimensions a game has exactly one of leave the menu once added — a game has one map, one
+    // outcome and one date, so a second filter on those would say nothing new. A game can have several
+    // opponents, so the dimensions that are per-opponent can be asked of twice.
     [Fact]
     public void AddingAFilter_PutsItInTheBarAndKeepsOfferingTheNonUniqueOnes()
     {
-        Filters.Add("Outcome");
+        Filters.Add("Matchup");
 
-        Assert.Equal([.. AlwaysApplied, "Outcome"], Filters.AppliedTitles);
+        Assert.Equal([.. AlwaysApplied, "Matchup"], Filters.AppliedTitles);
         Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
     }
 
@@ -654,10 +823,10 @@ public class DataPageViewModelTests : IAsyncDisposable
     [Fact]
     public void AddingANonUniqueFilterTwice_PutsTwoOfThemInTheBar()
     {
-        Filters.Add("Outcome").Check("Win");
-        Filters.Add("Outcome").Check("Loss");
+        Filters.Add("Matchup").Check("ZvT");
+        Filters.Add("Matchup").Check("ZvP");
 
-        Assert.Equal(["Outcome", "Outcome"], Filters.AppliedTitles.Where(t => t == "Outcome"));
+        Assert.Equal(["Matchup", "Matchup"], Filters.AppliedTitles.Where(t => t == "Matchup"));
     }
 
     // The bar keeps the same fixed order as the menu, not the order filters were added in.
@@ -721,10 +890,11 @@ public class DataPageViewModelTests : IAsyncDisposable
         Assert.Equal(2, _viewModel.Games.Count);
     }
 
-    // Separate from the theory above because a build entry always constrains to its own subtree; what it
-    // doesn't do is constrain any further until criteria are entered in its own flyout.
+    // Separate from the theory above because a build filter with a build picked always constrains to that
+    // build's own subtree; what it doesn't do is constrain any further until criteria are entered in its
+    // own flyout.
     [Fact]
-    public async Task AddedBuildFilterWithNoCriteria_StillShowsEveryGameInThatBuildsSubtree()
+    public async Task PickedBuildWithNoCriteria_StillShowsEveryGameInThatBuildsSubtree()
     {
         BuildNode parent = InsertBuild("4 Gate");
         BuildNode child = InsertBuild("4 Gate into Blink", parent);
@@ -732,7 +902,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGameWithBuild(child);
         await LoadGamesWithNoDateRange();
 
-        Filters.Add("My Build", parent.Name);
+        Filters.Add("My Build", "PvT").SelectBuild(parent.Name);
 
         Assert.Equal(2, _viewModel.Games.Count);
     }

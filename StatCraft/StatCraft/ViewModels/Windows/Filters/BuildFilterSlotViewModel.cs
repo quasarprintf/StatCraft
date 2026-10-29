@@ -2,12 +2,14 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
+using StatCraft.Services.BackgroundService;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataFiltering.CollatedFilters;
 using StatCraft.Services.DataFiltering.SequentialFilters;
+using StatCraft.Services.DataParsing;
+using StatCraft.ViewModels.Windows.DataComponents.GameRow;
 using StatCraft.ViewModels.Windows.Filters.WrappedFilters;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -17,31 +19,56 @@ namespace StatCraft.ViewModels.Windows.Filters;
 
 public interface IBuildFilterSlotViewModel : IFilterSlotViewModel
 {
+    BuildSelectionSlotViewModel BuildSelection { get; }
     ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>> BuildDetailSlots { get; }
+    bool HasDetails { get; }
     bool IncludeDescendants { get; set; }
-    BuildNode Build { get; }
-
-    void Rebuild(BuildNode build);
+    BuildNode? Build { get; }
 }
 
+// One matchup's worth of build filtering: the user picks a build out of that matchup's tree, and the
+// build they pick is both what gets filtered on and what decides which details can be filtered further.
+// Until they pick one the filter constrains nothing, same as any other filter with no criteria entered.
 public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameData,IEnumerable<GamePlayer>>, IBuildFilterSlotViewModel
 {
+    // What the picker reads while no build is picked. A game row leaves its own pickers blank, but in the
+    // filter bar an unlabeled button says nothing about what it would do.
+    private const string NO_BUILD_TEXT = "(any build)";
+
+    public BuildSelectionSlotViewModel BuildSelection { get; }
+
+    [NotifyPropertyChangedFor(nameof(HasDetails))]
     [ObservableProperty] public partial ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>> BuildDetailSlots { get; private set; }
     [ObservableProperty] public partial bool IncludeDescendants { get; set; } = true;
-    public BuildNode Build { get; private set; }
 
-    internal BuildFilterSlotViewModel(BuildNode build, Func<GameData,IEnumerable<GamePlayer>> filteredPropertyMap) : base(build.Name, filteredPropertyMap)
+    public BuildNode? Build => BuildSelection.SelectedBuildNode;
+
+    // A build with no details of its own has nothing to show behind the flyout button, so it isn't shown.
+    public bool HasDetails => BuildDetailSlots.Count > 0;
+
+    // Set while Refresh is re-resolving the selection against a reloaded tree, so that selection change
+    // doesn't announce itself as the user having changed the criteria — the same reason
+    // AttributeFilterSlotViewModel.Rebuild stays silent: whoever reloaded the tree re-runs the filters
+    // once afterwards, rather than once per filter it touched.
+    private bool _refreshing;
+
+    internal BuildFilterSlotViewModel(string title, ObservableCollection<BuildNode>? buildTree, ILogger logger,
+        Func<GameData,IEnumerable<GamePlayer>> filteredPropertyMap) : base(title, filteredPropertyMap)
     {
-        Build = build;
-        BuildDetailSlots = new ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>>();
-        foreach (var detail in build.Details)
-        {
-            BuildDetailSlots.Add(CreateFilterSlot(detail));
-        }
+        BuildSelection = new BuildSelectionSlotViewModel(buildTree, logger, NO_BUILD_TEXT);
+        BuildDetailSlots = [];
+        BuildSelection.SelectionChanged += OnSelectedBuildChanged;
     }
 
     public override IFilter<GameData> GetFilter()
     {
+        BuildNode? build = Build;
+        if (build == null)
+        {
+            // Nothing picked yet: in the bar, but not yet asking anything of a game.
+            return new AndFilter<GameData>([]);
+        }
+
         IFilter<BuildDetailValues>[] filters = new IFilter<BuildDetailValues>[BuildDetailSlots.Count];
         for (int i = 0; i < filters.Length; i++)
         {
@@ -55,14 +82,14 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
             buildIdFilter = new SetMemberFilter<int, int>(b=>b)
             {
                 AcceptNull = false,
-                FilterValue = Build.EnumerateDescendants().Select(b => b.Id).Append(Build.Id).ToHashSet()
+                FilterValue = build.EnumerateDescendants().Select(b => b.Id).Append(build.Id).ToHashSet()
             };
         }
         else
         {
             buildIdFilter = new ComparableFilter<int, int>(b=>b)
             {
-                FilterValue = Build.Id,
+                FilterValue = build.Id,
                 AcceptNull = false
             }.SetMatchExact();
         }
@@ -72,12 +99,41 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
         return new SequentialAnyFilter<GameData, GamePlayer>(playerFinalFilter, FilteredPropertyMap);
     }
 
-    public void Rebuild(BuildNode build)
+    // Re-resolves the picked build against the tree this filter was built from, after that tree has been
+    // reloaded from the database: every BuildNode in it is a new instance, so the one the picker is
+    // holding is stale, and may be gone altogether (the build was deleted on the Builds tab), which
+    // clears the selection the same way the user would.
+    public void Refresh()
     {
-        Title = build.Name;
-        Build = build;
+        if (Build == null)
+            return;
+
+        _refreshing = true;
+        try
+        {
+            BuildSelection.SelectedBuildNode = BuildPathHelper.FindPath(BuildSelection.BuildTree, Build.Id)?.LastOrDefault();
+        }
+        finally
+        {
+            _refreshing = false;
+        }
+    }
+
+    private void OnSelectedBuildChanged(BuildSelectionSlotViewModel selection, BuildNode? previousBuild)
+    {
+        RebuildDetailSlots();
+        if (!_refreshing)
+            RaiseChanged();
+    }
+
+    // The detail filters belong to whichever build is picked: a slot already showing for a detail the
+    // newly picked build also has is kept, criteria and all, and everything else is dropped.
+    private void RebuildDetailSlots()
+    {
+        IEnumerable<AttributeDefinition> details = Build?.Details ?? Enumerable.Empty<AttributeDefinition>();
+
         var newSlots = new ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>>();
-        foreach (var newDetail in build.Details)
+        foreach (var newDetail in details)
         {
             var existing = BuildDetailSlots.FirstOrDefault(s => s.Attribute.Id == newDetail.Id);
             if (existing != null)
@@ -114,10 +170,8 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
     public override void Clear()
     {
         IncludeDescendants = true;
-        foreach (var slot in BuildDetailSlots)
-        {
-            slot.Clear();
-        }
+        // Takes the detail filters with it, since they only exist for the build that was picked.
+        BuildSelection.SelectedBuildNode = null;
     }
 
     private void ForwardPropertyChanged(object? sender, PropertyChangedEventArgs e)

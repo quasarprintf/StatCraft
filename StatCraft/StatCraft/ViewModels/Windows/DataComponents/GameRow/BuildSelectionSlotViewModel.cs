@@ -21,6 +21,11 @@ public partial class BuildSelectionSlotViewModel : ObservableObject
 
     private static readonly string DEFAULT_BUILD_TEXT = "";
 
+    // What the picker reads while nothing is selected. A game row leaves it blank — the column it sits
+    // in says what it is for — but a picker somewhere with less around it (see BuildFilterSlotViewModel)
+    // can say so itself instead of showing an empty button.
+    private readonly string _noSelectionText;
+
     public ObservableCollection<BuildNode> BuildTree { get; }
 
     // NoneOption followed by BuildTree's contents, kept in sync since BuildTree is a shared, live
@@ -30,7 +35,7 @@ public partial class BuildSelectionSlotViewModel : ObservableObject
     public bool IsBuildPickerEnabled { get; }
 
     [ObservableProperty] public partial BuildNode? SelectedBuildNode { get; set; }
-    [ObservableProperty] public partial string SelectedBuildLabel { get; set; } = DEFAULT_BUILD_TEXT;
+    [ObservableProperty] public partial string SelectedBuildLabel { get; set; }
 
     // Raised whenever SelectedBuildNode changes, passing the value it changed from. Callers that need
     // to hydrate a saved selection without triggering side effects should set SelectedBuildNode via
@@ -40,9 +45,11 @@ public partial class BuildSelectionSlotViewModel : ObservableObject
 
     private readonly ILogger _logger;
 
-    internal BuildSelectionSlotViewModel(ObservableCollection<BuildNode>? buildTree, ILogger logger)
+    internal BuildSelectionSlotViewModel(ObservableCollection<BuildNode>? buildTree, ILogger logger, string? noSelectionText = null)
     {
         BuildTree = buildTree ?? [];
+        _noSelectionText = noSelectionText ?? DEFAULT_BUILD_TEXT;
+        SelectedBuildLabel = _noSelectionText;
         IsBuildPickerEnabled = buildTree != null;
         _logger = logger;
 
@@ -74,7 +81,7 @@ public partial class BuildSelectionSlotViewModel : ObservableObject
         if (newValue != null && path == null)
             _logger.LogError($"Selected build \"{newValue.Name}\" (Id={newValue.Id}) was not found in its own BuildTree.");
 
-        SelectedBuildLabel = path == null ? DEFAULT_BUILD_TEXT : string.Join(" > ", path.Select(n => n.Name));
+        SelectedBuildLabel = path == null ? _noSelectionText : string.Join(" > ", path.Select(n => n.Name));
         SelectionChanged?.Invoke(this, oldValue);
     }
 }

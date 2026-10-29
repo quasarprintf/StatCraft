@@ -75,7 +75,7 @@ public partial class DataPageViewModel : ViewModelBase
             GameAttributes.Add(attribute);
         _attributeRepo.AttributesChanged += OnAttributesChanged;
 
-        Filters = new DataPageFiltersViewModel(buildRepository, GameAttributes);
+        Filters = new DataPageFiltersViewModel(GetBuildTree, logger, GameAttributes);
         Filters.ProfileSelectionChanged += async () => await ReloadGamesFromDatabase();
         Filters.OtherFiltersChanged += ApplyFilters;
 
@@ -431,8 +431,9 @@ public partial class DataPageViewModel : ViewModelBase
     // holding a reference to one of these collections picks up the change automatically via its
     // own CollectionChanged notifications, without needing to touch existing rows individually.
     // Reloading the tree data doesn't by itself refresh an already-selected build's detail
-    // editors though (that list was built once, when the build was first selected), so each row
-    // is asked to re-derive its own editors from the just-reloaded tree afterward.
+    // editors though (that list was built once, when the build was first selected), nor re-resolve
+    // the build a row or a filter is holding, so each is asked to re-derive its own from the
+    // just-reloaded trees afterward.
     private void RefreshBuildTreeCache()
     {
         foreach (((Race player, Matchups opponent), ObservableCollection<BuildNode> tree) in _buildTreeCache)
@@ -445,7 +446,7 @@ public partial class DataPageViewModel : ViewModelBase
         foreach (GameDataRowViewModel row in Games)
             row.RefreshDetailEditors();
 
-        Filters.RefreshBuildMenu(_buildRepo.GetAllBuilds());
+        Filters.RefreshBuildMenu();
     }
 
     // Re-queries the database for every currently-checked profile — the only filter dimension that

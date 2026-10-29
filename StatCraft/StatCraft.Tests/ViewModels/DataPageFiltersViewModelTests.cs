@@ -1,4 +1,5 @@
 using StatCraft.Models.Battlenet;
+using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.Models.GameData.Maps;
@@ -8,7 +9,9 @@ using StatCraft.Services.DatabaseRepository;
 using StatCraft.Services.DataFiltering;
 using StatCraft.Services.DataParsing;
 using StatCraft.ViewModels.Windows.DataComponents;
+using StatCraft.Tests.Mocks;
 using StatCraft.ViewModels.Windows.Filters;
+using System.Collections.ObjectModel;
 
 namespace StatCraft.Tests;
 
@@ -23,11 +26,27 @@ public class DataPageFiltersViewModelTests : IDisposable
         _dbPath = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid() + ".db");
         _buildRepository = new BuildRepository(_dbPath);
         _buildRepository.Initialize();
-        _filters = new DataPageFiltersViewModel(_buildRepository, new System.Collections.ObjectModel.ObservableCollection<Models.GameData.Attributes.AttributeDefinition>());
+        _filters = new DataPageFiltersViewModel(BuildTree, new MockLogger(), []);
         // The mandatory date range starts on today; the GetFilter tests use fixed-date games, so they
         // clear it rather than depend on when they run.
         _filters.DateSlot.FromDate = null;
         _filters.DateSlot.ToDate = null;
+    }
+
+    // One live collection per matchup, handed out to whoever asks for it, the way DataPageViewModel
+    // caches the trees its rows and its build filters share.
+    private readonly Dictionary<(Race Player, Matchups Opponent), ObservableCollection<BuildNode>> _buildTrees = new();
+
+    private ObservableCollection<BuildNode>? BuildTree(Race? player, Matchups matchups)
+    {
+        if (player == null)
+            return null;
+        if (!_buildTrees.TryGetValue((player.Value, matchups), out ObservableCollection<BuildNode>? tree))
+        {
+            tree = new ObservableCollection<BuildNode>(_buildRepository.GetBuildsForMatchup(player.Value, matchups));
+            _buildTrees[(player.Value, matchups)] = tree;
+        }
+        return tree;
     }
 
     [Fact]
@@ -35,8 +54,9 @@ public class DataPageFiltersViewModelTests : IDisposable
     {
         FilterPanel panel = FilterPanel.Of(_filters);
 
-        // Map, Matchup, Outcome and Opponent MMR. The Game Attributes and Build submenus are empty with
-        // nothing seeded, so they offer nothing and stay hidden.
+        // Map, Matchup, Outcome and Opponent MMR. The Game Attributes submenu is empty with nothing
+        // seeded, and so is every build scope — a matchup with no builds filed under it is not offered —
+        // so they offer nothing and stay hidden.
         Assert.Equal(["Map", "Matchup", "Outcome", "Opponent MMR"], panel.AddableTitles);
         Assert.Equal(["Profile", "Date"], panel.AppliedTitles);
     }
@@ -58,11 +78,11 @@ public class DataPageFiltersViewModelTests : IDisposable
     {
         FilterPanel panel = FilterPanel.Of(_filters);
 
-        panel.Add("Outcome");
-        panel.Add("Outcome");
+        panel.Add("Matchup");
+        panel.Add("Matchup");
 
-        Assert.Equal(["Outcome", "Outcome"], panel.AppliedTitles.Where(t => t == "Outcome"));
-        Assert.True(panel.IsOffered("Outcome"));
+        Assert.Equal(["Matchup", "Matchup"], panel.AppliedTitles.Where(t => t == "Matchup"));
+        Assert.True(panel.IsOffered("Matchup"));
     }
 
     [Fact]

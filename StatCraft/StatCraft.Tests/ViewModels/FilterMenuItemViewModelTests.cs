@@ -170,32 +170,6 @@ public class FilterMenuItemViewModelTests
         Assert.Equal("Worker Count", item.AppliedFilters[0].Title);
     }
 
-    // Build entries are rebuilt from a fresh tree whenever the Builds tab changes, and the filters the user
-    // had added have to carry over to the replacement entry still wired up.
-    [Fact]
-    public void AdoptAppliedFilters_MovesThemOverAndKeepsThemLive()
-    {
-        FilterMenuItemViewModel<string> previous = Item("4 Gate");
-        previous.Add();
-        IFilterSlotViewModel<string> filter = previous.AppliedFilters[0];
-
-        FilterMenuItemViewModel<string> replacement = Item("4 Gate");
-        int changed = 0;
-        replacement.Changed += () => changed++;
-        int previousChanged = 0;
-        previous.Changed += () => previousChanged++;
-
-        replacement.AdoptAppliedFilters(previous);
-
-        Assert.Empty(previous.AppliedFilters);
-        Assert.Equal([filter], replacement.AppliedFilters);
-
-        ((IBoolFilterSlotViewModel)filter).Value = true;
-
-        Assert.Equal(1, changed);
-        Assert.Equal(0, previousChanged);
-    }
-
     [Fact]
     public void Destroy_UnwiresTheFiltersItHadAdded()
     {

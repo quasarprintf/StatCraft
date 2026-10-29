@@ -143,7 +143,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     private void RefreshOpponentFilter()
     {
         Matchups flags = OpponentRaceOptions.Where(o => o.IsSelected)
-            .Aggregate(Matchups.None, (acc, o) => acc | ToMatchupFlag(o.Value));
+            .Aggregate(Matchups.None, (acc, o) => acc | o.Value.AsMatchup());
         foreach (BuildNode root in Builds)
             RefreshOpponentFilter(root, flags);
     }
@@ -154,14 +154,6 @@ public partial class BuildsPageViewModel : ViewModelBase
         foreach (BuildNode child in node.Children)
             RefreshOpponentFilter(child, flags);
     }
-
-    private static Matchups ToMatchupFlag(Race race) => race switch
-    {
-        Race.Zerg => Matchups.VsZ,
-        Race.Terran => Matchups.VsT,
-        Race.Protoss => Matchups.VsP,
-        _ => Matchups.None,
-    };
 
     private void LoadPlayerRaceIfNeeded(Race playerRace)
     {
@@ -442,7 +434,7 @@ public partial class BuildsPageViewModel : ViewModelBase
     {
         if (SelectedBuild == null) return;
 
-        Matchups flag = ToMatchupFlag(opponentRace);
+        Matchups flag = opponentRace.AsMatchup();
         bool turningOn = !SelectedBuild.Matchups.HasFlag(flag);
 
         if (turningOn)

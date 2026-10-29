@@ -1,8 +1,10 @@
 using System.Collections;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using StatCraft.Models.GameData.Builds;
 using StatCraft.ViewModels.Windows;
 using StatCraft.ViewModels.Windows.DataComponents;
+using StatCraft.ViewModels.Windows.DataComponents.GameRow;
 using StatCraft.ViewModels.Windows.Filters;
 using StatCraft.ViewModels.Windows.Filters.WrappedFilters;
 
@@ -62,7 +64,7 @@ internal sealed class FilterPanel
     // unique, in which case it leaves the menu after the first.
     public FilterHandle Add(string title) => Add(null, title);
 
-    // The same leaf can be offered under more than one menu — the build tree is offered once per set of
+    // The same leaf can be offered under more than one menu — each matchup is offered once per set of
     // players — so this names the menu it should be taken from.
     public FilterHandle Add(string? menu, string title)
     {
@@ -267,12 +269,60 @@ internal sealed class FilterHandle(IFilterSlotViewModel slot)
         set => Kind<INumericRangeFilterSlotViewModel>().Max = value;
     }
 
-    // A build filter covers the builds nested under it unless this is turned off.
+    // A build filter covers the builds nested under its picked build unless this is turned off.
     public bool IncludeDescendants
     {
         get => Kind<IBuildFilterSlotViewModel>().IncludeDescendants;
         set => Kind<IBuildFilterSlotViewModel>().IncludeDescendants = value;
     }
+
+    // Every build the filter's own picker offers, at any depth of the tree it was given.
+    public IReadOnlyList<string> BuildOptions => OfferedBuilds().Select(b => b.Name).ToList();
+
+    // The picked build, as the picker labels it: its whole path, or "(any build)" while none is picked.
+    public string SelectedBuild => Picker().SelectedBuildLabel;
+
+    // The name of the picked build, or null while none is picked.
+    public string? PickedBuild => Kind<IBuildFilterSlotViewModel>().Build?.Name;
+
+    // Picks a build in the filter's own picker, by the name it is shown under; null picks "(none)", which
+    // is how the picker's menu offers "no build at all".
+    public FilterHandle SelectBuild(string? name)
+    {
+        if (name == null)
+        {
+            Picker().SelectBuildCommand.Execute(BuildSelectionSlotViewModel.NoneOption);
+            return this;
+        }
+
+        List<BuildNode> matches = OfferedBuilds().Where(b => b.Name == name).ToList();
+        if (matches.Count != 1)
+            throw new InvalidOperationException($"Expected one \"{name}\" build in \"{Title}\"'s picker, found {matches.Count}. Offering: [{string.Join(", ", BuildOptions)}]");
+
+        Picker().SelectBuildCommand.Execute(matches[0]);
+        return this;
+    }
+
+    // The filter fields for the picked build's own details, shown behind the filter's "Details" button.
+    public IReadOnlyList<string> DetailTitles =>
+        Kind<IBuildFilterSlotViewModel>().BuildDetailSlots.Select(s => s.Title).ToList();
+
+    // One of those fields, driven like any other filter.
+    public FilterHandle Detail(string title)
+    {
+        List<IFilterSlotViewModel> matches = Kind<IBuildFilterSlotViewModel>().BuildDetailSlots
+            .Where(s => s.Title == title)
+            .Cast<IFilterSlotViewModel>()
+            .ToList();
+        if (matches.Count != 1)
+            throw new InvalidOperationException($"Expected one \"{title}\" detail field on \"{Title}\", found {matches.Count}. Showing: [{string.Join(", ", DetailTitles)}]");
+        return new FilterHandle(matches[0]);
+    }
+
+    private BuildSelectionSlotViewModel Picker() => Kind<IBuildFilterSlotViewModel>().BuildSelection;
+
+    private IEnumerable<BuildNode> OfferedBuilds() =>
+        Picker().BuildTree.SelectMany(root => root.EnumerateDescendants().Prepend(root));
 
     public bool IsCheckboxFilter => TryKind<ICheckboxFilterSlotViewModel>() != null;
     public bool IsBoolFilter => TryKind<IBoolFilterSlotViewModel>() != null;
