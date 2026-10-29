@@ -279,14 +279,14 @@ internal sealed class FilterHandle(IFilterSlotViewModel slot)
     // Every build the filter's own picker offers, at any depth of the tree it was given.
     public IReadOnlyList<string> BuildOptions => OfferedBuilds().Select(b => b.Name).ToList();
 
-    // The picked build, as the picker labels it: its whole path, or "(any build)" while none is picked.
+    // The picked build, as the picker labels it: its whole path, or blank while none is picked.
     public string SelectedBuild => Picker().SelectedBuildLabel;
 
     // The name of the picked build, or null while none is picked.
     public string? PickedBuild => Kind<IBuildFilterSlotViewModel>().Build?.Name;
 
-    // Picks a build in the filter's own picker, by the name it is shown under; null picks "(none)", which
-    // is how the picker's menu offers "no build at all".
+    // Picks a build in the filter's own picker, by the name it is shown under; null picks "(none)", the
+    // picker's own way of offering "no build at all".
     public FilterHandle SelectBuild(string? name)
     {
         if (name == null)

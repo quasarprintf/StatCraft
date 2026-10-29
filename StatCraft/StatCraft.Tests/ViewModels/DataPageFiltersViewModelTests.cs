@@ -49,15 +49,19 @@ public class DataPageFiltersViewModelTests : IDisposable
         return tree;
     }
 
+    // Each build scope offers the same fixed 3x3 of matchups, whether or not any build is filed under them.
+    private static readonly string[] BuildMatchupTitles =
+        ["ZvZ", "ZvT", "ZvP", "TvZ", "TvT", "TvP", "PvZ", "PvT", "PvP"];
+
     [Fact]
     public void ExtraFilters_StartOutOfTheBar_ExceptTheMandatoryProfileAndDateRange()
     {
         FilterPanel panel = FilterPanel.Of(_filters);
 
-        // Map, Matchup, Outcome and Opponent MMR. The Game Attributes submenu is empty with nothing
-        // seeded, and so is every build scope — a matchup with no builds filed under it is not offered —
-        // so they offer nothing and stay hidden.
-        Assert.Equal(["Map", "Matchup", "Outcome", "Opponent MMR"], panel.AddableTitles);
+        // Map, Matchup, Outcome and Opponent MMR, then each build scope's matchups. The Game Attributes
+        // submenu is empty with nothing seeded, so it offers nothing and stays hidden.
+        Assert.Equal(["Map", "Matchup", "Outcome", "Opponent MMR",
+            .. BuildMatchupTitles, .. BuildMatchupTitles, .. BuildMatchupTitles], panel.AddableTitles);
         Assert.Equal(["Profile", "Date"], panel.AppliedTitles);
     }
 

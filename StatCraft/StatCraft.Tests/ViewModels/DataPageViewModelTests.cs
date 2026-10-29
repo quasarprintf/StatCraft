@@ -490,17 +490,20 @@ public class DataPageViewModelTests : IAsyncDisposable
         Assert.Equal(["Blink All In"], Filters.Preview("My Build", "PvT").BuildOptions);
     }
 
-    // A matchup with no builds filed under it has nothing for a filter to pick, so it isn't offered — nor
-    // is a player race with no builds at all, nor the whole scope before any build exists.
+    // The 3x3 is fixed rather than derived from the builds that exist, so every matchup is offered either
+    // way — what changes with the builds is what its picker has to offer.
     [Fact]
-    public void Filter_Build_OnlyMatchupsWithBuildsAreOffered()
+    public void Filter_Build_EveryMatchupIsOffered_WhateverBuildsExist()
     {
-        Assert.Empty(Filters.AddableTitlesIn("My Build"));
+        Assert.Equal(BuildMatchupTitles, Filters.AddableTitlesIn("My Build"));
+        Assert.Empty(Filters.Preview("My Build", "PvT").BuildOptions);
 
         InsertBuild("4 Gate", matchups: Matchups.VsT | Matchups.VsP);
         _viewModel = CreateViewModel();
 
-        Assert.Equal(["PvT", "PvP"], Filters.AddableTitlesIn("My Build"));
+        Assert.Equal(BuildMatchupTitles, Filters.AddableTitlesIn("My Build"));
+        Assert.Equal(["4 Gate"], Filters.Preview("My Build", "PvT").BuildOptions);
+        Assert.Empty(Filters.Preview("My Build", "PvZ").BuildOptions);
     }
 
     // The builds a matchup offers come from the same live tree the Data tab's rows pick from, so a build
@@ -539,21 +542,22 @@ public class DataPageViewModelTests : IAsyncDisposable
         Assert.Single(_viewModel.Games);
     }
 
-    // With the last of a matchup's builds gone the entry stops being offered, and the filters added from
-    // it go out of the bar with it: there is no build left for them to pick.
+    // The entry stays whatever happens to the builds under it, so a filter added from it stays in the bar
+    // too — with its pick cleared, since the build it was on is gone.
     [Fact]
-    public async Task Filter_Build_LastBuildOfAMatchupDeletedElsewhere_TakesItsFiltersOutOfTheBar()
+    public async Task Filter_Build_LastBuildOfAMatchupDeletedElsewhere_ClearsThePickAndKeepsTheFilter()
     {
         BuildNode build = InsertBuild("4 Gate");
         InsertGameWithBuild(build);
         await LoadGamesWithNoDateRange();
-        Filters.Add("My Build", "PvT").SelectBuild(build.Name);
+        FilterHandle filter = Filters.Add("My Build", "PvT").SelectBuild(build.Name);
 
         _buildRepository.DeleteBuild(build.Id);
         _viewModel.NotifyActivated();
 
-        Assert.Equal(AlwaysApplied, Filters.AppliedTitles);
-        Assert.Empty(Filters.AddableTitlesIn("My Build"));
+        Assert.Equal([.. AlwaysApplied, "My Build PvT"], Filters.AppliedTitles);
+        Assert.Null(filter.PickedBuild);
+        Assert.Empty(filter.BuildOptions);
     }
 
     // Picking a build shows a filter field for each detail it records, so the games that picked it can be
@@ -692,16 +696,23 @@ public class DataPageViewModelTests : IAsyncDisposable
     private FilterHandle DateFilter => Filters.Applied("Date");
 
     private static readonly string[] AlwaysApplied = ["Profile", "Date"];
-    // The build scopes aren't here: each offers one entry per matchup that has builds filed under it, and
-    // these tests seed no builds, so all three are empty and hidden exactly like the empty Game Attributes
-    // submenu.
     private static readonly string[] BuiltInFilterTitles = ["Map", "Matchup", "Outcome", "Opponent MMR"];
+
+    // Each build scope offers the same fixed 3x3 of matchups, whether or not any build is filed under
+    // them, so all three sets are part of any assertion on the menu as a whole.
+    private static readonly string[] BuildMatchupTitles =
+        ["ZvZ", "ZvT", "ZvP", "TvZ", "TvT", "TvP", "PvZ", "PvT", "PvP"];
+
+    // The whole menu in its fixed order: the built-in filters still on offer (a unique one already in the
+    // bar is not), then the build scopes, then whichever game attributes exist.
+    private static string[] MenuTitles(string[] builtIns, params string[] gameAttributes) =>
+        [.. builtIns, .. BuildMatchupTitles, .. BuildMatchupTitles, .. BuildMatchupTitles, .. gameAttributes];
 
     [Fact]
     public void BuiltInFilters_StartUnappliedAndAreOfferedInTheirFixedOrder()
     {
         Assert.Equal(AlwaysApplied, Filters.AppliedTitles);
-        Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles), Filters.AddableTitles);
     }
 
     // Everything these filter on comes from the replay itself, so there's never an unset value to include.
@@ -808,7 +819,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         Filters.Add("Matchup");
 
         Assert.Equal([.. AlwaysApplied, "Matchup"], Filters.AppliedTitles);
-        Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles), Filters.AddableTitles);
     }
 
     [Fact]
@@ -817,7 +828,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         Filters.Add("Map");
 
         Assert.Equal([.. AlwaysApplied, "Map"], Filters.AppliedTitles);
-        Assert.Equal(["Matchup", "Outcome", "Opponent MMR"], Filters.AddableTitles);
+        Assert.Equal(MenuTitles(["Matchup", "Outcome", "Opponent MMR"]), Filters.AddableTitles);
     }
 
     [Fact]
@@ -853,7 +864,7 @@ public class DataPageViewModelTests : IAsyncDisposable
 
         Assert.Equal(2, _viewModel.Games.Count);
         Assert.Equal(AlwaysApplied, Filters.AppliedTitles);
-        Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles), Filters.AddableTitles);
         Assert.Empty(Filters.Add("Map").CheckedLabels);
     }
 
@@ -1065,7 +1076,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         _attributeRepository.InsertAttribute(new(AttributeScope.Game) { Name = "Style", Type = AttributeType.Values }, 0);
         _viewModel = CreateViewModel();
 
-        Assert.Equal([.. BuiltInFilterTitles, "Style"], Filters.AddableTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles, "Style"), Filters.AddableTitles);
     }
 
     // Pins the fix for the add menu not being told when a game attribute appeared: the menu is only
@@ -1078,7 +1089,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         _attributeRepository.InsertAttribute(new(AttributeScope.Game) { Name = "Style", Type = AttributeType.Values }, 0);
         _viewModel.NotifyActivated();
 
-        Assert.Equal([.. BuiltInFilterTitles, "Style"], filters.AddableTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles, "Style"), filters.AddableTitles);
     }
 
     [Theory]
@@ -1227,7 +1238,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         _viewModel.NotifyActivated();
 
         Assert.Equal(AlwaysApplied, Filters.AppliedTitles);
-        Assert.Equal(BuiltInFilterTitles, Filters.AddableTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles), Filters.AddableTitles);
         Assert.Single(_viewModel.Games);
     }
 
@@ -1248,7 +1259,7 @@ public class DataPageViewModelTests : IAsyncDisposable
 
         // The menu entry is renamed too, which shows once the filter is back in the menu.
         Filters.Applied("Play Style").Remove();
-        Assert.Equal([.. BuiltInFilterTitles, "Play Style"], Filters.AddableTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles, "Play Style"), Filters.AddableTitles);
     }
 
     // The slot is rebuilt as the new kind, but whether it was showing survives, and the rebuilt slot is
@@ -1288,13 +1299,13 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertStyleAttribute();
         InsertProxyAttribute();
         _viewModel = CreateViewModel();
-        Assert.Equal([.. BuiltInFilterTitles, "Style", "Proxy"], Filters.AddableTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles, "Style", "Proxy"), Filters.AddableTitles);
 
         Filters.Add("Style");
 
         Assert.Equal([.. AlwaysApplied, "Style"], Filters.AppliedTitles);
         // An attribute can be asked more than one question, so it stays on offer.
-        Assert.Equal([.. BuiltInFilterTitles, "Style", "Proxy"], Filters.AddableTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles, "Style", "Proxy"), Filters.AddableTitles);
     }
 
     [Fact]
@@ -1308,7 +1319,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         Filters.Applied("Style").Remove();
 
         Assert.Equal(AlwaysApplied, Filters.AppliedTitles);
-        Assert.Equal([.. BuiltInFilterTitles, "Style", "Proxy"], Filters.AddableTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles, "Style", "Proxy"), Filters.AddableTitles);
     }
 
     // With nothing left in it to add, the submenu itself leaves the menu, and comes back when one of its
@@ -1324,7 +1335,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         Filters.Add("Proxy");
 
         Assert.Equal([.. AlwaysApplied, "Style", "Proxy"], Filters.AppliedTitles);
-        Assert.Equal([.. BuiltInFilterTitles, "Style", "Proxy"], Filters.AddableTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles, "Style", "Proxy"), Filters.AddableTitles);
     }
 
     [Fact]
@@ -1333,12 +1344,12 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertStyleAttribute();
         _viewModel = CreateViewModel();
         Filters.Add("Style");
-        Assert.Equal([.. BuiltInFilterTitles, "Style"], Filters.AddableTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles, "Style"), Filters.AddableTitles);
 
         InsertProxyAttribute();
         _viewModel.NotifyActivated();
 
-        Assert.Equal([.. BuiltInFilterTitles, "Style", "Proxy"], Filters.AddableTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles, "Style", "Proxy"), Filters.AddableTitles);
     }
 
     [Fact]
@@ -1347,12 +1358,12 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertStyleAttribute();
         AttributeDefinition proxy = InsertProxyAttribute();
         _viewModel = CreateViewModel();
-        Assert.Equal([.. BuiltInFilterTitles, "Style", "Proxy"], Filters.AddableTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles, "Style", "Proxy"), Filters.AddableTitles);
 
         _attributeRepository.DeleteAttribute(proxy.Id);
         _viewModel.NotifyActivated();
 
-        Assert.Equal([.. BuiltInFilterTitles, "Style"], Filters.AddableTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles, "Style"), Filters.AddableTitles);
     }
 
     // The type change rebuilds the applied filter's menu entry; the rebuilt entry must still count as
