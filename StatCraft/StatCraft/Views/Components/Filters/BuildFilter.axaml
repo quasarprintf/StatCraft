@@ -11,15 +11,18 @@
             <TextBlock Grid.Column="1" Text="{Binding Title}" VerticalAlignment="Center"
                     TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
         </Grid>
-        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="2">
-            <!-- The same picker a game row uses, over this matchup's build tree. -->
-            <dc:BuildPathPicker Grid.Column="0" MinWidth="120" DataContext="{Binding BuildSelection}"/>
-            <!-- Only the picked build's own details can be filtered on, so there is nothing behind this
-                 until a build with details is picked. -->
-            <Button Grid.Column="1" Content="Details" IsVisible="{Binding HasDetails}">
-                <Button.Flyout>
-                    <Flyout Placement="BottomEdgeAlignedLeft">
-                        <ScrollViewer MaxHeight="480">
+        <!-- Reads as the picked build, since that is what the popup behind it is mostly for: the picker,
+             and then whatever details the build that was picked records. -->
+        <Button MinWidth="120" MaxWidth="200" HorizontalContentAlignment="Left">
+            <TextBlock Text="{Binding BuildSelection.SelectedBuildLabel}" TextTrimming="CharacterEllipsis"/>
+            <Button.Flyout>
+                <Flyout Placement="BottomEdgeAlignedLeft">
+                    <StackPanel MinWidth="220" Spacing="4">
+                        <!-- The same picker a game row uses, over this matchup's build tree. -->
+                        <dc:BuildPathPicker DataContext="{Binding BuildSelection}"/>
+                        <!-- Only the picked build's own details can be filtered on, so there is nothing
+                             here until a build with details is picked. -->
+                        <ScrollViewer MaxHeight="480" IsVisible="{Binding HasDetails}">
                             <ItemsControl ItemsSource="{Binding BuildDetailSlots}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
@@ -33,10 +36,10 @@
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </ScrollViewer>
-                    </Flyout>
-                </Button.Flyout>
-            </Button>
-        </Grid>
+                    </StackPanel>
+                </Flyout>
+            </Button.Flyout>
+        </Button>
         <CheckBox Content="Include descendants" IsChecked="{Binding IncludeDescendants}" FontSize="11"/>
     </StackPanel>
 </UserControl>
