@@ -21,31 +21,21 @@ public interface IBuildFilterSlotViewModel : IFilterSlotViewModel
 {
     BuildSelectionSlotViewModel BuildSelection { get; }
     ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>> BuildDetailSlots { get; }
-    bool HasDetails { get; }
     bool IncludeDescendants { get; set; }
     BuildNode? Build { get; }
 }
 
-// One matchup's worth of build filtering: the user picks a build out of that matchup's tree, and the
-// build they pick is both what gets filtered on and what decides which details can be filtered further.
-// Until they pick one the filter constrains nothing, same as any other filter with no criteria entered.
 public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameData,IEnumerable<GamePlayer>>, IBuildFilterSlotViewModel
 {
     public BuildSelectionSlotViewModel BuildSelection { get; }
 
-    [NotifyPropertyChangedFor(nameof(HasDetails))]
     [ObservableProperty] public partial ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>> BuildDetailSlots { get; private set; }
     [ObservableProperty] public partial bool IncludeDescendants { get; set; } = true;
 
     public BuildNode? Build => BuildSelection.SelectedBuildNode;
 
-    // A build with no details of its own has nothing to show behind the flyout button, so it isn't shown.
-    public bool HasDetails => BuildDetailSlots.Count > 0;
-
     // Set while Refresh is re-resolving the selection against a reloaded tree, so that selection change
-    // doesn't announce itself as the user having changed the criteria — the same reason
-    // AttributeFilterSlotViewModel.Rebuild stays silent: whoever reloaded the tree re-runs the filters
-    // once afterwards, rather than once per filter it touched.
+    // doesn't announce itself as the user having changed the criteria
     private bool _refreshing;
 
     internal BuildFilterSlotViewModel(string title, ObservableCollection<BuildNode>? buildTree, ILogger logger,
@@ -61,7 +51,8 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
         BuildNode? build = Build;
         if (build == null)
         {
-            // Nothing picked yet: in the bar, but not yet asking anything of a game.
+            //invisible filter that always returns true
+            //TODO: maybe make an explicit always-true filter instead of this hack?
             return new AndFilter<GameData>([]);
         }
 

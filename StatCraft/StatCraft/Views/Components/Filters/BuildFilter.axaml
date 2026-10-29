@@ -20,9 +20,7 @@
                     <StackPanel MinWidth="220" Spacing="4">
                         <!-- The same picker a game row uses, over this matchup's build tree. -->
                         <dc:BuildPathPicker DataContext="{Binding BuildSelection}"/>
-                        <!-- Only the picked build's own details can be filtered on, so there is nothing
-                             here until a build with details is picked. -->
-                        <ScrollViewer MaxHeight="480" IsVisible="{Binding HasDetails}">
+                        <ScrollViewer MaxHeight="480">
                             <ItemsControl ItemsSource="{Binding BuildDetailSlots}">
                                 <ItemsControl.ItemsPanel>
                                     <ItemsPanelTemplate>
