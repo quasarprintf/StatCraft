@@ -483,7 +483,10 @@ public partial class DataPageViewModel : ViewModelBase
             _mapsById[map.Id] = map;
     }
 
-    private Map? MapById(int id) => _mapsById.GetValueOrDefault(id);
+    private Map? MapById(int id)
+    {
+        return _mapsById.GetValueOrDefault(id);
+    }
 
     private static bool SyncValueOptions(AttributeDefinition attribute, ObservableCollection<string> latest)
     {

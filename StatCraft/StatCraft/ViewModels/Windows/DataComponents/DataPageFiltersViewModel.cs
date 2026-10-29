@@ -202,15 +202,15 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             applied.Refresh();
     }
 
-    // The same three for the map attributes. A map attribute filter wraps its attribute slot to reach the
-    // game's map (see MapAttributeMenuItem), so what is caught up here is one level in.
-    private IEnumerable<AttributeFilterSlotViewModel<Map>> AppliedMapAttributeSlots(AttributeDefinition attribute) =>
-        _mapAttributeItems.TryGetValue(attribute, out FilterMenuItemViewModel<GameData>? item)
+    private IEnumerable<AttributeFilterSlotViewModel<Map>> AppliedMapAttributeSlots(AttributeDefinition attribute)
+    {
+        return _mapAttributeItems.TryGetValue(attribute, out FilterMenuItemViewModel<GameData>? item)
             ? item.AppliedFilters.OfType<IWrappedFilterSlotViewModel>()
                 .Select(wrapper => wrapper.WrappedFilter)
                 .OfType<AttributeFilterSlotViewModel<Map>>()
                 .ToList()
             : [];
+    }
 
     internal void RenameMapAttributeSlot(AttributeDefinition attribute)
     {
@@ -261,11 +261,15 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         return _mapOptions.Select(m => new CheckboxFilterOptionViewModel<int>(m.Id, m.Name)).ToList();
     }
 
-    private void GameAttributesChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+    private void GameAttributesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
         AttributesChanged(e, GameAttributeSlots, _gameAttributeItems, GameAttributeMenuItem);
+    }
 
-    private void MapAttributesChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+    private void MapAttributesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
         AttributesChanged(e, MapAttributeSlots, _mapAttributeItems, MapAttributeMenuItem);
+    }
 
     private static void AttributesChanged(NotifyCollectionChangedEventArgs e,
         ObservableCollection<FilterMenuItemViewModel<GameData>> items,
