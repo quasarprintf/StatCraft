@@ -271,17 +271,12 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         return options;
     }
 
-    private List<CheckboxFilterOptionViewModel<GameOutcome>> BuildOutcomeOptions() =>
-        Enum.GetValues<GameOutcome>()
-            .Select(outcome => new CheckboxFilterOptionViewModel<GameOutcome>(outcome, outcome.ToString()))
-            .ToList();
+    private List<CheckboxFilterOptionViewModel<GameOutcome>> BuildOutcomeOptions()
+    {
+        return Enum.GetValues<GameOutcome>().Select(outcome => new CheckboxFilterOptionViewModel<GameOutcome>(outcome, outcome.ToString())).ToList();
+    }
 
-    // One entry per matchup, grouped by the player race the builds are filed under. Which players' builds
-    // a filter added from one of them asks about is picked inside the filter itself, so the same entry
-    // covers the user's own builds, their allies' and their opponents' (see BuildFilterSlotViewModel).
-    // Built once: the trees are live collections, so a filter's picker follows the Builds tab on its own.
-    private static FilterMenuItemViewModel<GameData> BuildsMenuItem(
-        Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree, ILogger logger)
+    private FilterMenuItemViewModel<GameData> BuildsMenuItem(Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree, ILogger logger)
     {
         ObservableCollection<FilterMenuItemViewModel<GameData>> raceItems = [];
         foreach (Race playerRace in Enum.GetValues<Race>())
@@ -291,8 +286,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             {
                 ObservableCollection<BuildNode>? tree = getBuildTree(playerRace, opponentRace.AsMatchup());
                 string matchup = $"{playerRace.Display()}v{opponentRace.Display()}";
-                matchupItems.Add(new FilterMenuItemViewModel<GameData>(
-                    () => new BuildFilterSlotViewModel($"Builds {matchup}", tree, logger), matchup));
+                matchupItems.Add(new FilterMenuItemViewModel<GameData>(() => new BuildFilterSlotViewModel($"Builds {matchup}", tree, logger), matchup));
             }
             raceItems.Add(new FilterMenuItemViewModel<GameData>(matchupItems, playerRace.Display()));
         }

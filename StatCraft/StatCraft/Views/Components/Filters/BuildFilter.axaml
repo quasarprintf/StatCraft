@@ -18,9 +18,6 @@
             <Button.Flyout>
                 <Flyout Placement="BottomEdgeAlignedLeft">
                     <StackPanel MinWidth="220" Spacing="4">
-                        <!-- Whose builds the filter asks about. Each button is bound to its own property
-                             rather than sharing a GroupName, which would group every build filter in the
-                             bar together. -->
                         <StackPanel Orientation="Horizontal" Spacing="8">
                             <RadioButton Content="Me" IsChecked="{Binding AppliesToMe}"/>
                             <RadioButton Content="Ally" IsChecked="{Binding AppliesToAlly}"/>

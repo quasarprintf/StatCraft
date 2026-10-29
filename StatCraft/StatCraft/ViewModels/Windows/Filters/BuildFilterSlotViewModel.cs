@@ -39,15 +39,9 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
 
     public BuildNode? Build => BuildSelection.SelectedBuildNode;
 
-    // Which players' builds this filter asks about. One entry in the menu covers all three, so "I played
-    // this build" and "my opponent played this build" are the same filter pointed at a different group.
     [NotifyPropertyChangedFor(nameof(AppliesToMe), nameof(AppliesToAlly), nameof(AppliesToOpponent))]
     [ObservableProperty] public partial PlayerGroup PlayerGroup { get; set; } = PlayerGroup.Me;
 
-    // One per radio button, so the view needs no enum converter — and so the group is kept by this view
-    // model rather than by the radio buttons grouping themselves, which would tie together every build
-    // filter in the bar (RadioButton.GroupName is shared across a whole window). Setting one to true
-    // moves the group; the false the deselected button writes back is already covered by that move.
     public bool AppliesToMe
     {
         get => PlayerGroup == PlayerGroup.Me;
