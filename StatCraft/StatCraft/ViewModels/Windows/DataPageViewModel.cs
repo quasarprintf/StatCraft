@@ -446,7 +446,7 @@ public partial class DataPageViewModel : ViewModelBase
         foreach (GameDataRowViewModel row in Games)
             row.RefreshDetailEditors();
 
-        Filters.RefreshBuildMenu();
+        Filters.RefreshBuildFilters();
     }
 
     // Re-queries the database for every currently-checked profile — the only filter dimension that
