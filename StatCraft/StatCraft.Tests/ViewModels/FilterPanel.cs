@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Builds;
 using StatCraft.ViewModels.Windows;
 using StatCraft.ViewModels.Windows.DataComponents;
@@ -274,6 +275,13 @@ internal sealed class FilterHandle(IFilterSlotViewModel slot)
     {
         get => Kind<IBuildFilterSlotViewModel>().IncludeDescendants;
         set => Kind<IBuildFilterSlotViewModel>().IncludeDescendants = value;
+    }
+
+    // Whose builds the filter asks about: the Me/Ally/Opponent radio.
+    public PlayerGroup PlayerGroup
+    {
+        get => Kind<IBuildFilterSlotViewModel>().PlayerGroup;
+        set => Kind<IBuildFilterSlotViewModel>().PlayerGroup = value;
     }
 
     // Every build the filter's own picker offers, at any depth of the tree it was given.

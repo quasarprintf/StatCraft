@@ -26,11 +26,20 @@ public class DataPageFiltersViewModelTests : IDisposable
         _dbPath = Path.Combine(Path.GetTempPath(), "StatCraftTests", Guid.NewGuid() + ".db");
         _buildRepository = new BuildRepository(_dbPath);
         _buildRepository.Initialize();
-        _filters = new DataPageFiltersViewModel(BuildTree, new MockLogger(), []);
-        // The mandatory date range starts on today; the GetFilter tests use fixed-date games, so they
-        // clear it rather than depend on when they run.
-        _filters.DateSlot.FromDate = null;
-        _filters.DateSlot.ToDate = null;
+        _filters = CreateFilters();
+    }
+
+    // A fresh set of filters over whatever is in the database now. The build menu reads one tree per
+    // matchup as it is built, so a test that seeds builds has to build the menu after seeding them.
+    // The mandatory date range starts on today; the GetFilter tests use fixed-date games, so it is cleared
+    // rather than left to depend on when they run.
+    private DataPageFiltersViewModel CreateFilters()
+    {
+        _buildTrees.Clear();
+        DataPageFiltersViewModel filters = new(BuildTree, new MockLogger(), []);
+        filters.DateSlot.FromDate = null;
+        filters.DateSlot.ToDate = null;
+        return filters;
     }
 
     // One live collection per matchup, handed out to whoever asks for it, the way DataPageViewModel
@@ -49,7 +58,8 @@ public class DataPageFiltersViewModelTests : IDisposable
         return tree;
     }
 
-    // Each build scope offers the same fixed 3x3 of matchups, whether or not any build is filed under them.
+    // The one build entry offers the same fixed 3x3 of matchups, whether or not any build is filed under
+    // them.
     private static readonly string[] BuildMatchupTitles =
         ["ZvZ", "ZvT", "ZvP", "TvZ", "TvT", "TvP", "PvZ", "PvT", "PvP"];
 
@@ -58,10 +68,9 @@ public class DataPageFiltersViewModelTests : IDisposable
     {
         FilterPanel panel = FilterPanel.Of(_filters);
 
-        // Map, Matchup, Outcome and Opponent MMR, then each build scope's matchups. The Game Attributes
-        // submenu is empty with nothing seeded, so it offers nothing and stays hidden.
-        Assert.Equal(["Map", "Matchup", "Outcome", "Opponent MMR",
-            .. BuildMatchupTitles, .. BuildMatchupTitles, .. BuildMatchupTitles], panel.AddableTitles);
+        // Map, Matchup, Outcome and Opponent MMR, then the build matchups. The Game Attributes submenu is
+        // empty with nothing seeded, so it offers nothing and stays hidden.
+        Assert.Equal(["Map", "Matchup", "Outcome", "Opponent MMR", .. BuildMatchupTitles], panel.AddableTitles);
         Assert.Equal(["Profile", "Date"], panel.AppliedTitles);
     }
 
@@ -244,10 +253,49 @@ public class DataPageFiltersViewModelTests : IDisposable
         Assert.Equal(expected, _filters.GetFilter().MatchesFilter(game));
     }
 
+    // The Me/Ally/Opponent radio decides whose builds the filter looks at, and only that group's: the same
+    // game and the same build match only for whoever actually played it.
+    [Theory]
+    [InlineData(PlayerGroup.Me, PlayerGroup.Me, true)]
+    [InlineData(PlayerGroup.Me, PlayerGroup.Ally, false)]
+    [InlineData(PlayerGroup.Me, PlayerGroup.Opponent, false)]
+    [InlineData(PlayerGroup.Ally, PlayerGroup.Me, false)]
+    [InlineData(PlayerGroup.Ally, PlayerGroup.Ally, true)]
+    [InlineData(PlayerGroup.Ally, PlayerGroup.Opponent, false)]
+    [InlineData(PlayerGroup.Opponent, PlayerGroup.Me, false)]
+    [InlineData(PlayerGroup.Opponent, PlayerGroup.Ally, false)]
+    [InlineData(PlayerGroup.Opponent, PlayerGroup.Opponent, true)]
+    public void GetFilter_Build_PlayerGroup_MatchesOnlyTheBuildsOfThatGroup(PlayerGroup playedBy, PlayerGroup asked, bool expected)
+    {
+        BuildNode build = new() { Name = "4 Gate", PlayerRace = Race.Protoss, Matchups = Matchups.VsP };
+        _buildRepository.InsertBuild(build, null, 0);
+        DataPageFiltersViewModel filters = CreateFilters();
+        // A 2v2, so all three groups have someone in them to have played it.
+        GameData game = CreateGame(selfRace: 'P', opponents: [Opponent('P')], allies: [Ally('P')]);
+        PlayerIn(game, playedBy).BuildIds = [build.Id];
+
+        FilterHandle filter = FilterPanel.Of(filters).Add("Builds", "PvP");
+        filter.PlayerGroup = asked;
+        filter.SelectBuild(build.Name);
+
+        Assert.Equal(expected, filters.GetFilter().MatchesFilter(game));
+    }
+
+    private static GamePlayer PlayerIn(GameData game, PlayerGroup group) => group switch
+    {
+        PlayerGroup.Me => game.PlayerDetails[game.ReplayData.Player],
+        PlayerGroup.Ally => game.PlayerDetails[game.ReplayData.Allies[0]],
+        PlayerGroup.Opponent => game.PlayerDetails[game.ReplayData.Opponents[0]],
+        _ => throw new NotImplementedException(),
+    };
+
     private static ReplayPlayer Opponent(char race) =>
         new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = race, Random = false };
 
-    private static GameData CreateGame(char selfRace, ReplayPlayer[] opponents)
+    private static ReplayPlayer Ally(char race) =>
+        new() { Name = "Mate", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = race, Random = false };
+
+    private static GameData CreateGame(char selfRace, ReplayPlayer[] opponents, ReplayPlayer[]? allies = null)
     {
         ParsedReplayData replay = new()
         {
@@ -257,7 +305,7 @@ public class DataPageFiltersViewModelTests : IDisposable
             ReplayTimestamp = new DateTimeOffset(2026, 1, 15, 18, 30, 0, TimeSpan.Zero),
             Win = 1m,
             Player = new ReplayPlayer { Name = "Me", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = selfRace, Random = false },
-            Allies = [],
+            Allies = allies ?? [],
             Opponents = opponents,
         };
         return new GameData(replay);

@@ -23,6 +23,11 @@ public interface IBuildFilterSlotViewModel : IFilterSlotViewModel
     ObservableCollection<AttributeFilterSlotViewModel<BuildDetailValues>> BuildDetailSlots { get; }
     bool IncludeDescendants { get; set; }
     BuildNode? Build { get; }
+
+    PlayerGroup PlayerGroup { get; set; }
+    bool AppliesToMe { get; set; }
+    bool AppliesToAlly { get; set; }
+    bool AppliesToOpponent { get; set; }
 }
 
 public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameData,IEnumerable<GamePlayer>>, IBuildFilterSlotViewModel
@@ -34,12 +39,37 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
 
     public BuildNode? Build => BuildSelection.SelectedBuildNode;
 
+    // Which players' builds this filter asks about. One entry in the menu covers all three, so "I played
+    // this build" and "my opponent played this build" are the same filter pointed at a different group.
+    [NotifyPropertyChangedFor(nameof(AppliesToMe), nameof(AppliesToAlly), nameof(AppliesToOpponent))]
+    [ObservableProperty] public partial PlayerGroup PlayerGroup { get; set; } = PlayerGroup.Me;
+
+    // One per radio button, so the view needs no enum converter — and so the group is kept by this view
+    // model rather than by the radio buttons grouping themselves, which would tie together every build
+    // filter in the bar (RadioButton.GroupName is shared across a whole window). Setting one to true
+    // moves the group; the false the deselected button writes back is already covered by that move.
+    public bool AppliesToMe
+    {
+        get => PlayerGroup == PlayerGroup.Me;
+        set { if (value) PlayerGroup = PlayerGroup.Me; }
+    }
+    public bool AppliesToAlly
+    {
+        get => PlayerGroup == PlayerGroup.Ally;
+        set { if (value) PlayerGroup = PlayerGroup.Ally; }
+    }
+    public bool AppliesToOpponent
+    {
+        get => PlayerGroup == PlayerGroup.Opponent;
+        set { if (value) PlayerGroup = PlayerGroup.Opponent; }
+    }
+
     // Set while Refresh is re-resolving the selection against a reloaded tree, so that selection change
     // doesn't announce itself as the user having changed the criteria
     private bool _refreshing;
 
-    internal BuildFilterSlotViewModel(string title, ObservableCollection<BuildNode>? buildTree, ILogger logger,
-        Func<GameData,IEnumerable<GamePlayer>> filteredPropertyMap) : base(title, filteredPropertyMap)
+    internal BuildFilterSlotViewModel(string title, ObservableCollection<BuildNode>? buildTree, ILogger logger)
+        : base(title, PlayersOf(PlayerGroup.Me))
     {
         BuildSelection = new BuildSelectionSlotViewModel(buildTree, logger);
         BuildDetailSlots = [];
@@ -142,6 +172,22 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
     }
 
     partial void OnIncludeDescendantsChanged(bool value) => RaiseChanged();
+
+    // FilteredPropertyMap is what GetFilter runs the build match over, so pointing the filter at another
+    // group is just a matter of swapping it.
+    partial void OnPlayerGroupChanged(PlayerGroup value)
+    {
+        FilteredPropertyMap = PlayersOf(value);
+        RaiseChanged();
+    }
+
+    private static Func<GameData, IEnumerable<GamePlayer>> PlayersOf(PlayerGroup group) => group switch
+    {
+        PlayerGroup.Me => g => [g.PlayerDetails[g.ReplayData.Player]],
+        PlayerGroup.Ally => g => g.ReplayData.Allies.Select(a => g.PlayerDetails[a]),
+        PlayerGroup.Opponent => g => g.ReplayData.Opponents.Select(o => g.PlayerDetails[o]),
+        _ => throw new NotImplementedException(),
+    };
 
     private AttributeFilterSlotViewModel<BuildDetailValues> CreateFilterSlot(AttributeDefinition definition)
     {

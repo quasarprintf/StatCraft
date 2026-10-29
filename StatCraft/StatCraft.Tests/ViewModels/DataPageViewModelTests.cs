@@ -313,7 +313,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         GameData game = InsertGameWithBuild(build);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("My Build", "PvT").SelectBuild(build.Name);
+        Filters.Add("Builds", "PvT").SelectBuild(build.Name);
 
         Assert.Contains(_viewModel.Games, r => r.GameId == game.GameId);
     }
@@ -328,7 +328,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         GameData game = InsertGameWithBuild(child);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("My Build", "PvT").SelectBuild(parent.Name);
+        Filters.Add("Builds", "PvT").SelectBuild(parent.Name);
 
         Assert.Contains(_viewModel.Games, r => r.GameId == game.GameId);
     }
@@ -342,7 +342,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGameWithBuild(child);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("My Build", "PvT").SelectBuild(parent.Name).IncludeDescendants = false;
+        Filters.Add("Builds", "PvT").SelectBuild(parent.Name).IncludeDescendants = false;
 
         Assert.Empty(_viewModel.Games);
     }
@@ -356,7 +356,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGameWithBuild(parent);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("My Build", "PvT").SelectBuild(child.Name);
+        Filters.Add("Builds", "PvT").SelectBuild(child.Name);
 
         Assert.Empty(_viewModel.Games);
     }
@@ -369,7 +369,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGameWithBuild(picked);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("My Build", "PvT").SelectBuild(other.Name);
+        Filters.Add("Builds", "PvT").SelectBuild(other.Name);
 
         Assert.Empty(_viewModel.Games);
     }
@@ -383,7 +383,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         _viewModel = CreateViewModel();
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("My Build", "PvT").SelectBuild(build.Name);
+        Filters.Add("Builds", "PvT").SelectBuild(build.Name);
 
         Assert.Empty(_viewModel.Games);
     }
@@ -399,7 +399,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         _viewModel = CreateViewModel();
         await LoadGamesWithNoDateRange();
 
-        Filters.Add("My Build", "PvT");
+        Filters.Add("Builds", "PvT");
 
         Assert.Equal(2, _viewModel.Games.Count);
     }
@@ -413,7 +413,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGame(selfRace: 'P');
         _viewModel = CreateViewModel();
         await LoadGamesWithNoDateRange();
-        FilterHandle filter = Filters.Add("My Build", "PvT").SelectBuild(build.Name);
+        FilterHandle filter = Filters.Add("Builds", "PvT").SelectBuild(build.Name);
         Assert.Single(_viewModel.Games);
 
         filter.SelectBuild(null);
@@ -421,60 +421,82 @@ public class DataPageViewModelTests : IAsyncDisposable
         Assert.Equal(2, _viewModel.Games.Count);
     }
 
-    // The same matchup is offered once per set of players, each with its own filters, so the build the
-    // user played and the build they played against are separate questions.
+    // One entry covers everyone now: whose builds it asks about is the Me/Ally/Opponent radio inside the
+    // filter, so the build the user played and the build they played against are still separate questions.
     [Fact]
-    public async Task Filter_Build_OpponentsBuild_KeepsAGameWhoseOpponentPickedIt()
+    public async Task Filter_Build_Opponent_KeepsAGameWhoseOpponentPickedIt()
     {
         BuildNode build = InsertBuild("4 Gate");
         GameData game = InsertGameWithOpponentBuild(build);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("Opponents Build", "PvZ").SelectBuild(build.Name);
+        FilterHandle filter = Filters.Add("Builds", "PvZ");
+        filter.PlayerGroup = PlayerGroup.Opponent;
+        filter.SelectBuild(build.Name);
 
         Assert.Contains(_viewModel.Games, r => r.GameId == game.GameId);
     }
 
     [Fact]
-    public async Task Filter_Build_MyBuild_ExcludesAGameOnlyTheOpponentPickedItIn()
+    public async Task Filter_Build_Me_ExcludesAGameOnlyTheOpponentPickedItIn()
     {
         BuildNode build = InsertBuild("4 Gate");
         InsertGameWithOpponentBuild(build);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("My Build", "PvZ").SelectBuild(build.Name);
+        Filters.Add("Builds", "PvZ").SelectBuild(build.Name);
 
         Assert.Empty(_viewModel.Games);
     }
 
     [Fact]
-    public async Task Filter_Build_OpponentsBuild_ExcludesAGameOnlyThePlayerPickedItIn()
+    public async Task Filter_Build_Opponent_ExcludesAGameOnlyThePlayerPickedItIn()
     {
         BuildNode build = InsertBuild("4 Gate");
         InsertGameWithBuild(build);
 
         await LoadGamesWithNoDateRange();
-        Filters.Add("Opponents Build", "PvT").SelectBuild(build.Name);
+        FilterHandle filter = Filters.Add("Builds", "PvT");
+        filter.PlayerGroup = PlayerGroup.Opponent;
+        filter.SelectBuild(build.Name);
 
         Assert.Empty(_viewModel.Games);
     }
 
-    // Each set of players gets its own entry for the same matchup, and the entries are not unique, so
-    // adding one leaves it and every other set on offer.
+    // Switching the radio is a criteria change like any other, so the table re-filters on it rather than
+    // waiting for the filter to be taken out and added again.
     [Fact]
-    public void Filter_Build_AddingOneSetsMatchup_LeavesTheOtherSetsOffered()
+    public async Task Filter_Build_SwitchingPlayerGroup_RefiltersTheTable()
+    {
+        BuildNode build = InsertBuild("4 Gate");
+        GameData game = InsertGameWithOpponentBuild(build);
+        await LoadGamesWithNoDateRange();
+        FilterHandle filter = Filters.Add("Builds", "PvZ").SelectBuild(build.Name);
+        // Nobody on the user's own side played it.
+        Assert.Empty(_viewModel.Games);
+
+        filter.PlayerGroup = PlayerGroup.Opponent;
+
+        Assert.Contains(_viewModel.Games, r => r.GameId == game.GameId);
+    }
+
+    // The entry isn't unique, so what used to be three entries can still be asked three ways at once —
+    // each filter keeps its own group, which is what the radio buttons sharing no group name buys.
+    [Fact]
+    public void Filter_Build_SameEntry_CanBeAddedOncePerPlayerGroup()
     {
         BuildNode build = InsertBuild("4 Gate");
         _viewModel = CreateViewModel();
 
-        Filters.Add("My Build", "PvT").SelectBuild(build.Name);
+        FilterHandle mine = Filters.Add("Builds", "PvT").SelectBuild(build.Name);
+        FilterHandle theirs = Filters.Add("Builds", "PvT");
+        theirs.PlayerGroup = PlayerGroup.Opponent;
+        theirs.SelectBuild(build.Name);
 
-        Assert.True(Filters.IsOffered("My Build", "PvT"));
-        Assert.True(Filters.IsOffered("Allies Build", "PvT"));
-        Assert.True(Filters.IsOffered("Opponents Build", "PvT"));
-        // The scope and the matchup both have to be visible in the bar, since neither is implied by the
-        // build the user then picks.
-        Assert.Equal(["My Build PvT"], Filters.AppliedTitles.Where(t => t.Contains("PvT")));
+        Assert.True(Filters.IsOffered("Builds", "PvT"));
+        Assert.Equal(["Builds PvT", "Builds PvT"], Filters.AppliedTitles.Where(t => t.Contains("PvT")));
+        Assert.Equal(PlayerGroup.Me, mine.PlayerGroup);
+        Assert.Equal(PlayerGroup.Opponent, theirs.PlayerGroup);
     }
 
     // Each entry offers only the builds filed under its own matchup — the reason there is one entry per
@@ -486,8 +508,8 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertBuild("Blink All In", matchups: Matchups.VsT);
         _viewModel = CreateViewModel();
 
-        Assert.Equal(["Cannon Rush"], Filters.Preview("My Build", "PvZ").BuildOptions);
-        Assert.Equal(["Blink All In"], Filters.Preview("My Build", "PvT").BuildOptions);
+        Assert.Equal(["Cannon Rush"], Filters.Preview("Builds", "PvZ").BuildOptions);
+        Assert.Equal(["Blink All In"], Filters.Preview("Builds", "PvT").BuildOptions);
     }
 
     // The 3x3 is fixed rather than derived from the builds that exist, so every matchup is offered either
@@ -495,15 +517,15 @@ public class DataPageViewModelTests : IAsyncDisposable
     [Fact]
     public void Filter_Build_EveryMatchupIsOffered_WhateverBuildsExist()
     {
-        Assert.Equal(BuildMatchupTitles, Filters.AddableTitlesIn("My Build"));
-        Assert.Empty(Filters.Preview("My Build", "PvT").BuildOptions);
+        Assert.Equal(BuildMatchupTitles, Filters.AddableTitlesIn("Builds"));
+        Assert.Empty(Filters.Preview("Builds", "PvT").BuildOptions);
 
         InsertBuild("4 Gate", matchups: Matchups.VsT | Matchups.VsP);
         _viewModel = CreateViewModel();
 
-        Assert.Equal(BuildMatchupTitles, Filters.AddableTitlesIn("My Build"));
-        Assert.Equal(["4 Gate"], Filters.Preview("My Build", "PvT").BuildOptions);
-        Assert.Empty(Filters.Preview("My Build", "PvZ").BuildOptions);
+        Assert.Equal(BuildMatchupTitles, Filters.AddableTitlesIn("Builds"));
+        Assert.Equal(["4 Gate"], Filters.Preview("Builds", "PvT").BuildOptions);
+        Assert.Empty(Filters.Preview("Builds", "PvZ").BuildOptions);
     }
 
     // The builds a matchup offers come from the same live tree the Data tab's rows pick from, so a build
@@ -513,7 +535,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     {
         InsertBuild("4 Gate");
         _viewModel = CreateViewModel();
-        FilterHandle filter = Filters.Add("My Build", "PvT");
+        FilterHandle filter = Filters.Add("Builds", "PvT");
 
         InsertBuild("Cannon Rush");
         _viewModel.NotifyActivated();
@@ -530,7 +552,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertBuild("Cannon Rush");
         InsertGameWithBuild(picked);
         await LoadGamesWithNoDateRange();
-        FilterHandle filter = Filters.Add("My Build", "PvT").SelectBuild(picked.Name);
+        FilterHandle filter = Filters.Add("Builds", "PvT").SelectBuild(picked.Name);
         Assert.Single(_viewModel.Games);
 
         _buildRepository.DeleteBuild(picked.Id);
@@ -550,12 +572,12 @@ public class DataPageViewModelTests : IAsyncDisposable
         BuildNode build = InsertBuild("4 Gate");
         InsertGameWithBuild(build);
         await LoadGamesWithNoDateRange();
-        FilterHandle filter = Filters.Add("My Build", "PvT").SelectBuild(build.Name);
+        FilterHandle filter = Filters.Add("Builds", "PvT").SelectBuild(build.Name);
 
         _buildRepository.DeleteBuild(build.Id);
         _viewModel.NotifyActivated();
 
-        Assert.Equal([.. AlwaysApplied, "My Build PvT"], Filters.AppliedTitles);
+        Assert.Equal([.. AlwaysApplied, "Builds PvT"], Filters.AppliedTitles);
         Assert.Null(filter.PickedBuild);
         Assert.Empty(filter.BuildOptions);
     }
@@ -570,7 +592,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         BuildNode other = InsertBuild("Cannon Rush");
         _viewModel = CreateViewModel();
 
-        FilterHandle filter = Filters.Add("My Build", "PvT");
+        FilterHandle filter = Filters.Add("Builds", "PvT");
         Assert.Empty(filter.DetailTitles);
 
         filter.SelectBuild(build.Name);
@@ -591,7 +613,7 @@ public class DataPageViewModelTests : IAsyncDisposable
     {
         BuildNode build = InsertBuild("4 Gate");
         _viewModel = CreateViewModel();
-        FilterHandle filter = Filters.Add("My Build", "PvT").SelectBuild(build.Name);
+        FilterHandle filter = Filters.Add("Builds", "PvT").SelectBuild(build.Name);
         Assert.Empty(filter.DetailTitles);
 
         InsertBuildDetail(build, "Supply", AttributeType.Numeric);
@@ -627,8 +649,8 @@ public class DataPageViewModelTests : IAsyncDisposable
         return game;
     }
 
-    // Tags the opponent with the build rather than the session player, for the "Opponents Build" filters —
-    // so here it is the opponent who is Protoss, playing their own PvZ.
+    // Tags the opponent with the build rather than the session player, for the filters pointed at the
+    // opponent group — so here it is the opponent who is Protoss, playing their own PvZ.
     private GameData InsertGameWithOpponentBuild(BuildNode build)
     {
         GameData game = InsertGame(selfRace: 'Z', opponents: [Opponent('P', 3100)]);
@@ -698,15 +720,15 @@ public class DataPageViewModelTests : IAsyncDisposable
     private static readonly string[] AlwaysApplied = ["Profile", "Date"];
     private static readonly string[] BuiltInFilterTitles = ["Map", "Matchup", "Outcome", "Opponent MMR"];
 
-    // Each build scope offers the same fixed 3x3 of matchups, whether or not any build is filed under
-    // them, so all three sets are part of any assertion on the menu as a whole.
+    // The one build entry offers the same fixed 3x3 of matchups, whether or not any build is filed under
+    // them, so they are part of any assertion on the menu as a whole.
     private static readonly string[] BuildMatchupTitles =
         ["ZvZ", "ZvT", "ZvP", "TvZ", "TvT", "TvP", "PvZ", "PvT", "PvP"];
 
     // The whole menu in its fixed order: the built-in filters still on offer (a unique one already in the
-    // bar is not), then the build scopes, then whichever game attributes exist.
+    // bar is not), then the build matchups, then whichever game attributes exist.
     private static string[] MenuTitles(string[] builtIns, params string[] gameAttributes) =>
-        [.. builtIns, .. BuildMatchupTitles, .. BuildMatchupTitles, .. BuildMatchupTitles, .. gameAttributes];
+        [.. builtIns, .. BuildMatchupTitles, .. gameAttributes];
 
     [Fact]
     public void BuiltInFilters_StartUnappliedAndAreOfferedInTheirFixedOrder()
@@ -913,7 +935,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         InsertGameWithBuild(child);
         await LoadGamesWithNoDateRange();
 
-        Filters.Add("My Build", "PvT").SelectBuild(parent.Name);
+        Filters.Add("Builds", "PvT").SelectBuild(parent.Name);
 
         Assert.Equal(2, _viewModel.Games.Count);
     }

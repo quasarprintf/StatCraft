@@ -40,14 +40,6 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     // One menu entry per game attribute, by definition, so a rename or a retype can find the entry it
     // belongs to (and whatever has already been added from it).
     private readonly Dictionary<AttributeDefinition, FilterMenuItemViewModel<GameData>> _gameAttributeItems = new();
-    // The build trees, by (player race, opponent race) — the same live collections the Data tab's rows
-    // pick their builds from, refilled in place whenever the Builds tab has changed them.
-    private readonly Func<Race?, Matchups, ObservableCollection<BuildNode>?> _getBuildTree;
-    private readonly ILogger _logger;
-
-    // The same build filtering offered once per set of players, so "I played this build" and "my opponent
-    // played this build" are separate criteria rather than one shared setting.
-    private readonly BuildFilterScope[] _buildScopes;
     public ObservableCollection<FilterMenuItemViewModel<GameData>> GameAttributeSlots { get; private set; }
 
     public FilterMenuViewModel<GameData> FilterMenu { get; private set; }
@@ -61,9 +53,6 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     internal DataPageFiltersViewModel(Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree, ILogger logger,
         ObservableCollection<AttributeDefinition> gameAttributes)
     {
-        _getBuildTree = getBuildTree;
-        _logger = logger;
-
         FilterMenuItemViewModel<GameData> profileMenuItem = new FilterMenuItemViewModel<GameData>(() => 
             new CheckboxFilterSlotViewModel<GameData, int>("Profile", [], g => [g.Sc2ProfileId], showSearch: true)
             {
@@ -123,13 +112,6 @@ public partial class DataPageFiltersViewModel : ViewModelBase
                 AllowIncludeUnset = false
             }, "Opponent MMR");
 
-        _buildScopes =
-        [
-            new BuildFilterScope("My Build", g => [g.PlayerDetails[g.ReplayData.Player]]),
-            new BuildFilterScope("Allies Build", g => g.ReplayData.Allies.Select(a => g.PlayerDetails[a])),
-            new BuildFilterScope("Opponents Build", g => g.ReplayData.Opponents.Select(o => g.PlayerDetails[o])),
-        ];
-
         GameAttributeSlots = new ObservableCollection<FilterMenuItemViewModel<GameData>>();
         foreach (AttributeDefinition attribute in gameAttributes)
             GameAttributeSlots.Add(GameAttributeMenuItem(attribute));
@@ -143,7 +125,7 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             matchupMenuItem,
             outcomeMenuItem,
             mmrMenuItem,
-            .. _buildScopes.Select(scope => scope.MenuItem),
+            BuildsMenuItem(getBuildTree, logger),
             new FilterMenuItemViewModel<GameData>(GameAttributeSlots, "Game Attributes")
         ];
         FilterMenu = new FilterMenuViewModel<GameData>(filterSlots);
@@ -152,10 +134,6 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             if (!_suppressChangeEvents)
                 OtherFiltersChanged?.Invoke();
         };
-
-        // Last, because it reads the filters already in the bar through FilterMenu — of which there are
-        // none yet here, but there are every other time it runs.
-        RefreshBuildMenu();
     }
 
     // The factory closes over the definition, so an entry's future filters always read the current name
@@ -298,57 +276,34 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             .Select(outcome => new CheckboxFilterOptionViewModel<GameOutcome>(outcome, outcome.ToString()))
             .ToList();
 
-    public void RefreshBuildMenu()
+    // One entry per matchup, grouped by the player race the builds are filed under. Which players' builds
+    // a filter added from one of them asks about is picked inside the filter itself, so the same entry
+    // covers the user's own builds, their allies' and their opponents' (see BuildFilterSlotViewModel).
+    // Built once: the trees are live collections, so a filter's picker follows the Builds tab on its own.
+    private static FilterMenuItemViewModel<GameData> BuildsMenuItem(
+        Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree, ILogger logger)
     {
-        foreach (BuildFilterScope scope in _buildScopes)
-            foreach (Race playerRace in Enum.GetValues<Race>())
-                RefreshMatchupItems(scope, playerRace);
+        ObservableCollection<FilterMenuItemViewModel<GameData>> raceItems = [];
+        foreach (Race playerRace in Enum.GetValues<Race>())
+        {
+            ObservableCollection<FilterMenuItemViewModel<GameData>> matchupItems = [];
+            foreach (Race opponentRace in Enum.GetValues<Race>())
+            {
+                ObservableCollection<BuildNode>? tree = getBuildTree(playerRace, opponentRace.AsMatchup());
+                string matchup = $"{playerRace.Display()}v{opponentRace.Display()}";
+                matchupItems.Add(new FilterMenuItemViewModel<GameData>(
+                    () => new BuildFilterSlotViewModel($"Builds {matchup}", tree, logger), matchup));
+            }
+            raceItems.Add(new FilterMenuItemViewModel<GameData>(matchupItems, playerRace.Display()));
+        }
+        return new FilterMenuItemViewModel<GameData>(raceItems, "Builds");
     }
+
+    // A tree reload replaces every BuildNode in it, so what the filters already in the bar are holding has
+    // to be looked up again.
     public void RefreshBuildFilters()
     {
         foreach (BuildFilterSlotViewModel filter in FilterMenu.AppliedFilters.OfType<BuildFilterSlotViewModel>())
             filter.Refresh();
-    }
-
-    private void RefreshMatchupItems(BuildFilterScope scope, Race playerRace)
-    {
-         int index = 0;
-        foreach (Race opponentRace in Enum.GetValues<Race>())
-        {
-            ObservableCollection<BuildNode>? tree = _getBuildTree(playerRace, opponentRace.AsMatchup());
-            string matchup = $"{playerRace.Display()}v{opponentRace.Display()}";
-            FilterMenuItemViewModel<GameData> item = new FilterMenuItemViewModel<GameData>(() => new BuildFilterSlotViewModel($"{scope.Title} {matchup}", tree, _logger, scope.Players), matchup);
-            scope.ItemsByMatchup[(playerRace, opponentRace)] = item;
-            scope.MatchupItemsByRace[playerRace].Insert(index++, item);
-        }
-    }
-
-    // One set of players' builds: a submenu per player race, each offering that race's matchups, and its
-    // own filters once the user adds any.
-    private sealed class BuildFilterScope
-    {
-        public string Title { get; }
-        public Func<GameData, IEnumerable<GamePlayer>> Players { get; }
-        public ObservableCollection<FilterMenuItemViewModel<GameData>> RaceItems { get; } = [];
-
-        // The matchup entries of each player race's submenu, in the order they are shown, and the same
-        // entries by matchup for RefreshBuildMenu to find them by.
-        public Dictionary<Race, ObservableCollection<FilterMenuItemViewModel<GameData>>> MatchupItemsByRace { get; } = new();
-        public Dictionary<(Race Player, Race Opponent), FilterMenuItemViewModel<GameData>> ItemsByMatchup { get; } = new();
-
-        public FilterMenuItemViewModel<GameData> MenuItem { get; }
-
-        public BuildFilterScope(string title, Func<GameData, IEnumerable<GamePlayer>> players)
-        {
-            Title = title;
-            Players = players;
-            foreach (Race playerRace in Enum.GetValues<Race>())
-            {
-                ObservableCollection<FilterMenuItemViewModel<GameData>> matchups = [];
-                MatchupItemsByRace[playerRace] = matchups;
-                RaceItems.Add(new FilterMenuItemViewModel<GameData>(matchups, playerRace.Display()));
-            }
-            MenuItem = new FilterMenuItemViewModel<GameData>(RaceItems, title);
-        }
     }
 }
