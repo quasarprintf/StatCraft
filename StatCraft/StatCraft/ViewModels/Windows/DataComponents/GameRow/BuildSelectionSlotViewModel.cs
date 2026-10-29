@@ -11,31 +11,19 @@ using StatCraft.Services.DataParsing;
 
 namespace StatCraft.ViewModels.Windows.DataComponents.GameRow;
 
-// One BuildPathPicker's worth of state: which build (if any) is selected in this slot. A
-// GameDataRowViewModel owns a growable list of these so a single game can reference multiple builds.
 public partial class BuildSelectionSlotViewModel : ObservableObject
 {
-    // Sentinel meaning "no build in this slot", selectable from the menu like any other leaf node.
-    // Recognized by reference identity in SelectBuild below.
     internal static readonly BuildNode NoneOption = new() { Id = -1, Name = "(none)" };
 
     private static readonly string DEFAULT_BUILD_TEXT = "";
 
-    // What the picker reads while nothing is selected. A game row leaves it blank — the column it sits
-    // in says what it is for — but a picker somewhere with less around it (see BuildFilterSlotViewModel)
-    // can say so itself instead of showing an empty button.
-    private readonly string _noSelectionText;
-
     public ObservableCollection<BuildNode> BuildTree { get; }
-
-    // NoneOption followed by BuildTree's contents, kept in sync since BuildTree is a shared, live
-    // collection that DataPageViewModel mutates in place when the Builds tab changes.
     public ObservableCollection<BuildNode> MenuOptions { get; } = [];
 
     public bool IsBuildPickerEnabled { get; }
 
     [ObservableProperty] public partial BuildNode? SelectedBuildNode { get; set; }
-    [ObservableProperty] public partial string SelectedBuildLabel { get; set; }
+    [ObservableProperty] public partial string SelectedBuildLabel { get; set; } = DEFAULT_BUILD_TEXT;
 
     // Raised whenever SelectedBuildNode changes, passing the value it changed from. Callers that need
     // to hydrate a saved selection without triggering side effects should set SelectedBuildNode via
@@ -45,11 +33,9 @@ public partial class BuildSelectionSlotViewModel : ObservableObject
 
     private readonly ILogger _logger;
 
-    internal BuildSelectionSlotViewModel(ObservableCollection<BuildNode>? buildTree, ILogger logger, string? noSelectionText = null)
+    internal BuildSelectionSlotViewModel(ObservableCollection<BuildNode>? buildTree, ILogger logger)
     {
         BuildTree = buildTree ?? [];
-        _noSelectionText = noSelectionText ?? DEFAULT_BUILD_TEXT;
-        SelectedBuildLabel = _noSelectionText;
         IsBuildPickerEnabled = buildTree != null;
         _logger = logger;
 
@@ -81,7 +67,7 @@ public partial class BuildSelectionSlotViewModel : ObservableObject
         if (newValue != null && path == null)
             _logger.LogError($"Selected build \"{newValue.Name}\" (Id={newValue.Id}) was not found in its own BuildTree.");
 
-        SelectedBuildLabel = path == null ? _noSelectionText : string.Join(" > ", path.Select(n => n.Name));
+        SelectedBuildLabel = path == null ? DEFAULT_BUILD_TEXT : string.Join(" > ", path.Select(n => n.Name));
         SelectionChanged?.Invoke(this, oldValue);
     }
 }

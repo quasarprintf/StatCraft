@@ -31,10 +31,6 @@ public interface IBuildFilterSlotViewModel : IFilterSlotViewModel
 // Until they pick one the filter constrains nothing, same as any other filter with no criteria entered.
 public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameData,IEnumerable<GamePlayer>>, IBuildFilterSlotViewModel
 {
-    // What the picker reads while no build is picked. A game row leaves its own pickers blank, but in the
-    // filter bar an unlabeled button says nothing about what it would do.
-    private const string NO_BUILD_TEXT = "(any build)";
-
     public BuildSelectionSlotViewModel BuildSelection { get; }
 
     [NotifyPropertyChangedFor(nameof(HasDetails))]
@@ -55,7 +51,7 @@ public sealed partial class BuildFilterSlotViewModel : FilterSlotViewModel<GameD
     internal BuildFilterSlotViewModel(string title, ObservableCollection<BuildNode>? buildTree, ILogger logger,
         Func<GameData,IEnumerable<GamePlayer>> filteredPropertyMap) : base(title, filteredPropertyMap)
     {
-        BuildSelection = new BuildSelectionSlotViewModel(buildTree, logger, NO_BUILD_TEXT);
+        BuildSelection = new BuildSelectionSlotViewModel(buildTree, logger);
         BuildDetailSlots = [];
         BuildSelection.SelectionChanged += OnSelectedBuildChanged;
     }
