@@ -6,6 +6,7 @@ using StatCraft.Models.Battlenet;
 using StatCraft.Models.GameData;
 using StatCraft.Models.GameData.Attributes;
 using StatCraft.Models.GameData.Builds;
+using StatCraft.Models.GameData.Maps;
 using StatCraft.Models.GameData.Race;
 using StatCraft.Models.GameData.Replays;
 using StatCraft.Services.BackgroundService;
@@ -34,24 +35,35 @@ public partial class DataPageViewModel : ViewModelBase
     private readonly ReplayImportService _replayImportService;
     private readonly AccountRepository _accountRepo;
     private readonly BuildRepository _buildRepo;
+    private readonly MapRepository _mapRepo;
     private readonly GameDataRepository _gameDataRepo;
     private readonly AttributeRepository _attributeRepo;
     private readonly SessionMmrTracker _mmrTracker;
     private readonly ILogger _logger;
     private readonly ReplayDataExtractor _replayDataExtractor;
     private readonly Dictionary<(Race Player, Matchups Opponent), ObservableCollection<BuildNode>> _buildTreeCache = new();
+
+    // Every map with its attribute values, by id, for the map attribute filters to ask about the map a
+    // game was played on. The games themselves only carry the map's name and id (see GameDataRepository),
+    // and the Maps tab can change a value while this tab is open, so the maps are read whole and re-read
+    // when they change rather than taken from the loaded games.
+    private readonly Dictionary<int, Map> _mapsById = new();
+
     private bool _buildTreeCacheDirty;
     private bool _attributesCacheDirty;
+    private bool _mapsCacheDirty;
 
     // The profile-scoped superset before the other (in-memory) filter dimensions are applied —
     // Games is always a filtered projection of this, never populated directly.
     private List<GameData> _loadedGames = [];
 
     public ObservableCollection<AttributeDefinition> GameAttributes { get; } = [];
+    public ObservableCollection<AttributeDefinition> MapAttributes { get; } = [];
     public DataPageFiltersViewModel Filters { get; }
 
     public DataPageViewModel(SettingsRepository settingsRepository, ReplayWatcherService replayWatcherService,
         ReplayImportService replayImportService, AccountRepository accountRepository, BuildRepository buildRepository,
+        MapRepository mapRepository,
         GameDataRepository gameDataRepository, AttributeRepository attributeRepository, Sc2LadderService ladderService,
         ILogger logger, ReplayDataExtractor replayDataExtractor)
     {
@@ -60,6 +72,7 @@ public partial class DataPageViewModel : ViewModelBase
         _replayImportService = replayImportService;
         _accountRepo = accountRepository;
         _buildRepo = buildRepository;
+        _mapRepo = mapRepository;
         _gameDataRepo = gameDataRepository;
         _attributeRepo = attributeRepository;
         _logger = logger;
@@ -69,13 +82,17 @@ public partial class DataPageViewModel : ViewModelBase
         _replayImportService.GameParsed += OnGameParsed;
         _replayImportService.GameMmrUpdated += OnGameMmrUpdated;
         _buildRepo.BuildsChanged += OnBuildsChanged;
+        _mapRepo.MapsChanged += OnMapsChanged;
         _settingsRepo.SettingsChanged += OnSettingsChanged;
 
         foreach (AttributeDefinition attribute in _attributeRepo.GetAllAttributes(AttributeScope.Game))
             GameAttributes.Add(attribute);
+        foreach (AttributeDefinition attribute in _attributeRepo.GetAllAttributes(AttributeScope.Map))
+            MapAttributes.Add(attribute);
         _attributeRepo.AttributesChanged += OnAttributesChanged;
+        RefreshMapCache();
 
-        Filters = new DataPageFiltersViewModel(GetBuildTree, logger, GameAttributes);
+        Filters = new DataPageFiltersViewModel(GetBuildTree, MapById, logger, GameAttributes, MapAttributes);
         Filters.ProfileSelectionChanged += async () => await ReloadGamesFromDatabase();
         Filters.OtherFiltersChanged += ApplyFilters;
 
@@ -287,6 +304,7 @@ public partial class DataPageViewModel : ViewModelBase
     // to the Data tab (see NotifyActivated).
     private void OnBuildsChanged() => _buildTreeCacheDirty = true;
     private void OnAttributesChanged() => _attributesCacheDirty = true;
+    private void OnMapsChanged() => _mapsCacheDirty = true;
 
     // Called by DataPage's code-behind when the Data tab becomes visible.
     public void NotifyActivated()
@@ -297,13 +315,21 @@ public partial class DataPageViewModel : ViewModelBase
         if (_buildTreeCacheDirty)
             RefreshBuildTreeCache();
         if (_attributesCacheDirty)
+        {
             RefreshAttributesCache();
+            RefreshMapAttributesCache();
+        }
+        // A map attribute definition added or retyped changes what every map carries, so the maps are
+        // re-read for either kind of change rather than only when the Maps tab touched a value.
+        if (_mapsCacheDirty || _attributesCacheDirty)
+            RefreshMapCache();
 
-        if (_buildTreeCacheDirty || _attributesCacheDirty)
+        if (_buildTreeCacheDirty || _attributesCacheDirty || _mapsCacheDirty)
             ApplyFilters();
 
         _buildTreeCacheDirty = false;
         _attributesCacheDirty = false;
+        _mapsCacheDirty = false;
     }
 
     private void RefreshAttributesCache()
@@ -375,7 +401,8 @@ public partial class DataPageViewModel : ViewModelBase
                 _gameDataRepo.SaveGameAttributeValues(gamesToSave, dbAttr.Id);
             }
 
-            SyncValueOptions(cachedAttr, dbAttr.ValueOptions);
+            if (SyncValueOptions(cachedAttr, dbAttr.ValueOptions))
+                Filters.RefreshAttributeSlotOptions(cachedAttr);
 
             if (dbAttr.DefaultValue.HasValue)
                 cachedAttr.DefaultValue.ApplyStoredValue(dbAttr.DefaultValue.Serialize()!);
@@ -403,7 +430,62 @@ public partial class DataPageViewModel : ViewModelBase
         }
     }
 
-    private void SyncValueOptions(AttributeDefinition attribute, ObservableCollection<string> latest)
+    // Map attribute definitions, like the game ones above, are kept as the same instances the filter menu
+    // was built from, so an edit on the Maps tab catches up the menu entry and whatever has been added
+    // from it rather than replacing either. The values themselves need no patching here: the maps are
+    // re-read whole (see RefreshMapCache).
+    private void RefreshMapAttributesCache()
+    {
+        List<AttributeDefinition> dbAttributes = _attributeRepo.GetAllAttributes(AttributeScope.Map);
+        Dictionary<int, AttributeDefinition> dbById = dbAttributes.ToDictionary(a => a.Id);
+
+        foreach (AttributeDefinition cachedAttr in MapAttributes.Where(a => !dbById.ContainsKey(a.Id)).ToList())
+            MapAttributes.Remove(cachedAttr); //automatically removes the filter entry
+
+        foreach (AttributeDefinition cachedAttr in MapAttributes)
+        {
+            AttributeDefinition dbAttr = dbById[cachedAttr.Id];
+
+            if (cachedAttr.Name != dbAttr.Name)
+            {
+                cachedAttr.Name = dbAttr.Name;
+                Filters.RenameMapAttributeSlot(cachedAttr);
+            }
+
+            if (cachedAttr.Type != dbAttr.Type)
+            {
+                cachedAttr.Type = dbAttr.Type;
+                Filters.ReplaceMapAttributeSlot(cachedAttr);
+            }
+
+            cachedAttr.IsMandatory = dbAttr.IsMandatory;
+
+            if (SyncValueOptions(cachedAttr, dbAttr.ValueOptions))
+                Filters.RefreshMapAttributeSlotOptions(cachedAttr);
+
+            if (dbAttr.DefaultValue.HasValue)
+                cachedAttr.DefaultValue.ApplyStoredValue(dbAttr.DefaultValue.Serialize()!);
+            else
+                cachedAttr.DefaultValue.Clear();
+        }
+
+        HashSet<int> knownIds = MapAttributes.Select(a => a.Id).ToHashSet();
+        foreach (AttributeDefinition dbAttr in dbAttributes.Where(a => !knownIds.Contains(a.Id)))
+            MapAttributes.Add(dbAttr); //automatically adds the filter entry
+    }
+
+    // Read whole rather than patched: a map's values belong to the Maps tab, which can have changed any
+    // number of them (or added a map) while this tab was away.
+    private void RefreshMapCache()
+    {
+        _mapsById.Clear();
+        foreach (Map map in _mapRepo.GetAllMaps(MapAttributes))
+            _mapsById[map.Id] = map;
+    }
+
+    private Map? MapById(int id) => _mapsById.GetValueOrDefault(id);
+
+    private static bool SyncValueOptions(AttributeDefinition attribute, ObservableCollection<string> latest)
     {
         bool changed = false;
 
@@ -421,10 +503,7 @@ public partial class DataPageViewModel : ViewModelBase
             changed = true;
         }
 
-        if (!changed)
-            return;
-
-        Filters.RefreshAttributeSlotOptions(attribute);
+        return changed;
     }
 
     // Refresh every cached matchup tree in place, so any GameDataRowViewModel/BuildPathPicker

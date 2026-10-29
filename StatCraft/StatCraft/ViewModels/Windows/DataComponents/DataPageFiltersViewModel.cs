@@ -37,10 +37,17 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     private readonly FilterMenuItemViewModel<GameData> _mapMenuItem;
     private CheckboxFilterSlotViewModel<GameData, int>? AppliedMapSlot => _mapMenuItem.AppliedFilters.OfType<CheckboxFilterSlotViewModel<GameData, int>>().FirstOrDefault();
 
-    // One menu entry per game attribute, by definition, so a rename or a retype can find the entry it
-    // belongs to (and whatever has already been added from it).
+    // One menu entry per attribute, by definition, so a rename or a retype can find the entry it belongs
+    // to (and whatever has already been added from it).
     private readonly Dictionary<AttributeDefinition, FilterMenuItemViewModel<GameData>> _gameAttributeItems = new();
     public ObservableCollection<FilterMenuItemViewModel<GameData>> GameAttributeSlots { get; private set; }
+
+    private readonly Dictionary<AttributeDefinition, FilterMenuItemViewModel<GameData>> _mapAttributeItems = new();
+    public ObservableCollection<FilterMenuItemViewModel<GameData>> MapAttributeSlots { get; private set; }
+
+    // The map a game was played on, by id, as the Maps tab has it — the map the game itself carries is
+    // only a name and an id (see GameDataRepository), so it has no attribute values to filter on.
+    private readonly Func<int, Map?> _getMap;
 
     public FilterMenuViewModel<GameData> FilterMenu { get; private set; }
 
@@ -50,9 +57,12 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     public event Action? ProfileSelectionChanged;
     public event Action? OtherFiltersChanged;
 
-    internal DataPageFiltersViewModel(Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree, ILogger logger,
-        ObservableCollection<AttributeDefinition> gameAttributes)
+    internal DataPageFiltersViewModel(Func<Race?, Matchups, ObservableCollection<BuildNode>?> getBuildTree,
+        Func<int, Map?> getMap, ILogger logger,
+        ObservableCollection<AttributeDefinition> gameAttributes, ObservableCollection<AttributeDefinition> mapAttributes)
     {
+        _getMap = getMap;
+
         FilterMenuItemViewModel<GameData> profileMenuItem = new FilterMenuItemViewModel<GameData>(() => 
             new CheckboxFilterSlotViewModel<GameData, int>("Profile", [], g => [g.Sc2ProfileId], showSearch: true)
             {
@@ -117,6 +127,11 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             GameAttributeSlots.Add(GameAttributeMenuItem(attribute));
         gameAttributes.CollectionChanged += GameAttributesChanged;
 
+        MapAttributeSlots = new ObservableCollection<FilterMenuItemViewModel<GameData>>();
+        foreach (AttributeDefinition attribute in mapAttributes)
+            MapAttributeSlots.Add(MapAttributeMenuItem(attribute));
+        mapAttributes.CollectionChanged += MapAttributesChanged;
+
         FilterMenuItemViewModel<GameData>[] filterSlots = 
         [
             profileMenuItem,
@@ -126,7 +141,8 @@ public partial class DataPageFiltersViewModel : ViewModelBase
             outcomeMenuItem,
             mmrMenuItem,
             BuildsMenuItem(getBuildTree, logger),
-            new FilterMenuItemViewModel<GameData>(GameAttributeSlots, "Game Attributes")
+            new FilterMenuItemViewModel<GameData>(GameAttributeSlots, "Game Attributes"),
+            new FilterMenuItemViewModel<GameData>(MapAttributeSlots, "Map Attributes")
         ];
         FilterMenu = new FilterMenuViewModel<GameData>(filterSlots);
         FilterMenu.FiltersChanged += () =>
@@ -143,6 +159,20 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         FilterMenuItemViewModel<GameData> item = new FilterMenuItemViewModel<GameData>(
             () => new AttributeFilterSlotViewModel<GameData>(attribute), attribute.Name);
         _gameAttributeItems[attribute] = item;
+        return item;
+    }
+
+    // A game is played on exactly one map, so this asks of that map the same question the Maps tab asks
+    // of every map. The map is resolved by id each time the filter runs, so it reads whatever the Maps tab
+    // has saved since rather than a copy taken when the games were loaded.
+    private FilterMenuItemViewModel<GameData> MapAttributeMenuItem(AttributeDefinition attribute)
+    {
+        FilterMenuItemViewModel<GameData> item = new FilterMenuItemViewModel<GameData>(
+            () => new TemplatedFilterSlotViewModel<GameData, Map>(
+                f => new SequentialAllFilter<GameData, Map>(f, g => [_getMap(g.ReplayData.Map.Id)]),
+                new AttributeFilterSlotViewModel<Map>(attribute) { AllowIncludeUnset = true }),
+            attribute.Name);
+        _mapAttributeItems[attribute] = item;
         return item;
     }
 
@@ -169,6 +199,34 @@ public partial class DataPageFiltersViewModel : ViewModelBase
     internal void RefreshAttributeSlotOptions(AttributeDefinition attribute)
     {
         foreach (AttributeFilterSlotViewModel<GameData> applied in AppliedAttributeSlots(attribute))
+            applied.Refresh();
+    }
+
+    // The same three for the map attributes. A map attribute filter wraps its attribute slot to reach the
+    // game's map (see MapAttributeMenuItem), so what is caught up here is one level in.
+    private IEnumerable<AttributeFilterSlotViewModel<Map>> AppliedMapAttributeSlots(AttributeDefinition attribute) =>
+        _mapAttributeItems.TryGetValue(attribute, out FilterMenuItemViewModel<GameData>? item)
+            ? item.AppliedFilters.OfType<IWrappedFilterSlotViewModel>()
+                .Select(wrapper => wrapper.WrappedFilter)
+                .OfType<AttributeFilterSlotViewModel<Map>>()
+                .ToList()
+            : [];
+
+    internal void RenameMapAttributeSlot(AttributeDefinition attribute)
+    {
+        if (_mapAttributeItems.TryGetValue(attribute, out FilterMenuItemViewModel<GameData>? item))
+            item.Rename(attribute.Name);
+    }
+
+    internal void ReplaceMapAttributeSlot(AttributeDefinition attribute)
+    {
+        foreach (AttributeFilterSlotViewModel<Map> applied in AppliedMapAttributeSlots(attribute))
+            applied.Rebuild();
+    }
+
+    internal void RefreshMapAttributeSlotOptions(AttributeDefinition attribute)
+    {
+        foreach (AttributeFilterSlotViewModel<Map> applied in AppliedMapAttributeSlots(attribute))
             applied.Refresh();
     }
 
@@ -203,23 +261,32 @@ public partial class DataPageFiltersViewModel : ViewModelBase
         return _mapOptions.Select(m => new CheckboxFilterOptionViewModel<int>(m.Id, m.Name)).ToList();
     }
 
-    private void GameAttributesChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    private void GameAttributesChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+        AttributesChanged(e, GameAttributeSlots, _gameAttributeItems, GameAttributeMenuItem);
+
+    private void MapAttributesChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+        AttributesChanged(e, MapAttributeSlots, _mapAttributeItems, MapAttributeMenuItem);
+
+    private static void AttributesChanged(NotifyCollectionChangedEventArgs e,
+        ObservableCollection<FilterMenuItemViewModel<GameData>> items,
+        Dictionary<AttributeDefinition, FilterMenuItemViewModel<GameData>> itemsByAttribute,
+        Func<AttributeDefinition, FilterMenuItemViewModel<GameData>> createItem)
     {
         if (e.NewItems != null)
         {
-            for (int i = 0; i < e.NewItems.Count; ++i) 
+            for (int i = 0; i < e.NewItems.Count; ++i)
             {
                 AttributeDefinition attribute = (AttributeDefinition)e.NewItems[i]!;
-                GameAttributeSlots.Insert(i + e.NewStartingIndex, GameAttributeMenuItem(attribute));
+                items.Insert(i + e.NewStartingIndex, createItem(attribute));
             }
         }
         if (e.OldItems != null)
         {
             foreach (object oldItem in e.OldItems)
             {
-                FilterMenuItemViewModel<GameData> item = GameAttributeSlots[e.OldStartingIndex];
-                GameAttributeSlots.RemoveAt(e.OldStartingIndex);
-                _gameAttributeItems.Remove((AttributeDefinition)oldItem);
+                FilterMenuItemViewModel<GameData> item = items[e.OldStartingIndex];
+                items.RemoveAt(e.OldStartingIndex);
+                itemsByAttribute.Remove((AttributeDefinition)oldItem);
                 item.Destroy();
             }
         }

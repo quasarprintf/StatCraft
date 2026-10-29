@@ -36,11 +36,18 @@ public class DataPageFiltersViewModelTests : IDisposable
     private DataPageFiltersViewModel CreateFilters()
     {
         _buildTrees.Clear();
-        DataPageFiltersViewModel filters = new(BuildTree, new MockLogger(), []);
+        DataPageFiltersViewModel filters = new(BuildTree, MapById, new MockLogger(), [], _mapAttributes);
         filters.DateSlot.FromDate = null;
         filters.DateSlot.ToDate = null;
         return filters;
     }
+
+    // The map attribute definitions the filter menu is built from, and the Maps tab's own copy of each
+    // map, the way DataPageViewModel keeps them.
+    private readonly ObservableCollection<AttributeDefinition> _mapAttributes = [];
+    private readonly Dictionary<int, Map> _mapsById = new();
+
+    private Map? MapById(int id) => _mapsById.GetValueOrDefault(id);
 
     // One live collection per matchup, handed out to whoever asks for it, the way DataPageViewModel
     // caches the trees its rows and its build filters share.
@@ -288,6 +295,92 @@ public class DataPageFiltersViewModelTests : IDisposable
         PlayerGroup.Opponent => game.PlayerDetails[game.ReplayData.Opponents[0]],
         _ => throw new NotImplementedException(),
     };
+
+    // A map attribute filter asks about the map a game was played on. The game itself only carries that
+    // map's name and id, so the filter looks the map up by id wherever the Maps tab keeps it.
+    [Theory]
+    [InlineData("Large", true)]
+    [InlineData("Small", false)]
+    public void GetFilter_MapAttribute_KeepsGamesWhoseMapHasACheckedValue(string checkedValue, bool expected)
+    {
+        AttributeDefinition size = MapAttribute("Size", "Large", "Small");
+        DataPageFiltersViewModel filters = CreateFilters();
+        GameData game = CreateGame(selfRace: 'P', opponents: [Opponent('T')]);
+        SetMapValue(game, size, "Large");
+
+        FilterPanel.Of(filters).Add("Map Attributes", "Size").Check(checkedValue);
+
+        Assert.Equal(expected, filters.GetFilter().MatchesFilter(game));
+    }
+
+    // The map having the attribute but no value for it is the case Include unset is for; the map not
+    // having it at all is not, the same as everywhere else attribute filters are used.
+    [Theory]
+    [InlineData(true, false, false)]
+    [InlineData(true, true, true)]
+    [InlineData(false, true, false)]
+    public void GetFilter_MapAttribute_MapWithNoValue_IsKeptOnlyWhenTheValueExistsAndUnsetIsIncluded(
+        bool mapHasTheAttribute, bool includeUnset, bool expected)
+    {
+        AttributeDefinition size = MapAttribute("Size", "Large");
+        DataPageFiltersViewModel filters = CreateFilters();
+        GameData game = CreateGame(selfRace: 'P', opponents: [Opponent('T')]);
+        if (mapHasTheAttribute)
+            SetMapValue(game, size, null);
+        else
+            MapOf(game);
+
+        FilterHandle filter = FilterPanel.Of(filters).Add("Map Attributes", "Size").Check("Large");
+        filter.IncludeUnset = includeUnset;
+
+        Assert.Equal(expected, filters.GetFilter().MatchesFilter(game));
+    }
+
+    // Nothing checked is no criteria, so the filter sits in the bar without asking anything of the map.
+    [Fact]
+    public void GetFilter_MapAttribute_NothingChecked_KeepsEveryGame()
+    {
+        AttributeDefinition size = MapAttribute("Size", "Large");
+        DataPageFiltersViewModel filters = CreateFilters();
+        GameData game = CreateGame(selfRace: 'P', opponents: [Opponent('T')]);
+        SetMapValue(game, size, "Large");
+
+        FilterPanel.Of(filters).Add("Map Attributes", "Size");
+
+        Assert.True(filters.GetFilter().MatchesFilter(game));
+    }
+
+    private AttributeDefinition MapAttribute(string name, params string[] options)
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map)
+        {
+            Id = _mapAttributes.Count + 1,
+            Name = name,
+            Type = AttributeType.Values,
+        };
+        foreach (string option in options)
+            attribute.ValueOptions.Add(option);
+        _mapAttributes.Add(attribute);
+        return attribute;
+    }
+
+    // The Maps tab's copy of the map this game was played on: the same id, carrying its attribute values.
+    private Map MapOf(GameData game)
+    {
+        int id = game.ReplayData.Map.Id;
+        if (!_mapsById.TryGetValue(id, out Map? map))
+        {
+            map = new Map { Id = id, Name = game.ReplayData.Map.Name };
+            _mapsById[id] = map;
+        }
+        return map;
+    }
+
+    private void SetMapValue(GameData game, AttributeDefinition attribute, string? value)
+    {
+        AttributeValue stored = new(attribute) { SelectedValue = value };
+        MapOf(game).AttributeValues.Add(stored);
+    }
 
     private static ReplayPlayer Opponent(char race) =>
         new() { Name = "Foe", Clan = "", Mmr = new PlayerMmr { ParsedMmr = 3000 }, Race = race, Random = false };

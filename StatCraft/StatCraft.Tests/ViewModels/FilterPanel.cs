@@ -365,6 +365,17 @@ internal sealed class FilterHandle(IFilterSlotViewModel slot)
     private TKind Kind<TKind>() where TKind : class =>
         TryKind<TKind>() ?? throw new InvalidOperationException($"\"{Title}\" is not a {typeof(TKind).Name}");
 
-    private TKind? TryKind<TKind>() where TKind : class =>
-        slot as TKind ?? (slot as IWrappedFilterSlotViewModel)?.WrappedFilter as TKind;
+    // Wrappers nest — a map attribute filter is an attribute filter (itself a wrapper) wrapped again to
+    // reach the game's map — so this walks down to whichever level answers to TKind.
+    private TKind? TryKind<TKind>() where TKind : class
+    {
+        IFilterSlotViewModel? current = slot;
+        while (current != null)
+        {
+            if (current is TKind kind)
+                return kind;
+            current = (current as IWrappedFilterSlotViewModel)?.WrappedFilter;
+        }
+        return null;
+    }
 }

@@ -88,7 +88,7 @@ public class DataPageViewModelTests : IAsyncDisposable
         ReplayImportService replayImportService = new(new MockLogger(), replayDataExtractor, _gameDataRepository, ladderService);
 
         return new DataPageViewModel(_settingsRepository, _replayWatcherService, replayImportService,
-            _accountRepository, _buildRepository, _gameDataRepository, _attributeRepository, ladderService,
+            _accountRepository, _buildRepository, _mapRepository, _gameDataRepository, _attributeRepository, ladderService,
             new MockLogger(), replayDataExtractor);
     }
 
@@ -1082,6 +1082,147 @@ public class DataPageViewModelTests : IAsyncDisposable
         Filters.Add("Outcome").Check("Win");
 
         Assert.Equal(new WinLossRecord(1, 0, 0).Label, _viewModel.WinRateLabel);
+    }
+
+    #endregion
+
+    #region Map attribute filters
+
+    // A game carries only its map's name and id (see GameDataRepository), so these go through the real
+    // repositories: what a map attribute filter asks about has to be the map as the Maps tab has it.
+
+    [Theory]
+    [InlineData("Large", true)]
+    [InlineData("Small", false)]
+    public async Task Filter_MapAttribute_KeepsGamesWhoseMapHasACheckedValue(string checkedValue, bool expected)
+    {
+        Map altitude = InsertMap("Altitude LE");
+        AttributeDefinition size = InsertMapAttribute("Size", "Large", "Small");
+        SetMapValue(altitude, size, "Large");
+        InsertGame(map: altitude);
+        _viewModel = CreateViewModel();
+        await LoadGamesWithNoDateRange();
+
+        Filters.Add("Map Attributes", "Size").Check(checkedValue);
+
+        Assert.Equal(expected, _viewModel.Games.Count == 1);
+    }
+
+    // The Maps tab can change a value while this tab is open, so the maps are read again when it does
+    // rather than left as they were when the games were loaded.
+    [Fact]
+    public async Task Filter_MapAttribute_ValueChangedElsewhere_IsPickedUpOnceTheTabIsActivated()
+    {
+        Map altitude = InsertMap("Altitude LE");
+        AttributeDefinition size = InsertMapAttribute("Size", "Large", "Small");
+        SetMapValue(altitude, size, "Small");
+        InsertGame(map: altitude);
+        _viewModel = CreateViewModel();
+        await LoadGamesWithNoDateRange();
+        Filters.Add("Map Attributes", "Size").Check("Large");
+        Assert.Empty(_viewModel.Games);
+
+        SetMapValue(altitude, size, "Large");
+        _viewModel.NotifyActivated();
+
+        Assert.Single(_viewModel.Games);
+    }
+
+    [Fact]
+    public void MapAttributeAddedElsewhere_IsOfferedOnceTheTabIsActivated()
+    {
+        FilterPanel filters = Filters;
+        // Nothing seeded, so the Map Attributes submenu is empty and hidden, like the Game Attributes one.
+        Assert.Equal(MenuTitles(BuiltInFilterTitles), filters.AddableTitles);
+
+        InsertMapAttribute("Size", "Large");
+        _viewModel.NotifyActivated();
+
+        Assert.Equal([.. MenuTitles(BuiltInFilterTitles), "Size"], filters.AddableTitles);
+    }
+
+    [Fact]
+    public void MapAttributeDeletedElsewhere_WhileApplied_LeavesTheFilterBarAndStopsConstraining()
+    {
+        Map altitude = InsertMap("Altitude LE");
+        AttributeDefinition size = InsertMapAttribute("Size", "Large");
+        SetMapValue(altitude, size, "Large");
+        InsertGame(map: altitude);
+        _viewModel = CreateViewModel();
+        Filters.Add("Map Attributes", "Size").Check("Large");
+
+        _attributeRepository.DeleteAttribute(size.Id);
+        _viewModel.NotifyActivated();
+
+        Assert.Equal(AlwaysApplied, Filters.AppliedTitles);
+        Assert.Equal(MenuTitles(BuiltInFilterTitles), Filters.AddableTitles);
+    }
+
+    // The slot type follows the attribute type, so a retype replaces the applied filter's controls rather
+    // than leaving a checkbox list behind for a bool.
+    [Fact]
+    public void MapAttributeTypeChangedElsewhere_WhileApplied_RebuildsTheFilterInTheBar()
+    {
+        AttributeDefinition size = InsertMapAttribute("Size", "Large");
+        _viewModel = CreateViewModel();
+        Assert.True(Filters.Add("Map Attributes", "Size").IsCheckboxFilter);
+
+        AttributeDefinition editedElsewhere = _attributeRepository.GetAllAttributes(AttributeScope.Map).Single(a => a.Id == size.Id);
+        editedElsewhere.Type = AttributeType.Bool;
+        _attributeRepository.UpdateAttribute(editedElsewhere);
+        _viewModel.NotifyActivated();
+
+        Assert.True(Filters.Applied("Size").IsBoolFilter);
+    }
+
+    [Fact]
+    public void MapAttributeRenamedElsewhere_WhileApplied_RenamesItInTheFilterBarAndMenu()
+    {
+        AttributeDefinition size = InsertMapAttribute("Size", "Large");
+        _viewModel = CreateViewModel();
+        FilterHandle filter = Filters.Add("Map Attributes", "Size").Check("Large");
+
+        AttributeDefinition editedElsewhere = _attributeRepository.GetAllAttributes(AttributeScope.Map).Single(a => a.Id == size.Id);
+        editedElsewhere.Name = "Map Size";
+        _attributeRepository.UpdateAttribute(editedElsewhere);
+        _viewModel.NotifyActivated();
+
+        Assert.Equal([.. AlwaysApplied, "Map Size"], Filters.AppliedTitles);
+        Assert.Equal(["Large"], filter.CheckedLabels);
+
+        filter.Remove();
+        Assert.Equal([.. MenuTitles(BuiltInFilterTitles), "Map Size"], Filters.AddableTitles);
+    }
+
+    // A value option added on the Maps tab has to reach a filter that built its checkbox list before it
+    // existed, the same as for a game attribute.
+    [Fact]
+    public void MapAttributeValueOptionAddedElsewhere_WhileApplied_ShowsUpAsAnOption()
+    {
+        AttributeDefinition size = InsertMapAttribute("Size", "Large");
+        _viewModel = CreateViewModel();
+        FilterHandle filter = Filters.Add("Map Attributes", "Size").Check("Large");
+
+        _attributeRepository.InsertValueOption(size.Id, "Small");
+        _viewModel.NotifyActivated();
+
+        Assert.Equal(["Large", "Small"], filter.OptionLabels);
+        Assert.Equal(["Large"], filter.CheckedLabels);
+    }
+
+    private AttributeDefinition InsertMapAttribute(string name, params string[] options)
+    {
+        AttributeDefinition attribute = new(AttributeScope.Map) { Name = name, Type = AttributeType.Values };
+        _attributeRepository.InsertAttribute(attribute, 0);
+        foreach (string option in options)
+            _attributeRepository.InsertValueOption(attribute.Id, option);
+        return attribute;
+    }
+
+    private void SetMapValue(Map map, AttributeDefinition attribute, string value)
+    {
+        AttributeValue stored = new(attribute) { SelectedValue = value };
+        _mapRepository.SaveValue(map.Id, attribute.Id, stored.Serialize());
     }
 
     #endregion
